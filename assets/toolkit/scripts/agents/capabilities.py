@@ -18,8 +18,8 @@ separate columns and neither is ever derived from the other. A capability under 
 no flag at all and still has a demo.
 
 **Who accepts it is `.specify/cruise.json`'s `demos`.** Under `hand`, the default, the hand's verdict at the
-walk is the acceptance — `deck_line.py accepted --capability <name> --by sail-demo-hand` — and the film is
-there for a person to comment on; nobody is asked. Under `person` a person accepts it, and an `accepted`
+walk is the acceptance, written as the demo stop says, and the film is there for a person to comment on;
+nobody is asked. Under `person` a person accepts it, and an `accepted`
 line the hand wrote is the last reading before theirs, not the acceptance.
 
     python3 scripts/agents/capabilities.py          # every capability, with what it is waiting for
@@ -111,6 +111,7 @@ def cleared(feature: str, capabilities: list[str]) -> set[str]:
     return found
 
 
+
 def demos_setting() -> str:
     """`hand` or `person`: who accepts a whole capability. Absent or unreadable is `hand`."""
     try:
@@ -120,13 +121,42 @@ def demos_setting() -> str:
     return PERSON if isinstance(held, dict) and held.get("demos") == PERSON else HAND
 
 
+def recorded_by_hand(feature: str, grouped: dict[str, list[str]]) -> set[str]:
+    """The capabilities whose hand's acceptance is recorded where a voyage recorded it before the line existed.
+
+    A project mid-voyage has the hand's verdicts on paper and no `accepted` line, because nothing wrote one:
+    the capability's `demo-log.md`, whose last section is the hand's `accepted`, or a register row naming
+    `accepted-by: sail-demo-hand` for every one of its slices. Read as the hand's acceptance where no line
+    says so, so a project that migrates does not lose every capability the hand had already accepted.
+    """
+    rows: dict[str, str] = {}
+    register = SPECS / feature / "slices" / "README.md"
+    if register.is_file():
+        for text in register.read_text(encoding="utf-8").splitlines():
+            cells = text.strip().strip("|").split("|")
+            if text.strip().startswith("|") and cells:
+                rows[cells[0].strip().strip("`").split(" ")[0]] = text
+    found = set()
+    for capability, members in grouped.items():
+        log = SPECS / feature / "capabilities" / capability / "demo-log.md"
+        heads = [line for line in log.read_text(encoding="utf-8").splitlines()
+                 if line.startswith("## ")] if log.is_file() else []
+        if heads and " accepted " in f" {heads[-1]} " and WALKER in heads[-1]:
+            found.add(capability)
+        elif members and all("accepted-by" in rows.get(one, "") and WALKER in rows.get(one, "") for one in members):
+            found.add(capability)
+    return found
+
+
 def state(charted: dict, written: list[dict], gated: set[str] | frozenset[str] = frozenset(),
-          demos: str = "") -> list[dict]:
+          demos: str = "", recorded: set[str] | frozenset[str] = frozenset()) -> list[dict]:
     """One row per capability: its slices, how many have merged, and whether it is whole, gated or accepted.
 
     `accepted` and `hoisted` are kept apart on purpose. A capability the business is deliberately holding
     back is not a late one, and a board that derived one from the other could not tell them apart. Under
-    `person` an `accepted` line by the hand accepts nothing; `demos` is read from the project where not given.
+    `person` an `accepted` line by the hand accepts nothing; under `hand` the hand's acceptance `recorded`
+    before there was a line (`recorded_by_hand`) counts once the capability is whole and gated. `demos` is
+    read from the project where not given.
     """
     person = (demos or demos_setting()) == PERSON
     merged = {str(line["slice"]) for line in written if line.get("kind") == "merged" and line.get("slice")}
@@ -134,20 +164,41 @@ def state(charted: dict, written: list[dict], gated: set[str] | frozenset[str] =
                 if line.get("kind") == "accepted" and line.get("capability")
                 and not (person and line.get("by") == WALKER)}
     hoisted = {str(line["flag"]) for line in written if line.get("kind") == "flag-hoisted" and line.get("flag")}
+    fairway_of = {str(name): str(entry.get("fairway", "")) for name, entry in (charted.get("slices") or {}).items()
+                  if isinstance(entry, dict)}
     rows = []
     for capability, members in slices_by_capability(charted).items():
         done = [slice_id for slice_id in members if slice_id in merged]
+        whole, cleared_now = len(done) == len(members), capability in gated
+        by_record = not person and whole and cleared_now and capability in recorded and capability not in accepted
         rows.append({
             "capability": capability,
             "slices": members,
+            # Every fairway its slices sit in, in split order. Its `accepted` and `demo-due` lines go to the
+            # last; every reader folds every fairway's log of the feature, so one is enough.
+            "fairways": list(dict.fromkeys(fairway_of.get(one, "") for one in members if fairway_of.get(one))),
             "merged": len(done),
-            "whole": len(done) == len(members),
-            "gated": capability in gated,
-            "accepted": capability in accepted,
+            "whole": whole,
+            "gated": cleared_now,
+            "accepted": capability in accepted or by_record,
+            "recorded": by_record,
             "hoisted": capability in hoisted,
             "waiting": [slice_id for slice_id in members if slice_id not in merged],
         })
     return rows
+
+
+def acceptable(row: dict) -> str:
+    """Why this capability may not be accepted now, or `""`: the one rule every writer of `accepted` and
+    `demo-due` is held to — the hand's command and the board's Accept alike. Whole, every slice merged, and
+    its gates record carrying `Cleared:`; an acceptance before either is a verdict on something unfinished."""
+    if row["accepted"]:
+        return f"{row['capability']} is accepted already"
+    if not row["whole"]:
+        return f"{row['capability']} is not whole: {', '.join(row['waiting'])} not merged"
+    if not row["gated"]:
+        return f"{row['capability']}'s gates have not cleared: its gates.md has no `Cleared:` line"
+    return ""
 
 
 def gates_due(rows: list[dict]) -> list[dict]:
@@ -156,8 +207,15 @@ def gates_due(rows: list[dict]) -> list[dict]:
 
 
 def due(rows: list[dict]) -> list[dict]:
-    """Whole, gated and not yet accepted. That is the whole trigger, and nothing about a flag is in it."""
+    """Whole, gated and not yet accepted. That is the whole trigger, and nothing about a flag is in it. Under
+    `hand` these are owed the hand's `accepted` line, never a person."""
     return [row for row in rows if row["whole"] and row["gated"] and not row["accepted"]]
+
+
+def rows_of(feature: str, charted: dict) -> list[dict]:
+    grouped = slices_by_capability(charted)
+    return state(charted, lines(feature), cleared(feature, list(grouped)),
+                 recorded=recorded_by_hand(feature, grouped))
 
 
 def main(argv: list[str]) -> int:
@@ -165,7 +223,7 @@ def main(argv: list[str]) -> int:
     if not charted:
         print("capabilities: no chart yet, so no capability is owed a demo")
         return 0
-    rows = state(charted, lines(feature), cleared(feature, list(slices_by_capability(charted))))
+    rows = rows_of(feature, charted)
     if "--gates" in argv:
         owed = gates_due(rows)
         if "--json" in argv:
@@ -176,19 +234,29 @@ def main(argv: list[str]) -> int:
         for row in owed:
             print(f"  {row['capability']} — {', '.join(row['slices'])}")
         return 0
+    if "--json" in argv:
+        # The board's other port: every row, with why each may not be accepted now, under the project's setting.
+        print(json.dumps({"v": V, "feature": feature, "demos": demos_setting(),
+                          "rows": [{**row, "refused": acceptable(row)} for row in rows]}))
+        return 0
     if "--due" in argv:
         owed = due(rows)
-        print(f"capabilities: {len(owed)} owed a demo")
+        if demos_setting() == PERSON:
+            print(f"capabilities: {len(owed)} owed a demo")
+        else:
+            print(f"capabilities: nothing is owed a person — `demos` is `hand`, so the hand's verdict accepts each. "
+                  f"{len(owed)} whole and gated with no `accepted` line yet: the demo stop writes it")
         for row in owed:
             print(f"  {row['capability']} — {', '.join(row['slices'])}")
         return 0
     print(f"capabilities: {len(rows)} in {feature}")
     for row in rows:
         if row["accepted"]:
-            where = "accepted" + (", hoisted" if row["hoisted"] else ", not hoisted")
+            where = "accepted" + (" (the hand's, from its record)" if row["recorded"] else "") + (
+                ", hoisted" if row["hoisted"] else ", not hoisted")
         elif row["whole"] and row["gated"]:
             where = ("whole and gated — a demo is due" if demos_setting() == PERSON
-                     else "whole and gated — the hand's verdict accepts it")
+                     else "whole and gated — the hand's `accepted` line is owed")
         elif row["whole"]:
             where = "whole — gates due"
         else:

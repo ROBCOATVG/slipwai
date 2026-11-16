@@ -18,11 +18,14 @@ the mark is one the chart says this slice sets, the verdict is one of the three 
 
 A whole capability's two lines had no door either, and nothing wrote them: `accepted`, and `demo-due` where
 a person accepts demos. Who accepts is `.specify/cruise.json`'s `demos` — the hand, by default, whose
-verdict at the walk is the acceptance; or a person, whose demo is then due and whose word is the line:
+verdict at the walk is the acceptance; or a person, whose demo is then due:
 
     python3 scripts/agents/deck_line.py accepted --capability place-an-order --by sail-demo-hand
     python3 scripts/agents/deck_line.py demo-due --capability place-an-order
-    python3 scripts/agents/deck_line.py accepted --capability place-an-order --by person
+
+Both are refused unless the capability is whole and its gates record says `Cleared:` (`capabilities.py`'s
+`acceptable`), `accepted` under `person` and `demo-due` under `hand`. This door takes only the hand's
+acceptance: a person's is written by the board when they press Accept, so no session can accept as them.
 
 None is a claim the captain takes on trust: a merge is still the harbourmaster's, after the full gate.
 """
@@ -35,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import capabilities  # noqa: E402
 import clearance  # noqa: E402
 import logs  # noqa: E402
 
@@ -91,29 +95,43 @@ def line(kind: str, slice_id: str, feature: str = "", mark: str = "", verdict: s
         raise Refused(str(fault)) from fault
 
 
-#: The lines about a whole capability rather than a slice, and who may be named as accepting one.
+#: The lines about a whole capability rather than a slice, and the one accepter this door writes for.
 CAPABILITY_KINDS = ("accepted", "demo-due")
-ACCEPTERS = ("sail-demo-hand", "person")
+HAND = "sail-demo-hand"
 
 
 def capability_line(kind: str, capability: str, feature: str = "", by: str = "") -> tuple[str, logs.Entry]:
-    """The feature and the entry for a capability's line, or a refusal naming what the chart says instead.
-    Its fairway is its slices': a capability is named on the chart against each slice it gathers."""
+    """The feature and the entry for a capability's line, or a refusal saying why not.
+
+    Held to `capabilities.acceptable` — whole and cleared — and to the setting: `accepted` is the hand's
+    under `hand`, `demo-due` a person's under `person`. A capability spanning fairways logs to the last of
+    them in split order, where its last slice merged; every reader folds every fairway's log of the feature
+    (`capabilities.lines`, `clearance.lines`, the board's fold), so the line is seen from all of them."""
     found, name = clearance.chart(feature)
     if not name:
         raise Refused("no feature under specs/ has a chart.yaml, so nothing says which capabilities there are")
-    members = [body for body in (found.get("slices") or {}).values()
-               if isinstance(body, dict) and str(body.get("capability", "")) == capability]
-    if not members:
+    row = next((one for one in capabilities.rows_of(name, found) if one["capability"] == capability), None)
+    if row is None:
         raise Refused(f"no slice on specs/{name}/chart.yaml names the capability {capability!r}")
-    fairway = fairway_of(members[-1])
-    if not fairway:
-        raise Refused(f"nothing says which fairway {capability} is in — set SLIPWAI_FAIRWAY or give its slices "
-                      f"a `fairway` on specs/{name}/chart.yaml")
+    if not row["fairways"]:
+        raise Refused(f"nothing says which fairway {capability} is in — give its slices a `fairway` on "
+                      f"specs/{name}/chart.yaml")
+    person = capabilities.demos_setting() == capabilities.PERSON
+    if kind == "demo-due" and not person:
+        raise Refused("`demos` is `hand` in .specify/cruise.json, so no person is owed a demo: the hand's verdict "
+                      "accepts it — write `accepted --by sail-demo-hand` instead")
+    if kind == "accepted" and by != HAND:
+        raise Refused(f"this command writes only the hand's acceptance (`--by {HAND}`); a person's is written "
+                      f"by the board when they press Accept")
+    if kind == "accepted" and person:
+        raise Refused("`demos` is `person` in .specify/cruise.json, so the hand's verdict is not the acceptance: "
+                      "write `demo-due` and a person accepts it on the board")
+    refused = capabilities.acceptable(row)
+    if refused:
+        raise Refused(refused)
+    fairway = row["fairways"][-1]
     if kind == "demo-due":
         return name, logs.entry("demo-due", fairway=fairway, capability=capability)
-    if by not in ACCEPTERS:
-        raise Refused(f"an `accepted` line names who accepted: {' or '.join(ACCEPTERS)}, not {by!r}")
     return name, logs.entry("accepted", fairway=fairway, capability=capability, by=by)
 
 
@@ -133,7 +151,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--mark", default="", help="for `mark-set`: the mark, as the chart names it")
     parser.add_argument("--verdict", default="", help=f"for `demo`: one of {', '.join(logs.VERDICTS)}")
     parser.add_argument("--by", default="", help="for `demo`: who walked it, as `sail-demo-hand`; for "
-                                                 "`accepted`: `sail-demo-hand` or `person`")
+                                                 "`accepted`: `sail-demo-hand`, the only one it takes")
     parser.add_argument("--log", default="", help="for `demo`: the demo log the verdict is recorded in")
     parser.add_argument("--feature", default="", help="the feature, where more than one has a chart")
     parsed = parser.parse_args(argv)

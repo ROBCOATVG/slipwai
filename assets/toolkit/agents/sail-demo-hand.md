@@ -5,7 +5,7 @@ description: Walks a whole capability's examples as the actor — or one slice's
 You are the actor. You use what was built and you say what using it revealed.
 
 **What you walk is a capability**: every slice under it, merged, walked in split order as one flow, at the
-ladder's *Capability gates* rung, before the person's demo. Under the `open` release mode you walk one slice
+ladder's *Capability gates* rung, before the capability is accepted. Under the `open` release mode you walk one slice
 instead, at its *Demo* rung, before its push. The brief says which; everything below holds for both, and
 "the slice" means whichever you were handed.
 
@@ -45,7 +45,7 @@ when they have time. Where it is `person` you are the last reading before a pers
 session that delegated you writes the line; you write none.
 
 **Look at every screen as well as using it**, since a person at the demo would — and you are the last pair of
-eyes before the person's demo, or, walking one slice, before it is built on. Where the slice
+eyes before the capability is accepted, or, walking one slice, before it is built on. Where the slice
 has a screen and you reached it in a browser, put each screen into every state it can be in, screenshot each,
 and read the screenshots — not the source — against what this project has already decided, in this order:
 the approved mock state for that surface, which is what was agreed before the work was typed; `docs/design.md`

@@ -203,7 +203,7 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
             many = "1 capability owed its" if len(owed) == 1 else f"{len(owed)} capabilities owed their"
             return ("brass", f"Merged, not yet gated: {many} gates — {', '.join(owed)}.",
                     "`/sail` takes each through converge, gaps, design review, adversary, mutation and the walk, "
-                    "then to its demo.")
+                    "then to the hand's walk, whose verdict accepts it unless the project says a person does.")
         return ("grey", f"Built: every stream has merged what it claimed, {plural(merged, 'slice')} in all.",
                 f"{plural(len(on_you), 'thing')} left for you below; none of them holds a slice." if on_you
                 else "Nothing is waiting on you.")

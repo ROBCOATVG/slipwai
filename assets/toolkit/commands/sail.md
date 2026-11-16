@@ -205,8 +205,8 @@ When the tasks are done, go straight to the examples: record each of this slice'
 test that proves it, from the unpushed slice branch, and have the slice's diff reviewed once. **Nobody is
 stopped here, nothing converges, and no browser is opened.** Converge, the gaps trace, the design review,
 the adversary pass and the hand's walk are the capability's — *Capability gates*, once its last slice has
-merged — and the person's demo follows them, usually several slices later: the person, and the hand before
-them, are shown the whole thing rather than its instalments. Under the `open` release mode, where a merge
+merged — and the capability's acceptance follows them, usually several slices later: the hand's verdict,
+or a person's under `demos: person`, is given on the whole thing rather than its instalments. Under the `open` release mode, where a merge
 reaches the actor at once, the slice converges and is traced by `/gaps` at the end of *Implementation*, the
 hand walks its examples here as well and the push waits for its verdict, and a slice that widened
 authorisation, identity or money is attacked before its push; the capability's converge, adversary pass and
@@ -237,8 +237,8 @@ or money trigger `widened` is attacked here as well: close that adversary benchm
 are triaged, and implement confirmed defects through failing tests, each in an `implement` entry. Then run
 `make verify`. `commands/adversary.md` owns the trigger table and the decision, so do not make it here.
 **The capability gates are not run here**: converge over the capability's diff, gaps over it, the design review, the capability's adversary
-pass where a slice widened a trigger, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the person's demo
-stop walks it (*What the demo stop has to contain*) — the *Capability gates* rung says what this slice
+pass where a slice widened a trigger, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the demo
+stop accepts it (*What the demo stop has to contain*) — the *Capability gates* rung says what this slice
 records meanwhile, and what the last slice of a capability starts. The order holds when they run: the
 adversary pass adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
 unavailable input.

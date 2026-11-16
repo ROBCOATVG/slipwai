@@ -33,11 +33,9 @@ write `accepted-by: {HAND}` beside the register row or status flip, so a person 
 has seen.
 
 **A whole capability's acceptance is `{CONFIG}`'s `demos`.** Under `hand`, the default, the hand's
-`accepted` at the capability's walk is the capability accepted: `python3 scripts/agents/deck_line.py accepted
---capability <capability> --by {HAND}`. Nothing waits on a person and nothing parks; its film is on the
-board for a person to watch and comment on when they have time. Under `person` that verdict is the last
-reading before a person's: write `python3 scripts/agents/deck_line.py demo-due --capability <capability>`
-instead, and the board asks a person to accept it while the run goes on with everything else.
+`accepted` at the capability's walk is the capability accepted, and nothing waits on a person or parks;
+under `person` it is the last reading before a person's. `commands/sail.md`'s *What the demo stop has to
+contain* says which line to write and the command that writes it.
 
 **Then stop what the demo started.** The ladder leaves the app running past the end of the turn because the
 actor's first action is opening it; here the actor was the hand, and it has finished. Try it is not what the

@@ -39,8 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from .deck import recent, said
-from .demos import acceptance
-from .demos import setting as demos_setting
+from .demos import on_board
 from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name through this module
     FEED,
     GROUPED,
@@ -600,8 +599,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         if fault:
             clearance_faults.add(feature)
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
-    demos = demos_setting(root)
-    accepted, due_in = acceptance([(one.name, one.entries) for one in found], demos)
+    demos, accepted, due_in = on_board(root, [(one.name, one.entries) for one in found])
     waiting = inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),

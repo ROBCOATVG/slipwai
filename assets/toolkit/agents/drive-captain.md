@@ -49,8 +49,8 @@ believed. Every line carries `fairway`.
 | `mark-set` | a contract a sibling steers by now exists; `deck_line.py mark-set` writes it, and a mark stands once set | `slice`, `mark` |
 | `demo` | the demo was run, and its verdict; `deck_line.py demo` writes it, and every run owes one | `slice`, `verdict` — `accepted`, `behaviour` or `implementation` |
 | `seeded` | the slice's `try-it.json` ran green against the app its berth runs; `try_it.py seed --slice` writes it, and a slice with a story and no `seeded` line this turn is parked at its gate | `slice`, `records` (steps that answered), `commit`; `given` where the story appended events first |
-| `accepted` | a whole capability is accepted: by the hand's verdict under `.specify/cruise.json`'s `demos: hand`, the default, or by a person's under `person`; `deck_line.py accepted --capability <name> --by <sail-demo-hand\|person>` writes it | `capability`, `by` |
-| `demo-due` | under `demos: person` only, a capability is ready for a person to accept; `deck_line.py demo-due --capability <name>` writes it | `capability` |
+| `accepted` | a whole capability is accepted: by the hand's verdict under `.specify/cruise.json`'s `demos: hand`, the default, or by a person's under `person`. The demo stop in `commands/sail.md` says how the hand's is written; a person's is written by the board, never by you | `capability`, `by` |
+| `demo-due` | under `demos: person` only, a capability is ready for a person to accept; written as the demo stop says | `capability` |
 | `merged` | the slice is on trunk | `slice`, `commit` |
 | `decision` | something another captain could contradict | `id`, `what` |
 | `question` | a product question this slice cannot be guessed past, for a person; open until a `decision` carries its `id` | `slice`, `id`, `what` |

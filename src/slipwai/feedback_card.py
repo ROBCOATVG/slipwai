@@ -16,7 +16,7 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
-from .demos import HAND, opened
+from .demos import HAND, accept, opened
 from .feedback import HOLDS, ROUTES, Item, capture, confirm, drop, items
 from .film import films_of
 from .page_shell import esc
@@ -260,8 +260,14 @@ def act(root: Path, held: dict, rows: list[dict[str, str]], fleet: dict, start: 
                 raise ValueError("nothing here waits on a person to accept a demo: this project takes the hand's "
                                  "verdict as the acceptance. Say what the film showed instead")
             raise ValueError(f"{capability or 'that capability'} is not waiting for a demo")
-        tell(root, fairway, f"Demo verdict for the {capability} capability: accepted.")
-        return f"told {fairway}: {capability} accepted"
+        # The line itself, held to whole-and-cleared: a message alone was read by nobody once every slice
+        # had merged. The captain is still told, where its stream has a log to tell.
+        said = accept(root, capability)
+        try:
+            tell(root, fairway, f"Demo verdict for the {capability} capability: accepted.")
+        except ValueError:
+            return said
+        return f"{said}; told {fairway}"
     if verb == "send":
         given = held.get("context")
         context: dict = given if isinstance(given, dict) else {}

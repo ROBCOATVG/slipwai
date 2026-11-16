@@ -349,7 +349,8 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     # voyage with no `accepted` line at all, which is a build that looks finished and has never been shown.
     found.append(Stage("accepted", "Accepted", "working" if demos else "done" if all_done and accepted else "todo",
                        "accepted lines",
-                       "/sail takes each whole capability through its gates to its demo" if all_done and not accepted
+                       "/sail takes each whole capability through its gates to its acceptance"
+                       if all_done and not accepted
                        else "the demo, as the actor; /cruise-tell records the verdict" if person
                        else "the hand's walk, whose verdict is the acceptance",
                        f"{len(accepted)} capability(ies) accepted" if accepted else

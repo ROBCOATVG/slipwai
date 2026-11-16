@@ -121,17 +121,6 @@ class ProjectTest(unittest.TestCase):
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("`demos` must be one of hand, person", refused.stderr)
 
-    def test_the_hand_s_acceptance_and_a_person_s_demo_due_are_written_by_command(self) -> None:
-        root = project("person")
-        self.assertEqual(run(root, "deck_line.py", "demo-due", "--capability", "place-an-order").returncode, 0)
-        done = run(root, "deck_line.py", "accepted", "--capability", "place-an-order", "--by", "sail-demo-hand")
-        self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertEqual([(one.kind, one.fields.get("by")) for one in deck(root)],
-                         [("demo-due", None), ("accepted", "sail-demo-hand")])
-        refused = run(root, "deck_line.py", "accepted", "--capability", "place-an-order", "--by", "someone")
-        self.assertIn("names who accepted", refused.stderr)
-        self.assertIn("names the capability", run(root, "deck_line.py", "demo-due", "--capability", "x").stderr)
-
     def test_the_capabilities_report_takes_the_hand_s_acceptance_only_under_hand(self) -> None:
         for setting, said in (("hand", "accepted, not hoisted"), ("person", "whole — gates due")):
             with self.subTest(demos=setting):
@@ -202,6 +191,8 @@ class FilmAndFeedbackTest(unittest.TestCase):
         self.home = run_dir(self.root) / "walks/001-shop/place-an-order"
         self.home.mkdir(parents=True)
         (self.home / "film.webm").write_bytes(b"0123")
+        (self.root / "specs/001-shop").mkdir(parents=True)
+        (self.root / "specs/001-shop/chart.yaml").write_text(CHART_YAML, encoding="utf-8")
 
     def test_under_hand_the_film_offers_say_what_it_showed_and_the_feedback_card_no_accept(self) -> None:
         board: dict = {"demos": "hand", "demo_due_in": {}}

@@ -119,7 +119,7 @@ concurrently, as the post-implementation pass is per seam — and put every find
 a criterion nothing built becomes a slice, appended to the split with `/story-splitting`, and the ladder is
 re-entered for it; a finding the owner rules out of scope is a decision entry saying so. Write
 `{{report}}`: what the specification asked, what shipped, every out-of-scope decision, and every entry a person
-has not yet reviewed. An audit with nothing left to build writes the stream's last lines and the capability's `accepted`; the captain reads those and claims nothing more.
+has not yet reviewed. An audit with nothing left to build writes the stream's last lines — a capability's acceptance as `commands/sail.md`'s *What the demo stop has to contain* says, and nowhere else — and the captain reads those and claims nothing more.
 
 ## The stage contract
 

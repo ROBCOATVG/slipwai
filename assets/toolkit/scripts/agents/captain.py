@@ -88,6 +88,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import abreast  # noqa: E402
+import captain_rules  # noqa: E402
 import claims  # noqa: E402
 import clearance  # noqa: E402
 import drive  # noqa: E402
@@ -1497,16 +1498,61 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
                                f"`/cruise-tell {fairway} <answer>`; the captain records the decision and "
                                f"resumes {slice_id}")
             why = gate_missed(slice_id, promised, missing, verdict, dark)
-        if tried <= bound:
-            retry = why
+        chosen = gate_failed(slice_id, feature, fairway, why, tried, bound)
+        if chosen["verb"] == "retry":
+            retry = str(chosen["note"])
             print(f"captain: {slice_id} run {tried} did not close its gate — {why}. Running it again",
                   flush=True)
             continue
         carried: dict[str, object] = {"cause": cause_for(why)}
         if "`seeded`" in why:
             carried["needs"] = seed_need(slice_id, feature)
+        if chosen.get("needs"):
+            carried["needs"] = [*carried.get("needs", []), {"what": str(chosen["needs"]), "by": "person"}]  # type: ignore[list-item]
         record(slice_id, **carried)
-        return False, f"{why}. That was the last of {tried} run(s), which is what `attempts` allows"
+        return False, str(chosen["why"])
+
+
+def decided(kind: str, slice_id: str, facts: Callable[[], dict], may: list[str],
+            default: list[dict]) -> list[dict]:
+    """The one seam every choice the captain makes goes through: the facts the choice needs, the orders it
+    may take, and the order the fixed rule gives (`captain_rules`). On the program alone the rule's order is
+    the answer, and nothing is asked or written; `facts` is a callable so that path never pays for it."""
+    return default
+
+
+def gate_failed(slice_id: str, feature: str, fairway: str, why: str, tried: int, bound: int) -> dict:
+    """After a run that did not close its gate: retry with what note, or park with what reason."""
+    default = captain_rules.after_gate(slice_id, why, tried, bound)
+    may = ["retry", "park", "say", "ask", "none"] if tried <= bound else ["park", "say", "ask", "none"]
+    facts = lambda: {"slice": slice_id, "why": why, "cause": cause_for(why), "tried": tried,  # noqa: E731
+                     "attempts": bound, "sets": sets_of(slice_id)}
+    chosen = [one for one in decided("gate-failed", slice_id, facts, may, [default])
+              if one.get("verb") in ("retry", "park")]
+    return chosen[0] if chosen else default
+
+
+def choose(feature: str, fairway: str, candidates: list[str], free: int, flying: list[str]) -> list[str]:
+    """Which of the slices that may start now do start: every one where there is room for them all, and
+    otherwise the choice — the first `free` of them by the fixed rule."""
+    default = captain_rules.choose_next(candidates, free)
+    if free <= 0 or len(candidates) <= free:
+        return [str(one["slice"]) for one in default]
+    facts = lambda: next_facts(feature, candidates, free, flying)  # noqa: E731
+    return [str(one["slice"]) for one in decided("choose-next", "", facts, ["start", "say", "none"], default)
+            if one.get("verb") == "start"]
+
+
+def next_facts(feature: str, candidates: list[str], free: int, flying: list[str]) -> dict:
+    """What a choice of the next slice needs: the free slots, each cleared slice with what it steers by,
+    what it sets and how far along it is, and what is in flight."""
+    charted, _ = clearance.chart()
+    slices = charted.get("slices") or {}
+    found = entries(feature, ON.get("fairway", "")) if ON.get("fairway") else []
+    return {"free": free, "in_flight": list(flying),
+            "cleared": [{"slice": one, "steers_by": [str(m) for m in ((slices.get(one) or {}).get("steers_by") or [])],
+                         "sets": [str(m) for m in ((slices.get(one) or {}).get("sets") or [])],
+                         "progress": progress(feature, one, found)} for one in candidates]}
 
 
 def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict: str, dark: bool = False) -> str:
@@ -2024,7 +2070,7 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
                     more, _ = next_slices(fairway, [*threads, *queued, *back])
                     more = [one for one in more if one not in held_by_talk(fairway, more)]
                     queued += [*back, *more]
-                starting = queued[:max(0, limit - len(threads))]
+                starting = choose(feature, fairway, queued, limit - len(threads), list(threads)) if queued else []
                 for slice_id in starting:
                     alone = not threads
                     FLIGHT[slice_id] = {}
@@ -2172,7 +2218,7 @@ def turn(fairway: str) -> str:
                         f"for the harness, and {why}")
             holding = held_said(fairway, resuming(found))
             return f"captain: nothing to start in {fairway} — {why}" + (f"; {holding}" if holding else "")
-        said = sail_out(feature, fairway, first[:1], fresh=True)
+        said = sail_out(feature, fairway, choose(feature, fairway, first, 1, []), fresh=True)
     # Nothing started at all is a turn with nothing to start, said in the words that end the loop: a turn
     # that printed nothing would go round again for ever, saying nothing each time.
     return "\n".join(said) or f"captain: nothing to start in {fairway} — nothing could be started this turn"

@@ -35,7 +35,9 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "id
            # the module that started it and holds the one-harbourmaster rule.
            "fleet.py",
            # How many of a fairway's slices run at once, and the berth each one is worked in.
-           "abreast.py", "moorings.py")
+           "abreast.py", "moorings.py",
+           # The fixed rules each of the captain's choices falls back to.
+           "captain_rules.py")
 #: The chart these tests run against, as data, so the fake `/sail` below sets the marks this says it does.
 #: They were two copies and the fake set `Placed` whatever it was driving, which passed only because the
 #: captain did not read the chart's `sets` — exactly the gap slice 7.8 closes.

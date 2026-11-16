@@ -132,16 +132,24 @@ def command_captain(command: str) -> Captain:
             raise CannotRun(f"`{command}` could not be started: {fault}") from None
         try:
             output, _ = child.communicate(timeout=bound)
+            # Ended with the command, too: whatever it left running in the background would otherwise outlive
+            # the run and go on writing into a folder that is about to be taken away.
+            end_group(child)
             return Ran(child.returncode, False, tokens_in(output.decode("utf-8", errors="replace")))
         except subprocess.TimeoutExpired:
-            if os.name != "nt":
-                with contextlib.suppress(ProcessLookupError, PermissionError):
-                    os.killpg(child.pid, signal.SIGKILL)
+            end_group(child)
             child.kill()
             child.communicate()
             return Ran(None, True)
 
     return run
+
+
+def end_group(child: subprocess.Popen[bytes]) -> None:
+    """Kill the command's whole process group: it and everything it started."""
+    if os.name != "nt":
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(child.pid, signal.SIGKILL)
 
 
 def named(captain: str | None, brief: str, model: str | None) -> tuple[Captain, str]:

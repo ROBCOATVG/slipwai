@@ -8,7 +8,10 @@ captain had a choice to make:
 - `snapshot` — the stream at that moment: `feature`, `fairway`, `slices` (each slice's state in a few
   words), `deck` and `harbour` (the log lines that matter, as the logs hold them), `activity` (the last
   lines of a slice's activity log, by slice), `gate` (the refusal text, for a failed gate), `said` (what a
-  person told the stream: `id`, `text`, `from`), `slots` (free session slots, for choosing what starts).
+  person told the stream: `id`, `text`, `from`), `slots` (free session slots, for choosing what starts),
+  `others` (other streams' deck lines, by stream, where the moment turns on them). The captain is given
+  the snapshot and nothing else, so a label rests on what is in it: never on `situation`, never on hindsight.
+- `synthetic` — true for a moment made up because the recorded runs had none like it; `source` says why.
 - `event` — what wakes the captain, in contract 2.2's shape. `facts` may be left out: it is then the
   snapshot, which is the fold the decision needs.
 - `label` — `accept` (orders a person would accept), `wrong` (orders that would be plainly wrong), `why`
@@ -44,6 +47,7 @@ MAY = {
     "stuck": ["message", "pause", "stop", "park", "say", "ask", "none"],
 }
 SHAPES = ("slice", "slices", "within", "naming")
+ROUTED = ("required", "optional")
 #: What the toolkit gives the throwaway project: how a session is started, and how an order is written.
 CARRIED = ("scripts/agents/harness.py", "scripts/agents/registry.json", "scripts/agents/orders.py")
 
@@ -73,17 +77,20 @@ def pattern_faults(where: str, pattern: object) -> list[str]:
     named = [verbs] if isinstance(verbs, str) else verbs if isinstance(verbs, list) else []
     faults = [] if named and all(one in VERBS for one in named) else [
         f"{where}: `verb` is one of {', '.join(sorted(VERBS))}, or a list of them"]
-    shapes = [shape for shape in SHAPES if shape in pattern]
+    present = [shape for shape in [*SHAPES, *ROUTED] if shape in pattern]
+    # `required` and `optional` are one shape between them: the slices a message must and may go to.
+    shapes = [shape for shape in present if shape not in ROUTED]
+    shapes += ["required/optional"] if set(present) & set(ROUTED) else []
     if len(shapes) > 1:
-        faults.append(f"{where}: one of {', '.join(SHAPES)} at most, not {', '.join(shapes)}")
-    for shape in shapes:
+        faults.append(f"{where}: one of {', '.join(SHAPES)}, required/optional at most, not {', '.join(shapes)}")
+    for shape in present:
         value = pattern[shape]
         single = shape in ("slice", "naming")
         if single and not (isinstance(value, str) and value):
             faults.append(f"{where}: `{shape}` is one slice")
         if not single and not (isinstance(value, list) and all(isinstance(one, str) for one in value)):
             faults.append(f"{where}: `{shape}` is a list of slices")
-    unknown = set(pattern) - {"verb", *SHAPES}
+    unknown = set(pattern) - {"verb", *SHAPES, *ROUTED}
     if unknown:
         faults.append(f"{where}: unknown keys {', '.join(sorted(unknown))}")
     return faults
@@ -136,6 +143,13 @@ def event_of(case: dict[str, Any]) -> dict[str, Any]:
     return event
 
 
+def context_of(case: dict[str, Any]) -> tuple[set[str], int | None]:
+    """What an answer is checked against beside its label: the slices the stream has, and its free slots."""
+    snapshot = case["snapshot"]
+    slots = snapshot.get("slots")
+    return set(snapshot.get("slices") or {}), slots if isinstance(slots, int) else None
+
+
 def write_lines(path: Path, lines: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(line) + "\n" for line in lines), encoding="utf-8")
@@ -157,14 +171,17 @@ def lay_out(case: dict[str, Any], root: Path, integration: Path | None = None, b
                 [{"v": 1, "fairway": fairway, **line} for line in snapshot.get("deck", [])])
     write_lines(run / "logs/harbour/eval.jsonl",
                 [{"v": 1, "fairway": fairway, **line} for line in snapshot.get("harbour", [])])
+    # Other streams' deck logs, where the moment turns on them: a captain reads its neighbours' logs too.
+    for other, lines in (snapshot.get("others") or {}).items():
+        write_lines(run / "logs" / feature / f"{other}.jsonl", [{"v": 1, "fairway": other, **line} for line in lines])
     for slice_id, lines in (snapshot.get("activity") or {}).items():
         write_lines(run / "activity" / fairway / f"{slice_id}.jsonl", lines)
     said = snapshot.get("said")
     if isinstance(said, dict) and said.get("id"):
         inbox = run / "talk" / fairway / "_captain/inbox" / f"{said['id']}.json"
         inbox.parent.mkdir(parents=True, exist_ok=True)
-        inbox.write_text(json.dumps({"v": 1, "kind": "say", "mode": "wait", "from": "person", **said}) + "\n",
-                         encoding="utf-8")
+        message = {"v": 1, "kind": "say", "mode": "wait", "from": "person", **said}
+        inbox.write_text(json.dumps(message) + "\n", encoding="utf-8")
     (run / "orders" / fairway).mkdir(parents=True, exist_ok=True)
     events = run / "events" / fairway / f"{event['id']}.json"
     events.parent.mkdir(parents=True, exist_ok=True)

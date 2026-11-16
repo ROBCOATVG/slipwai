@@ -41,8 +41,11 @@ LATE = 1.0
 def run_once(case: dict[str, Any], captain: Captain, bound: float, keep: Path,
              integration: Path | None, brief: Path) -> dict[str, Any]:
     """One run of one case: lay it out, wake the captain, keep what it ordered. The run's record."""
+    # A parent of its own: a harness row may name the project's parent as a second working directory, and
+    # that must not be a folder other runs, or anything else, share.
     with tempfile.TemporaryDirectory(prefix="slipwai-eval-") as scratch:
-        project = Path(scratch)
+        project = Path(scratch) / "project"
+        project.mkdir()
         event = eval_cases.lay_out(case, project, integration, brief)
         orders = event.parents[2] / "orders" / event.parent.name
         started = time.monotonic()
@@ -68,35 +71,51 @@ def run_once(case: dict[str, Any], captain: Captain, bound: float, keep: Path,
 
 def judged_row(case: dict[str, Any], runs: list[tuple[dict[str, Any], Path]]) -> dict[str, Any]:
     """A case's runs judged against its label as it is now: the report's row for it."""
-    judged = [eval_score.judge(case["label"], record["may"], eval_score.order_files(keep / "orders"))
+    known, free = eval_cases.context_of(case)
+    judged = [eval_score.judge(case["label"], record["may"], eval_score.order_files(keep / "orders"), known, free)
               for record, keep in runs]
+    event = eval_cases.event_of(case)
+    fixed = {verb: eval_score.fixed(case["label"], event["may"], verb, str(event.get("slice") or ""), known, free)
+             for verb in event["may"]}
     return {"case": case["id"], "decision": case["event"]["kind"],
             "signed_off": case["label"].get("signed_off", ""),
             "outcomes": [one.outcome for one in judged], "agreement": eval_score.agreement(judged),
             "seconds": [record["seconds"] for record, _ in runs], "tokens": [record["tokens"] for record, _ in runs],
             "answers": [one.answer for one in judged], "texts": [one.texts for one in judged],
-            "faults": [one.malformed + one.refused for one in judged]}
+            "faults": [one.malformed + one.refused for one in judged], "fixed": fixed}
 
 
 def percent(part: int, whole: int) -> str:
     return f"{100 * part / whole:.0f}%" if whole else "-"
 
 
+def baseline(words: str, rows: list[dict[str, Any]]) -> str:
+    """The best a captain that always gave the same order would do on these cases, and what silence does."""
+    verbs = sorted({verb for row in rows for verb in row["fixed"]})
+    right = {verb: sum(1 for row in rows if row["fixed"].get(verb) == "right") for verb in verbs}
+    best = max(verbs, key=lambda verb: right[verb], default="none")
+    return (f"  {words}: always `{best}` is right on {right.get(best, 0)} of {len(rows)}; always silent is right "
+            f"on none, every run a fallback")
+
+
 def report(rows: list[dict[str, Any]], header: str) -> str:
     """The report a person reads: a line per decision, then a line per case, then what the score is."""
     decisions = eval_score.summarise(rows)
     lines = [header, "", f"{'decision':<42} {'cases':>5} {'runs':>5} {'right':>6} {'wrong':>6} {'unjudged':>8} "
-                         f"{'fallback':>8} {'agree':>6} {'s/run':>6} {'tokens':>8}"]
+                         f"{'fallback':>8} {'agree':>6} {'s/run':>6}  tokens"]
     for decision, words in eval_cases.DECISIONS.items():
         held = decisions.get(decision)
         if not held:
             continue
         runs = held["runs"]
-        tokens = f"{held['tokens']}" if held["costed"] else "unknown"
+        tokens = f"{held['tokens']} from {held['costed']} of {runs} runs" if held["costed"] else "unknown"
         lines.append(f"{words:<42} {held['cases']:>5} {runs:>5} {percent(held['right'], runs):>6} "
                      f"{percent(held['wrong'], runs):>6} {percent(held['unjudged'], runs):>8} "
                      f"{percent(held['fallback'], runs):>8} {held['agreement'] * 100:>5.0f}% "
-                     f"{held['seconds'] / runs if runs else 0:>6.1f} {tokens:>8}")
+                     f"{held['seconds'] / runs if runs else 0:>6.1f}  {tokens}")
+    lines += ["", "Read against what a captain with no judgement scores on the same cases:"]
+    lines += [baseline(words, [row for row in rows if row["decision"] == decision])
+              for decision, words in eval_cases.DECISIONS.items() if decisions.get(decision)]
     lines += ["", "Each case (outcome per run; the notes and reasons it wrote are in report.json):"]
     for row in rows:
         counted = ", ".join(f"{row['outcomes'].count(o)} {o}" for o in eval_score.OUTCOMES if o in row["outcomes"])
@@ -112,9 +131,8 @@ def report(rows: list[dict[str, Any]], header: str) -> str:
 def write_report(rows: list[dict[str, Any]], header: str, where: Path, name: str = "report") -> str:
     text = report(rows, header)
     (where / f"{name}.txt").write_text(text, encoding="utf-8")
-    (where / f"{name}.json").write_text(json.dumps({"header": header, "cases": rows,
-                                                    "decisions": eval_score.summarise(rows)}, indent=1) + "\n",
-                                        encoding="utf-8")
+    held = {"header": header, "cases": rows, "decisions": eval_score.summarise(rows)}
+    (where / f"{name}.json").write_text(json.dumps(held, indent=1) + "\n", encoding="utf-8")
     return text
 
 
@@ -142,8 +160,8 @@ def run(cases: list[dict[str, Any]], captain: Captain, said: str, runs: int, bou
         rows.append(judged_row(case, done))
     header = (f"captain evals at {datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}: {len(cases)} case(s), "
               f"{runs} run(s) a case, a bound of {bound:g}s, the captain under test {said}")
-    (out / "about.json").write_text(json.dumps({"header": header, "runs": runs, "bound": bound}) + "\n",
-                                    encoding="utf-8")
+    about = {"header": header, "runs": runs, "bound": bound}
+    (out / "about.json").write_text(json.dumps(about) + "\n", encoding="utf-8")
     return write_report(rows, header, out)
 
 

@@ -8,7 +8,9 @@ does not pretend to make.
 
 **Outside both sets is unjudged, not wrong.** A label is a person's account of what they would accept, and
 an answer they did not foresee is a question for them, not a failure. Wrong takes precedence: an answer
-that parks a slice and also retries it has done the wrong thing whatever else it did.
+that parks a slice and also retries it has done the wrong thing whatever else it did. And right is earned
+whole: the accepted pattern has to account for every order given, so an accepted `none` with a `pause`
+beside it is not right (`outcome_of`).
 
 **No usable order is the fallback.** A run that wrote nothing within the bound, wrote only orders that do
 not parse, or only orders the event did not allow, is one where the program applies today's fixed rule
@@ -110,31 +112,104 @@ def verbs_of(pattern: dict[str, Any]) -> list[str]:
     return [verb] if isinstance(verb, str) else [str(one) for one in verb or []]
 
 
+def allowed_slices(pattern: dict[str, Any]) -> set[str] | None:
+    """The slices a pattern lets an order name, or `None` where it lets it name any."""
+    if "slice" in pattern:
+        return {str(pattern["slice"])}
+    for key in ("slices", "within"):
+        if key in pattern:
+            return {str(one) for one in pattern[key]}
+    if "required" in pattern or "optional" in pattern:
+        return {str(one) for one in [*pattern.get("required", []), *pattern.get("optional", [])]}
+    return None
+
+
 def matches(pattern: dict[str, Any], answer: dict[str, list[str]]) -> bool:
     """Whether an answer is what a pattern describes.
 
     A pattern names one verb or several (`"verb": ["message", "resume"]`, read as any of them) and at most
-    one of: `slice`, the one slice they named; `slices`, exactly that set, which is how routing is scored;
-    `within`, at least one slice and none outside the list; `naming`, a list that includes this slice. With
-    none of the four, using the verb at all is the match.
+    one of: `slice`, the one slice they named; `slices`, exactly that set; `within`, at least one slice and
+    none outside the list; `naming`, a list that includes this slice; `required` with `optional`, every
+    required slice and nothing outside the two, which is how routing says "these two, or these three". With
+    none of them, using the verb at all is the match.
     """
     used = [verb for verb in verbs_of(pattern) if verb in answer]
     if not used:
         return False
     named = {slice_id for verb in used for slice_id in answer[verb]}
-    if "slice" in pattern:
-        return named == {str(pattern["slice"])}
-    if "slices" in pattern:
-        return named == {str(one) for one in pattern["slices"]}
-    if "within" in pattern:
-        return bool(named) and named <= {str(one) for one in pattern["within"]}
     if "naming" in pattern:
         return str(pattern["naming"]) in named
-    return True
+    allowed = allowed_slices(pattern)
+    if "required" in pattern or "optional" in pattern:
+        return {str(one) for one in pattern.get("required", [])} <= named <= (allowed or set())
+    if allowed is None:
+        return True
+    if "within" in pattern:
+        return bool(named) and named <= allowed
+    return named == allowed
 
 
-def judge(label: dict[str, Any], may: list[str], paths: list[Path]) -> Judged:
-    """One run's orders against a label. `may` is the event's: an order outside it is refused by the program."""
+def covers(pattern: dict[str, Any], order: Order) -> bool:
+    """Whether a pattern accounts for this order: its verb is the pattern's, its slice one the pattern allows."""
+    if order.verb not in verbs_of(pattern):
+        return False
+    allowed = allowed_slices(pattern)
+    return allowed is None or "naming" in pattern or order.slice in allowed
+
+
+#: Verbs that each put a slice somewhere different; two of them on one slice in one answer contradict.
+ACTING = frozenset({"start", "retry", "park", "pause", "resume", "stop"})
+#: Words to the person, which may go beside any answer without changing what it is.
+ALONGSIDE = frozenset({"say"})
+
+
+def faults_in(orders: list[Order], known: set[str] | None, free: int | None) -> list[str]:
+    """What makes an answer wrong whatever the label says: it contradicts itself, names a slice the stream
+    does not have, or starts more slices than there are free slots."""
+    found = []
+    acting: dict[str, set[str]] = {}
+    for order in orders:
+        if order.verb in ACTING and order.slice:
+            acting.setdefault(order.slice, set()).add(order.verb)
+        if known is not None and order.slice and order.slice not in known:
+            found.append(f"`{order.verb} {order.slice}` names a slice this stream does not have")
+    found += [f"{' and '.join(sorted(verbs))} on {slice_id} contradict each other"
+              for slice_id, verbs in sorted(acting.items()) if len(verbs) > 1]
+    starts = {order.slice for order in orders if order.verb == "start"}
+    if free is not None and len(starts) > free:
+        found.append(f"{len(starts)} slices started with {free} slot(s) free")
+    return found
+
+
+def outcome_of(label: dict[str, Any], orders: list[Order], known: set[str] | None = None,
+               free: int | None = None) -> tuple[str, list[str]]:
+    """Usable orders judged: right, wrong or unjudged, and the faults that made it wrong where any did.
+
+    **Right** is an accepted pattern that matches and accounts for every order given, bar words to the
+    person: an accepted order with a harmful one beside it is not right. **Wrong** is a pattern in `wrong`, a
+    fault (`faults_in`), or a routing pattern (`required`) whose verbs went to the wrong set of slices.
+    """
+    answer = answer_of(orders)
+    faults = faults_in(orders, known, free)
+    if faults:
+        return "wrong", faults
+    if any(matches(pattern, answer) for pattern in label.get("wrong") or []):
+        return "wrong", []
+    accept = label.get("accept") or []
+    for pattern in accept:
+        if matches(pattern, answer) and all(covers(pattern, order) or order.verb in ALONGSIDE for order in orders):
+            return "right", []
+    routed = [pattern for pattern in accept if "required" in pattern
+              and any(verb in answer for verb in verbs_of(pattern))]
+    if routed and not any(matches(pattern, answer) for pattern in routed):
+        return "wrong", ["the message went to the wrong set of slices"]
+    return "unjudged", []
+
+
+def judge(label: dict[str, Any], may: list[str], paths: list[Path], known: set[str] | None = None,
+          free: int | None = None) -> Judged:
+    """One run's orders against a label. `may` is the event's: an order outside it is refused by the program.
+    `known` is the snapshot's slices and `free` its free slots, where it says them."""
     orders: list[Order] = []
     malformed: list[str] = []
     refused: list[str] = []
@@ -147,17 +222,23 @@ def judge(label: dict[str, Any], may: list[str], paths: list[Path]) -> Judged:
             refused.append(f"{path.name}: `{read.verb}` is not among what the event allowed ({', '.join(may)})")
         else:
             orders.append(read)
-    answer = answer_of(orders)
     texts = [f"{order.verb} {order.slice}: {order.text}".replace("  ", " ") for order in orders if order.text]
     if not orders:
         outcome = "malformed" if malformed else "refused" if refused else "silent"
-    elif any(matches(pattern, answer) for pattern in label.get("wrong") or []):
-        outcome = "wrong"
-    elif any(matches(pattern, answer) for pattern in label.get("accept") or []):
-        outcome = "right"
-    else:
-        outcome = "unjudged"
-    return Judged(outcome, answer, texts, malformed, refused)
+        return Judged(outcome, {}, texts, malformed, refused)
+    outcome, faults = outcome_of(label, orders, known, free)
+    return Judged(outcome, answer_of(orders), texts, malformed + faults, refused)
+
+
+def fixed(label: dict[str, Any], may: list[str], verb: str, slice_id: str, known: set[str] | None = None,
+          free: int | None = None) -> str:
+    """What a captain that always gave this one order would score: the baseline a real score is read against.
+    A verb that needs a slice, on an event that names none, is no order at all."""
+    if verb not in may:
+        return "refused"
+    if verb in NEEDS_SLICE and not slice_id:
+        return "malformed"
+    return outcome_of(label, [Order(verb, slice_id if verb in NEEDS_SLICE else "", "")], known, free)[0]
 
 
 def agreement(judged: list[Judged]) -> float:

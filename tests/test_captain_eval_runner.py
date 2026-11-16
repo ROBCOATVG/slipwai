@@ -9,9 +9,12 @@ tokens, which is what `make evals` is for.
 from __future__ import annotations
 
 import json
+import os
 import shlex
+import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from collections.abc import Callable
 from pathlib import Path
@@ -35,6 +38,16 @@ CASE: dict[str, Any] = {
 Seen = list[Path]
 
 
+def alive(pid: int) -> bool:
+    """Whether a process is still there and not a zombie waiting to be reaped."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    status = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True, check=False)
+    return bool(status.stdout.strip()) and not status.stdout.strip().startswith("Z")
+
+
 def give(*bodies: object) -> Callable[[Path, Path, float], Ran]:
     """A captain that writes these orders where the real one's `orders.py` would, and remembers where it ran."""
     seen: Seen = []
@@ -43,8 +56,8 @@ def give(*bodies: object) -> Callable[[Path, Path, float], Ran]:
         seen.append(project)
         folder = project / ".slipwai/run/orders" / event.parent.name
         for number, body in enumerate(bodies, 1):
-            (folder / f"{number}.json").write_text(body if isinstance(body, str) else json.dumps(body),
-                                                   encoding="utf-8")
+            text = body if isinstance(body, str) else json.dumps(body)
+            (folder / f"{number}.json").write_text(text, encoding="utf-8")
         return Ran(0, False, 1200)
 
     captain.seen = seen  # type: ignore[attr-defined]
@@ -113,9 +126,51 @@ class TheRunner(unittest.TestCase):
         seen: Seen = captain.seen  # type: ignore[attr-defined]
         self.assertEqual(2, len(set(seen)))
         for project in seen:
-            self.assertTrue(project.name.startswith("slipwai-eval-"))
+            self.assertTrue(project.parent.name.startswith("slipwai-eval-"))
             self.assertTrue(project.resolve().is_relative_to(Path(tempfile.gettempdir()).resolve()))
-            self.assertFalse(project.exists())
+            self.assertFalse(project.parent.exists())
+
+    def test_each_run_has_a_parent_of_its_own_holding_nothing_but_its_project(self) -> None:
+        held: list[tuple[Path, list[str]]] = []
+
+        def captain(project: Path, event: Path, bound: float) -> Ran:
+            held.append((project.parent, sorted(one.name for one in project.parent.iterdir())))
+            return Ran(0, False)
+
+        self.run_with(captain, runs=2)
+        self.assertEqual([["project"], ["project"]], [listing for _, listing in held])
+        self.assertNotEqual(held[0][0], held[1][0])
+
+    def test_tokens_are_said_with_how_many_runs_reported_them(self) -> None:
+        runs = [0]
+
+        def captain(project: Path, event: Path, bound: float) -> Ran:
+            runs[0] += 1
+            return Ran(0, False, 1000 if runs[0] % 2 else None)
+
+        self.run_with(captain, runs=4)
+        self.assertIn("2000 from 2 of 4 runs", (self.out / "report.txt").read_text(encoding="utf-8"))
+
+    def test_the_report_reads_the_score_against_a_fixed_order_and_silence(self) -> None:
+        self.run_with(give(), runs=1)
+        text = (self.out / "report.txt").read_text(encoding="utf-8")
+        self.assertIn("after a failed gate: retry or park: always `park` is right on 1 of 1; always silent is right "
+                      "on none", text)
+
+    def test_what_a_captain_command_left_running_is_ended_when_it_exits(self) -> None:
+        marker = self.root / "child.pid"
+        script = self.root / "spawner.py"
+        script.write_text(
+            "import subprocess, sys, pathlib\n"
+            "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'],"
+            " stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            f"pathlib.Path({str(marker)!r}).write_text(str(child.pid), encoding='utf-8')\n", encoding="utf-8")
+        self.run_with(command_captain(f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"), runs=1)
+        pid = int(marker.read_text(encoding="utf-8"))
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and alive(pid):
+            time.sleep(0.05)
+        self.assertFalse(alive(pid))
 
     def test_the_orders_and_the_report_are_written_where_a_person_reads_them(self) -> None:
         self.run_with(give({"verb": "park", "slice": "S1"}), runs=1)

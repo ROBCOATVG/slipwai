@@ -16,13 +16,13 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
-from .demos import HAND, accept, opened
+from .demos import HAND, accept, mark_opened, opened
 from .feedback import HOLDS, ROUTES, Item, capture, confirm, drop, items
 from .film import films_of
 from .page_shell import esc
 
 #: What the card's buttons and the box ask for.
-VERBS = ("send", "confirm", "drop", "triage", "accept")
+VERBS = ("send", "confirm", "drop", "triage", "accept", "opened")
 #: How each context line is said on its chip.
 CHIPS = {"slice": "Slice", "capability": "Capability", "page": "Page", "signed-in-as": "Signed in as",
          "trunk": "Trunk"}
@@ -253,6 +253,10 @@ def act(root: Path, held: dict, rows: list[dict[str, str]], fleet: dict, start: 
     verb = str(held.get("verb", ""))
     if verb not in VERBS:
         raise ValueError(f"the Feedback card has no {verb!r}; it can {', '.join(VERBS)}")
+    if verb == "opened":
+        # A person pressed Play on a capability's film: it is no longer something they have yet to look at.
+        marked = mark_opened(root, str(held.get("feature", "")), str(held.get("capability", "")))
+        return "noted" if marked else "no such film"
     if verb == "accept":
         capability, fairway = str(held.get("capability", "")), str(held.get("fairway", ""))
         if capability not in (fleet.get("demo_due_in") or {}):

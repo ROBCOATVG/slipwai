@@ -60,6 +60,15 @@ SCRIPT = """
     const film = named ? document.getElementById(named) : mark.closest('.film');
     if (film) { play(film, Number(mark.dataset.filmAt) || 0); film.scrollIntoView({block: 'nearest'}); }
   });
+  // The first press of Play on a film says so once, so it stops being listed as something still to look at.
+  document.addEventListener('play', event => {
+    const film = event.target.closest && event.target.closest('.film');
+    if (!film || film.dataset.opened || !film.dataset.capability) return;
+    film.dataset.opened = 'yes';
+    fetch('/feedback', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({verb: 'opened', feature: film.dataset.feature,
+                                              capability: film.dataset.capability})}).catch(() => {});
+  }, true);
   document.addEventListener('timeupdate', event => {
     const film = event.target.closest && event.target.closest('.film');
     if (!film) return;
@@ -140,7 +149,8 @@ def film_html(film: dict, titles: dict[str, str], due: bool) -> str:
              f'data-ask="What did the {esc(film["title"].lower())} film show?">Say what it showed</button>')
     marks = json.dumps([{"at": one["at"], "slice": one["slice"], "says": one["says"]} for one in film["chapters"]])
     return (f"<h3>{esc(film['title'])}{ready}</h3>"
-            f'<div class="film" id="{esc(film["id"])}" data-marks="{esc(marks)}"><div>'
+            f'<div class="film" id="{esc(film["id"])}" data-marks="{esc(marks)}" '
+            f'data-feature="{esc(film["feature"])}" data-capability="{esc(film["capability"])}"><div>'
             f'<video controls preload="metadata" src="{esc(film["href"])}"></video>'
             f'<p class="says">{esc(opening)}</p>'
             f'<p class="sub">{length}one take through the running app, as the hand walked it</p></div>'

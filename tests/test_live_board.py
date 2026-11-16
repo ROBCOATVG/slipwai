@@ -145,7 +145,7 @@ class WaitingListTest(unittest.TestCase):
                                                      encoding="utf-8")
         found = waiting(idle(self.root), {"demo_due_in": {"Sign in and join": "accounts"}}, {"castable": True})
         self.assertEqual([one["text"] for one in found["later"]],
-                         ["Sign in and join is ready for you to see",
+                         ["Sign in and join is ready for your verdict",
                           "A piece of feedback has a proposed route to confirm"])
         self.assertEqual([one["text"] for one in found["holding"]], ["The chart is split: cast off the fleet"])
         self.assertEqual(found["count"], 3)

@@ -207,6 +207,30 @@ class OpenedTest(unittest.TestCase):
         self.assertTrue(demos.mark_opened(self.root, "001-shop", "place-an-order"))
         self.assertTrue(demos.opened(self.root, "001-shop", "place-an-order"))
 
+    def test_a_film_nobody_has_opened_waits_until_you_have_time_and_pressing_play_ends_that(self) -> None:
+        """The seam between the film and the Waiting-on-you list: one says which films are still to look at,
+        the other lists them, and the press of Play that the film's script sends is what takes one off."""
+        from types import SimpleNamespace
+
+        from slipwai.on_you import waiting
+
+        (run_dir(self.root) / "walks/001-shop/place-an-order/film.webm").write_bytes(b"film")
+        board = SimpleNamespace(root=self.root, fitting=None)
+        with mock.patch("slipwai.on_you.open_asks", return_value=0), \
+                mock.patch("slipwai.on_you.button_waiting", return_value=("", "")):
+            before = waiting(board, {}, {})
+            self.assertEqual([(one["text"], one["href"]) for one in before["later"]],
+                             [("Place an order is on film: say what it showed", "#film-place-an-order")])
+            owed = waiting(board, {"demo_due_in": {"place-an-order": "ordering"}}, {})
+            self.assertEqual([one["text"] for one in owed["later"]], ["Place an order is ready for your verdict"],
+                             "a capability on film and owed a verdict is listed once, not twice")
+            said = act(self.root, {"verb": "opened", "feature": "001-shop", "capability": "place-an-order"},
+                       [], {}, lambda: False)
+            self.assertEqual(said, "noted")
+            self.assertEqual(waiting(board, {}, {})["later"], [])
+        self.assertEqual(act(self.root, {"verb": "opened", "feature": "001-shop", "capability": "../.."}, [], {},
+                             lambda: False), "no such film")
+
     def test_a_name_that_climbs_out_or_that_nothing_holds_is_answered_no_and_writes_nothing(self) -> None:
         (run_dir(self.root) / "walks/001-shop/stray").mkdir()
         for feature, capability in (("001-shop", "../../.."), ("..", "place-an-order"), ("001-shop", "a/b"),

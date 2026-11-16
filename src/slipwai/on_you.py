@@ -20,6 +20,7 @@ from typing import Any
 
 from .bridge_page import inbox_rows
 from .feedback import items
+from .feedback_card import to_look_at
 from .fleet_page import first_sentence, group_card, parks_table, plural
 from .page_shell import esc
 from .stage_session import running
@@ -115,8 +116,14 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     said, where = button_waiting(board, able)
     if said:
         holding.append({"n": 1, "text": said, "href": where})
-    later = [{"n": 1, "text": f"{name} is ready for you to see", "href": "#feedback"}
-             for name in sorted(fleet.get("demo_due_in") or {})]
+    # A capability on film that nobody has opened or said anything about, and one owed a person's verdict
+    # where the project asks for it: `feedback_card.to_look_at` says which films, so the two cannot disagree.
+    films = to_look_at(root or board.root, fleet)
+    later = [{"n": 1, "href": f"#film-{one['capability']}",
+              "text": f"{one['title']} is ready for your verdict" if one["accept"]
+              else f"{one['title']} is on film: say what it showed"} for one in films]
+    later += [{"n": 1, "text": f"{name} is ready for your verdict", "href": "#feedback"}
+              for name in sorted(fleet.get("demo_due_in") or {}) if name not in {one["capability"] for one in films}]
     proposed = len([one for one in items(root or board.root) if one.state == "proposed"])
     if proposed:
         said = ("A piece of feedback has" if proposed == 1 else f"{proposed} pieces of feedback have")

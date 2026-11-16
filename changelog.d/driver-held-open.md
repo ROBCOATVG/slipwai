@@ -25,18 +25,28 @@ deck log that nothing delivered.
 - **What the agent does is on the board**: its tool calls as they finish, its plan, and its last sentence,
   in the slice's activity log; what it asked mid-turn and the answer, on its thread.
 - **Held for the merge.** From a slice's merge request to its answer nothing is delivered to it, and the
-  receipt says so: a refusal takes the message back to the berth with the slice, a merge that lands answers
-  it not delivered. A message's turn is held to the stage bound like any other.
-- **A person's word is signed.** The board signs what a person sends; a message that says it is a person's
-  and is not signed is never delivered and never answers a park, and a delivered one is fenced off from the
-  rest of the prompt. A stop by a person holds the slice, across restarts, until a person resumes it.
-- **The protocol is the default.** `sessions` in `.specify/cruise.json` gains `auto`, the new default: over the
-  protocol where the registry marks the harness's launch proven and this machine can make it, print mode
-  elsewhere. `print` and `protocol` mean what they did. In print mode a slice's messages are handed to it
-  in the prompt of its next run, with no interrupt.
+  receipt says so: a refusal takes the message back to the berth with the slice, and the slice's own gate is
+  read again before the merge is asked for where a message's turn committed; a merge that lands answers it
+  not delivered. A message's turn is bounded by the stage's time from its delivery; the captain's own turn
+  still only by the deck lines and commits it writes, so an agent busy on tools and writing neither is ended.
+- **Every message is signed, for its slice.** The board and the fleet sign what they send; a file that is not
+  signed for the slice it sits in, or that was handled already, is refused with a receipt saying so, and a
+  delivered message is fenced off from the rest of the prompt. A stop by a person holds the slice, across
+  restarts, until a person resumes it; nobody else's resume lifts it. A message to a paused, stopped or
+  merged slice says why it waits, or that it never will.
+- **The protocol is the default for a new project.** `sessions` in `.specify/cruise.json` gains `auto`, which
+  a newly generated project is written with: over the protocol where the registry marks the harness's launch
+  proven and this machine can make it, print mode elsewhere, said in one line when it falls back. An agent
+  that cannot be started at all puts that slice in print mode, said, at no attempt's cost. `print` and
+  `protocol` mean what they did, and a file that says nothing is print mode, as before. In print mode a
+  slice's messages are handed to it in the prompt of its next run, with no interrupt.
+- **Known limit: a person's stop and pause stay on this machine.** They are on the slice's thread, which is
+  in the run folder and does not travel, and a stream taken over by another machine does not see them.
+  Written into the deck log they would travel, but the resume that lifts them is dropped in an inbox here
+  and would not, so the hold would land somewhere nobody could lift it; that waits for the inbox to travel.
 
-**Catch-up:** run `slipwai migrate`, which brings the new driver, `talk.py`, the captain and `auto`. A
-project generated before this has `"sessions": "print"` written in its `cruise.json` and stays on print
-mode: migrate switches no project. Set `sessions=auto` on the board's settings card (or
-`python3 scripts/agents/cruise.py --set sessions=auto`) to take the protocol where the harness's launch is
-proven — today two harnesses in the registry are — and print mode for every other.
+**Catch-up:** run `slipwai migrate`, which brings the new driver, `talk.py`, the captain and `auto`. Migrating
+switches no project: a project's sessions stay in print mode, whether its `cruise.json` says `print` or says
+nothing. To take the protocol where the harness's launch is proven — today two harnesses in the registry
+are — and print mode for every other, choose it on the board's settings card under *A captain's session*,
+or run `python3 scripts/agents/cruise.py --set sessions=auto`.

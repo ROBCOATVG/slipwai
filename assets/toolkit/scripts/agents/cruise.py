@@ -79,12 +79,14 @@ TEXTS = ("model",)
 # takes them out, because a setting nothing reads is worse than one that was never there.
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
-    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "auto", "demos": "hand",
+    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "print", "demos": "hand",
     "model": None,
 }
 # Settings that arrived after projects already had this file. Absent is the default rather than a finding, so
 # a project written before one existed still passes `make check-agents`; `--set` writes it in.
 LATER = ("upstream", "sessions", "demos")
+# `sessions` absent is `print`, as it was before `auto` existed: migrating never switches how a project's
+# sessions run. A project generated since is written with `auto` (`slipwai.project.cruise`).
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
     "decide": "who answers a product question: the host where the stage recommends an answer or a standing "

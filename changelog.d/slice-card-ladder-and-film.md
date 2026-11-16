@@ -10,7 +10,7 @@ command the agent had run a second ago.
 - **Opened, it is how the slice got there.** Each step with when it began and how long it took, read off the
   berth's `benchmark.json`; under the step it is on, the last lines of its activity log and the link to its
   live window; and the work the slice has taken so far, by its stages' own time.
-- **The columns keep themselves current.** `/work.json` redraws them every few seconds and puts back the
+- **The columns keep themselves current.** The page's one poll (`/live.json`) redraws them every few seconds and puts back the
   cards a person had open; they were drawn once and stood until something else reloaded the page.
 - **The Now strip repaints again.** It shared the id `now` with the passage's sentence, so its poll replaced
   that sentence and never touched the strip. And a slice moving from working to waiting changes the page's

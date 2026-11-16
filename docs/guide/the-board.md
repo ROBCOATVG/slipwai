@@ -109,15 +109,22 @@ the agent offers, and **Install** where the agent is not on this machine. The an
 ## The Voyage window
 
 The Voyage shows where one project stands and how its run is going. Its title is
-*Voyage · &lt;project&gt;*. It updates itself: it asks the board for news every 2.5 seconds while a stage is
-working, and every 8 seconds when nothing is working. When the project gains a new kind of file, such as a
-first storyboard, the window reloads itself.
+*Voyage · &lt;project&gt;*. It updates itself: one request every 2.5 seconds (8 while the window is hidden)
+brings every part of the page that can change, and only the parts that changed are redrawn. A card you have
+opened stays open, and a part you are typing in is left alone until you send or clear it. The board reads the
+project once for every window and keeps that read for about two seconds; anything you press drops it, so the
+next update shows what you did. When the project gains a new kind of file, such as a first storyboard, the
+window reloads itself.
 
-When something waits on you, a strip appears under the title saying what — *The specification is ready: read
-it, then draw the storyboard*, *The storyboard for 001-… is drawn: approve it or send it back*, *The agent asks
-you something*, *2 slices waiting on you* — with **Go to it** beside the words. The count goes on the tab's
-title, *(1) Voyage · …*, and on the installed board's badge. The first page does the same when a card asks
-you something, and when the brief is ready to hand over.
+When something waits on you, a strip appears under the title: *Waiting on you · 3*, with how many hold work
+up and how many can wait until you have time. **Show all** opens both lists; each item links to where you act
+on it. **Holding work up** is a slice parked on you, a card a running stage has put up (*The agent asks you
+something*), the one button the run waits on (*The specification is ready: read it, then draw the
+storyboard*), and a stream log nobody can read. **When you have time** is a capability ready for you to see,
+and a feedback proposal waiting for **Confirm**. A note nobody has read and a slice paused until a set time
+are not counted. The same number goes on the Work tab, on the tab's title, *(3) Voyage · …*, and on the
+installed board's badge, and the **Waiting on you** column holds exactly the slices this list names. The first
+page shows a one-line strip when a card asks you something, and when the brief is ready to hand over.
 
 The cards come in this order, from the top.
 
@@ -201,48 +208,42 @@ Under it is the verdict form:
 
 Both buttons lock when the storyboard has a verdict. To change a verdict, edit `mock-states.md`.
 
+### Needs a look
+
+At the top of the Work tab. It lists only what is wrong: a red trunk, then each slice stuck on one task, going
+in circles or gone quiet, and each merge the harbour refused, with a link to the slice's card. When nothing is
+wrong it is one line, *5 working · nothing needs a look*.
+
 ### The work
 
-The slices, in four columns: **To do**, **Working**, **Waiting on you** and **Done**. Each slice shows its
-fairway and what clearance says about it.
+The slices, in columns: **To do**, **Queued**, **Working**, **Waiting on you** and **Done**. Click a card to
+open it: its steps, what it is doing now, and the box that answers it when it waits on you. **Cards** and
+**Compact** switch the view; Compact is one line for each slice in flight, waiting first, and a line opens its
+card. Your choice is remembered in this browser.
 
-### Waiting on you
+### From the streams
 
-Every open park, and every message to a fairway that its captain has not read yet. A park shows how long it
-has waited, and whether it is past the wait bound.
+Under the work: what each stream has asked of you or left for you. Each park is grouped by what it waits on,
+with its needs as a checklist and the button that answers it; then questions no park holds, hand-backs, notes
+and decisions nobody has read. Click a row to open it, with that fairway's last lines and an answer box. Type an
+answer and press **Send**: the board writes a `told` line into that fairway's deck log, which the captain reads
+at its next boundary. A `told` after a park also clears that park: the harbourmaster writes the `cleared`
+receipt on its next pass and lights the captain again. [The workflow](the-workflow.md#how-to-clear-a-park)
+says more. A note also has **Done**, which writes a `read` line so it leaves the list.
 
-Click a row to open it. It shows the last 20 lines from that fairway's deck log, and an answer box. Type an
-answer and press **Send**. The board writes a `told` line into that fairway's deck log. The captain reads it
-at its next boundary. A `told` that comes after a park also clears that park: the harbourmaster writes the
-`cleared` receipt on its next pass and then lights the captain again. [The workflow](the-workflow.md#how-to-clear-a-park)
-says more.
+Where a session limit has paused slices, **Try the N paused slices now anyway** asks each of them to resume.
+**Say something to a stream** has one box for each fairway that has written a line.
 
-A message row also has **Done**. Press it for a note that needs no answer, such as a session's
-`For the host: …`. The board writes a `read` line for that message, and the row leaves the list.
+### Fleet
 
-### Say something to a stream
-
-One answer box for each fairway that has written a line. **Send** writes a `told` line in the same way.
-
-### Streams
-
-One row for each fairway: **Stream**, **Feature**, **Piece of work** (the slice), **State**, **Waiting**,
-**Last line**, **Tokens** and **Merged**. Click a row to fold open its last 60 lines. **Open log ↗** opens
-that captain's own window, described below.
-
-| State | Meaning |
-|---|---|
-| running | The captain is working, and its log is still moving |
-| stalled | The log has had no new line for longer than the stall bound. Look at this one |
-| waiting on you | The fairway is parked |
-| done | Its last slice merged, and no slice of it waits |
-| idle | Its last slice merged, and its next slice waits on clearance |
-| not started | No captain has claimed a slice of the fairway yet. Its log may hold decisions the launch took for it |
-| clearance unavailable | Its last slice merged, and the board could not read clearance to say what is next |
+The Fleet tab is the machinery: **Sessions** in use against the slots, and which slice takes the next one;
+**Tokens today** against the budget a day; **Trunk**, green or red with why; and one row per process (the
+harbourmaster and each captain) with its state and its last line. **Open log ↗** on a captain's row opens that
+captain's own window, described below. **Stop the fleet** and the settings are here too.
 
 ### The captain window
 
-**Open log ↗** on a Streams row opens one captain in a window of its own, titled with its fairway. It reads
+**Open log ↗** on a captain's row in the Fleet tab opens one captain in a window of its own, titled with its fairway. It reads
 the files again every 2.5 seconds; **Following** pauses and resumes that.
 
 - **Timeline** shows every line in the fairway's deck log, with the lines in the harbour log that name the
@@ -288,10 +289,6 @@ will stop for you.
 
 The last row is the `upstream` setting. **advance on their own** makes the board start each upstream step
 when the step before it ends well. [The workflow](the-workflow.md#the-upstream-setting) lists its limits.
-
-### Last lines
-
-The newest lines from every log, newest at the bottom.
 
 ---
 

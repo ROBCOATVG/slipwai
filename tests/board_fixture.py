@@ -40,7 +40,7 @@ class Fixture(unittest.TestCase):
         installed.start()
         self.addCleanup(installed.stop)
         # Nor is a read kept between requests: a test writes a file and reads the board again at once, and a
-        # board keeping its read for two seconds would answer from before the write. `test_board_read` holds
+        # board keeping its read for two seconds would answer from before the write. `test_live_board_read` holds
         # what keeping it does.
         fresh = mock.patch("slipwai.board_read.KEEP", 0.0)
         fresh.start()

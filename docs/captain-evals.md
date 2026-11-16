@@ -50,6 +50,15 @@ and at most one of these four keys:
   matter.
 - `within`: at least one slice, and none from outside the list.
 - `naming`: any answer that includes this slice. Use it for "starting LB4 at all is wrong".
+- `required` with `optional`: every required slice, any of the optional ones, and nothing else. A message
+  for "these two, or these three" is one pattern this way. If the message goes to a set that misses a
+  required slice, or adds one from outside both lists, the run is wrong.
+
+**The label rests on the snapshot.** The captain is given the snapshot and the event, and nothing else. It is
+never given the `situation`, and it does not know what happened next. So a label must follow from what the
+snapshot shows at that instant. If the deciding fact was in a log line at that moment, the line goes in the
+snapshot. A fact from another stream's deck log goes under `others`. Each label's `note` ends with a "Rests
+on:" sentence that names the fact in the snapshot the label depends on.
 
 A `message` order with `--interrupt` is scored as the verb `interrupt`, because a nudge and an interrupt are
 different answers.
@@ -61,9 +70,9 @@ is kept beside the score for a person to read, and is never scored. There are si
 
 | Outcome | What it means |
 |---|---|
-| **right** | The run matches a pattern in `accept` and no pattern in `wrong`. |
-| **wrong** | The run matches a pattern in `wrong`. This outcome wins if the run also matches `accept`. |
-| **unjudged** | The run matches neither list. The person who labelled the case did not foresee this order, so it is a question for them and not a failure. |
+| **right** | The run matches a pattern in `accept`, and that pattern accounts for every order the run gave. Only `say`, words to the person, may go beside it. An accepted order with another order beside it is not right. |
+| **wrong** | The run matches a pattern in `wrong`. Or the answer is wrong whatever the label says: two orders put one slice in two places, an order names a slice the snapshot does not have, or the run starts more slices than the snapshot's free `slots`. Wrong wins over right. |
+| **unjudged** | Neither of the above. The person who labelled the case did not foresee this answer, so it is a question for them and not a failure. |
 | **silent**, **malformed**, **refused** | No usable order: nothing came within the bound, the order file could not be read, or every order was one the event's `may` does not allow. Together these are the **fallback**, where the program applies today's fixed rule (decision 17). |
 
 For each decision, the report gives these figures:
@@ -72,7 +81,12 @@ For each decision, the report gives these figures:
 - how often it fell back;
 - how often it **agreed with itself** across runs, as the share of runs that gave the commonest answer;
 - the wall time of each run;
-- the tokens used, where the harness reports them in its output.
+- the tokens used, where the harness reports them in its output, and how many of the runs reported them.
+
+Under that, the report gives two **baselines** for each decision, scored on the same cases: the best that a
+captain giving the same order every time would do, and what silence does. Silence is never right, because
+every silent run is a fallback. Read a real score against the baselines. At present, always answering `ask`
+is right on 10 of the 12 `gate-failed` cases, so a captain that scores 80% there has shown very little.
 
 The report also says how many labels a person has signed off.
 
@@ -115,10 +129,14 @@ Copy a case of the same decision, and change the `situation`, the `snapshot`, th
 Then run `python3 scripts/evals.py check`.
 
 Before you add a case, remove everything personal from the copied lines. That means people's names, email
-addresses, tokens and absolute home paths. A test fails any case that has a home path, an email address or a
-harness's name in it. A case cut from a run is labelled from **what happened next**. For example, a slice
-that was re-dispatched twenty-four times for the same reason should have been parked on the second failure.
-Say what happened next in `note`.
+addresses, tokens and absolute home paths. Paraphrase anything a person wrote, keeping what the decision turns
+on. A test fails any case that has a home path, an email address, a harness's or a model's name, or a
+harness's own session-limit sentence in it. The test reads the names from the harness registry and the
+models template, so a new harness is caught without changing the test.
+
+Label the case from what its snapshot shows, never from what happened next. What happened next may go in
+`note`, for the person who signs the label off. End the note with "Rests on:" and the fact the label depends
+on.
 
 ## Signing a label off
 
@@ -134,20 +152,26 @@ A score against an unsigned label is a draft too. The report counts signed and u
 
 ## The cases there are
 
-The drafts were cut from two recorded fleets:
+Most cases were cut from two recorded fleets, called project-a and project-b here. Some are **synthetic**:
+they have `"synthetic": true`, and their `source` says that they are made up and why. A synthetic case covers
+a moment that neither fleet recorded.
 
-| Decision | Cases | Notes |
-|---|---|---|
-| `gate-failed` | 9 | Six where parking was right: the same refusal again, a session saying another run ends the same way, a file only a person may change, or every stream failing in the same minute. Three where a retry was right, because the work was done and the gate missed it. |
-| `message` | 11 | Messages to a stream about two slices, about three or four, about one, and about none. Two answer a park without naming the slice. |
-| `choose-next` | 6 | More cleared slices than slots. Each is labelled from the order the slices finished in. |
-| `stuck` | 8 | Long and quiet warnings. Every one resolved by itself. |
+| Decision | Recorded | Synthetic | Notes |
+|---|---|---|---|
+| `gate-failed` | 9 | 3 | Every recorded gate failure came after the program's retry ceiling, so its event offers no retry. Those cases ask whether to park or to ask a person, and what the reason should say. The synthetic cases are first failures with attempts left: two where a retry is right, and one where it is not. |
+| `message` | 9 | 0 | Messages to a stream about two slices, three or four, one, and none. Each case has at least one slice the message is not for. |
+| `choose-next` | 4 | 2 | More cleared slices than slots. Each is labelled from what the log shows about how far each slice got. |
+| `stuck` | 8 | 6 | Every recorded long or quiet warning resolved by itself. The synthetic cases are where stepping in is right: a command failing three times running, a session process that has gone, a question nobody answered, a turn silent past its bound, and two edits undoing each other. One more synthetic case has a long task that is plainly progressing. |
 
-The `stuck` cases are where the data is thinnest. Neither fleet recorded a *circles* warning: no agent failed
-the same command three times running. Every long or quiet warning that was recorded either resolved by itself
-or came from a session that had already ended. So every `stuck` label accepts leaving the slice alone, and
-there is no recorded moment where stepping in was the right answer. Cases where a nudge or an interrupt is
-right are still owed.
+Neither fleet recorded a *circles* warning, so the circles case is synthetic.
+
+## What a case may reveal
+
+The recorded cases came from private projects, and this repository is public. The project names are
+replaced with project-a and project-b. Commit hashes are cut to seven characters. A person's own words are
+paraphrased, and the note of any case that does this says so. The slice ids, stream names, mark names and
+the decisions' own text are kept, because the decisions depend on them. A reader could still tie those to the
+projects, so the owner decides whether the cases are published.
 
 ## Running nightly
 

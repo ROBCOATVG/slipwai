@@ -18,6 +18,8 @@ from pathlib import Path
 from urllib.parse import quote
 
 from .activity import fold, lines_of, minutes, now_stamp, stamp, task_of
+from .example_map_page import STYLE as MAP_STYLE
+from .example_map_page import map_panel
 from .page_shell import document, esc
 
 #: How much of the past a window's lanes span.
@@ -74,6 +76,20 @@ WINDOW_STYLE = """
 WINDOW_SCRIPT = """
 (function(){
   const where = new URLSearchParams(location.search);
+  // The tab is kept in the address, so a reload or a link opens the one a person was on.
+  const show = tab => {
+    document.querySelectorAll('[data-panel]').forEach(one => { one.hidden = one.dataset.panel !== tab; });
+    document.querySelectorAll('[data-tab]').forEach(one => {
+      if (one.dataset.tab === tab) one.setAttribute('aria-current', 'page'); else one.removeAttribute('aria-current');
+    });
+  };
+  show(where.get('tab') === 'map' ? 'map' : 'where');
+  document.addEventListener('click', event => {
+    const tab = event.target.closest('[data-tab]');
+    if (tab) { event.preventDefault(); show(tab.dataset.tab); history.replaceState(null, '', tab.href); return; }
+    const card = event.target.closest('button.ex');
+    if (card) card.setAttribute('aria-expanded', card.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+  });
   const poll = async () => {
     let found;
     try { found = await (await fetch('/slice.json?fairway=' + encodeURIComponent(where.get('fairway') || '') +
@@ -81,6 +97,23 @@ WINDOW_SCRIPT = """
     catch (fault) { setTimeout(poll, 8000); return; }
     const body = document.getElementById('slice-live');
     if (body && body.dataset.said !== found.said) body.outerHTML = found.html;
+    // The map is swapped only when the file said something new, with the examples a person opened opened
+    // again and the row of rules scrolled back to where they had it.
+    const map = document.getElementById('slice-map');
+    if (map && found.map_html && map.dataset.said !== found.map_said) {
+      const open = [...map.querySelectorAll('button.ex[aria-expanded="true"]')].map(one => one.dataset.ex);
+      const row = map.querySelector('.map-row');
+      const left = row ? row.scrollLeft : 0;
+      const held = document.createElement('div');
+      held.innerHTML = found.map_html;
+      const fresh = held.firstElementChild;
+      fresh.querySelectorAll('button.ex').forEach(one => {
+        if (open.includes(one.dataset.ex)) one.setAttribute('aria-expanded', 'true');
+      });
+      map.replaceWith(fresh);
+      const again = fresh.querySelector('.map-row');
+      if (again) again.scrollLeft = left;
+    }
     setTimeout(poll, 3000);
   };
   setTimeout(poll, 3000);
@@ -229,8 +262,17 @@ def window_body(root: Path, fairway: str, slice_id: str) -> str:
     return f'<div id="slice-live" data-said="{esc(said)}">{inner}</div>'
 
 
+def window_tabs(fairway: str, slice_id: str) -> str:
+    """Where it is, and its example map: links, so each is an address a person can keep or reload."""
+    here = esc(window_address(fairway, slice_id))
+    return (f'<nav class="tabs" aria-label="This slice"><a href="{here}&amp;tab=where" data-tab="where" '
+            f'aria-current="page">Where it is</a><a href="{here}&amp;tab=map" data-tab="map">Example map</a></nav>')
+
+
 def window(root: Path, fairway: str, slice_id: str) -> str:
-    body = f"<style>{STYLE}{WINDOW_STYLE}</style>{window_body(root, fairway, slice_id)}"
+    body = (f"<style>{STYLE}{WINDOW_STYLE}{MAP_STYLE}</style>{window_tabs(fairway, slice_id)}"
+            f'<section data-panel="where">{window_body(root, fairway, slice_id)}</section>'
+            f'<section data-panel="map" hidden>{map_panel(root, slice_id)}</section>')
     return document(f"{slice_id} · {root.resolve().name}", f"live · {fairway}", body, WINDOW_SCRIPT, now="/slice")
 
 
@@ -242,5 +284,5 @@ def said_in(drawn: str) -> str:
 
 
 def window_payload(root: Path, fairway: str, slice_id: str) -> str:
-    drawn = window_body(root, fairway, slice_id)
-    return json.dumps({"said": said_in(drawn), "html": drawn})
+    drawn, mapped = window_body(root, fairway, slice_id), map_panel(root, slice_id)
+    return json.dumps({"said": said_in(drawn), "html": drawn, "map_said": said_in(mapped), "map_html": mapped})

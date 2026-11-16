@@ -56,6 +56,7 @@ SLOW += test_fence
 SLOW += test_mender test_stop_the_line
 SLOW += test_run_folder
 SLOW += test_harbourmaster_stop
+SLOW += test_example_map_source
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

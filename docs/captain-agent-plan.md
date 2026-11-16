@@ -34,6 +34,16 @@ layout and wording, not for code: `Board.dc.html` on the owner's design canvas.
    are done, and the film is an opportunity to say what it showed. Accept / Not yet is shown only where the
    project's setting says a person accepts demos.
 
+6a. **A decision log a person can read.** Every decision entry carries one plain sentence a product owner
+   can read without the specification open, written by whoever decides at the time and required by
+   `check-decisions`; an entry written before the rule shows its question instead. On the board a decision
+   is a card led by that sentence: the options with the chosen one marked, who decided, how confident, what
+   would change it, and the entry as written one click away. The Decisions tab opens on what awaits a
+   person's confirmation, grouped by capability then slice, with filters for stream, slice and who decided.
+   Each slice's window has a Decisions tab of its own. *Change this* starts a message to the slice (its
+   captain once it has merged) with the decision quoted. A person's answer in a conversation is a decision
+   in the log like any other.
+
 ### Talking to the fleet
 6. **The Agent Client Protocol is the default for fleet sessions**, where the configured harness offers it;
    the headless print-mode path stays for the rest, and every feature below has its lesser form there.
@@ -171,5 +181,7 @@ An event is closed by its orders' results or by the fallback, recorded as `event
 - **F · The windows.** Decisions 13–14 over C's files: the slice's and the captain's windows, the card's
   marker and quick send, the captains strip, Tell every captain, and every "tell" rerouted to an inbox.
 - **G · Evals.** Decision 22.
+- **H · The decision log.** Decision 6a: the sentence and its check in the toolkit, the cards, the tab in
+  each slice's window. *Change this* waits for F's conversation windows.
 
 **Wave 3** — the glossary and the guides say plainly what a captain is; a whole-suite run; a review of the lot.

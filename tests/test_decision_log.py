@@ -71,6 +71,22 @@ class LogTest(unittest.TestCase):
         self.assertEqual([one.title for one in ones], ["Are the connector writes built?"])
         self.assertTrue(ones[0].key.startswith("deck:ORD:"), "the deck line: its receipt is what the ceiling counts")
 
+    def test_a_deck_decision_with_a_fairway_s_prefixed_id_is_its_entry_too_and_is_listed_once(self) -> None:
+        book = self.root / "specs/ordering/decisions.md"
+        added = "".join(f"\n## {number} — {title}\n- **Stage:** plan · **Slice:** L05 · **When:** 2026-10-22T09:00:00Z"
+                        f" · **Stream:** ORD\n- **Decision:** (a).\n"
+                        for number, title in (("D-ORD-07", "Who rounds a line?"), ("D-08", "Who rounds a total?")))
+        book.write_text(BOOK + added, encoding="utf-8")
+        with self.deck.open("a", encoding="utf-8") as handle:
+            handle.write(logs.entry("decision", fairway="ORD", slice="L05", id="L05-Q7",
+                                    what="D-ORD-07 (a): the line rounds", decided_by="sail-decide-skipper").line())
+            handle.write(logs.entry("decision", fairway="ORD", id="D-08", what="The total is the lines' sum.",
+                                    decided_by="host (stage recommendation)").line())
+        found = [(one.number, one.title, one.key.split(":")[0]) for one in decisions(self.root)
+                 if one.number in ("D-ORD-07", "D-08")]
+        self.assertEqual(sorted(found), [("D-08", "Who rounds a total?", "deck"),
+                                         ("D-ORD-07", "Who rounds a line?", "deck")])
+
     def test_a_persons_own_answer_is_shown_with_the_question_it_answered_and_is_read(self) -> None:
         mine = next(one for one in decisions(self.root) if one.yours)
         self.assertEqual((mine.title, mine.decision, mine.read), ("Which bank question?", "decide for me", True))

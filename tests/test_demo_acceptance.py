@@ -103,6 +103,7 @@ class CommandTest(unittest.TestCase):
         said = run(root, "capabilities.py", "--due").stdout
         self.assertIn("nothing is owed a person", said)
         self.assertIn("1 whole and gated with no `accepted` line yet", said)
+        self.assertIn("whole and gated — the hand's `accepted` line is owed", run(root, "capabilities.py").stdout)
         self.assertIn("capabilities: 1 owed a demo", run(project_of(root, "person"), "capabilities.py", "--due").stdout)
 
 
@@ -165,6 +166,43 @@ class BoardAcceptTest(unittest.TestCase):
         with self.assertRaises(ValueError) as refused:
             demos.accept(root, "place-an-order")
         self.assertIn("the hand's verdict as the acceptance", str(refused.exception))
+
+    def test_an_accept_stands_where_the_stream_it_would_tell_has_no_log_to_tell(self) -> None:
+        root = project("person")
+        merge(root, "ORD-01", "ORD-02")
+        clear(root)
+        board = {"demos": "person", "demo_due_in": {"place-an-order": "gone"}}
+        said = act(root, {"verb": "accept", "capability": "place-an-order", "fairway": "gone"}, [], board,
+                   lambda: True)
+        self.assertEqual(said, "place-an-order accepted", "the line is the acceptance; telling the captain is extra")
+        self.assertIn(("accepted", "person"), [(one.kind, one.fields.get("by")) for one in deck(root)])
+
+    def test_a_project_whose_script_cannot_say_whole_and_cleared_is_told_to_migrate_and_nothing_written(self) -> None:
+        root = project("person")
+        merge(root, "ORD-01", "ORD-02")
+        clear(root)
+        (root / "scripts/agents/capabilities.py").write_text("print('capabilities: 1 owed a demo')\n", encoding="utf-8")
+        with self.assertRaises(ValueError) as refused:
+            demos.accept(root, "place-an-order")
+        self.assertIn("`slipwai migrate` updates it", str(refused.exception))
+        self.assertNotIn("accepted", [one.kind for one in deck(root)])
+
+
+class PagesTest(unittest.TestCase):
+    def test_no_page_or_brief_tells_a_session_how_to_write_a_person_s_acceptance(self) -> None:
+        """The command refuses it; a page that still said how would send a session at the refusal."""
+        from slipwai.assets import TOOLKIT_ROOT
+        from slipwai.project import cruise_hand, demo_stop
+
+        stop = " ".join(demo_stop.demo_stop(event=True).split())
+        pages = {path.relative_to(TOOLKIT_ROOT).as_posix(): path.read_text(encoding="utf-8")
+                 for path in sorted(TOOLKIT_ROOT.rglob("*.md"))}
+        pages.update({"the demo stop": stop, "the cruise hand": cruise_hand.hand_section("make")})
+        for name, text in pages.items():
+            with self.subTest(page=name):
+                self.assertNotRegex(text, r"--by\s+(?:person|<[^>]*person)")
+        self.assertIn("deck_line.py accepted --capability <capability> --by sail-demo-hand", stop)
+        self.assertIn("Only the board writes a person's acceptance, when they press *Accept*", stop)
 
 
 class TwoFairwaysTest(unittest.TestCase):
@@ -239,6 +277,24 @@ class OpenedTest(unittest.TestCase):
             with self.subTest(feature=feature, capability=capability):
                 self.assertFalse(demos.mark_opened(self.root, feature, capability))
         self.assertEqual(sorted(path.name for path in self.root.rglob("opened")), [])
+
+    def test_a_film_that_cannot_be_marked_is_answered_no_and_never_a_traceback(self) -> None:
+        (run_dir(self.root) / "walks/001-shop/place-an-order/opened").mkdir()
+        self.assertFalse(demos.mark_opened(self.root, "001-shop", "place-an-order"))
+
+    def test_the_film_names_its_capability_and_its_first_play_says_so_to_the_card_once(self) -> None:
+        from slipwai.film import SCRIPT, film_html, films_of
+
+        (run_dir(self.root) / "walks/001-shop/place-an-order/film.webm").write_bytes(b"film")
+        [film] = films_of(self.root)
+        self.assertIn('data-feature="001-shop" data-capability="place-an-order"', film_html(film, {}, False))
+        heard = SCRIPT[SCRIPT.index("document.addEventListener('play'"):]
+        heard = heard[:heard.index("}, true);")]
+        self.assertIn("if (!film || film.dataset.opened || !film.dataset.capability) return;", heard)
+        self.assertIn("film.dataset.opened = 'yes';", heard)
+        self.assertIn("fetch('/feedback', {method: 'POST'", heard)
+        self.assertIn("{verb: 'opened', feature: film.dataset.feature,", heard)
+        self.assertIn("capability: film.dataset.capability}", heard)
 
 
 if __name__ == "__main__":

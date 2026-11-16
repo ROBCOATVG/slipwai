@@ -96,6 +96,16 @@ class TheCasesOnFile(unittest.TestCase):
                 if case.get("synthetic"):
                     self.assertTrue(case["source"].startswith("made up"))
 
+    def test_a_case_names_no_project_and_no_label_says_it_was_drawn_from_what_happened_next(self) -> None:
+        for path in eval_cases.every():
+            case, text = eval_cases.load(path), path.read_text(encoding="utf-8")
+            feature = case["snapshot"]["feature"]
+            with self.subTest(case=eval_cases.case_id(path)):
+                self.assertRegex(feature, r"^001-(project-[a-z]|synthetic)$")
+                self.assertRegex(case["source"], r"^(a recorded run of project-[a-z], |made up, not recorded: )")
+                self.assertEqual(set(re.findall(r"specs/(\d{3}-[\w-]+)/", text)) - {feature}, set())
+                self.assertNotIn("what happened next", case["label"].get("note", ""))
+
 
 class ACaseReadAndLaidOut(unittest.TestCase):
 
@@ -146,6 +156,16 @@ class ACaseReadAndLaidOut(unittest.TestCase):
             self.assertEqual(("person", "carry on"), (said["from"], said["text"]))
             self.assertTrue((run / "orders/tables").is_dir())
             self.assertTrue((root / "scripts/agents/harness.py").is_file())
+
+    def test_other_streams_deck_lines_are_laid_out_as_logs_of_their_own_beside_the_stream_s(self) -> None:
+        case = self.case()
+        case["snapshot"]["others"] = {"billing": [{"t": "2026-11-13T11:59:00Z", "kind": "merged", "slice": "B1"}]}
+        with tempfile.TemporaryDirectory() as scratch:
+            eval_cases.lay_out(case, Path(scratch))
+            logs = Path(scratch) / ".slipwai/run/logs/001-f"
+            self.assertEqual({"v": 1, "fairway": "billing", "t": "2026-11-13T11:59:00Z", "kind": "merged",
+                              "slice": "B1"}, json.loads((logs / "billing.jsonl").read_text(encoding="utf-8")))
+            self.assertEqual(["billing.jsonl", "tables.jsonl"], sorted(path.name for path in logs.iterdir()))
 
 
 class TheScorer(unittest.TestCase):

@@ -132,6 +132,42 @@ class SourceTest(unittest.TestCase):
         assert found is not None
         self.assertEqual(len(found.rules), 2, "its window reads trunk too, though the branch is no ancestor")
 
+    def test_a_card_in_flight_is_drawn_with_the_head_its_rung_already_read_and_then_asks_git_nothing(self) -> None:
+        from slipwai.slice_rungs import rung
+
+        self.on_branch(MAPPED)
+        self.assertEqual(rung(self.root, "001-demo", "S01", [])["examples"], "1 rule · 1 example · no questions open",
+                         "read off the branch: trunk has no examples yet")
+        with self.spawns() as spawned:
+            rung(self.root, "001-demo", "S01", [])
+        self.assertEqual(spawned.call_count, 0, "a poll with the branch where it was spawns nothing for the map")
+
+    def test_a_done_slice_s_row_is_folded_without_asking_git_where_its_map_is(self) -> None:
+        from types import SimpleNamespace
+
+        from slipwai import voyage
+
+        self.on_branch(MAPPED)
+        self.git("merge", "-q", "--no-ff", "-m", "merge S01", "slice/S01")
+        owner = SimpleNamespace(name="ORD", claimed=set(), merged={"S01"}, entries=[])
+        asked = ("001-demo", {"states": {"S01": {"state": "done", "why": ""}}}, "")
+        with mock.patch.object(voyage, "clearance_query", return_value=asked), \
+                mock.patch.object(voyage, "fairways", return_value=([owner], None)), self.spawns() as spawned:
+            rows, _ = voyage.folded(self.root)
+        self.assertEqual([(row["slice"], row["state"], row["examples"]) for row in rows],
+                         [("S01", "done", "1 rule · 1 example · no questions open")])
+        self.assertEqual(spawned.call_count, 0, "the board said it merged, so nothing asks git")
+
+    def test_the_window_reads_a_moved_branch_from_the_folder_the_card_named_without_listing_it(self) -> None:
+        self.on_branch(MAPPED)
+        found_map(self.root, "S01", "001-demo", self.head())
+        self.on_branch(MAPPED + "## R2 — Another\n")
+        with self.spawns() as spawned:
+            moved = found_map(self.root, "S01")
+        assert moved is not None
+        self.assertEqual(len(moved.rules), 2)
+        self.assertNotIn("ls-tree", [call.args[1] for call in spawned.call_args_list])
+
     def test_the_payload_s_signature_moves_only_when_the_map_does(self) -> None:
         self.on_branch(MAPPED)
         self.git("merge", "-q", "--no-ff", "-m", "merge S01", "slice/S01")

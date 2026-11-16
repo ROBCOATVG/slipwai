@@ -131,6 +131,12 @@ class ReaderTest(unittest.TestCase):
         asked = read("## Questions\n" + "".join(f"- Q. Something {line}\n" for line in lines)).questions
         self.assertEqual([one.open for one in asked], [True] * len(lines))
 
+    def test_naming_a_decision_or_saying_decided_in_passing_answers_nothing(self) -> None:
+        lines = ["→ see D26 for the background", "→ depends on what the host decided for carts",
+                 "→ nobody has answered"]
+        asked = read("## Questions\n" + "".join(f"- Q. Something {line}\n" for line in lines)).questions
+        self.assertEqual([one.open for one in asked], [True] * len(lines))
+
     def test_a_question_is_answered_when_its_answer_says_it_has_been(self) -> None:
         lines = ["→ D26", "→ standing D55.", "→ answered by D12 (R2).", "→ **answered by D53** (host, kept open "
                  "until the plan)", "→ decided by the host on 12 Nov", "→ answered: kept"]

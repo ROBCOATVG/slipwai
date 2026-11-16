@@ -184,6 +184,11 @@ class BoardTest(unittest.TestCase):
                 self.assertIn(said, last.next)
                 self.assertIn("Nothing stops for you" if setting == "hand" else "It stops for you", last.expect)
 
+    def test_built_and_nothing_accepted_yet_is_taken_to_its_acceptance_not_promised_a_demo(self) -> None:
+        found = stages(project(), None, {"accepted": [], "demos": "hand"}, {"done": 2})
+        last = next(one for one in found if one.key == "accepted")
+        self.assertEqual(last.next, "/sail takes each whole capability through its gates to its acceptance")
+
 
 class FilmAndFeedbackTest(unittest.TestCase):
     def setUp(self) -> None:

@@ -172,6 +172,40 @@ class TheRunner(unittest.TestCase):
             time.sleep(0.05)
         self.assertFalse(alive(pid))
 
+    def test_a_leftover_that_would_have_outlived_the_run_s_folder_is_ended_with_the_command(self) -> None:
+        """The case above cannot tell on its own: a Python started in the run's folder dies as the folder is
+        taken away, ended or not. This one starts outside it, and waits to be told it is up."""
+        marker = self.root / "child.pid"
+        script = self.root / "spawner.py"
+        script.write_text(
+            "import subprocess, sys, pathlib\n"
+            "child = subprocess.Popen([sys.executable, '-c', 'print(1, flush=True); import time; time.sleep(60)'],"
+            f" cwd={str(self.root)!r}, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)\n"
+            "child.stdout.readline()\n"
+            f"pathlib.Path({str(marker)!r}).write_text(str(child.pid), encoding='utf-8')\n", encoding="utf-8")
+        self.run_with(command_captain(f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"), runs=1)
+        pid = int(marker.read_text(encoding="utf-8"))
+        self.addCleanup(lambda: alive(pid) and os.kill(pid, 9))
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline and alive(pid):
+            time.sleep(0.05)
+        self.assertFalse(alive(pid))
+
+    def test_the_runner_judges_against_the_snapshot_s_slices_and_says_the_fault_it_found(self) -> None:
+        row = self.run_with(give({"verb": "ask", "why": "w"}, {"verb": "park", "slice": "S9", "why": "w"}),
+                            runs=1)["cases"][0]
+        self.assertEqual(["wrong"], row["outcomes"], "S9 is no slice of this stream, whatever the label lists")
+        self.assertEqual([["`park S9` names a slice this stream does not have"]], row["faults"])
+
+    def test_a_baseline_is_scored_against_the_snapshot_s_free_slots_too(self) -> None:
+        case = {**CASE, "snapshot": {**CASE["snapshot"], "slots": 0},
+                "event": {"id": "e2", "t": "2026-11-13T12:01:00Z", "kind": "choose-next", "slice": "S1"},
+                "label": {"accept": [{"verb": "start", "slice": "S1"}], "why": "the only one", "signed_off": ""}}
+        (self.cases / "choose-next").mkdir()
+        (self.cases / "choose-next/no-slot.json").write_text(json.dumps(case), encoding="utf-8")
+        rows = {row["case"]: row for row in self.run_with(give(), runs=1)["cases"]}
+        self.assertEqual({"start": "wrong", "none": "unjudged"}, rows["choose-next/no-slot"]["fixed"])
+
     def test_the_orders_and_the_report_are_written_where_a_person_reads_them(self) -> None:
         self.run_with(give({"verb": "park", "slice": "S1"}), runs=1)
         kept = self.out / "gate-failed/s1-twice/1"

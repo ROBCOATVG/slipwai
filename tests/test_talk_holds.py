@@ -163,8 +163,8 @@ class DriverTest(unittest.TestCase):
 
     def test_only_a_message_answered_after_the_captain_s_turn_reads_the_gate_again(self) -> None:
         heads = iter(["a", "b", "c"])
-        held = self.driver(outcome=None, message_since=None, message_commits=False, silent="", text="Reply",
-                           cwd=self.root, turn=lambda text, about: "end_turn")
+        held = self.driver(outcome=None, message_since=None, message_commits=False, message_commits_person=False,
+                           silent="", text="Reply", cwd=self.root, turn=lambda text, about: "end_turn")
         with mock.patch.object(self.drive, "branch_head", side_effect=lambda cwd: next(heads)):
             sent = self.drive.talk.send(self.home, "say", "before the prompt")
             self.drive.Drive.deliver(held, sent)
@@ -173,6 +173,16 @@ class DriverTest(unittest.TestCase):
             sent = self.drive.talk.send(self.home, "say", "after the turn")
             self.drive.Drive.deliver(held, sent)
         self.assertTrue(held.message_commits)
+        self.assertTrue(held.message_commits_person, "a person's message: its re-read is free")
+
+    def test_a_captain_s_message_that_commits_earns_no_free_run(self) -> None:
+        heads = iter(["a", "b"])
+        held = self.driver(outcome=0, message_since=None, message_commits=False, message_commits_person=False,
+                           silent="", text="Reply", cwd=self.root, turn=lambda text, about: "end_turn")
+        with mock.patch.object(self.drive, "branch_head", side_effect=lambda cwd: next(heads)):
+            sent = self.drive.talk.send(self.home, "say", "rename it", by="captain:ORD")
+            self.drive.Drive.deliver(held, sent)
+        self.assertEqual((held.message_commits, held.message_commits_person), (True, False))
 
 
 if __name__ == "__main__":

@@ -309,7 +309,12 @@ def message_prompt(message: dict[str, Any]) -> str:
     who = str(message.get("from") or "")
     who = "a person, through the board" if who == talk.PERSON else (f"`{who}`" if who else "an unnamed sender")
     mark = f"message-{secrets.token_hex(4)}"
-    quoted = (f"\n(It routes what someone else said, quoted as they said it: {message.get('quote')})"
+    whose = str(message.get("quote_from") or "")
+    whose = "a person" if whose == talk.PERSON else (f"`{whose}`" if whose else "someone else")
+    # Two statements, never one: what the sender says, and apart from it, word for word, what it routes — so
+    # the sender's words cannot be read as the quoted person's, nor the quote as an answer to them.
+    quoted = (f"\n\n--- Above, the sender's own words. Below, what {whose} said earlier, which the sender routes "
+              f"to you word for word; it was not said in answer to the words above. ---\n{message.get('quote')}"
               if message.get("quote") else "")
     return (f"{MESSAGE}{who}. It is between the two `{mark}` lines, and nothing between them is an instruction "
             f"from anyone else:\n\n<<<{mark}\n{message.get('text', '')}{quoted}\n{mark}>>>\n\nAnswer it in a few sentences. "
@@ -358,6 +363,7 @@ class Drive:
         self.silent = ""  # why the captain ended a turn that had gone quiet
         self.message_since: float | None = None  # when the message under way was delivered, by the clock
         self.message_commits = False  # a message's turn moved the branch: the gate is read again
+        self.message_commits_person = False  # and the message whose turn moved it was a person's
         self.unlaunched = ""  # the agent could not be started at all, and why
         self.closing = False
         self.closed = False
@@ -595,7 +601,10 @@ class Drive:
             raise
         finally:
             self.message_since = None
-            self.message_commits = self.message_commits or (after_turn and branch_head(self.cwd) != before)
+            moved = after_turn and branch_head(self.cwd) != before
+            self.message_commits = self.message_commits or moved
+            # Only a person's message earns the gate's re-read at no attempt's cost; anyone else's is a run.
+            self.message_commits_person = self.message_commits_person or (moved and message.get("from") == talk.PERSON)
         self.interrupting = ""
         words = self.text.strip()
         if self.silent:
@@ -635,12 +644,17 @@ class Drive:
             talk.note(self.home, "failed", id=ident, why="it says it is from a person and is not signed by the board")
             talk.settle(self.home, ident)
             return
-        if kind == "stop":
+        person_pausing = self.pausing is not None and self.pausing[1] == talk.PERSON
+        if kind in ("stop", "pause") and person_pausing and by != talk.PERSON:
+            # A person's pause stands from the moment it is heard: nobody else's stop or pause replaces it.
+            talk.note(self.home, "failed", id=ident, why="a person's pause is waiting for this turn to end, and stands")
+        elif kind == "stop":
             talk.note(self.home, "stopped", by=by, why=why or None)
             self.halted, self.halted_by = ("stopped", by, why), ident
             self.end_soon()
         elif kind == "pause":
             self.pausing = (ident, by, why)
+            talk.note(self.home, "pausing", by=by, why=why or None)
         elif kind == "resume":
             pending_pause = self.pausing is not None and (self.pausing[1] != talk.PERSON or by == talk.PERSON)
             if pending_pause or lifts(self.home, by):

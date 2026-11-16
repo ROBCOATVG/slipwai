@@ -48,8 +48,13 @@ MAY = {
 }
 SHAPES = ("slice", "slices", "within", "naming")
 ROUTED = ("required", "optional")
-#: What the toolkit gives the throwaway project: how a session is started, and how an order is written.
-CARRIED = ("scripts/agents/harness.py", "scripts/agents/registry.json", "scripts/agents/orders.py")
+#: What the toolkit gives the throwaway project: how a session is started, how an order is written, and the
+#: captain's own door for the evals (`captain_agent.py decide`) with what it imports.
+CARRIED = ("scripts/agents/harness.py", "scripts/agents/registry.json", "scripts/agents/orders.py",
+           "scripts/agents/captain_agent.py", "scripts/agents/drive.py", "scripts/agents/acp.py",
+           "scripts/agents/logs.py", "scripts/agents/talk.py")
+#: Written at the root of every throwaway project: the one place `captain_agent.py decide` agrees to run.
+MARKER = ".slipwai-eval"
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -166,6 +171,7 @@ def lay_out(case: dict[str, Any], root: Path, integration: Path | None = None, b
     feature, fairway = snapshot["feature"], snapshot["fairway"]
     run = root / ".slipwai/run"
     (root / "project.json").write_text("{}\n", encoding="utf-8")
+    (root / MARKER).write_text("laid out by the evals: a throwaway project, never a checkout\n", encoding="utf-8")
     # A case's log lines leave out the `fairway` every line of one stream carries; the log has it back.
     write_lines(run / "logs" / feature / f"{fairway}.jsonl",
                 [{"v": 1, "fairway": fairway, **line} for line in snapshot.get("deck", [])])

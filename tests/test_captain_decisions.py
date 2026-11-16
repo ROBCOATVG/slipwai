@@ -13,7 +13,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.captain_decisions import decided, off, tally
+from slipwai.captain_decisions import decided, status, tally
 from slipwai.logs import run_dir
 
 
@@ -55,11 +55,12 @@ class ReaderTest(unittest.TestCase):
 
     def test_a_stream_with_no_captain_agent_has_nothing_to_read(self) -> None:
         self.assertEqual(decided(self.root, "BIL"), [])
-        self.assertIsNone(off(self.root, "BIL"))
+        self.assertIsNone(status(self.root, "BIL"))
 
-    def test_a_captain_turned_off_says_why(self) -> None:
-        self.put(self.events / "agent-off.json", {"v": 1, "why": "it changed the project"})
-        self.assertEqual((off(self.root, "ORD") or {}).get("why"), "it changed the project")
+    def test_a_stream_with_no_captain_agent_says_why(self) -> None:
+        why = "no captain agent: this harness has no proven protocol launch"
+        self.put(self.events / "captain.json", {"v": 1, "agent": False, "why": why})
+        self.assertEqual(status(self.root, "ORD"), {"v": 1, "agent": False, "why": why})
         self.assertEqual(decided(self.root, "ORD"), [], "not an event")
 
 

@@ -56,7 +56,7 @@ def decided(root: Path, fairway: str, since: str = "") -> list[dict[str, Any]]:
     given = orders_of(root, fairway)
     rows = []
     for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
-        if path.name.endswith(".closed.json") or path.name in ("state.json", "agent-off.json"):
+        if path.name.endswith(".closed.json") or path.name in ("state.json", "captain.json"):
             continue
         event = held(path)
         if event is None or str(event.get("t", "")) < since:
@@ -71,10 +71,12 @@ def decided(root: Path, fairway: str, since: str = "") -> list[dict[str, Any]]:
     return sorted(rows, key=lambda row: (row["t"], row["id"]), reverse=True)
 
 
-def off(root: Path, fairway: str) -> dict[str, Any] | None:
-    """Why this stream's captain agent is turned off, said loudly where it is: it changed the project while
-    deciding, and only a person turns it on again (`agent-off.json` beside its events). None where it is not."""
-    return held(run_dir(root) / EVENTS / fairway / "agent-off.json")
+def status(root: Path, fairway: str) -> dict[str, Any] | None:
+    """Whether this stream's captain is an agent, and why not where it is not — "no captain agent: this harness
+    has no proven protocol launch" — as its captain program said when it started (`captain.json` beside its
+    events). None where no captain program has said: the stream has never asked for an agent. No page reads it
+    yet: it is here for the captain's window on the board (stream F), which draws it beside what it decided."""
+    return held(run_dir(root) / EVENTS / fairway / "captain.json")
 
 
 def today() -> str:

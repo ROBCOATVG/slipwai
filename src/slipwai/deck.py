@@ -70,6 +70,8 @@ def said(entry: Entry) -> str:
         return f"asked to {at.get('what')}: {at.get('detail')}"
     if kind == "berth-request":
         return "asked for a berth"
+    if kind == "dispatched":
+        return f"ran {at.get('slice')}" + (", at no attempt's cost" if at.get("free") else "")
     rest = ", ".join(f"{name}={value}" for name, value in at.items())
     return f"{kind}" + (f" ({rest})" if rest else "")
 

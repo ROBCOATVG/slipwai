@@ -59,7 +59,9 @@
 # Re-taken 2026-11-16 for changelog.d/decision-log-a-person-can-read.md: only the rows for agents/sail-decide-skipper.md moved, deliberately — the skipper says its decision to the owner in one plain sentence, the entry's `In short`, which the board leads the decision with.
 # Recorded 2026-11-16 for changelog.d/the-captain-is-an-agent.md: rows for agents/drive-captain.md added, deliberately — the captain's brief is rewritten for the captain as an agent that is woken by an event and acts only through scripts/agents/orders.py, and from here a change to it is said here like any other brief's.
 # Re-taken 2026-11-16 for changelog.d/the-captain-is-an-agent.md (review): only the rows for agents/drive-captain.md moved, deliberately — the captain answers operational questions only, every answer recorded as its decision, and a message it routes is its own with the person quoted.
-24c311a67acf76c69cecec3316c3ac5119c5a197d7faafe3ea6fde343ac2348c  .  agents/drive-captain.md
+# Re-taken 2026-11-16 for changelog.d/the-captain-is-an-agent.md (second review): only the rows for agents/drive-captain.md moved, deliberately — the captain answers a slice's question only where a project turns that on, a slice's runs are bounded at the dispatch, and the brief names the `dispatched` line.
+# Re-taken 2026-11-16 for changelog.d/the-captain-is-an-agent.md (fourth review): only the rows for agents/drive-captain.md moved, deliberately — a captain's pause is lifted by no rule, and a person's pause still waiting for its turn is the person's.
+6d20e360e0dedcc98e7b806389a64fa0517909890dc47aa815c756c01bf7cfcf  .  agents/drive-captain.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  .  agents/sail-adversary-privateer.md
 f2dab9b976f34e96095a5e8352ea2bd182e19a4cefb6dbd7a5f7749fdba916c8  .  agents/sail-converge-navigator.md
 6252ae68400e55596bb58a2cebf658d3d3560e0e7cc000fa1c959ae4556520c5  .  agents/sail-decide-skipper.md
@@ -71,7 +73,7 @@ e36ab9a1227df04f33120679c4e9c66cf0fe17fc1edcd35500552328ee9019d2  .  agents/sail
 2ba5efe2404960e4bd50b4bcd9cdf4c3dec191e4d2634514539fb6a39c7affc5  .  agents/sail-slice-watch.md
 31677aa0d822ac03d6ee9c3762abc38aa29c6d3ce197772f612b4474acc0dcd8  .  agents/sail-tasks-quartermaster.md
 11db71ae6d5675ef05aa8583f7c70925f2269001f57d7db08f7a9e6747c52984  .  agents/sail-unblock-bosun.md
-24c311a67acf76c69cecec3316c3ac5119c5a197d7faafe3ea6fde343ac2348c  delivery  agents/drive-captain.md
+6d20e360e0dedcc98e7b806389a64fa0517909890dc47aa815c756c01bf7cfcf  delivery  agents/drive-captain.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  delivery  agents/sail-adversary-privateer.md
 8332db386dfcf0aff0bec7f2ed86ea13156bdb8eb88427f0f3903f6727433d59  delivery  agents/sail-converge-navigator.md
 6252ae68400e55596bb58a2cebf658d3d3560e0e7cc000fa1c959ae4556520c5  delivery  agents/sail-decide-skipper.md

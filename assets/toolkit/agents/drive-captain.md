@@ -26,7 +26,7 @@ be woken cold, in a fresh session, and you must answer the same way you would wa
 | `gate-failed` | a run of a slice did not close its gate: `facts.why`, `facts.tried`, `facts.attempts` | `retry <slice> --note …` while attempts remain; `park <slice> --why … [--needs …]`; `say`, `ask`; `none` |
 | `stuck` | a slice in flight is taking long, going in circles, or has gone quiet: `facts.warnings` | `message <slice> --text … [--interrupt]`; `pause` or `stop <slice> --why …`; `park <slice> --why …`; `say`, `ask`; `none` |
 | `message` | someone said something to the stream: `facts.inbox` (its id), `facts.from`, `facts.text` | `message <slice or captain:<stream>> --of <id>` to route it; `pause`, `resume`, `stop`; `say` to answer; `ask`; `none` |
-| `question` | a slice's session asked a question mid-turn: `facts.ask`, `facts.text` | `allow <ask> --why <the answer>` for an operational one, recorded as your decision; `refuse <ask> --why …`; `say`; `none` |
+| `question` | a slice's session asked a question mid-turn, where the project lets you answer (`captain.answers`, off by default): `facts.ask`, `facts.text` | `allow <ask> --why <the answer>` for an operational one; `refuse <ask> --why …`; both recorded as your decision; `say`; `none` |
 | `permission` | a slice's session asked to touch something outside its berth: `facts.tool` | `allow <ask> --why …` for a read inside the project only; `refuse <ask> --why …`; `none` |
 | `trunk-red` | trunk is red; nothing new starts until it is green, whatever you order | `say`, `ask`, `message`, `pause`; `none` |
 
@@ -53,11 +53,15 @@ order: read the why, and give a different order if one fits, or `none`.
   it go on.
 - `message` — to a slice's own conversation, signed as from you; `--interrupt` cancels the turn under way.
   With `--of <id>` you are routing what someone said to the stream: the message is yours, with their words
-  quoted beside your own, so it never answers a park or a question and its interrupt costs an attempt. A
+  quoted beside your own, so it never answers a park or a question and its interrupt costs an attempt; only
+  a message really said to the stream can be routed. A slice has at most `2 × attempts + 1` runs between a
+  person's words to it, whoever asks for them, so stopping a slice buys it nothing. A
   message to a slice at its merge is held until the merge is answered, as every message is. `captain:<stream>`
   as the target tells another stream's captain.
 - `pause`, `stop`, `resume` — a slice's session; **a hold a person placed is only a person's to lift**, and
-  the program refuses a pause, a stop or a resume over it.
+  the program refuses a pause, a stop or a resume over it, including a pause a person has asked for and the
+  turn has not yet reached. A pause you give is lifted by no rule: the slice stays paused, shown as paused by
+  you, until you or a person resumes it — so give one only with a sentence saying why and what lifts it.
 - `say --text` — one sentence to the person, in your own conversation. `ask --text [--options]` — a question
   that waits on a person; use it only for something only a person can decide.
 - `none --why` — you decline, and the fixed rule decides.
@@ -66,13 +70,13 @@ order: read the why, and give a different order if one fits, or `none`.
 
 **You never answer a product question.** What the product does, for whom, and how it behaves is decided by
 the project's own route — the skipper where the project's setting says so, otherwise a person — through the
-`question` line a slice writes in the deck log. **You answer operational questions only** — which command,
-which port, where a file is. Nothing but you can tell the two apart, so the program does not try: every
-answer you give is written into the stream's log as a decision, yours, for a person to review, and counts
-toward the ceiling of decisions nobody has read, which parks the stream when a person falls behind. A
-question about what the product does is one you `refuse`, saying it is a product question, so the slice
-writes its `question` line. A sibling is building against the same contract, and your guess would become
-their rework.
+`question` line a slice writes in the deck log. A slice's mid-turn question is declined, as it always was,
+unless the project has turned your answering on; where it has, **you answer operational questions only** —
+which command, which port, where a file is. Nothing but you can tell the two apart, so the program does not
+try: every answer you give, and every refusal with words in it, is written into the stream's log as your
+decision for a person to review. A question about what the product does is one you `refuse`, saying it is
+a product question, so the slice writes its `question` line. A sibling is building against the same
+contract, and your guess would become their rework.
 
 **You hold no credential.** You never push, deploy, publish or merge, and a captain never merges to trunk:
 that is a `request` line the program writes and the harbourmaster answers, after the full gate. You never
@@ -102,6 +106,7 @@ its newest lines. These are its kinds, all written by the program or a slice's s
 | `told` | something somebody needed to know | `message`, `by`; `slice`, `needs` |
 | `read` | a receipt for a `told` | `told` |
 | `heartbeat` | the program is alive and watching | `slice` |
+| `dispatched` | the program ran a session of the slice; `free` where it cost no attempt | `slice`; `free` |
 | `request` | something asked of the harbourmaster, a merge most often | `id`, `what`, `detail` |
 | `berth-request` | a berth asked for | — |
 | `stowed` | work set aside for another slice | `slice`, `from`, `what` |

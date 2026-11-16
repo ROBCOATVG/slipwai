@@ -51,22 +51,15 @@ class Stream(Protocol):
 
     def state(self) -> dict[str, Any]: ...
 
-    def root(self) -> Path: ...
-
-    def checkout_busy(self) -> bool: ...
-
     def decided(self, slice_id: str, question: str, answer: str) -> str: ...
 
 
 @dataclass
 class Taken:
-    """What one event's orders came to: every file read, those that verified, those waiting to be done, and
-    whether one gave the key away."""
+    """What one event's orders came to: every file read, how many verified, and whether one gave the key away."""
 
     seen: list[str] = field(default_factory=list)
     counted: int = 0
-    pending: list[Path] = field(default_factory=list)
-    verified: list[Order] = field(default_factory=list)
     rekey: bool = False
 
 
@@ -97,19 +90,37 @@ def refusal(helm: Any, order: Any, path: Path, held: dict[str, Any], check: Call
     return helm.acts.common(order, held)
 
 
+def person_asked(home: Path) -> str:
+    """A hold a person has asked for and that is not yet on the thread as `paused` or `stopped`: a pause
+    waiting for the turn under way to end, or a pause or stop still in the inbox. `pause`, `stop` or `''`."""
+    if talk.pending_pause(home) == talk.PERSON:
+        return "pause"
+    waiting = [one for one in talk.unseen(home) if one.get("from") == talk.PERSON and one.get("kind") in ("pause", "stop")]
+    return str(waiting[-1]["kind"]) if waiting else ""
+
+
 class Acts:
     def __init__(self, run: Path, fairway: str, stream: Stream) -> None:
         self.run, self.fairway, self.stream = run, fairway, stream
         self.home = talk.place(run, fairway, talk.CAPTAIN)
         self.asks = 0
+        #: The messages already routed, each once.
+        self.used: set[str] = set()
 
     def common(self, order: Order, held: dict[str, Any]) -> str:
         """The rules for the orders every event shares: who may be spoken to, and whose hold is whose."""
         verb, target = order["verb"], str(order.get("slice") or "")
+        if verb in ("message", "say", "ask") and self.carries_key(order):
+            return "it carries the conversation key in its words, which is never said to anyone"
         if verb == "message" and order.get("of"):
-            found = self.routed(str(order["of"]))
-            if found is None:
-                return f"{order['of']} is not a message in {self.fairway}'s captain's conversation"
+            # What a person said is routed once, by the event that put it to the captain, and no other: an old
+            # "yes, go ahead" cannot be attached to whatever the captain says next.
+            if held["kind"] != "message" or str(order["of"]) != str(held["facts"].get("inbox") or ""):
+                return f"{order['of']} is not the message this event put to the captain"
+            if str(order["of"]) in self.used:
+                return f"{order['of']} has been routed already"
+            if self.routed(str(order["of"])) is None:
+                return f"{order['of']} is not a genuine message in {self.fairway}'s captain's conversation"
         if verb == "message" and target.startswith("captain:"):
             other = target.removeprefix("captain:")
             if held["kind"] == "message" and str(held["facts"].get("from") or "").startswith("captain:"):
@@ -124,14 +135,24 @@ class Acts:
             return f"{target} is not a slice of {self.fairway}"
         if self.stream.merged(target):
             return f"{target} has merged: there is nothing left to steer"
-        how, by, _ = talk.halted(talk.place(self.run, self.fairway, target))
-        if verb == "resume" and how and by == talk.PERSON:
+        home = talk.place(self.run, self.fairway, target)
+        how, by, _ = talk.halted(home)
+        asked = person_asked(home)
+        if verb == "resume" and ((how and by == talk.PERSON) or asked):
             return "only a person lifts a hold a person placed"
         if verb == "resume" and not how:
             return f"{target} is not paused or stopped"
-        if verb in ("pause", "stop") and how and by == talk.PERSON:
-            return f"a person holds {target} already ({how}), and their hold stands until they lift it"
+        if verb in ("pause", "stop") and ((how and by == talk.PERSON) or asked):
+            return (f"a person holds {target} already ({how or asked}), and their hold stands until they lift it")
         return ""
+
+    def carries_key(self, order: Order) -> bool:
+        """Whether an order's words carry the conversation key, as raw bytes or written out in hex."""
+        secret = talk.key(self.home)
+        if not secret:
+            return False
+        said = " ".join(str(order.get(name) or "") for name in ("text", "why", "note", "needs"))
+        return secret.hex() in said or secret.decode("latin-1") in said
 
     def act(self, order: Order, held: dict[str, Any]) -> str:
         """Do one order the rules allow. A decision is the caller's to carry out; the rest are done here."""
@@ -139,15 +160,18 @@ class Acts:
         me = f"captain:{self.fairway}"
         if verb == "message":
             routed = self.routed(str(order.get("of") or ""))
-            text = str(order.get("text") or "") or (f"Routed to you by your captain, from {routed.get('from')}."
-                                                    if routed else "")
+            # Who is quoted is the routed message's own `from`, which its signature covers: never a field a
+            # file supplied unverified, since only a genuine message can be routed at all.
+            quoted = str((routed or {}).get("from") or "")
+            text = str(order.get("text") or "") or (f"Routed to you by your captain, from {quoted}." if routed else "")
             home = (talk.place(self.run, target.removeprefix("captain:"), talk.CAPTAIN)
                     if target.startswith("captain:") else talk.place(self.run, self.fairway, target))
             # From the captain, always: a person's words it routes are quoted, unaltered, beside its own.
             sent = talk.send(home, "say", text, "interrupt" if order.get("interrupt") else "wait", by=me,
                              of=str(order.get("of") or ""), via=me if routed else "",
-                             quote=str(routed.get("text") or "") if routed else "")
+                             quote=str(routed.get("text") or "") if routed else "", quote_from=quoted)
             if routed:
+                self.used.add(str(routed["id"]))
                 talk.note(self.home, "reply", to=str(routed["id"]), text=f"routed to {target}", by="captain")
             if not target.startswith("captain:") and self.stream.merging(target):
                 self.stream.hold(target, "held: this slice is at its merge")
@@ -172,7 +196,9 @@ class Acts:
         return ""
 
     def routed(self, of: str) -> dict[str, Any] | None:
-        """The message in this captain's own conversation an order routes, or None."""
+        """The message in this captain's own conversation an order routes, or None — and None for any file in
+        that inbox whose signature does not hold: what can be routed is only what was really said."""
         if not of:
             return None
-        return next((one for one in talk.inbox(self.home) if str(one["id"]) == of), None)
+        found = next((one for one in talk.inbox(self.home) if str(one["id"]) == of), None)
+        return found if found is not None and talk.genuine(self.home, found) else None

@@ -1335,8 +1335,7 @@ def aimed(told: logs.Entry, park: logs.Entry) -> bool:
     named = str(told.fields.get("slice", ""))
     if not named:
         return True
-    return str(park.fields.get("slice", "")) == named or (
-        not park.fields.get("slice") and str(park.fields.get("why", "")).startswith(f"{named}:"))
+    return logs.about(park, named)
 
 
 def cleared_for_review() -> list[logs.Entry]:

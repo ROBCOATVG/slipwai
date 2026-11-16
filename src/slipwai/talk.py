@@ -33,7 +33,7 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 500 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
+# budget: 520 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
 # and the fold into receipts for every kind, which a reader and the writer must not disagree on
 from __future__ import annotations
@@ -173,7 +173,7 @@ def key(home: Path, make: bool = False) -> bytes:
 def signature(secret: bytes, message: dict[str, Any], home: Path) -> str:
     # `quote` — a person's words a captain routes, carried beside its own — is signed where it is there and
     # left out of the body where it is not, so every message signed before it existed still verifies.
-    quoted = {"quote": message.get("quote")} if "quote" in message else {}
+    quoted = {name: message.get(name) for name in ("quote", "quote_from") if name in message}
     body = json.dumps({**{name: message.get(name) for name in SIGNED}, **quoted,
                        "for": [Path(home).parent.name, Path(home).name]}, sort_keys=True, ensure_ascii=False)
     return hmac.new(secret, body.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -183,14 +183,17 @@ def genuine(home: Path, message: dict[str, Any]) -> bool:
     """Whether the message carries the signature `send` made with this run folder's key, for this stream and
     slice. Nobody is taken at their word: a file any session could write is not a message."""
     secret = key(home)
-    return bool(secret) and hmac.compare_digest(str(message.get("sig", "")), signature(secret, message, home))
+    try:
+        return bool(secret) and hmac.compare_digest(str(message.get("sig", "")), signature(secret, message, home))
+    except (TypeError, ValueError, UnicodeError):
+        return False  # a signature or a field no signature could have been made over: a file, not a message
 
 
 def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PERSON, of: str = "",
-         via: str = "", quote: str = "") -> dict[str, Any]:
+         via: str = "", quote: str = "", quote_from: str = "") -> dict[str, Any]:
     """Drop one thing into a conversation's inbox, signed and whole: written aside and renamed into place.
-    `quote` is another's words carried unaltered beside the sender's own: what a captain routes stays the
-    captain's message, `from` the captain, with the person's words quoted in it, never a person's message.
+    `quote` is another's words carried unaltered beside the sender's own, `quote_from` whose they are: what a
+    captain routes stays the captain's message, `from` the captain, with the words quoted in it.
     `ValueError` with what to do where it cannot be."""
     if kind not in KINDS:
         raise ValueError(f"{kind!r} is not something a conversation takes: {', '.join(KINDS)}")
@@ -207,8 +210,11 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
         message["of"] = of
     if via:
         message["via"] = via
+    if quote and not quote_from:
+        raise ValueError("quoted words say whose they are")
     if quote:
         message["quote"] = quote
+        message["quote_from"] = quote_from
     message["sig"] = signature(key(home, make=True), message, home)
     box = Path(home) / "inbox"
     box.mkdir(parents=True, exist_ok=True)
@@ -399,6 +405,20 @@ def halted(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, 
         elif kind in ("paused", "stopped"):
             last = (str(kind), by, str(one.get("why", "")))
     return last
+
+
+def pending_pause(home: Path, lines: list[dict[str, Any]] | None = None) -> str:
+    """Who asked for a pause that waits for the turn under way to end — a `pausing` line no `paused`,
+    `resumed` or `stopped` has followed — or `''`. Written the moment the pause is heard, so a hold a person
+    asked for is on the thread, and nobody else's word can take its place, before the turn has ended."""
+    asked = ""
+    for one in thread(home) if lines is None else lines:
+        kind = one.get("kind")
+        if kind == "pausing":
+            asked = str(one.get("by", ""))
+        elif kind in ("paused", "resumed", "stopped"):
+            asked = ""
+    return asked
 
 
 def paused(home: Path, lines: list[dict[str, Any]] | None = None) -> bool:

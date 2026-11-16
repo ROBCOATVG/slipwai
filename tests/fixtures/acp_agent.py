@@ -11,9 +11,11 @@ For a driver held open (`tests/test_drive_held.py`): `count` says how many promp
 answered `Reply: <text>` — or not at all where it says `quiet`. A captain's drive does the same where a
 `.linger` or `.dawdle` file is in the berth, once each.
 """
+import hashlib
 import json
 import os
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -22,6 +24,25 @@ HOME = Path.cwd()
 PROMPTS: dict = {}
 #: The head of a message a driver delivers (`drive.message_prompt`).
 MESSAGE = "A message for this slice from "
+#: The sessions minted for this working directory, kept outside it: each `session/new` is `s-<n>`, numbered on
+#: from the last, and a `session/load` of an id not minted here is refused, as a real agent refuses one.
+MINTED = Path(tempfile.gettempdir()) / f"acp-stand-in-{hashlib.sha256(str(HOME).encode()).hexdigest()[:16]}"
+#: Seconds a cancel takes to land, where the suite asks for a slow one.
+CANCEL_DELAY = float(os.environ.get("STAND_IN_CANCEL_DELAY") or 0)
+
+
+def minted():
+    try:
+        return MINTED.read_text(encoding="utf-8").split()
+    except OSError:
+        return []
+
+
+def mint():
+    ident = f"s-{len(minted()) + 1}"
+    with MINTED.open("a", encoding="utf-8") as out:
+        out.write(ident + "\n")
+    return ident
 #: How this agent says it can be signed in to: through itself, or by a command run in a terminal.
 METHODS = [{"id": "login", "name": "Sign in", "description": "Opens the browser", "type": "agent"},
            {"id": "setup", "name": "Set up", "description": "Interactive setup", "type": "terminal",
@@ -85,6 +106,7 @@ def linger(session):
         if not line:
             os._exit(0)
         if json.loads(line).get("method") == "session/cancel":
+            time.sleep(CANCEL_DELAY)
             return "cancelled"
 
 
@@ -100,6 +122,7 @@ def dawdle():
 def answer(session, words):
     """A delivered message: its text is the paragraph after the head, and the reply repeats it."""
     said = words.split("\n\n")[1] if "\n\n" in words else words
+    said = "\n".join(said.splitlines()[1:-1]) if said.startswith("<<<") else said  # between the two marks
     if "dawdle" in said:
         dawdle()
     if "die" in said:
@@ -222,7 +245,9 @@ def main():
         elif method == "session/new" and signed_out:  # as Gemini does: no session for nobody
             send(id=number, error={"code": -32000, "message": "nobody is signed in"})
         elif method == "session/new":
-            send(id=number, result={"sessionId": "s-1", "configOptions": options})
+            send(id=number, result={"sessionId": mint(), "configOptions": options})
+        elif method == "session/load" and params.get("sessionId") not in minted():
+            send(id=number, error={"code": -32002, "message": f"no session {params.get('sessionId')} here"})
         elif method == "session/load":
             update(params["sessionId"], sessionUpdate="user_message_chunk",
                    content={"type": "text",

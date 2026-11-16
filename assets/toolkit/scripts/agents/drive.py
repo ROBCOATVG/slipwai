@@ -27,17 +27,26 @@ Nobody is in the berth: a permission for a write inside it is allowed this once,
 person parks on a `question` line in the deck log, as it did. `ruling` is the seam the captain's own answer
 replaces; the `ask` and its `answer` are on the thread either way.
 
-The protocol is the default where the harness print mode would run has a launch the registry marks proven
-and this machine can make; `sessions: print` in `.specify/cruise.json` keeps print mode, `sessions: protocol`
-asks for it on any launch row, and `SLIPWAI_ACP` in the environment says first — `1` for the initialised
+**Bounded and held.** A message is delivered only while the captain waits on a turn, so its turn is under
+the captain's watch and its stage bound; from a merge request to its answer the captain holds them, so no
+commit rides to trunk past the gate. A person's message is believed only where the board signed it, and is
+fenced off in the prompt. The agent runs in a process group of its own, ended when the captain exits, and
+its pid is kept beside the conversation for the next captain to end where this one was killed outright.
+
+The protocol is the default — `sessions: auto` in `.specify/cruise.json`, or nothing said — where the
+harness print mode would run has a launch the registry marks proven and this machine can make; `print`
+keeps print mode, `protocol` asks for it on any launch row, and `SLIPWAI_ACP` in the environment says first — `1` for the initialised
 harness's row, any other value the command that starts an agent (the suite's stand-in).
 """
 from __future__ import annotations
 
+import atexit
 import json
 import os
+import secrets
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -72,6 +81,58 @@ REVIEWS = ("gaps-lookout", "gaps", "review-mate", "review", "adversary-privateer
 EDITS = ("edit", "delete", "move")
 #: The size past which an activity log is cut back to its newest lines, as `session.py` does with its own.
 ACTIVITY_LIMIT, ACTIVITY_KEEP = 1_000_000, 2000
+#: Where a held drive records the agent it started and the captain that started it, beside its conversation:
+#: a captain killed outright runs no exit handler, and the next one for the stream ends what it left.
+AGENT_PID = "agent.pid"
+#: Every drive with an agent up in this process, ended when the process exits however it can.
+LIVE: set[Drive] = set()
+
+
+def end_group(pid: int) -> None:
+    """End an agent and everything it started: it runs in a process group of its own."""
+    group = getattr(os, "killpg", None)
+    try:
+        if group is not None:
+            group(pid, signal.SIGTERM)
+        else:  # pragma: no cover - the other platform's branch
+            os.kill(pid, signal.SIGTERM)
+    except (OSError, ProcessLookupError):
+        pass
+
+
+@atexit.register
+def end_all() -> None:
+    """A captain that exits — a stop, a fault, the end of `--once` — takes its agents with it."""
+    for held in list(LIVE):
+        child = held.session.child
+        if child is not None and child.poll() is None:
+            end_group(child.pid)
+
+
+def alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except (OSError, ProcessLookupError):
+        return False
+    return True
+
+
+def reap(conversations: Path) -> list[int]:
+    """End every agent a captain that is no longer running left under this stream's conversations: the pids
+    a drive recorded, where the captain that recorded them is gone and the agent is not. What was ended."""
+    ended = []
+    for path in sorted(Path(conversations).glob(f"*/{AGENT_PID}")):
+        try:
+            held = json.loads(path.read_text(encoding="utf-8"))
+            pid, captain = int(held["pid"]), int(held["captain"])
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        if captain != os.getpid() and not alive(captain):
+            if alive(pid):
+                end_group(pid)
+                ended.append(pid)
+            path.unlink(missing_ok=True)
+    return ended
 
 
 def setting() -> str:
@@ -133,6 +194,7 @@ def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
     if not named and chosen == "protocol":
         named = "1"
     if not named:
+        # `auto`, or nothing said: the protocol where the harness's launch is proven, print mode elsewhere.
         return proven() if chosen != "print" else None
     if named.lower() not in ON:
         # A Windows path is backslashes, which POSIX splitting reads as escapes and drops: kept as written.
@@ -152,11 +214,12 @@ def reviewing(record: Path) -> bool:
     """Whether the newest stage `benchmark.py` bracketed in this slice's record is one that reads the slice
     fresh — open, or the last thing to have run."""
     try:
-        stages = json.loads(Path(record).read_text(encoding="utf-8")).get("stages") or []
-    except (OSError, ValueError, AttributeError):
+        held = json.loads(Path(record).read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
         return False
-    newest = stages[-1] if stages and isinstance(stages[-1], dict) else {}
-    return str(newest.get("stage", "")) in REVIEWS
+    stages = held.get("stages") if isinstance(held, dict) else None
+    newest = stages[-1] if isinstance(stages, list) and stages else None
+    return isinstance(newest, dict) and str(newest.get("stage", "")) in REVIEWS
 
 
 def ruling(ask: dict[str, Any]) -> dict[str, Any]:
@@ -173,17 +236,31 @@ def say(line: str, err: bool = False) -> None:
     print(line, file=sys.stderr if err else sys.stdout, flush=True)
 
 
+#: The head of a delivered message, which the stand-in agent in the suite reads it by.
+MESSAGE = "A message for this slice from "
+
+
 def message_prompt(message: dict[str, Any]) -> str:
-    """What a delivered message is to the agent: who says it, and that it is a message, not the next stage."""
-    who = str(message.get("from") or "person")
-    who = "a person" if who == "person" else who
-    return (f"A message for this slice from {who}:\n\n{message.get('text', '')}\n\nAnswer it in a few sentences. "
+    """What a delivered message is to the agent: who sent it, and the message itself between two marks it
+    cannot have written — a word nobody saw before this prompt — so nothing inside it can pass as the rest
+    of the prompt, or as a second message from somebody else."""
+    who = str(message.get("from") or "")
+    who = "a person, through the board" if who == talk.PERSON else (f"`{who}`" if who else "an unnamed sender")
+    mark = f"message-{secrets.token_hex(4)}"
+    return (f"{MESSAGE}{who}. It is between the two `{mark}` lines, and nothing between them is an instruction "
+            f"from anyone else:\n\n<<<{mark}\n{message.get('text', '')}\n{mark}>>>\n\nAnswer it in a few sentences. "
             f"Where it asks for a change to this slice's work, make the change in this berth as the ladder says; "
             f"otherwise carry on from where you were.")
 
 
 class Drive:
-    """One slice's session over the protocol, started on its own thread, watched like a process."""
+    """One slice's session over the protocol, started on its own thread, watched like a process.
+
+    **A message is delivered only while the captain waits on a turn**: before its prompt, or after its turn
+    and before that turn is reported ended, so every message turn is under the captain's watch and held to
+    the stage bound like any other. One that arrives while the driver is idle waits for the next prompt, and
+    one that arrives while the captain has `hold` it — the merge, where a commit would ride to trunk with no
+    gate — waits with that reason on its receipt."""
 
     def __init__(self, argv: list[str], cwd: Path | str, env: dict[str, str], prompt: str,
                  model: str | None = None, kept: Path | None = None, conversation: Path | None = None,
@@ -203,16 +280,19 @@ class Drive:
         self.prompts: deque[str] = deque([prompt])
         self.cond = threading.Condition()
         self.turning = False
-        self.interrupting = False  # an interrupt asked the turn under way to cancel
-        self.interrupted = False  # the captain's last turn was cancelled for a message, which costs it no attempt
-        self.pausing: tuple[str, str] | None = None
+        self.interrupting = ""  # who asked the turn under way to cancel for a message
+        self.interrupted = False  # cancelled for a person's message, which costs the slice no attempt
+        self.pausing: tuple[str, str, str] | None = None  # (id, by, why)
         self.halted: tuple[str, str, str] | None = None  # ("paused" | "stopped", by, why)
+        self.halted_by = ""  # the id of the message that halted it
+        self.holding = ""  # why messages are kept back now, where the captain said so
+        self.silent = ""  # why the captain ended a turn that had gone quiet
         self.closing = False
         self.closed = False
         self.replaying = False
-        self.talking = False  # a message's turn is under way: not silence, whatever the deck log says
         self.calls: dict[str, dict[str, Any]] = {}
         self.asks = 0
+        self.kept_back: set[str] = set()
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
         if self.home is not None:
@@ -244,12 +324,24 @@ class Drive:
         return self.code
 
     def prompt(self, text: str) -> None:
-        """The captain's next prompt into the same session, run once whatever is under way has ended."""
+        """The captain's next prompt into the same session, run once whatever is under way has ended. Whatever
+        was held for the merge is delivered ahead of it."""
         with self.cond:
             self.code = self.outcome = None
-            self.refusal, self.interrupted = None, False
+            self.refusal, self.interrupted, self.holding = None, False, ""
             self.prompts.append(text)
             self.cond.notify_all()
+
+    def hold(self, why: str) -> None:
+        """Keep messages back, saying why on each one's receipt, until the next prompt."""
+        with self.cond:
+            self.holding = why
+            self.cond.notify_all()
+
+    def silenced(self, why: str) -> None:
+        """The captain's watch found the turn silent past its bound: a message under way fails with this."""
+        self.silent = why
+        self.end()
 
     def terminate(self) -> None:
         self.session.cancel()
@@ -274,6 +366,7 @@ class Drive:
     def run(self) -> None:
         try:
             self.session.start()
+            self.recorded()
             self.open()
             self.pick()
             while self.next():
@@ -289,28 +382,45 @@ class Drive:
             self.closing = True
             if self.session.exited is not None:
                 self.undelivered(f"the agent exited ({self.session.exited}) before it was delivered")
-            if self.home is not None:
+            if self.home is not None and self.halted is not None and self.halted[0] == "stopped":
+                talk.forget_session(self.home)  # a stop ends the session for good; a resume starts fresh
+            elif self.home is not None:
                 talk.save_session(self.home, self.session.session_id, self.harness_key)
             self.session.close()
+            LIVE.discard(self)
+            if self.home is not None:
+                (self.home / AGENT_PID).unlink(missing_ok=True)
             with self.cond:
                 self.closed = True
                 self.code = self.code if self.code is not None else (self.outcome if self.outcome is not None else 1)
                 self.cond.notify_all()
 
+    def recorded(self) -> None:
+        """The agent's pid and this captain's, where the next captain for the stream looks for what was left."""
+        LIVE.add(self)
+        child = self.session.child
+        if self.home is not None and child is not None:
+            self.home.mkdir(parents=True, exist_ok=True)
+            (self.home / AGENT_PID).write_text(json.dumps({"pid": child.pid, "captain": os.getpid()}) + "\n",
+                                               encoding="utf-8")
+
     def open(self) -> None:
-        """Load the session this slice closed with, where the agent can and the stage is not a review; a new
-        one otherwise. The thread says which."""
+        """Load the session this slice closed with, where the agent can, the stage is not a review and it was
+        the same harness; a new one otherwise. The thread says which."""
         if self.home is None:
             self.session.new()
             return
-        saved = "" if self.fresh else str(talk.saved_session(self.home).get("id") or "")
+        saved = {} if self.fresh else talk.saved_session(self.home)
+        ident = str(saved.get("id") or "")
         loaded, why = False, ("a stage that reviews starts fresh" if self.fresh else "nothing was saved")
-        if saved and not self.session.agent.load_session:
+        if ident and str(saved.get("harness") or "") != self.harness_key:
+            why = f"it was saved under another harness ({saved.get('harness') or 'none named'})"
+        elif ident and not self.session.agent.load_session:
             why = "the agent cannot load a session"
-        elif saved:
+        elif ident:
             self.replaying = True  # a load replays the history as updates: none of it is this turn's
             try:
-                loaded = self.session.load(saved)
+                loaded = self.session.load(ident)
             except self.acp.Fault as fault:
                 why = f"the agent would not load it: {fault}"
             finally:
@@ -319,14 +429,28 @@ class Drive:
             self.session.new()
         talk.note(self.home, "session", id=self.session.session_id, loaded=loaded, why=None if loaded else why)
 
+    def waiting(self) -> list[dict[str, Any]]:
+        """The messages to deliver now: none while the captain is not waiting on a turn or has held them."""
+        if self.home is None or self.pausing:
+            return []
+        messages = talk.queued(self.home)
+        if self.holding:
+            for message in messages:
+                if str(message["id"]) not in self.kept_back:
+                    self.kept_back.add(str(message["id"]))
+                    talk.note(self.home, "held", id=str(message["id"]), why=self.holding)
+            return []
+        captain_waits = bool(self.prompts) or (self.outcome is not None and self.code is None)
+        return messages if captain_waits else []
+
     def next(self) -> bool:
         """One thing: a message waiting, the captain's prompt, or the close. False once the drive is done."""
         with self.cond:
             while True:
-                waiting = talk.queued(self.home) if self.home is not None and not self.pausing else []
                 if self.closing or self.session.exited is not None:
                     return False
-                if waiting or self.pausing or self.prompts:
+                messages = self.waiting()
+                if messages or self.pausing or self.prompts:
                     break
                 if self.outcome is not None and self.code is None:
                     self.code = self.outcome  # nothing waits on the captain's turn now: say it ended
@@ -335,12 +459,12 @@ class Drive:
                     return False  # one prompt, and closed
                 self.cond.wait(LOOK)
         if self.pausing:
-            by, why = self.pausing
+            ident, by, why = self.pausing
             talk.note(self.home, "paused", by=by, why=why or None)
-            self.halted = ("paused", by, why)
+            self.halted, self.halted_by = ("paused", by, why), ident
             return False
-        if waiting:
-            self.deliver(waiting[0])
+        if messages:
+            self.deliver(messages[0])
         else:
             self.captain_turn(self.prompts.popleft())
         return True
@@ -364,9 +488,11 @@ class Drive:
 
     def captain_turn(self, text: str) -> None:
         stop = self.turn(text, "captain")
-        if stop == "cancelled" and self.interrupting and self.halted is None:
-            # Cancelled for a person's message, which is delivered next: not a run that failed.
-            self.interrupting, self.interrupted, self.outcome = False, True, 0
+        if stop == "cancelled" and self.interrupting and self.halted is None and not self.silent:
+            # Cancelled for a message, which is delivered next. A person's costs the slice no attempt; anyone
+            # else's is a run that did not finish, so nothing but a person can keep a slice going round.
+            self.interrupted = self.interrupting == talk.PERSON
+            self.interrupting, self.outcome = "", 0 if self.interrupted else 1
             return
         if stop == "refusal":
             self.refusal = harness.refusal(self.text[-2000:])
@@ -380,26 +506,28 @@ class Drive:
         assert self.home is not None
         ident = str(message["id"])
         talk.note(self.home, "delivered", id=ident, mode=str(message.get("mode") or "wait"))
-        self.talking = True
         try:
             stop = self.turn(message_prompt(message), ident)
         except Exception:
-            talk.note(self.home, "failed", id=ident, why="the agent ended before it answered")
+            talk.note(self.home, "failed", id=ident, why=self.silent or "the agent ended before it answered")
+            talk.settle(self.home, ident)
             raise
-        finally:
-            self.talking = False
-        self.interrupting = False
+        self.interrupting = ""
         words = self.text.strip()
-        if words:
+        if self.silent:
+            talk.note(self.home, "failed", id=ident, why=self.silent)
+        elif words:
             talk.note(self.home, "reply", to=ident, text=words[-REPLY:], stop=stop)
         else:
             talk.note(self.home, "unaddressed", id=ident, stop=stop)
+        talk.settle(self.home, ident)
 
     def undelivered(self, why: str) -> None:
         if self.home is None:
             return
         for message in talk.queued(self.home):
             talk.note(self.home, "failed", id=str(message["id"]), why=why)
+            talk.settle(self.home, str(message["id"]))
 
     # -- the inbox -----------------------------------------------------------------------------------------
 
@@ -407,6 +535,8 @@ class Drive:
         """Read every new thing in the inbox while the drive is up, and act on the ones that steer it."""
         assert self.home is not None
         while not self.closed:
+            for path in talk.malformed(self.home):
+                talk.reject(self.home, path)
             for message in talk.unseen(self.home):
                 self.heard(message)
             with self.cond:
@@ -415,25 +545,32 @@ class Drive:
     def heard(self, message: dict[str, Any]) -> None:
         assert self.home is not None
         ident, kind = str(message["id"]), str(message.get("kind"))
-        by, why = str(message.get("from") or "person"), str(message.get("text") or "")
+        by, why = str(message.get("from") or ""), str(message.get("text") or "")
         talk.note(self.home, "seen", id=ident)
+        if not talk.genuine(self.home, message):
+            talk.note(self.home, "failed", id=ident, why="it says it is from a person and is not signed by the board")
+            talk.settle(self.home, ident)
+            return
         if kind == "stop":
             talk.note(self.home, "stopped", by=by, why=why or None)
-            self.halted = ("stopped", by, why)
+            self.halted, self.halted_by = ("stopped", by, why), ident
             self.end_soon()
         elif kind == "pause":
-            self.pausing = (by, why)
+            self.pausing = (ident, by, why)
         elif kind == "resume":
-            if self.pausing is not None or talk.paused(self.home):
+            if self.pausing is not None or talk.halted(self.home)[0]:
                 self.pausing = None
                 talk.note(self.home, "resumed", by=by)
         elif kind == "withdraw":
             of = str(message.get("of") or "")
-            if of not in talk.ids(talk.thread(self.home), "delivered"):
+            if of not in talk.handed(talk.thread(self.home)):
                 talk.note(self.home, "withdrawn", id=of)
-        elif kind == "say" and message.get("mode") == "interrupt" and self.turning:
-            self.interrupting = True
+                talk.settle(self.home, of)
+        elif kind == "say" and message.get("mode") == "interrupt" and self.turning and not self.holding:
+            self.interrupting = by
             self.terminate()
+        if kind != "say":
+            talk.settle(self.home, ident)
         with self.cond:
             self.cond.notify_all()
 

@@ -121,6 +121,11 @@ class GateTest(unittest.TestCase):
                 self.assertEqual(len(found), 1, found)
                 self.assertIn("is not an instant this can read", found[0])
 
+    def test_a_when_is_read_whole_up_to_the_next_field_not_to_its_first_space(self) -> None:
+        self.assertEqual(self.check(entry(2, "2026-11-16 08:00"), since="2026-11-16T09:00:00Z"), [],
+                         "an hour before the rule, written with a space: not its date alone, read at the rule's hour")
+        self.assertIn("'16 Nov 2026'", self.check(entry(2, "16 Nov 2026"), since="2026-11-16T09:00:00Z")[0])
+
     def test_a_sentence_that_leans_on_an_id_or_a_file_is_refused(self) -> None:
         for leaned in ("Joins by code only, as D-CLB-07 says.", "FR-010 is met by the code alone.",
                        "SC-3 holds.", "Example GN2-1 is what happens.", "Written in specs/f/examples.md.",
@@ -179,6 +184,20 @@ class MigrateTest(unittest.TestCase):
         (berth / "specs/f/decisions.md").write_text(entry(1, "2026-11-12T12:00:00Z"), encoding="utf-8")
         self.assertTrue(date_sentence_rule(self.root, datetime(2026, 11, 16, 9, tzinfo=UTC)))
         self.assertEqual(json.loads((self.root / SENTENCE_FROM).read_text(encoding="utf-8"))["in_flight"], ["CL2"])
+
+    def test_a_branch_not_yet_merged_is_in_flight_with_no_berth_and_a_merged_one_is_not(self) -> None:
+        (self.root / "specs/f").mkdir(parents=True)
+        (self.root / "specs/f/decisions.md").write_text(entry(1, "2026-11-12T12:00:00Z"), encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-qm", "start")
+        self.git("branch", "slice/CL1")
+        self.git("checkout", "-q", "-b", "slice/CL3")
+        (self.root / "work.md").write_text("begun\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-qm", "CL3: begun")
+        self.git("checkout", "-q", "-")
+        self.assertTrue(date_sentence_rule(self.root, datetime(2026, 11, 16, 9, tzinfo=UTC)))
+        self.assertEqual(json.loads((self.root / SENTENCE_FROM).read_text(encoding="utf-8"))["in_flight"], ["CL3"])
 
     def test_a_project_with_no_decision_gets_nothing_and_is_held_from_its_first(self) -> None:
         self.assertFalse(date_sentence_rule(self.root))

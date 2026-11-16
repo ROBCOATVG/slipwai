@@ -282,9 +282,16 @@ stage that is running now.
 | A block | the bosun works around it · park and ask me |
 | A release | continue behind a flag, so every merge is dark · park and ask me |
 | The specification, storyboard and model | stop for me at each · advance on their own |
+| A capability's demo | the hand's verdict accepts it; the film is there when I have time · wait for me to accept it |
 
 The value that stops for a person is drawn amber. The line above the rows names every stop where this run
 will stop for you.
+
+**A capability's demo** is the `demos` setting. With **the hand's verdict accepts it**, the default, the
+hand's verdict is the acceptance. The capability's slices are done, and nothing waits for you. The hand's
+film shows on the Voyage tab with **Say what it showed**, which opens the Feedback box with the capability
+on it. With **wait for me to accept it**, the Feedback card lists each capability that is ready for you,
+with **Accept** and **Not yet: say why**, and the film says *Ready for you*.
 
 The last row is the `upstream` setting. **advance on their own** makes the board start each upstream step
 when the step before it ends well. [The workflow](the-workflow.md#the-upstream-setting) lists its limits.

@@ -17,6 +17,11 @@ A capability may sit accepted and dark for as long as the business wants, so the
 separate columns and neither is ever derived from the other. A capability under the `open` release mode has
 no flag at all and still has a demo.
 
+**Who accepts it is `.specify/cruise.json`'s `demos`.** Under `hand`, the default, the hand's verdict at the
+walk is the acceptance — `deck_line.py accepted --capability <name> --by sail-demo-hand` — and the film is
+there for a person to comment on; nobody is asked. Under `person` a person accepts it, and an `accepted`
+line the hand wrote is the last reading before theirs, not the acceptance.
+
     python3 scripts/agents/capabilities.py          # every capability, with what it is waiting for
     python3 scripts/agents/capabilities.py --gates  # only the ones owed their gates now (`--json` for the board)
     python3 scripts/agents/capabilities.py --due    # only the ones owed a demo now
@@ -45,6 +50,8 @@ LOGS = logs.logs_dir(ROOT)
 V = 1
 #: What a gate record's last word says once every gate has run with nothing above the bar left open.
 CLEARED = re.compile(r"^Cleared:\s*\S", re.MULTILINE)
+#: `.specify/cruise.json`'s `demos`, and who an `accepted` line names when the hand's verdict wrote it.
+HAND, PERSON, WALKER = "hand", "person", "sail-demo-hand"
 
 
 def load_yaml(text: str) -> object:
@@ -104,15 +111,28 @@ def cleared(feature: str, capabilities: list[str]) -> set[str]:
     return found
 
 
-def state(charted: dict, written: list[dict], gated: set[str] | frozenset[str] = frozenset()) -> list[dict]:
+def demos_setting() -> str:
+    """`hand` or `person`: who accepts a whole capability. Absent or unreadable is `hand`."""
+    try:
+        held = json.loads((ROOT / ".specify" / "cruise.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return HAND
+    return PERSON if isinstance(held, dict) and held.get("demos") == PERSON else HAND
+
+
+def state(charted: dict, written: list[dict], gated: set[str] | frozenset[str] = frozenset(),
+          demos: str = "") -> list[dict]:
     """One row per capability: its slices, how many have merged, and whether it is whole, gated or accepted.
 
     `accepted` and `hoisted` are kept apart on purpose. A capability the business is deliberately holding
-    back is not a late one, and a board that derived one from the other could not tell them apart.
+    back is not a late one, and a board that derived one from the other could not tell them apart. Under
+    `person` an `accepted` line by the hand accepts nothing; `demos` is read from the project where not given.
     """
+    person = (demos or demos_setting()) == PERSON
     merged = {str(line["slice"]) for line in written if line.get("kind") == "merged" and line.get("slice")}
     accepted = {str(line["capability"]) for line in written
-                if line.get("kind") == "accepted" and line.get("capability")}
+                if line.get("kind") == "accepted" and line.get("capability")
+                and not (person and line.get("by") == WALKER)}
     hoisted = {str(line["flag"]) for line in written if line.get("kind") == "flag-hoisted" and line.get("flag")}
     rows = []
     for capability, members in slices_by_capability(charted).items():
@@ -167,7 +187,8 @@ def main(argv: list[str]) -> int:
         if row["accepted"]:
             where = "accepted" + (", hoisted" if row["hoisted"] else ", not hoisted")
         elif row["whole"] and row["gated"]:
-            where = "whole and gated — a demo is due"
+            where = ("whole and gated — a demo is due" if demos_setting() == PERSON
+                     else "whole and gated — the hand's verdict accepts it")
         elif row["whole"]:
             where = "whole — gates due"
         else:

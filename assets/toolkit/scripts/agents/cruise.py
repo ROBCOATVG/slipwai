@@ -9,8 +9,8 @@ exits. Nothing holds a run, so nothing can be the thing that died.
 
 What is left here is the settings, which outlived the loop because they were never the loop's: they are the
 answers a run gives at `/sail`'s stops — who decides a product question, what a release becomes, what a demo
-is driven with, what an unratified constitution does, what a block becomes. A captain reads this file; so does
-`/sail` under one. The shape is `sail.py`'s, which does the same job for the ladder's own settings.
+is driven with and who accepts it, what an unratified constitution does, what a block becomes. A captain
+reads this file; so does `/sail` under one. The shape is `sail.py`'s, which does the same job for the ladder's own settings.
 
     python3 scripts/agents/cruise.py                       # every setting and what it controls
     python3 scripts/agents/cruise.py --check               # well-formed; `make check-agents` runs this
@@ -67,6 +67,7 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "unblock": ("bosun", "park"),
     "upstream": ("park", "advance"),
     "sessions": ("print", "protocol"),
+    "demos": ("hand", "person"),
 }
 # Free text, or null: the model the ladder itself runs on, passed through the harness row's own `modelFlag`.
 TEXTS = ("model",)
@@ -78,11 +79,12 @@ TEXTS = ("model",)
 # takes them out, because a setting nothing reads is worse than one that was never there.
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
-    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "print", "model": None,
+    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "print", "demos": "hand",
+    "model": None,
 }
 # Settings that arrived after projects already had this file. Absent is the default rather than a finding, so
 # a project written before one existed still passes `make check-agents`; `--set` writes it in.
-LATER = ("upstream", "sessions")
+LATER = ("upstream", "sessions", "demos")
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
     "decide": "who answers a product question: the host where the stage recommends an answer or a standing "
@@ -102,6 +104,8 @@ CONTROLS = {
     "sessions": "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
                 "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
                 "launch row this machine can make, proven on Claude Code and OpenCode",
+    "demos": "who accepts a whole capability: the hand, whose verdict at its walk is the acceptance and whose "
+             "film is there for a person to comment on; or a person, who is asked to accept or say not yet",
 }
 
 

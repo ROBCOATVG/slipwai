@@ -131,7 +131,13 @@ def film_html(film: dict, titles: dict[str, str], due: bool) -> str:
     length = f"{clock(film['length'])} · " if film["length"] else ""
     chapters = (f"<div><ol>{rows}</ol><p class=\"sub\">A chapter is a slice. Its card on the Work tab opens the "
                 f"film there.</p></div>") if rows else '<p class="sub">Filmed without chapter marks.</p>'
-    ready = '<span class="due">Ready for you · accept it below</span>' if due else ""
+    # Due is a person's verdict owed, where the project says a person accepts demos. Otherwise the hand's
+    # verdict was the acceptance and the film is an opportunity: the Feedback card's own box, opened from
+    # the capability with the film's context, which its script opens from any `data-feedback` button.
+    context = {"from": "capability", "feature": film["feature"], "capability": film["capability"]}
+    ready = ('<span class="due">Ready for you · accept it below</span>' if due else
+             f' <button type="button" class="install" data-feedback="{esc(json.dumps(context))}" '
+             f'data-ask="What did the {esc(film["title"].lower())} film show?">Say what it showed</button>')
     marks = json.dumps([{"at": one["at"], "slice": one["slice"], "says": one["says"]} for one in film["chapters"]])
     return (f"<h3>{esc(film['title'])}{ready}</h3>"
             f'<div class="film" id="{esc(film["id"])}" data-marks="{esc(marks)}"><div>'

@@ -68,6 +68,11 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
      "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
      "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
      "launch row this machine can make, proven on Claude Code and OpenCode"),
+    # Who accepts a whole capability. The hand by default: its verdict at the walk is the acceptance, the
+    # capability's slices are done, and the film is an opportunity for a person to say what it showed.
+    ("demos", ("hand", "person"), "hand",
+     "who accepts a whole capability: the hand, whose verdict at its walk is the acceptance and whose film is "
+     "there for a person to comment on; or a person, who is asked to accept or say not yet"),
     # `stuck_after`, `max_iterations`, `max_hours` and `poll_minutes` were here until 7.7d and are not any
     # more: each was a budget on a loop that no longer exists. What bounds a run is the telegraph
     # (`harbour.json`), which is one lever rather than four numbers nobody set.

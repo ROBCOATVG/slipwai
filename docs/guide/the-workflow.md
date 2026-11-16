@@ -25,7 +25,7 @@ the "Writes" column exists. Nobody types a status. [The board](the-board.md) des
 | 6 | Event model | The agent, on the event-modelling profile only | Approving the storyboard (`make model-next`), or the modelling skill | `docs/event-model/model.yaml` | Yes, by default |
 | 7 | Chart and split | The agent, in a headless session | **Continue the build** (`make launch`), or `/launch` | `specs/<feature>/chart.yaml` and the slices | No |
 | 8 | Slices | The fleet: one captain per fairway, and one harbourmaster per machine | `/launch` casts off. **Cast off the fleet** (`make cruise`), or `/cruise` | Deck logs and the harbour log | Only when a captain parks |
-| 9 | Accepted | You, as the actor | A demo, when a capability's last slice merges | An `accepted` line | Yes, at every demo |
+| 9 | Accepted | The hand, as the actor. You, if `demos` is `person` | The hand's walk, when a capability's last slice merges and its gates pass | An `accepted` line | No, by default. See [step 9](#step-9-the-demo-and-acceptance) |
 
 On the standard profile, step 6 is skipped. The chart comes from the specification instead, and approving
 the storyboard starts step 7.
@@ -132,8 +132,11 @@ does not clear a park. Upgrade the project with `slipwai migrate`.
 
 ## Step 9: the demo and acceptance
 
-When the last slice of a capability merges and its gates pass, the capability is demoed to you as the
-actor. Accept it, or say no with notes. The notes go back into the slice. The release mode decides what a
+When the last slice of a capability merges and its gates pass, the hand has walked it as the actor. By
+default the hand's verdict is the acceptance: nothing waits for you, and the hand's film is on the board.
+Watch it when you have time and press **Say what it showed**. What you say is feedback, like anything else
+you say on the board. If you set `demos` to `person` in `.specify/cruise.json`, the capability waits for
+you instead. Accept it, or say no with notes. The notes go back into the slice. The release mode decides what a
 merge means before that demo: see [release modes](../reference/release-modes.md).
 
 ---
@@ -179,7 +182,8 @@ still passes. Setting the value writes the key into the file.
 
 These stops apply whatever `upstream` says:
 
-1. **The demo.** You accept each capability as the actor.
+1. **The demo, if `demos` is `person`.** You accept each capability as the actor. By default the hand's
+   verdict accepts it, and nothing stops.
 2. **A park.** A captain parks when it needs a person, and the fairway waits until you tell it something.
 3. **The decision ceiling.** When a fairway takes `decision_ceiling` decisions that nobody has read, it
    parks itself.

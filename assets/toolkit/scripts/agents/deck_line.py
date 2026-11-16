@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The two deck lines a slice's own session owes, written by a command rather than by hand.
+"""The deck lines a session owes for a slice and for a whole capability, written by a command and not by hand.
 
 A captain holds a slice to three lines: a `mark-set` for every mark the chart says it sets, a `demo` with
 its verdict, and — where it has a story — `seeded`. `seeded` always had a writer, `try_it.py seed --slice`.
@@ -16,7 +16,15 @@ the mark is one the chart says this slice sets, the verdict is one of the three 
     python3 scripts/agents/deck_line.py demo --slice TB1 --verdict accepted --by sail-demo-hand \\
         --log specs/<feature>/slices/TB1/demo-log.md
 
-Neither is a claim the captain takes on trust: a merge is still the harbourmaster's, after the full gate.
+A whole capability's two lines had no door either, and nothing wrote them: `accepted`, and `demo-due` where
+a person accepts demos. Who accepts is `.specify/cruise.json`'s `demos` — the hand, by default, whose
+verdict at the walk is the acceptance; or a person, whose demo is then due and whose word is the line:
+
+    python3 scripts/agents/deck_line.py accepted --capability place-an-order --by sail-demo-hand
+    python3 scripts/agents/deck_line.py demo-due --capability place-an-order
+    python3 scripts/agents/deck_line.py accepted --capability place-an-order --by person
+
+None is a claim the captain takes on trust: a merge is still the harbourmaster's, after the full gate.
 """
 from __future__ import annotations
 
@@ -83,6 +91,32 @@ def line(kind: str, slice_id: str, feature: str = "", mark: str = "", verdict: s
         raise Refused(str(fault)) from fault
 
 
+#: The lines about a whole capability rather than a slice, and who may be named as accepting one.
+CAPABILITY_KINDS = ("accepted", "demo-due")
+ACCEPTERS = ("sail-demo-hand", "person")
+
+
+def capability_line(kind: str, capability: str, feature: str = "", by: str = "") -> tuple[str, logs.Entry]:
+    """The feature and the entry for a capability's line, or a refusal naming what the chart says instead.
+    Its fairway is its slices': a capability is named on the chart against each slice it gathers."""
+    found, name = clearance.chart(feature)
+    if not name:
+        raise Refused("no feature under specs/ has a chart.yaml, so nothing says which capabilities there are")
+    members = [body for body in (found.get("slices") or {}).values()
+               if isinstance(body, dict) and str(body.get("capability", "")) == capability]
+    if not members:
+        raise Refused(f"no slice on specs/{name}/chart.yaml names the capability {capability!r}")
+    fairway = fairway_of(members[-1])
+    if not fairway:
+        raise Refused(f"nothing says which fairway {capability} is in — set SLIPWAI_FAIRWAY or give its slices "
+                      f"a `fairway` on specs/{name}/chart.yaml")
+    if kind == "demo-due":
+        return name, logs.entry("demo-due", fairway=fairway, capability=capability)
+    if by not in ACCEPTERS:
+        raise Refused(f"an `accepted` line names who accepted: {' or '.join(ACCEPTERS)}, not {by!r}")
+    return name, logs.entry("accepted", fairway=fairway, capability=capability, by=by)
+
+
 def write(entry: logs.Entry, feature: str) -> Path:
     path = logs.deck_path(ROOT, feature, str(entry.fields["fairway"]))
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,14 +127,29 @@ def write(entry: logs.Entry, feature: str) -> Path:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="deck_line", description=__doc__.splitlines()[0])
-    parser.add_argument("kind", choices=("mark-set", "demo"))
-    parser.add_argument("--slice", required=True, dest="slice_id", metavar="ID")
+    parser.add_argument("kind", choices=("mark-set", "demo", *CAPABILITY_KINDS))
+    parser.add_argument("--slice", default="", dest="slice_id", metavar="ID")
+    parser.add_argument("--capability", default="", help="for `accepted` and `demo-due`: as the chart names it")
     parser.add_argument("--mark", default="", help="for `mark-set`: the mark, as the chart names it")
     parser.add_argument("--verdict", default="", help=f"for `demo`: one of {', '.join(logs.VERDICTS)}")
-    parser.add_argument("--by", default="", help="for `demo`: who walked it, as `sail-demo-hand`")
+    parser.add_argument("--by", default="", help="for `demo`: who walked it, as `sail-demo-hand`; for "
+                                                 "`accepted`: `sail-demo-hand` or `person`")
     parser.add_argument("--log", default="", help="for `demo`: the demo log the verdict is recorded in")
     parser.add_argument("--feature", default="", help="the feature, where more than one has a chart")
     parsed = parser.parse_args(argv)
+    if parsed.kind in CAPABILITY_KINDS:
+        if not parsed.capability:
+            parser.error(f"{parsed.kind} needs --capability")
+        try:
+            feature, entry = capability_line(parsed.kind, parsed.capability, parsed.feature, parsed.by)
+            path = write(entry, feature)
+        except (Refused, logs.Unreadable) as refused:
+            print(f"deck_line: no `{parsed.kind}` line for {parsed.capability}: {refused}", file=sys.stderr)
+            return 1
+        print(f"{parsed.kind}: {parsed.capability}; the line is in {path.relative_to(ROOT).as_posix()}")
+        return 0
+    if not parsed.slice_id:
+        parser.error(f"{parsed.kind} needs --slice")
     if parsed.kind == "mark-set" and not parsed.mark:
         parser.error("mark-set needs --mark")
     if parsed.kind == "demo" and not parsed.verdict:

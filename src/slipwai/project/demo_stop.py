@@ -88,6 +88,17 @@ what makes this stop due. Findings above the bar are fixed in a follow-up slice 
 the capability; per capability each reading is one pass over the thing a person is about to accept, which
 is the only thing it is evidence about.
 
+**Who accepts it is `.specify/cruise.json`'s `demos`.** Under `hand`, the default, the hand's verdict at
+the walk is the acceptance: once the record says `Cleared:`, write `python3 scripts/agents/deck_line.py
+accepted --capability <capability> --by sail-demo-hand`, and the capability's slices are done. Nobody is
+asked to accept it and nothing waits for an answer: the stop below still shows the board and the thing and
+asks what using it revealed, and the hand's film is on the board for a person to watch and say what it
+showed when they have time — what they say is feedback, routed like any other. Under `person` a person
+accepts it: write `python3 scripts/agents/deck_line.py demo-due --capability <capability>`, and the board
+offers *Accept* and *Not yet*; their *Accept*, or their word here, is `deck_line.py accepted --capability
+<capability> --by person`, and *Not yet* is a `behaviour` verdict with their reason. Either way a verdict
+of `behaviour` or `implementation` re-enters the ladder as it always has.
+
 **Accepting it is not a release decision.** Acceptance says the capability is right. Hoisting a flag says
 the business wants it live, which may be another quarter or never, and stays a person's act on their own
 timing. A capability may sit accepted and dark for as long as the business wants, and nothing here asks

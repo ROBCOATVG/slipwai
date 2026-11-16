@@ -55,8 +55,10 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
         ("The demo stop",
          f"Delegate to `{HAND}` with exactly what the stop hands a person, plus the acceptance script; take its "
          "verdict as the actor's and re-enter the ladder where demo feedback re-enters. Acceptance says "
-         f"`accepted-by: {HAND}` on the register row or status flip",
-         f"`{DEMO_LOG}`, `benchmark.json` `outcome=`, the register"),
+         f"`accepted-by: {HAND}` on the register row or status flip. For a whole capability, under `demos: "
+         "hand` (the default) its `accepted` is the capability's acceptance and nobody is asked; under "
+         "`person` a person is, from the board, and nothing else waits on them",
+         f"`{DEMO_LOG}`, `benchmark.json` `outcome=`, the register, an `accepted` or `demo-due` line"),
         ("The ready set is empty",
          "Not a stop: the completion audit below. Only an audit with nothing left is `done`",
          f"`{REPORT}`, decision entries"),

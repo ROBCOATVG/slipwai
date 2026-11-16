@@ -344,18 +344,23 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
 
     demos = fleet.get("demo_due") or []
     accepted = fleet.get("accepted") or []
+    person = fleet.get("demos") == "person"
     # Not demoed is said as not demoed: the summary read `every capability demoed` — the stage's goal — over a
     # voyage with no `accepted` line at all, which is a build that looks finished and has never been shown.
     found.append(Stage("accepted", "Accepted", "working" if demos else "done" if all_done and accepted else "todo",
                        "accepted lines",
                        "/sail takes each whole capability through its gates to its demo" if all_done and not accepted
-                       else "the demo, as the actor; /cruise-tell records the verdict",
+                       else "the demo, as the actor; /cruise-tell records the verdict" if person
+                       else "the hand's walk, whose verdict is the acceptance",
                        f"{len(accepted)} capability(ies) accepted" if accepted else
                        f"{', '.join(demos)} ready to demo" if demos else
                        "every slice merged; no capability has been through its gates or demoed yet" if all_done
                        else "every capability demoed",
                        expect="Each capability demoed to you as the actor. It stops for you at every demo, "
-                              "and the verdict is typed under *Waiting on you*."))
+                              "and the verdict is typed under *Waiting on you*." if person else
+                              "Each capability walked by the hand, whose verdict accepts it. Nothing stops "
+                              "for you: each film is there to watch, and to say what it showed, when you "
+                              "have time."))
     return found
 
 

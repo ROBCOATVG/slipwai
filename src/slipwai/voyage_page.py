@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 
 from .bridge_page import SCRIPT as BOARD_SCRIPT
-from .bridge_page import fitting_card, live_cards, live_sub
+from .bridge_page import fitting_card
 from .console_page import console_card
 from .decision_log import SCRIPT as DECISIONS_SCRIPT
 from .decision_log import STYLE as DECISIONS_STYLE
@@ -21,16 +21,17 @@ from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
 from .film import SCRIPT as FILM_SCRIPT
 from .film import STYLE as FILM_STYLE
-from .live_page import STRIP_SCRIPT
+from .fleet_page import STYLE as FLEET_STYLE
+from .fleet_tab import STYLE as MACHINERY_STYLE
+from .fleet_tab import fleet_sub
 from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
 from .passage import Stage, current, surface_pages
-from .settings_card import project_tabs
-from .slice_card import SCRIPT as WORK_SCRIPT
 from .slice_card import STYLE as SLICE_STYLE
 from .slice_card import (  # noqa: F401 — the card's names, kept importable here
     answer_html,
     chip_of,
+    compact_html,
     facts_html,
     slice_html,
 )
@@ -38,8 +39,8 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
 
-# budget: 810 — the bands of one window, and who decided each state the storyboard's note counts: where the
-# project stands, what to expect of the stage it is on,
+# budget: 830 — the one poll that keeps every band current, and the bands of one window, and who decided
+# each state the storyboard's note counts: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
 # are: it repaints the strip, and reloads the window when the signature says the page is built out of
@@ -192,6 +193,8 @@ SCRIPT = BOARD_SCRIPT + """
     const tab = event.target.closest('.tabs [data-tab]');
     if (tab) { show(tab.dataset.tab, true); return; }
     const link = event.target.closest('a[href^="#"]');
+    const named = link && (link.getAttribute('href').match(/^#tab-([a-z]+)$/) || [])[1];
+    if (named && tabs.some(one => one.dataset.tab === named)) { show(named, true); event.preventDefault(); return; }
     if (link && into(link.getAttribute('href').slice(1))) event.preventDefault();
     // A Feedback button on a slice's card opens the box, which lives on the feedback tab.
     const opener = event.target.closest('[data-feedback]');
@@ -200,57 +203,89 @@ SCRIPT = BOARD_SCRIPT + """
     if (opener && home && !home.contains(opener)) show(home.dataset.tab, true);
   }, true);
 })();
-// The strip, kept current while the board's child or the fleet is moving: the stages are re-read on the
-// server and only their state and words change here, so the page never flickers.
-(function(){
+// The strip's stages, painted from the poll below: only their state and words change, so it never flickers.
+function paintPassage(found){
   const strip = document.querySelector('.passage');
   if (!strip) return;
-  const paint = (found) => {
-    for (const stage of found.stages) {
-      const node = strip.querySelector('[data-stage="' + stage.key + '"]');
-      if (!node) continue;
-      node.className = 'stage ' + stage.state;
-      node.querySelector('.dot').textContent = stage.dot;
-      node.querySelector('small').textContent = stage.detail;
-    }
-    const now = document.getElementById('now');
-    if (now && found.now) now.textContent = found.now;
-    const launch = document.getElementById('launch');
-    if (launch) launch.hidden = !found.launchable;
-    const cast = document.getElementById('cast-off');
-    if (cast) cast.hidden = !found.castable;
-    const stop = document.getElementById('stop');
-    if (stop) { stop.hidden = !found.stoppable; stop.disabled = false; }
-    const draw = document.getElementById('draw');
-    if (draw) { draw.hidden = !found.drawable; draw.disabled = false; }
-    const draft = document.getElementById('draft');
-    if (draft) { draft.hidden = !found.draftable; draft.disabled = false; }
-    const model = document.getElementById('model');
-    if (model) { model.hidden = !found.modelable; model.disabled = false; }
-    if (window.waiting) waiting.set(found.waiting);
+  for (const stage of found.stages) {
+    const node = strip.querySelector('[data-stage="' + stage.key + '"]');
+    if (!node) continue;
+    node.className = 'stage ' + stage.state;
+    node.querySelector('.dot').textContent = stage.dot;
+    node.querySelector('small').textContent = stage.detail;
+  }
+  const now = document.getElementById('now');
+  if (now && found.now) now.textContent = found.now;
+  for (const [id, flag] of [['launch', 'launchable'], ['cast-off', 'castable'], ['stop', 'stoppable'],
+                            ['draw', 'drawable'], ['draft', 'draftable'], ['model', 'modelable']]) {
+    const button = document.getElementById(id);
+    if (button) { button.hidden = !found[flag]; if (id !== 'launch' && id !== 'cast-off') button.disabled = false; }
+  }
+}
+// One poll keeps the whole page current: /live.json every few seconds, one read on the server shared by
+// every window, carrying each band's signature and drawing. A band is swapped only when its signature moved,
+// and never while somebody is typing in it or has changed a control in it; the cards and drawers a person
+// had open are opened again, and the view they chose for the work stays theirs.
+(function(){
+  const strip = document.querySelector('.passage');
+  // What the page is *made of*: the storyboard, the model, the screens are drawn once, out of files that may
+  // not exist yet, so a difference here is a reload — rare, since it is which cards exist that changed.
+  let shape = strip ? strip.closest('.card').dataset.shape : null;
+  const changed = box => box.matches('select') ? [...box.options].some(one => one.selected !== one.defaultSelected)
+    : /^(checkbox|radio)$/.test(box.type) ? box.checked !== box.defaultChecked : box.value !== box.defaultValue;
+  const busy = band => [...band.querySelectorAll('input, textarea, select')]
+    .some(box => box === document.activeElement || changed(box));
+  const keyOf = one => one.dataset.card || one.id || ((one.querySelector('summary') || one).textContent || '').trim();
+  const swap = (band, html) => {
+    const open = new Set([...band.querySelectorAll('details[open]')].map(keyOf));
+    band.innerHTML = html;
+    band.querySelectorAll('details').forEach(one => { if (open.has(keyOf(one))) one.open = true; });
+    band.querySelectorAll('[data-tail]').forEach(one => { one.scrollTop = one.scrollHeight; });
   };
-  // Two things change on this page and only one of them is the strip. The cards — the storyboard, the
-  // model, the work, the button that opens the specification — are rendered once, out of files that may
-  // not exist yet, and a window opened during the draft watched the specification land and showed nothing
-  // of it. So the poll carries a signature of what the page was built from, and a difference is a reload:
-  // what changes there is which cards exist, which is rare, and a repaint of it would be the server
-  // rendering the page twice.
-  let shape = strip.closest('.card').dataset.shape;
+  const count = (selector, n, word) => document.querySelectorAll(selector).forEach(one => {
+    one.textContent = n ? n + ' ' + word : ''; one.hidden = !n;
+  });
   const poll = async () => {
     let found;
-    // Slower when nothing is moving, and never stopped: the stages that move this project on are run in
-    // the agent, by a person, and the board is not told. A poll that gave up the moment nothing of its
-    // own was running is what made this page stale in the first place.
-    try { found = await (await fetch('/voyage.json')).json(); }
+    try { found = await (await fetch('/live.json')).json(); }
     catch (fault) { setTimeout(poll, 8000); return; }
     // Not while somebody is typing an answer into a card: the reload would throw the words away.
     const typing = [...document.querySelectorAll('details.slice textarea, #feedback-box textarea')]
       .some(box => box.value.trim());
-    if (found.shape !== shape && !typing) { location.reload(); return; }
-    paint(found);
-    setTimeout(poll, found.moving ? 2500 : 8000);
+    if (shape !== null && found.passage.shape !== shape && !typing) { location.reload(); return; }
+    paintPassage(found.passage);
+    if (window.waiting) waiting.set(found.waiting);
+    count('[data-waiting-count]', found.waiting.count, 'waiting');
+    count('[data-decisions-unread]', found.decisions, 'unread');
+    for (const [name, band] of Object.entries(found.bands)) {
+      const node = document.querySelector('[data-band="' + name + '"]');
+      if (!node || node.dataset.said === band.said || busy(node)) continue;
+      swap(node, band.html);
+      node.dataset.said = band.said;
+    }
+    // Never stopped, and slower only where nobody is looking: the stages that move a project on are run in
+    // the agent, by a person, and the board is not told.
+    setTimeout(poll, document.hidden ? 8000 : 2500);
   };
   setTimeout(poll, 2500);
+  // Cards or Compact, remembered in this browser; a line in Compact opens its card in Cards.
+  const view = name => {
+    document.querySelectorAll('[data-band="work"]').forEach(one => { one.dataset.view = name; });
+    try { localStorage.setItem('voyage-work-view', name); } catch (fault) {}
+  };
+  try { const kept = localStorage.getItem('voyage-work-view'); if (kept) view(kept); } catch (fault) {}
+  document.addEventListener('click', event => {
+    const pick = event.target.closest('[data-view-pick]');
+    if (pick) view(pick.dataset.viewPick);
+    const link = event.target.closest('a[href^="#card-"]');
+    const card = link && document.getElementById(link.getAttribute('href').slice(1));
+    if (card) { view('cards'); card.open = true; setTimeout(() => card.scrollIntoView({block: 'start'}), 0); }
+    if (event.target.closest('[data-fleet-stop]')) { event.target.disabled = true; send('/stop', {}); }
+  }, true);
+})();
+// The controls on the strip and the cards: each is a POST, and the page reloads on its answer.
+(function(){
+  if (!document.querySelector('.passage')) return;
   document.addEventListener('click', event => {
     if (event.target.id === 'cast-off') { event.target.disabled = true; send('/cast-off', {}); }
     const url = event.target.id === 'remote-add' && document.getElementById('remote-url').value.trim();
@@ -383,7 +418,7 @@ def stage_html(stage: Stage, index: int) -> str:
     dot = DOTS.get(stage.state, "") or str(index + 1)
     title = esc(stage.title)
     if stage.state in ("waiting", "attention"):
-        where = ("#waiting" if stage.key in ("slices", "accepted")
+        where = ("#col-waiting" if stage.key == "slices" else "#feedback" if stage.key == "accepted"
                  else "#mockups" if stage.key == "storyboard" else "#fitting")
         title = f'<a href="{where}">{title}</a>'
     shown = "" if stage.state == "skipped" else stage.evidence
@@ -655,27 +690,45 @@ def feedback_points_card(points: list[dict]) -> str:
             f'proposes its order from the same ranking.</p><ul class="new">{"".join(items)}</ul></div>')
 
 
-def work_card(rows: list[dict[str, str]], fault: str) -> str:
+#: The switch over the work: the columns, or a line a slice.
+VIEWS = ('<div class="views" role="group" aria-label="How the work is shown"><button type="button" '
+         'data-view-pick="cards">Cards</button><button type="button" data-view-pick="compact">Compact</button></div>')
+
+
+def column_of(row: dict[str, str], waiting: set[str] | None) -> str:
+    """Which column a slice stands in. *Waiting on you* is exactly the slices the one list names
+    (`on_you.waiting`), so the column and the strip above it cannot disagree about who is held."""
+    if waiting is None:
+        return row["state"]
+    if row["slice"] in waiting:
+        return "waiting"
+    return "queued" if row["state"] == "waiting" else row["state"]
+
+
+def work_card(rows: list[dict[str, str]], fault: str, waiting: set[str] | None = None) -> str:
     if fault:
-        return f'<div class="card"><h2>The work</h2><p class="empty">{esc(fault)}</p></div>'
+        return f'<div class="card" id="work"><h2>The work</h2><p class="empty">{esc(fault)}</p></div>'
     if not rows:
-        return ('<div class="card"><h2>The work</h2><p class="empty">No slices yet: the chart and the split are '
-                "where they come from.</p></div>")
+        return ('<div class="card" id="work"><h2>The work</h2><p class="empty">No slices yet: the chart and the '
+                "split are where they come from.</p></div>")
     columns = ""
     for state in COLUMNS:
-        held = [row for row in rows if row["state"] == state]
+        held = [row for row in rows if column_of(row, waiting) == state]
         cards = "".join(slice_html(row) for row in held) or '<p class="empty">none</p>'
-        columns += f'<div class="col {esc(state)}"><h3>{esc(TITLES[state])} · {len(held)}</h3>{cards}</div>'
-    # Its words are its signature: the poll swaps the band when a card says something it did not.
-    said = hashlib.sha1(columns.encode("utf-8")).hexdigest()[:16]
-    return f'<div class="card" id="work" data-said="{said}"><h2>The work</h2><div class="columns">{columns}</div></div>'
+        columns += (f'<div class="col {esc(state)}" id="col-{esc(state)}"><h3>{esc(TITLES[state])} · {len(held)}'
+                    f"</h3>{cards}</div>")
+    return (f'<div class="card" id="work"><div class="work-head"><h2>The work</h2>{VIEWS}</div>'
+            f'<div class="columns">{columns}</div>{compact_html(rows)}</div>')
 
 
-def work_payload(rows: list[dict[str, str]], fault: str) -> str:
-    """The columns for the poll that keeps them current: the band, and the signature it is compared by."""
-    drawn = work_card(rows, fault)
-    said = drawn.split('data-said="', 1)[1].split('"', 1)[0] if 'data-said="' in drawn else ""
-    return json.dumps({"said": said, "html": drawn if said else ""})
+def signature(drawn: str) -> str:
+    """What a band is compared by: its words. The poll swaps a band when it says something it did not."""
+    return hashlib.sha1(drawn.encode("utf-8")).hexdigest()[:16]
+
+
+def band(name: str, drawn: str, more: str = "") -> str:
+    """A band of the page the poll keeps current: a holder that stays, and the drawing inside it that goes."""
+    return f'<div data-band="{esc(name)}" data-said="{signature(drawn)}"{more}>{drawn}</div>'
 
 
 def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str, xml: str, note: str,
@@ -685,40 +738,45 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          ideas: list | None = None, shots: list[dict[str, str]] | None = None, app: str = "",
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
-         dates: str = "", draftable: bool = False) -> str:
+         dates: str = "", draftable: bool = False, machinery: str = "", streams: str = "",
+         waiting: dict | None = None) -> str:
+    """The window. `strip` is Needs a look, `machinery` the Fleet tab and `streams` what the streams asked,
+    each a band the poll keeps current; `waiting` is the one list, whose slices the column draws."""
     now = current(found)
     # An adopted repository walks its own steps until its first specification, and the strip a generated
     # project has would name a stage it is not on: the adoption's card stands where the strip does.
     sub = ("adopting" if adopting else f"now: {now.title.lower()}" if now else "complete") \
-        + (f" · {live_sub(fleet)}" if fleet else "")
+        + (f" · {fleet_sub(fleet)}" if fleet else "")
     model_next = any(one.key == "model" and one.state == "todo" for one in found)
     landed = fitting_card(made, "Adopted" if adopting else "Made") if made else ""
-    # The live cards, with their controls, under the model: how the work is going belongs on the page that
-    # says what the work is.
-    live = live_cards(fleet, config or {}, True, project_tabs(root, True)) if fleet else ""
     # Past it, the strategy's checkpoint stands above the strip, never in its place.
     where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
                                      feature, drawable, shape, modelable, draftable)
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
-    # The count on the tab is what waits on a person: a park that lifts by itself is paused, not waiting.
-    waiting = len([row for row in (fleet or {}).get("inbox") or [] if row.get("paused") != "yes"])
-    tabs = [("work", "Work", f"{strip}{feedback_points_card(points or [])}{work_card(rows, fault)}"),
+    # The count on the tab is the one list's: the strip's, and the column's slices among it.
+    listed = waiting or {}
+    held = set(listed.get("slices") or []) if waiting is not None else None
+    count = int(listed.get("count") or 0)
+    work = (band("look", strip) + band("points", feedback_points_card(points or []))
+            + band("work", work_card(rows, fault, held), ' data-view="cards"') + band("streams", streams))
+    tabs = [("work", f'Work<span class="count" data-waiting-count{"" if count else " hidden"}>'
+                     f'{f"{count} waiting" if count else ""}</span>', work),
             ("try", "Try it & feedback" if trying else "Feedback", f"{trying}{feedback}"),
             ("screens", "Screens", screens_card(shots or [], mocks or [], "" if trying else app)
              + mockups_card(left, root)),
             ("model", "Model", model_card(xml, note, viewer_fault) if xml or note or viewer_fault else ""),
-            ("fleet", "Fleet" + (f'<span class="count">{waiting} waiting</span>' if waiting else ""), live),
+            ("fleet", "Fleet", machinery),
             ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
                           f"{decisions[1]} unread</span>", decisions[0]),
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
-            f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}</style>"
-            f"{where}{landed}{'' if adopting else expect_card(found)}{tabs_html(tabs)}{console_card()}")
-    script = SCRIPT + WORK_SCRIPT + FILM_SCRIPT + (TRY_SCRIPT if trying else "") \
-        + (FEEDBACK_SCRIPT if feedback else "") \
-        + (STRIP_SCRIPT if strip else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
+            f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
+            f"{MACHINERY_STYLE}</style>"
+            f"{where}{landed}{'' if adopting else band('expect', expect_card(found))}{tabs_html(tabs)}{console_card()}")
+    script = SCRIPT + FILM_SCRIPT + (TRY_SCRIPT if trying else "") \
+        + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
         + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
     # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.

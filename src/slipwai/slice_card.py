@@ -8,8 +8,11 @@ the task in hand; opened, each step with when it began and how long it took, the
 says under the step it is on, and the door to its live window. What a person is asked, and the box that
 answers it, are unchanged.
 
-**Drawn whole and swapped whole.** The columns are repainted from `/work.json` every few seconds, so
+**Drawn whole and swapped whole.** The columns are a band of `/live.json`, repainted every few seconds, so
 nothing here is kept in the page: a card is what its row says now. The poll puts back which cards were open.
+
+**Compact** is the same slices a line each — the ones in flight, waiting first — for a person who wants the
+whole fleet on one screen. A line opens its card, so the card stays the one place a slice is read at length.
 """
 from __future__ import annotations
 
@@ -55,34 +58,29 @@ STYLE = """
 .slice .film-ref{display:grid;gap:2px;font-size:.8rem;margin:8px 0 0;padding:8px;border:1px solid var(--rule);
   border-radius:6px}
 .slice .film-ref .sub{color:var(--ink-3);font-size:.76rem}
+#work .work-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 12px}
+#work .work-head h2{margin:0}
+.views{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.views button{font:inherit;font-size:.82rem;min-height:34px;padding:0 14px;border:0;background:transparent;
+  color:var(--ink-2);cursor:pointer}
+[data-view="cards"] .views [data-view-pick="cards"],[data-view="compact"] .views [data-view-pick="compact"]{
+  background:var(--teal-soft);color:var(--ink);font-weight:500}
+#work .compact{display:none;margin-top:10px;overflow-x:auto}
+[data-view="compact"] #work .compact{display:block}[data-view="compact"] #work .columns{display:none}
+#work .compact a{display:grid;grid-template-columns:minmax(150px,1.4fr) 132px minmax(0,2fr) minmax(90px,auto);
+  gap:12px;align-items:center;min-height:44px;padding:0 4px;border-top:1px solid var(--rule-2);color:inherit;
+  text-decoration:none;font-size:.86rem;min-width:620px}
+#work .compact a:hover{background:var(--ground)}
+#work .compact a b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#work .compact .rungs{display:flex;gap:3px}#work .compact .rung{flex:1;height:6px;border-radius:3px;
+  background:var(--rule);overflow:hidden}
+#work .compact .rung.done{background:var(--teal)}#work .compact .rung.now{background:var(--brass)}
+#work .compact .rung.now.part{background:var(--brass-soft);box-shadow:inset 0 0 0 1px var(--brass)}
+#work .compact .rung i{display:block;height:100%;background:var(--brass)}
+#work .compact .doing{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#work .compact .state{font-size:.78rem;color:var(--ink-3);text-align:right;white-space:nowrap}
+#work .compact a.waiting .state{color:var(--critical)}
 """
-
-SCRIPT = """
-// The columns, kept current: every card is drawn again by the server and the band swapped whole when what
-// it says has changed. Not while somebody is typing an answer into a card, and the cards a person had open
-// are opened again, so a poll never closes what they are reading.
-(function(){
-  if (!document.getElementById('work')) return;
-  const poll = async () => {
-    let found;
-    try { found = await (await fetch('/work.json')).json(); } catch (fault) { setTimeout(poll, 8000); return; }
-    const card = document.getElementById('work');
-    const typing = card && [...card.querySelectorAll('textarea')]
-      .some(box => box.value.trim() || box === document.activeElement);
-    if (card && found.html && !typing && card.dataset.said !== found.said) {
-      const open = [...card.querySelectorAll('details.slice[open]')].map(one => one.dataset.card);
-      const held = document.createElement('div');
-      held.innerHTML = found.html;
-      const fresh = held.firstElementChild;
-      fresh.querySelectorAll('details.slice').forEach(one => { if (open.includes(one.dataset.card)) one.open = true; });
-      card.replaceWith(fresh);
-    }
-    setTimeout(poll, 4000);
-  };
-  setTimeout(poll, 4000);
-})();
-"""
-
 
 def lit(rows: list[dict[str, str]], folds: dict[str, dict], root: Path | None = None,
         films: list[dict] | None = None) -> list[dict[str, str]]:
@@ -130,8 +128,8 @@ def standing(row: dict[str, str], step: str) -> str:
     return step if stage in PLAIN or not stage or stage == step else f"{step} · {stage[:1].lower()}{stage[1:]}"
 
 
-def rungs_html(row: dict[str, str]) -> str:
-    """The strip on a closed card: six segments, the one the slice is on, and what is still to come."""
+def cells_html(row: dict[str, str]) -> str:
+    """The six segments alone: each step's state, and Build filled as far as its tasks are ticked."""
     steps = ladder_of(row)
     if not steps or row["state"] not in IN_FLIGHT:
         return ""
@@ -143,11 +141,41 @@ def rungs_html(row: dict[str, str]) -> str:
             fill = f'<i style="width:{min(100, round(100 * int(done) / int(of)))}%"></i>'
         cells += f'<span class="rung {esc(one["state"])}{" part" if fill else ""}">{fill}</span>'
         said.append(f'{one["name"]} {SAID.get(one["state"], "to come")}')
-    now = next((one["name"] for one in steps if one["state"] == "now"), "")
-    ahead = ", ".join(one["name"] for one in steps if one["state"] == "todo")
+    return f'<span class="rungs" role="img" aria-label="{esc(", ".join(said))}">{cells}</span>'
+
+
+def step_now(row: dict[str, str]) -> str:
+    """The step the slice is on, with what counts it: `Build · 11 of 15 tasks`."""
+    return standing(row, next((one["name"] for one in ladder_of(row) if one["state"] == "now"), ""))
+
+
+def rungs_html(row: dict[str, str]) -> str:
+    """The strip on a closed card: six segments, the one the slice is on, and what is still to come."""
+    cells = cells_html(row)
+    if not cells:
+        return ""
+    ahead = ", ".join(one["name"] for one in ladder_of(row) if one["state"] == "todo")
     then = f"<span>then {esc(ahead)}</span>" if ahead else ""
-    return (f'<span class="rungs" role="img" aria-label="{esc(", ".join(said))}">{cells}</span>'
-            f'<span class="where"><b>{esc(standing(row, now))}</b>{then}</span>')
+    return f'{cells}<span class="where"><b>{esc(step_now(row))}</b>{then}</span>'
+
+
+#: The order Compact lists slices in: the ones a person holds up first.
+FIRST = {"waiting": 0, "working": 1, "queued": 2}
+
+
+def compact_html(rows: list[dict[str, str]]) -> str:
+    """Every slice in flight in a line: its name, its six segments, what it is doing, and its time in the
+    stage or its chip. Waiting first. A line is a link to the slice's card, which the page opens."""
+    lines = ""
+    for row in sorted((one for one in rows if one["state"] in IN_FLIGHT), key=lambda one: FIRST[one["state"]]):
+        name = f'{row["slice"]} · {row["title"]}' if row.get("title") else row["slice"]
+        doing = (str(row.get("park") or row.get("why") or "") if row["state"] == "waiting"
+                 else " · ".join(part for part in (step_now(row), row.get("live", "")) if part))
+        when = (in_stage(row) if row["state"] == "working" else "") or chip_of(row)
+        lines += (f'<a class="{esc(row["state"])}" href="#card-{esc(row["slice"])}" data-open-card="'
+                  f'{esc(row["slice"])}"><b>{esc(name)}</b>{cells_html(row) or "<span></span>"}'
+                  f'<span class="doing">{esc(doing)}</span><span class="state">{esc(when)}</span></a>')
+    return '<div class="compact">' + (lines or '<p class="empty">Nothing in flight.</p>') + "</div>"
 
 
 def chip_of(row: dict[str, str]) -> str:
@@ -279,6 +307,7 @@ def slice_html(row: dict[str, str]) -> str:
     answer = answer_html(row) if row["state"] == "waiting" and row.get("fairway") else ""
     said = opener("Feedback", {"from": "slice", "feature": row.get("feature", ""), "fairway": row.get("fairway", ""),
                                "slice": row["slice"]}, ask=f"What did {row['slice']} show you?")
-    return (f'<details class="slice {esc(row["state"])}" data-card="{esc(row["slice"])}">{summary_html(row)}'
+    return (f'<details class="slice {esc(row["state"])}" id="card-{esc(row["slice"])}" '
+            f'data-card="{esc(row["slice"])}">{summary_html(row)}'
             f"{answer}{steps_html(row)}{facts_html(row)}{film_html(row)}{span_html(row)}"
             f'<div class="ask">{said}</div></details>')

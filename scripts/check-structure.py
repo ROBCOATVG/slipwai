@@ -177,6 +177,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "film", "slice_card",
               # And the stop above the chart answered without a person, where the project says so.
               "upstream",
+              # And the board kept current: one read of a project shared by every poll, the one poll that
+              # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
+              "board_read", "voyage_live", "on_you", "fleet_tab",
               # What a handed-over document stands on, carried in with it.
               "design_docs",
               # The same folder read before it is handed over, and the verb that prints the reading.

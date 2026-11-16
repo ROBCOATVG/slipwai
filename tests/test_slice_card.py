@@ -10,7 +10,7 @@ import unittest
 from slipwai.activity import caption
 from slipwai.slice_card import lit, slice_html
 from slipwai.slice_rungs import LADDER, ladder
-from slipwai.voyage_page import work_card, work_payload
+from slipwai.voyage_page import signature, work_card
 
 
 def steps(at: int, began: float = 0.0, took: float = 0.0) -> str:
@@ -86,10 +86,10 @@ class CaptionTest(unittest.TestCase):
 
 class WorkPollTest(unittest.TestCase):
     def test_the_band_carries_a_signature_that_moves_when_a_card_does(self) -> None:
-        first, second = work_payload([row()], ""), work_payload([row(tasks="12/15")], "")
-        self.assertIn('id="work"', json.loads(first)["html"])
-        self.assertNotEqual(json.loads(first)["said"], json.loads(second)["said"])
-        self.assertEqual(json.loads(first)["said"], json.loads(work_payload([row()], ""))["said"])
+        first, second = work_card([row()], ""), work_card([row(tasks="12/15")], "")
+        self.assertIn('id="work"', first)
+        self.assertNotEqual(signature(first), signature(second))
+        self.assertEqual(signature(first), signature(work_card([row()], "")))
         self.assertIn('data-card="GN3"', work_card([row()], ""), "the poll opens again what a person had open")
 
 

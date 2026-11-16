@@ -242,15 +242,21 @@ a product question waiting on you with a box to answer it, and **Open its window
 Under the work: what each stream has asked of you or left for you. Each park is grouped by what it waits on,
 with its needs as a checklist and the button that answers it; then questions no park holds, hand-backs, notes
 and decisions nobody has read. Click a row to open it, with that fairway's last lines and an answer box. Type an
-answer and press **Send**: the board places it as a message in the inbox of the slice it is for, or of the
-stream's captain where it names no slice. Nothing is written to the deck log. A person's message to a parked
-slice is the answer to its park: the captain writes the `told` that the harbourmaster clears the park on, and
-the captain records the answer as the decision when it carries the slice on.
+answer and press **Send**: the board places it as a message in the inbox of the slice the row is about — the
+slice a park's reason names, even where the park's own record names none — or of the stream's captain where it
+is about the whole stream. Nothing is written to the deck log. A person's message to a parked slice is the
+answer to its park: when the stream's captain next runs, it writes the `told` that the harbourmaster clears the
+park on, and it records the answer as the decision when it carries the slice on.
 [The workflow](the-workflow.md#how-to-clear-a-park) says more. A note also has **Done**, which writes a `read`
 line so it leaves the list.
 
+Once you have answered, the row shows your answer in place of the box, when you sent it and where it stands:
+*sent · the captain reads it at its next turn*, *sent · the fleet is not running: read when it is cast off*,
+*read by the captain*, *delivered*. While nothing has read it, **Change my answer** takes it back and sends
+the new one instead. A message for a whole stream is read by its captain only where the project's `scripts/agents/` has a captain that reads its own inbox; until `slipwai migrate` brings that, it stays *sent* and nothing reads it, so answer a park from its slice's card.
+
 Where a session limit has paused slices, **Try the N paused slices now anyway** asks each of them to resume.
-**Say something to a stream** links to each stream's captain window.
+**Talk to a stream's captain** links to each stream's captain window.
 
 ### A slice's window
 
@@ -303,8 +309,8 @@ the files again every 2.5 seconds; **Following** pauses and resumes that.
 - **Captain output** shows what the captain process printed, from `.slipwai/run/running/captain-<fairway>.out`:
   its own lines and each turn's closing message. It opens on the last 64 KB.
 - **Needs you** lists this fairway's open parks, unread messages and open questions, and **Tell this
-  captain** places a message in its captain's inbox, as the answer box does; its receipts are in the captain's
-  own window.
+  captain** places a message in its captain's inbox; where it stands is in the captain's own window. The
+  caveat under *From the streams* holds for it too.
 
 The published copy has no captain window, because it has no server to read from.
 

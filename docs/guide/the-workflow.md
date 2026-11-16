@@ -124,7 +124,8 @@ Tell the fairway something. Use one of these:
 - `/cruise-tell <fairway> <the answer>` in the agent.
 
 The board places your answer in the parked slice's inbox, and its captain writes it as a `told` line in the
-fairway's deck log; `/cruise-tell` writes the `told` line itself. On its next pass, the harbourmaster writes a
+fairway's deck log when it next runs; the row on the board says whether that has happened yet, and whether the
+fleet is running at all. `/cruise-tell` writes the `told` line itself. On its next pass, the harbourmaster writes a
 `cleared` receipt in the harbour log for every open park that the message came after. The receipt keeps
 your message as the answer. On the pass after that, the harbourmaster lights the captain again.
 

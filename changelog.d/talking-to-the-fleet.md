@@ -13,5 +13,12 @@ feedback and an answer to a question place a signed message in the slice's or th
 with its id; the board writes no deck line for anything said. A product question waits on a person only where
 the project says a person answers them, and a slice a person paused is listed under *When you have time*.
 
-**Catch-up:** nothing to do. `slipwai migrate` already carries the conversation files into the project, and
-the board reads and writes them under the run folder.
+A message is aimed at the slice a park or question is about, and the row it was sent from shows the answer,
+where it stands and **Change my answer** instead of a second box. The board's POST routes refuse a request from
+another site.
+
+**Catch-up:** run `slipwai migrate`. On a project with no captain agent, what you say to a slice — an answer on
+a parked slice's card, a park's row or its group's button — reaches it as before, now through the slice's
+inbox, and is shown as sent until the captain reads it. What you say to a whole stream (Tell every captain,
+Tell this captain, the MCP `tell` without a slice, a question no slice asked) is read only once the project's
+captain reads its own inbox, which `migrate` brings; until then the row says it is sent and nothing has read it.

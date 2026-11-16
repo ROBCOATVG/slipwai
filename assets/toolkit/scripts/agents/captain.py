@@ -70,6 +70,7 @@ Standalone and dependency-free: this runs inside a generated project, which has 
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import queue
@@ -516,10 +517,47 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
                    f"`.slipwai/run/logs` is the project's own.")
     if (decide := cruising()):
         prompt += cruise_note(decide)
+    for asked in owed_in_this_fairway(fairway):
+        prompt += (f"\n\nAnother slice is waiting on this fairway's own code, which no other fairway and no "
+                   f"mender may change: {asked}. Where it fits beside this slice's work, land it on this "
+                   f"branch as a commit of its own; where it does not, leave it and say so in a `told`.")
     if retry:
         prompt += (f"\n\nThe last run of this slice did not close its gate: {retry}. Re-enter at the first "
                    f"incomplete stage and close what it left.")
     return prompt
+
+
+def owed_in_this_fairway(fairway: str) -> list[str]:
+    """The needs other slices handed to this fairway that only it can land: unmet, the fleet's to tick, and
+    checked against a path this fairway owns on the chart.
+
+    A hand-back naming a shared surface is the mender's. One naming a fairway's own code was nobody's:
+    game-club-manager's TB1 needed the clubs install configuration to accept a `week`, wrote the need into
+    the clubs log `by: fleet`, and it stood for a day — the mender may not touch application code, and no
+    clubs session was ever told. The fairway that owns the path is the one that can, so its next session
+    is.
+    """
+    try:
+        charted, feature = clearance.chart()
+        owns = [str(one) for one in (((charted.get("fairways") or {}).get(fairway) or {}).get("owns") or [])]
+        found = entries(feature, fairway) if owns and feature else []
+    except (SystemExit, OSError, AttributeError):
+        return []
+    met = {(str(e.fields.get("parked", "")), int(e.fields.get("need", -1))) for e in harbour_entries()
+           if e.kind == "need-met" and str(e.fields.get("fairway", "")) == fairway}
+    asked: list[str] = []
+    for told in found:
+        needs = told.fields.get("needs") if told.kind == "told" else None
+        for index, need in enumerate(needs if isinstance(needs, list) else []):
+            check = need.get("check") if isinstance(need, dict) else None
+            if not isinstance(check, dict) or need.get("by") != "fleet" or check.get("kind") != "text":
+                continue
+            path = str(check.get("path", ""))
+            if (told.t, index) in met or not any(fnmatch.fnmatch(path, glob) for glob in owns):
+                continue
+            asked.append(f"{need.get('what')} (asked by {told.fields.get('slice') or 'a slice'}; met once "
+                         f"`{path}` holds `{check.get('has')}` on trunk)")
+    return asked
 
 
 def starter(slice_id: str, fairway: str, retry: str = "",
@@ -934,9 +972,11 @@ def refurnish(slice_id: str, berth: Path | None) -> None:
     """
     if berth is None:
         return
-    said = moorings.furnished(ROOT, berth)
-    if said:
-        print(f"captain: {slice_id}: {said}", flush=True)
+    # And its deck logs, for the same reason: a migration moves the project's, and a link made before it
+    # reaches a folder that is gone. A session may not mend that either.
+    for said in (moorings.linked(ROOT, berth), moorings.furnished(ROOT, berth)):
+        if said:
+            print(f"captain: {slice_id}: {said}", flush=True)
 
 
 def own_parks(fresh: list[logs.Entry], fairway: str, slice_id: str) -> list[logs.Entry]:

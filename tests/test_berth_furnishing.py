@@ -107,6 +107,26 @@ class BerthTest(unittest.TestCase):
         self.assertEqual((aside[0] / "feature/fairway.jsonl").read_text(encoding="utf-8"), '{"kind": "demo"}\n')
         self.assertIn("kept at", said)
 
+    def test_a_link_to_where_the_logs_were_before_a_migration_is_made_again(self) -> None:
+        """game-club-manager's AC4: linked before the project moved its run state, its seed's line fell
+        through a link to a folder that was gone; TB1, rebased mid-run, found the new place unlinked."""
+        berth, _ = self.module.berth(self.root, "L05", "slice/L05", "main")
+        old = self.root / ".slipwai/logs"
+        self.assertEqual((berth / ".slipwai/logs").resolve(), old.resolve())
+        # The migration: the project's logs move under `.slipwai/run/`, and its ignore file says so.
+        (self.root / ".slipwai/run").mkdir(parents=True)
+        old.rename(self.root / ".slipwai/run/logs")
+        (self.root / ".gitignore").write_text(".env\n.claude/commands/\n.claude/skills/\n.slipwai/run/\n",
+                                              encoding="utf-8")
+        self.assertFalse((berth / ".slipwai/logs").exists(), "the berth's link reaches nothing now")
+        self.assertEqual(self.module.linked(self.root, berth), "")
+        moved = (self.root / ".slipwai/run/logs").resolve()
+        # Where the berth's tree says today, and where it will say once it is rebased onto the migration.
+        self.assertEqual((berth / ".slipwai/logs").resolve(), moved)
+        self.assertEqual((berth / ".slipwai/run/logs").resolve(), moved)
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
+        self.assertEqual(status.stdout.strip(), "", "neither link shows up as the slice's change")
+
     def test_a_skill_the_checkout_has_is_carried_in_and_one_the_berth_has_is_left(self) -> None:
         """Spec Kit's skills come from `specify init`, not the projection, and hr-test-2's L03, L06 and L04
         each parked on `check-speckit` for a person to copy them in by hand."""

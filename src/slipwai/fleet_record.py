@@ -7,6 +7,7 @@ under the headline, and each process with its own word on why it left. Nothing i
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -119,6 +120,7 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             held["fairways"].append(row["fairway"])
         held["parks"].append({"fairway": row["fairway"], "t": row["t"], "slice": str(row.get("slice") or "")})
         held["t"] = min(held["t"], row["t"])
+        held["times"] = max(int(held.get("times", 1)), int(row.get("times") or 1))
         held["until"] = max(held["until"], str(row.get("until") or ""))
         if row["t"] >= max(park["t"] for park in held["parks"]):
             held["then"], held["what"] = str(row.get("then") or ""), str(row.get("what") or "")
@@ -232,7 +234,38 @@ def same_note(entry: Entry) -> tuple[str, tuple[str, ...]]:
     return str(entry.fields.get("slice") or ""), tuple(sorted(" ".join(one.split()).lower() for one in asked))
 
 
-def times_said(entries: list[Entry], entry: Entry) -> int:
-    """How many times this note has been said, itself included."""
-    key = same_note(entry)
-    return sum(1 for one in entries if one.kind == "told" and same_note(one) == key)
+#: How alike two asks from one slice have to be to be the same ask said again: the share of their words
+#: they have in common. Half, because a session restating what it still owes keeps the names — the mark,
+#: the file, the slice — and changes the sentence round them.
+ALIKE = 0.5
+
+
+def words_of(entry: Entry) -> frozenset[str]:
+    """The words an ask is made of, small ones left out: what two sayings of it would share."""
+    return frozenset(word for one in same_note(entry)[1] for word in re.findall(r"[a-z0-9][a-z0-9_.\-/]{3,}", one))
+
+
+def said_again(entries: Sequence[Entry]) -> dict[int, tuple[int, int]]:
+    """Each `told`, by its place in the log: (the place of the newest saying of it, how many times said).
+
+    The same ask word for word is the same note. So is one from the same slice that shares half its words
+    with the saying before it, because a session that cannot get past something says so at the end of
+    every run and never twice in the same sentence: TB1's eighty-four notes were one ask in twenty-eight
+    wordings. Compared with the latest saying, so a note that drifts is followed; a slice's hand-back about
+    something else shares almost nothing with it and stays its own row.
+    """
+    groups: list[list[int]] = []
+    for index, entry in enumerate(entries):
+        if entry.kind != "told":
+            continue
+        key, words = same_note(entry), words_of(entry)
+        for group in reversed(groups):
+            latest = entries[group[-1]]
+            other = words_of(latest)
+            if same_note(latest) == key or (same_note(latest)[0] == key[0] and words and other
+                                            and len(words & other) / len(words | other) >= ALIKE):
+                group.append(index)
+                break
+        else:
+            groups.append([index])
+    return {index: (group[-1], len(group)) for group in groups for index in group}

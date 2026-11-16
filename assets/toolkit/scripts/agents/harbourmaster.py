@@ -82,6 +82,7 @@ import argparse
 import json
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -595,6 +596,52 @@ def furnish(where: Path) -> None:
                 shutil.copy2(installed, target)
 
 
+#: The files every slice appends to and none rewrites: a feature's decisions and its adversary log. Two
+#: slices that each added an entry have not disagreed about anything.
+APPENDED = re.compile(r"^specs/[^/]+/(decisions|adversary-log)\.md$")
+#: How many stops one rebase may make on such files before it is left to a person: one per commit at most.
+APPEND_STOPS = 500
+
+
+def appended_only(path: str) -> bool:
+    """Resolve one conflicted append-only file in the scratch worktree, where the commit being replayed
+    only added to the end of it: trunk's file, then what the commit added. False where it did anything else.
+
+    Held to exactly that — the commit's version begins with the version it was made on — so an entry that
+    was edited rather than added is still a conflict, and still somebody's to read.
+    """
+    before, onto, commit = (git("show", f":{stage}:{path}", where=SCRATCH) for stage in (1, 2, 3))
+    if any(one.returncode != 0 for one in (before, onto, commit)) or not commit.stdout.startswith(before.stdout):
+        return False
+    added = commit.stdout[len(before.stdout):]
+    held = onto.stdout
+    if added.strip() and added.strip() not in held:
+        held = held + ("" if held.endswith("\n") or not held else "\n") + added
+    try:
+        (SCRATCH / path).write_text(held, encoding="utf-8", newline="")
+    except OSError:
+        return False
+    return git("add", "--", path, where=SCRATCH).returncode == 0
+
+
+def appends_resolved(rebased: subprocess.CompletedProcess[str]) -> subprocess.CompletedProcess[str]:
+    """A rebase that stopped only on append-only files, carried on to its end; any other stop, as it was.
+
+    Three of game-club-manager's merges were refused for `decisions.md` alone: two fairways had each added
+    their decisions to the end of one file, the rebase stopped, and the slice was sent back to its berth to
+    put its own entries after trunk's by hand and ask again — a session, a rebase and a gate each time, for
+    a conflict with one possible answer. The gate still runs on what this makes.
+    """
+    for _ in range(APPEND_STOPS):
+        if rebased.returncode == 0:
+            return rebased
+        paths = conflicting()
+        if not paths or not all(APPENDED.match(path) for path in paths) or not all(map(appended_only, paths)):
+            return rebased
+        rebased = git("-c", "core.editor=true", "rebase", "--continue", where=SCRATCH)
+    return rebased
+
+
 def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
     """One fetch, rebase, gate and advance of this branch. `merge`'s answer, plus whether trunk moved.
 
@@ -612,7 +659,7 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
             False, "", False
     furnish(SCRATCH)
     try:
-        rebased = git("rebase", onto, where=SCRATCH)
+        rebased = appends_resolved(git("rebase", onto, where=SCRATCH))
         if rebased.returncode != 0:
             paths = conflicting()
             git("rebase", "--abort", where=SCRATCH)
@@ -1726,6 +1773,56 @@ def clear_park(fairway: str, parked: str, what: str) -> tuple[bool, str]:
     return True, f"cleared {fairway}'s park at {parked}: {what.strip()}"
 
 
+#: How long a harbourmaster asked to stop goes on publishing for the captains stopping beside it. A captain
+#: ends its stage and joins its slices' threads in about a minute; this is that and room to spare.
+STOP_GRACE = 240.0
+#: How often it publishes while it waits for them.
+STOP_POLL = 2.0
+
+
+class Stopping(Exception):
+    """This process was asked to stop. Raised by the SIGTERM handler, wherever the pass is."""
+
+
+def asked_to_stop(_signal: int, _frame: object) -> None:
+    raise Stopping()
+
+
+def captains_running() -> list[str]:
+    """The captains this machine's fleet started that are still alive, by their pid files."""
+    running = logs.run_dir(ROOT) / "running"
+    found = []
+    for path in sorted(running.glob("captain-*.pid")) if running.is_dir() else []:
+        try:
+            pid = int(path.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            continue
+        if mender.alive(pid):
+            found.append(path.stem)
+    return found
+
+
+def see_the_captains_off(no_fetch: bool, grace: float = STOP_GRACE) -> None:
+    """Asked to stop: go on publishing until the captains stopping beside this have left, then leave.
+
+    `fleet stop` signals every process at once. A captain ends its stage, writes `stopped`, and gives its
+    claim back only once that line is on the forge — and the only thing that puts it there is this process,
+    which used to die on the signal. So the captain waited out the whole wait bound for a publisher that
+    had gone: ninety minutes in game-club-manager, holding its claim, with a migration refusing to run
+    until it left. The last lines are the ones a stop is for, so they are carried before this goes.
+    """
+    until = time.monotonic() + grace
+    while not no_fetch:
+        depart()
+        left = captains_running()
+        if not left or time.monotonic() >= until:
+            if left:
+                print(f"harbourmaster: stopping with {', '.join(left)} still running after "
+                      f"{grace / 60:.0f} minutes; their last lines travel on the next pass", file=sys.stderr)
+            return
+        time.sleep(STOP_POLL)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="harbourmaster",
@@ -1751,19 +1848,28 @@ def main(argv: list[str]) -> int:
         if ok and not parsed.no_fetch:
             depart()
         return 0 if ok else 1
-    while True:
-        if not parsed.no_fetch:
-            arrive()
-        count = once()
-        if count:
-            print(f"harbourmaster: {count} line(s) carried to {logs.harbour_path(ROOT, logs.machine()).relative_to(ROOT).as_posix()}")
-        if not parsed.no_fetch:
-            # After the pass and not before it: what this machine has to say about this pass is written by
-            # `once()`, and pushing first would carry every line but the ones just made.
-            depart()
-        if parsed.once:
-            return 0
-        time.sleep(parsed.interval)
+    if not parsed.once:
+        signal.signal(signal.SIGTERM, asked_to_stop)
+    try:
+        while True:
+            if not parsed.no_fetch:
+                arrive()
+            count = once()
+            if count:
+                print(f"harbourmaster: {count} line(s) carried to "
+                      f"{logs.harbour_path(ROOT, logs.machine()).relative_to(ROOT).as_posix()}")
+            if not parsed.no_fetch:
+                # After the pass and not before it: what this machine has to say about this pass is written
+                # by `once()`, and pushing first would carry every line but the ones just made.
+                depart()
+            if parsed.once:
+                return 0
+            time.sleep(parsed.interval)
+    except Stopping:
+        # A second signal while seeing them off is the old answer: leave now.
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        see_the_captains_off(parsed.no_fetch)
+        return 0
 
 
 if __name__ == "__main__":

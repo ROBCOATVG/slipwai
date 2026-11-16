@@ -19,7 +19,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai import fleet, logs
 from slipwai.bridge_page import inbox_rows, wait_group_of
-from slipwai.fleet_page import live_sub
+from slipwai.fleet_page import group_card, live_sub
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures/recap-try"
 EVENING = datetime(2026, 10, 22, 19, 0, tzinfo=UTC)
@@ -140,6 +140,19 @@ class SaidAgainTest(unittest.TestCase):
             self.again(t, NEEDS)
         [row] = self.hand_backs()
         self.assertEqual((row["t"], row["times"]), (self.LATER[1], "3"))
+        [group] = [one for one in fleet.groups([row]) if one.get("source") == "told"]
+        self.assertIn("said 3 times", group_card(group, controls=True, now=EVENING))
+
+    def test_the_same_ask_in_other_words_is_still_the_one_note(self) -> None:
+        """TB1 said one thing eighty-four times in twenty-eight wordings."""
+        first = [{"what": "A person writes or permits the deck lines LB3 owes: mark-set BookShelved and the "
+                          "merge request for slice/LB3", "by": "person"}]
+        second = [{"what": "mark-set BookShelved and a merge request for slice/LB3, written by a person or "
+                           "allowed by a permission rule for deck lines", "by": "person"}]
+        self.again(self.LATER[0], first)
+        self.again(self.LATER[1], second)
+        rows = self.hand_backs()
+        self.assertEqual([(row["t"], row.get("times")) for row in rows], [(TOLD_AT, None), (self.LATER[1], "2")])
 
     def test_a_second_hand_back_about_something_else_is_a_second_row(self) -> None:
         self.again(self.LATER[0], [{"what": "docs/design.md gains LB3's section", "by": "person"}])

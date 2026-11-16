@@ -50,8 +50,7 @@ from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name
     groups,
     need_rows,
     processes,
-    same_note,
-    times_said,
+    said_again,
 )
 from .logs import (
     Entry,
@@ -211,7 +210,7 @@ class Fairway:
         parked = False
         # The same note said again is one note: the newest stands for every earlier saying of it, read or
         # not, so answering it answers them all and none comes back when it leaves.
-        newest = {same_note(entry): index for index, entry in enumerate(self.entries) if entry.kind == "told"}
+        again = said_again(self.entries)
         for index, entry in enumerate(self.entries):
             if entry.kind == "parked":
                 parked = True
@@ -219,7 +218,7 @@ class Fairway:
                 parked = False
             if entry.kind != "told" or entry.t in receipts or for_someone_else(entry):
                 continue
-            if newest[same_note(entry)] != index:
+            if again[index][0] != index:
                 continue
             if entry.fields.get("needs"):
                 # Open until the last need is met, whatever the stream does meanwhile: a slice that ships a
@@ -436,7 +435,7 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
                 # A hand-back with needs is a park's shape without the park: the board draws its checklist,
                 # groups it with the parks under *Waiting on you*, and offers Done only once trunk has it.
                 row.update(needs=need_rows(e, one.needs_met(e)), cause="host", grouped="yes", by="told")
-            said_times = times_said(one.entries, e)
+            said_times = said_again(one.entries)[one.entries.index(e)][1]
             if said_times > 1:
                 row["times"] = str(said_times)
             waiting.append(row)

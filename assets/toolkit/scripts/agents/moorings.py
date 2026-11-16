@@ -46,11 +46,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 
 
-def excluded(berth: Path) -> str:
-    """What a worktree's deck-log link is excluded as, in the repository's shared `info/exclude`."""
-    return "/" + logs.logs_dir(berth).relative_to(berth).as_posix()
-
-
 def is_link(path: Path) -> bool:
     """Whether `path` is a link to a folder elsewhere: a symlink, or on Windows the junction made in its place."""
     if path.is_symlink():
@@ -92,14 +87,50 @@ def checked_out(root: Path, branch: str) -> Path | None:
     return None
 
 
-def linked(root: Path, berth: Path) -> str:
-    """Point the berth's deck logs at the project's, and say why where that could not be done."""
+def points_at(link: Path, target: Path) -> bool:
+    """Whether `link` is a link that reaches `target`. A link to a folder since moved reaches nothing."""
+    try:
+        return is_link(link) and link.resolve() == target.resolve() and target.is_dir()
+    except OSError:
+        return False
+
+
+def places(berth: Path) -> list[Path]:
+    """Where a berth's sessions may look for the deck logs: where its own tree says, and — for a berth cut
+    before the project moved its run state — where the tree will say once it is rebased onto that."""
     here = logs.logs_dir(berth)
+    after = berth / logs.RUN / "logs"
+    return [here] if here == after else [here, after]
+
+
+def linked(root: Path, berth: Path) -> str:
+    """Point the berth's deck logs at the project's, and say why where that could not be done.
+
+    **Held to where the link goes, not to there being one.** A migration moves the project's logs to
+    `.slipwai/run/logs`, and a berth made before it keeps a link to the folder that is no longer there:
+    game-club-manager's AC4 wrote its `seeded` line by hand because the seed's own write fell through a
+    dangling link, and TB1, rebased onto the migrated trunk mid-run, found its new place unlinked and was
+    refused both ways of mending it. So a link that reaches anything but the project's logs is made again,
+    and a berth still on the old layout is given the new place as well, for the rebase that is coming.
+    """
+    if berth.resolve() == root.resolve():
+        return ""
     shared = logs.logs_dir(root)
     shared.mkdir(parents=True, exist_ok=True)
-    if is_link(here) or berth.resolve() == root.resolve():
+    notes = [note for note in (linked_at(root, berth, place, shared) for place in places(berth)) if note]
+    return "; ".join(notes)
+
+
+def linked_at(root: Path, berth: Path, here: Path, shared: Path) -> str:
+    """One place in the berth pointed at the project's logs. What `linked` does, for each of `places`."""
+    if points_at(here, shared):
         return ""
     said = ""
+    if is_link(here):
+        try:
+            here.rmdir() if os.name == "nt" else here.unlink()
+        except OSError as fault:
+            return f"{here} is a link to somewhere that is not the project's deck logs and could not be remade ({fault})"
     if here.is_dir():
         try:
             here.rmdir()  # empty, and so nothing anybody wrote
@@ -121,7 +152,7 @@ def linked(root: Path, berth: Path) -> str:
     if common:
         exclude = (root / common).resolve() / "info/exclude"
         held = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
-        line = excluded(berth)
+        line = "/" + here.relative_to(berth).as_posix()
         if line not in held.splitlines():
             exclude.parent.mkdir(parents=True, exist_ok=True)
             joined = held + ("" if held.endswith("\n") or not held else "\n") + line + "\n"
@@ -225,11 +256,11 @@ def leave(root: Path, berth: Path) -> str:
     """Remove a merged slice's worktree, or say why it was kept. Never the project's own checkout."""
     if berth.resolve() == root.resolve():
         return ""
-    here = logs.logs_dir(berth)
-    if os.name == "nt" and is_link(here):  # pragma: no cover - the other platform's branch
-        # Git reads the junction as a folder of the worktree's own and keeps the berth; `rmdir` takes the
-        # junction alone, and the deck logs it joins are not touched.
-        os.rmdir(here)
+    for here in places(berth):
+        if os.name == "nt" and is_link(here):  # pragma: no cover - the other platform's branch
+            # Git reads the junction as a folder of the worktree's own and keeps the berth; `rmdir` takes
+            # the junction alone, and the deck logs it joins are not touched.
+            os.rmdir(here)
     gone = git(root, "worktree", "remove", str(berth))
     if gone.returncode != 0:
         said = (gone.stderr or gone.stdout).strip().splitlines()

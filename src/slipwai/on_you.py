@@ -9,9 +9,9 @@ So this is the one reading, in two groups. *Holding work up*: a slice parked on 
 stage has put up, the one button the run cannot pass without, and a stream's log nobody can read (its
 captain stops at every start until a person repairs the line), and a slice's product question where the
 project says a person answers them. *When you have time*: a capability with something to look at, a feedback
-proposal waiting for Confirm, and a slice a person paused (never one its captain paused). A note nobody has read and a slice paused
-until a set time are not on it: neither holds anything up, and neither needs a person to move. Each item
-links to where it is acted on, and the column draws exactly the slices this names.
+proposal waiting for Confirm, and a slice a person paused (never one its captain paused). A note nobody has
+read and a slice paused until a set time are not on it: neither holds anything up, and neither needs a
+person to move. Each item links to where it is acted on, and the column draws exactly the slices this names.
 """
 from __future__ import annotations
 

@@ -1,0 +1,235 @@
+{
+ "situation": "AC3 has written nothing for eight minutes. Its last lines are its implementing delegate committing a task.",
+ "source": "a recorded run of project-a, the accounts stream, 2026-11-12",
+ "snapshot": {
+  "feature": "001-project-a",
+  "fairway": "accounts",
+  "slices": {
+   "AC3": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-11-12T14:31:35Z",
+    "kind": "claimed",
+    "slice": "AC3"
+   },
+   {
+    "t": "2026-11-12T14:42:53Z",
+    "kind": "mark-set",
+    "slice": "AC3",
+    "mark": "DiscordLinked"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-11-12T14:31:45Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   }
+  ],
+  "activity": {
+   "AC3": [
+    {
+     "t": "2026-11-12T14:57:47Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && mkdir -p src/alerts",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:58:03Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && cat > src/alerts/Alerts.tsx",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:58:09Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:58:23Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:58:29Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && cp /dev/null /tmp/x;",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:58:43Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && /tmp/gates.sh >/dev/null &&",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:59:04Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:59:11Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && /tmp/gates.sh && /tmp/commit.sh",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:59:26Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && cat >> tests/sign-in/AccountControls.test.tsx",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:59:33Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && /tmp/gates.sh && /tmp/commit.sh",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T14:59:50Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && grep -n \"app-account\"",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:00:06Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && cat > src/alerts/alerts.css",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:00:17Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/apps/project-a-web && /tmp/gates.sh && /tmp/commit.sh",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:00:31Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cd ../project-a-AC3/specs/001-project-a/slices && cat AC1/try-it.json; grep",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:00:35Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "cat specs/001-project-a/slices/AC1/try-it.json; grep -rln '\"given\"' specs",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:00:39Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "grep -n '\"given\"\\|given' commands/sail.md | head",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:00:43Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "sed -n 218,245p commands/sail.md; sed -n",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:00:52Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "ls specs/001-project-a/people 2>/dev/null; cat specs/001-project-a/people/* 2>/dev/null",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:01:02Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "sed -n 1,40p apps/project-a-service/src/domain/accounts/google-login.ts | grep",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-12T15:01:09Z",
+     "stage": "drive",
+     "agent": "a2d1809",
+     "kind": "ran",
+     "what": "/tmp/commit.sh \"AC3 T027: the try-it story:",
+     "role": "sail-implement-shipwright"
+    }
+   ]
+  },
+  "warnings": {
+   "AC3": [
+    {
+     "kind": "quiet",
+     "level": "red",
+     "said": "nothing for 8m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "ac3-quiet-while-delegate-builds",
+  "t": "2026-11-12T15:09:40Z",
+  "kind": "stuck",
+  "slice": "AC3"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "stop",
+    "slice": "AC3"
+   },
+   {
+    "verb": "park",
+    "slice": "AC3"
+   }
+  ],
+  "why": "A delegate building in the background writes nothing to the slice's log; quiet here is work.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the activity tail shows a delegate agent, not the session, committing a task just before the quiet. What happened: the delegate wrote again ten minutes later, went quiet twice more, and finished its tasks within the hour."
+ }
+}

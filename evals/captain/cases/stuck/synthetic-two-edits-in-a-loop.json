@@ -1,0 +1,174 @@
+{
+ "synthetic": true,
+ "situation": "S1's agent keeps editing two files in turn, each edit undoing the other, with the lint failing between.",
+ "source": "made up, not recorded: neither run recorded an agent undoing its own edits",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:10:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/seats.ts"
+    },
+    {
+     "t": "2026-11-20T10:10:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "seats.ts: unused export"
+    },
+    {
+     "t": "2026-11-20T10:11:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/index.ts"
+    },
+    {
+     "t": "2026-11-20T10:11:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "index.ts: missing export"
+    },
+    {
+     "t": "2026-11-20T10:12:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/seats.ts"
+    },
+    {
+     "t": "2026-11-20T10:12:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "seats.ts: unused export"
+    },
+    {
+     "t": "2026-11-20T10:13:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/index.ts"
+    },
+    {
+     "t": "2026-11-20T10:13:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "index.ts: missing export"
+    },
+    {
+     "t": "2026-11-20T10:14:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/seats.ts"
+    },
+    {
+     "t": "2026-11-20T10:14:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "seats.ts: unused export"
+    },
+    {
+     "t": "2026-11-20T10:15:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/index.ts"
+    },
+    {
+     "t": "2026-11-20T10:15:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "index.ts: missing export"
+    },
+    {
+     "t": "2026-11-20T10:16:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/seats.ts"
+    },
+    {
+     "t": "2026-11-20T10:16:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "seats.ts: unused export"
+    },
+    {
+     "t": "2026-11-20T10:17:00Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "edit",
+     "what": "edit src/tables/index.ts"
+    },
+    {
+     "t": "2026-11-20T10:17:30Z",
+     "stage": "implement",
+     "agent": "a3",
+     "kind": "failed",
+     "what": "Run the lint",
+     "said": "index.ts: missing export"
+    }
+   ]
+  },
+  "warnings": {
+   "S1": []
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "two-edits-in-a-loop",
+  "t": "2026-11-20T10:19:00Z",
+  "kind": "stuck",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": [
+     "message",
+     "interrupt"
+    ],
+    "slice": "S1"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "none"
+   }
+  ],
+  "why": "Four rounds of the same two edits is a loop no warning names; it needs telling.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: the activity tail alternates two edits with a lint failure naming the other file, four times over."
+ }
+}

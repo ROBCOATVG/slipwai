@@ -1,0 +1,316 @@
+{
+ "situation": "A person tells the library stream: \"Have another go.\" (their words paraphrased)",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "library",
+  "slices": {
+   "LB1": "parked: LB1: the harness would not run LB1: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+   "LB11": "parked, answered and cleared: LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB15": "parked, answered and cleared: LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB2": "parked, answered and cleared: LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB4": "parked, answered and cleared: LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB6": "parked: LB6: the harness would not run LB6: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+   "LB7": "parked: LB7: the harness would not run LB7: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+   "LB8": "parked: LB8: the harness would not run LB8: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+   "LB9": "parked: LB9: the harness would not run LB9: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+  },
+  "deck": [
+   {
+    "t": "2026-10-22T10:04:22Z",
+    "kind": "claimed",
+    "slice": "LB6"
+   },
+   {
+    "t": "2026-10-22T10:04:37Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed o…",
+    "by": "person",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T10:04:39Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed o…",
+    "by": "person",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T10:04:44Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and…",
+    "by": "person",
+    "slice": "LB8"
+   },
+   {
+    "t": "2026-10-22T10:04:48Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed o…",
+    "by": "person",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T10:04:59Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-22T10:05:01Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-22T10:05:02Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-22T10:05:04Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-22T10:05:05Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T10:05:15Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T10:10:23Z",
+    "kind": "read",
+    "slice": "LB6",
+    "told": "2026-10-22T10:04:16Z"
+   },
+   {
+    "t": "2026-10-22T10:22:15Z",
+    "kind": "told",
+    "slice": "LB6",
+    "by": "session",
+    "message": "Host: two things changed in LB6 at implementation, both in decisions.md. D45 - LB6's code is under library/ (not catch-up/) until the D32 move lands; the landing should git mv LB6's listening files (domain/library/{events/,listening/}, application/library/{book-owner,resume-listening}.ts, adapters/driving/http/library/resumptions.ts, tests/*/library/resume-listening*, listening-decide*, resumptions*) to catch-up/ and fix imports - a refactor. D46 - the service's bearer check is LB3's Authenticate/bearerCheck/userinfo adapter, taken byte-identical (as LB1 does); LB6 no longer asks for jose, and …"
+   },
+   {
+    "t": "2026-10-22T10:53:39Z",
+    "kind": "told",
+    "slice": "LB6",
+    "by": "session",
+    "message": "Host: `make verify` on slice/LB6 went red twice at check-slice-scope on `__pycache__/logs.cpython-314.pyc` under the agents directory - bytecode a process outside this session writes into the berth while the gate runs (not the gate's own steps: check-dispatch and render-fairways write none under PYTHONDONTWRITEBYTECODE). `__pycache__/` is still not in .gitignore (asked for by LB3 and LB6 on 2026-10-21). Repair taken here, local and reversible: the line `__pycache__/` appended to this clone's .git/info/exclude, beside the `/.slipwai/logs` line already there; no gate or control file touched. Ple …"
+   },
+   {
+    "t": "2026-10-22T10:55:28Z",
+    "kind": "told",
+    "slice": "LB6",
+    "by": "session",
+    "message": "LB6 is built and verified on slice/LB6: T001-T010 done, every example LB6-1..17 proven (tasks.md, Examples proven), review closed (slices/LB6/review.md), trigger record written (adversary-log.md: driving adapter, authorisation, time/idempotency and event schema widened; nothing attacked - the pass is track-position's at its gates), model block implemented with four Player mock-ups, `make verify` all gates passed at 6dd2fc8. The branch rebases cleanly on main at 74d388c. Merge after LB3 in split order: main.ts, application/library/public.ts and apps/project-b-web/{src/App.tsx,tests/App.test.tsx …"
+   },
+   {
+    "t": "2026-10-22T10:55:28Z",
+    "kind": "request",
+    "slice": "LB6",
+    "id": "merge-LB6-6dd2fc8",
+    "what": "merge",
+    "detail": "Merge slice/LB6 (head after the record commit; code and artifacts verified at 6dd2fc8, `make verify` all gates passed, rebased on main 74d388c) into main in split order, after slice/LB3. Release mode flagged: track-position stays off; nothing reaches an actor. The capability track-position is not whole (LB7-LB10 pending), so its gates and the hand's walk are not due yet."
+   },
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:22:15Z"
+   },
+   {
+    "t": "2026-10-22T11:06:21Z",
+    "kind": "claimed",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T11:15:11Z",
+    "kind": "read",
+    "slice": "LB7",
+    "told": "2026-10-22T10:55:28Z"
+   },
+   {
+    "t": "2026-10-22T11:15:11Z",
+    "kind": "read",
+    "slice": "LB7",
+    "told": "2026-10-22T11:01:14Z"
+   },
+   {
+    "t": "2026-10-22T11:16:30Z",
+    "kind": "read",
+    "told": "2026-10-22T11:15:11Z"
+   },
+   {
+    "t": "2026-10-22T11:50:07Z",
+    "kind": "claimed",
+    "slice": "LB8"
+   },
+   {
+    "t": "2026-10-22T11:50:12Z",
+    "kind": "parked",
+    "why": "LB8: the harness would not run LB8: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB8",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:50:40Z",
+    "kind": "parked",
+    "why": "LB7: the harness would not run LB7: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB7",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:50:53Z",
+    "kind": "claimed",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T11:50:53Z",
+    "kind": "claimed",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-22T11:50:58Z",
+    "kind": "parked",
+    "why": "LB9: the harness would not run LB9: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB9",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:51:00Z",
+    "kind": "parked",
+    "why": "LB1: the harness would not run LB1: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB1",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T12:12:08Z",
+    "kind": "parked",
+    "why": "LB6: the harness would not run LB6: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:41:26Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:05:22Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:42:07Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:55:34Z",
+    "kind": "refused",
+    "request": "merge-LB6-6dd2fc8",
+    "why": "slice/LB6 conflicts with main in specs/001-project-b/decisions.md. The rebase was aborted, so nothing is half-done; resolve it in your own berth and ask again",
+    "resolve": true,
+    "slice": "LB6",
+    "waited_s": 6,
+    "attempt": 1,
+    "lock_s": 0
+   },
+   {
+    "t": "2026-10-22T11:50:21Z",
+    "kind": "park",
+    "why": "LB8: the harness would not run LB8: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T11:50:52Z",
+    "kind": "park",
+    "why": "LB7: the harness would not run LB7: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T11:51:07Z",
+    "kind": "park",
+    "why": "LB9: the harness would not run LB9: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T11:51:07Z",
+    "kind": "park",
+    "why": "LB1: the harness would not run LB1: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T12:12:19Z",
+    "kind": "park",
+    "why": "LB6: the harness would not run LB6: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T12:12:19Z",
+    "kind": "slots",
+    "slots": 0,
+    "running": 0
+   }
+  ],
+  "said": {
+   "id": "m-library-try-again",
+   "t": "2026-10-22T12:52:37Z",
+   "from": "person",
+   "text": "Have another go."
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "library-try-again",
+  "t": "2026-10-22T12:52:37Z",
+  "kind": "message",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": [
+     "message",
+     "resume",
+     "retry"
+    ],
+    "required": [
+     "LB1",
+     "LB6",
+     "LB7",
+     "LB8",
+     "LB9"
+    ],
+    "optional": [
+     "LB2",
+     "LB4",
+     "LB11",
+     "LB15"
+    ]
+   }
+  ],
+  "wrong": [],
+  "why": "\"Try again\" answers the limit pauses; the five slices it held are the ones to carry on.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the snapshot shows LB1 and LB6 to LB9 paused on the session limit, unanswered; LB2, LB4, LB11 and LB15 were already answered and cleared, so they may be included or left. What happened: LB6, LB7, LB8, LB1 and LB9 were run again, in that order, and four merged that afternoon. The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

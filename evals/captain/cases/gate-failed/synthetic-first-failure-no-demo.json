@@ -1,0 +1,64 @@
+{
+ "synthetic": true,
+ "situation": "S1's gate failed on its first run for want of a demo line; its activity says the dev server would not start because a port was taken.",
+ "source": "made up, not recorded: every recorded gate failure was already at the retry ceiling",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "attempts": {
+   "used": 1,
+   "allowed": 3
+  },
+  "gate": "S1: this turn wrote no `demo` line for S1, so nothing says a person watched it work.",
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:50:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "failed",
+     "what": "Start the dev server",
+     "said": "port 4142 already in use"
+    },
+    {
+     "t": "2026-11-20T10:51:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "said",
+     "what": "the demo walk was skipped: no dev server"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "first-failure-no-demo",
+  "t": "2026-11-20T10:52:00Z",
+  "kind": "gate-failed",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "retry",
+    "slice": "S1"
+   }
+  ],
+  "wrong": [],
+  "why": "The work is not in question; a port taken by something else is a thing another run gets past.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: `attempts` shows 1 of 3 used, and the activity tail says the demo was skipped because the dev server's port was taken."
+ }
+}

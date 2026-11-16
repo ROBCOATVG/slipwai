@@ -1,0 +1,378 @@
+{
+ "situation": "LB4 has written nothing for eight minutes; its last command polls whether its merge has landed.",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "library",
+  "slices": {
+   "LB4": "asked to merge, waiting",
+   "LB5": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T16:20:25Z",
+    "kind": "read",
+    "told": "2026-10-21T15:48:59Z"
+   },
+   {
+    "t": "2026-10-22T08:00:25Z",
+    "kind": "read",
+    "told": "2026-10-21T16:26:23Z"
+   },
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:22:15Z"
+   },
+   {
+    "t": "2026-10-22T11:16:30Z",
+    "kind": "read",
+    "told": "2026-10-22T11:15:11Z"
+   },
+   {
+    "t": "2026-10-22T12:52:37Z",
+    "kind": "told",
+    "message": "Have another go.",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T14:24:40Z"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T14:08:40Z"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T13:25:52Z"
+   },
+   {
+    "t": "2026-10-22T17:11:07Z",
+    "kind": "parked",
+    "slice": "LB4",
+    "why": "LB4: slice/LB4 is 361 commits behind main (1 ahead, merge-base 4f3463b); sail.md says stop when behind rather than derive from stale artifacts, and rebasing a branch is outside this session's brief. Needs slice/LB4 rebased onto main, then make arrive, then resume at the example map."
+   },
+   {
+    "t": "2026-10-22T18:26:36Z",
+    "kind": "told",
+    "message": "sorted, carry on: slice/LB4 is 361 commits behind main (1 ahead, merge-base 4f3463b); sail.md says stop when behind rather than derive from stale artifacts, and rebasing a branc…",
+    "by": "person",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-22T18:26:42Z",
+    "kind": "claimed",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-22T18:33:12Z",
+    "kind": "mark-set",
+    "slice": "LB4",
+    "mark": "ServerBookAdded"
+   },
+   {
+    "t": "2026-10-22T18:38:54Z",
+    "kind": "claimed",
+    "slice": "LB5"
+   },
+   {
+    "t": "2026-10-22T18:43:47Z",
+    "kind": "mark-set",
+    "slice": "LB5",
+    "mark": "AudioFetched",
+    "contract": "specs/001-project-b/contracts/LB5-audio-fetch.md",
+    "examples": "specs/001-project-b/slices/LB5/examples.md",
+    "commit": "e0e02e6"
+   },
+   {
+    "t": "2026-10-22T18:46:58Z",
+    "kind": "told",
+    "slice": "LB4",
+    "message": "LB4 designed the Audiobookshelf card (ServerBooks) from the LB3 card and tokens only; its Designed line in the LB4 tasks is the decision docs/design.md is asked to carry. Also: no ux-gates target is installed in this checkout, so the screen is unmeasured by render gates."
+   },
+   {
+    "t": "2026-10-22T19:02:21Z",
+    "kind": "mark-set",
+    "slice": "LB4",
+    "mark": "ServerBookAdded",
+    "contract": "specs/001-project-b/contracts/LB4-server-book.md",
+    "examples": "specs/001-project-b/slices/LB4/examples.md",
+    "commit": "57349e9",
+    "note": "re-entry: first set at 2026-10-22T18:33:12Z; the slice is built, reviewed once (H1, H2, M1, M2, L1, L5 closed, L2 by contract wording) and proven on the branch rebased onto main. ServerBookAdded v1 on book-{bookId}: bookId, listenerId, itemId, title, author, chapters, duration, addedAt (D86-D89)"
+   },
+   {
+    "t": "2026-10-22T19:02:21Z",
+    "kind": "told",
+    "slice": "LB4",
+    "by": "session",
+    "message": "LB4 drive re-entry: fresh-context review run (no CRITICAL; two HIGH and four lower closed through failing tests, M3, M4, L3, L4 accepted as ceilings in review.md), branch rebased linear onto main with the LB9, LB11 and LB15 conflicts resolved, examples re-proven, make verify green. The repeat answer carries no author (contract wording amended). Capability audiobookshelf-companion is not complete, so no capability gates and no demo line here."
+   },
+   {
+    "t": "2026-10-22T19:02:21Z",
+    "kind": "request",
+    "id": "merge-LB4-57349e9",
+    "what": "merge",
+    "slice": "LB4",
+    "detail": "LB4 Pick a book from the server: examples proven, whole diff reviewed once with every finding closed, trigger record written, make verify green on slice/LB4 at 57349e9, linear on main with no merge commit, 0 behind."
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:40Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:56Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:44:29Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:11:09Z",
+    "kind": "park",
+    "why": "LB4: slice/LB4 is 361 commits behind main (1 ahead, merge-base 4f3463b); sail.md says stop when behind rather than derive from stale artifacts, and rebasing a branch is outside this session's brief. Needs slice/LB4 rebased onto main, then make arrive, then resume at the example map."
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:11:07Z",
+    "what": "sorted, carry on: slice/LB4 is 361 commits behind main (1 ahead, merge-base 4f3463b); sail.md says stop when behind rather than derive from stale artifacts, and rebasing a branc…"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:11:43Z",
+    "what": "sorted, carry on: slice/LB15 is 361 commits behind main (1 ahead: the dispatch ledger line; merge-base 4f3463b); main carries no LB15 work"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:38:21Z",
+    "what": "sorted, carry on: the chart says LB9 sets PositionSyncedFromServer, and this turn wrote no `mark-set` for PositionSyncedFromServer"
+   },
+   {
+    "t": "2026-10-22T18:51:46Z",
+    "kind": "slots",
+    "slots": 2,
+    "running": 2
+   },
+   {
+    "t": "2026-10-22T19:02:53Z",
+    "kind": "granted",
+    "request": "merge-LB4-57349e9",
+    "what": "merge",
+    "slice": "LB4",
+    "commit": "57349e9",
+    "ci": "unverified",
+    "waited_s": 6,
+    "attempt": 1,
+    "lock_s": 0,
+    "gate_s": 24
+   }
+  ],
+  "activity": {
+   "LB4": [
+    {
+     "t": "2026-10-22T18:59:58Z",
+     "stage": "drive",
+     "agent": "a55b2fb",
+     "kind": "ran",
+     "what": "make unit 2>&1 | tail -40",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-10-22T19:00:16Z",
+     "stage": "drive",
+     "agent": "a55b2fb",
+     "kind": "ran",
+     "what": "make check-openapi 2>&1 | tail -5;",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-10-22T19:00:21Z",
+     "stage": "drive",
+     "agent": "a55b2fb",
+     "kind": "ran",
+     "what": "make check-openapi; echo rc=$?; make check-model;",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-10-22T19:00:27Z",
+     "stage": "drive",
+     "agent": "a55b2fb",
+     "kind": "ran",
+     "what": "make model-drawio 2>&1 | tail -3;",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-10-22T19:00:30Z",
+     "stage": "drive",
+     "agent": "a55b2fb",
+     "kind": "ran",
+     "what": "git diff --stat | tail -3;",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-10-22T19:00:41Z",
+     "stage": "drive",
+     "agent": "a55b2fb",
+     "kind": "done",
+     "what": "sail-implement-shipwright",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-10-22T19:00:41Z",
+     "stage": "drive",
+     "agent": "call-TviNdT",
+     "kind": "done",
+     "what": "Resolve LB4 trial merge conflicts",
+     "role": "sail-implement-shipwright",
+     "id": "a55b2fb",
+     "tokens": 81689
+    },
+    {
+     "t": "2026-10-22T19:00:47Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git status --short | grep -v"
+    },
+    {
+     "t": "2026-10-22T19:00:50Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git read-tree -m -u LB4-merged-tree 2>&1"
+    },
+    {
+     "t": "2026-10-22T19:00:53Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git commit -q -m \"LB4: reconcile"
+    },
+    {
+     "t": "2026-10-22T19:00:58Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git rev-parse HEAD^{tree} LB4-merged-tree^{tree}; python3 -c"
+    },
+    {
+     "t": "2026-10-22T19:01:06Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git tag LB4-pre-reword HEAD && FILTER_BRANCH_SQUELCH_WARNING=1"
+    },
+    {
+     "t": "2026-10-22T19:01:18Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git update-ref -d refs/original/refs/heads/slice/LB4; git tag"
+    },
+    {
+     "t": "2026-10-22T19:01:28Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git ls-files specs/001-project-b/benchmark.md; git status --short"
+    },
+    {
+     "t": "2026-10-22T19:01:32Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "git cat-file -e main:specs/001-project-b/benchmark.md && echo"
+    },
+    {
+     "t": "2026-10-22T19:01:36Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "python3 - <<'EOF'"
+    },
+    {
+     "t": "2026-10-22T19:02:09Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "grep '\"LB4\"' .slipwai/logs/001-project-b/library.jsonl | tail -6"
+    },
+    {
+     "t": "2026-10-22T19:02:11Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "grep -E '\"kind\": \"(mark-set|decision|told)\"' .slipwai/logs/001-project-b/library.jsonl |"
+    },
+    {
+     "t": "2026-10-22T19:02:20Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "python3 - <<'EOF'"
+    },
+    {
+     "t": "2026-10-22T19:02:26Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "for i in $(seq 1 55);"
+    }
+   ]
+  },
+  "warnings": {
+   "LB4": [
+    {
+     "kind": "quiet",
+     "level": "red",
+     "said": "nothing for 8m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "lb4-waiting-on-its-merge",
+  "t": "2026-10-22T19:10:56Z",
+  "kind": "stuck",
+  "slice": "LB4"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "stop",
+    "slice": "LB4"
+   },
+   {
+    "verb": "park",
+    "slice": "LB4"
+   }
+  ],
+  "why": "It is waiting on the merge queue, which was busy with LB5.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the last command in the activity tail is a loop polling whether its merge has landed. What happened: LB4 merged two minutes later. The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

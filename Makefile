@@ -62,6 +62,16 @@ UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out
 	$(if $(UNIT_TESTS),PYTHONPATH=$(TEST_PATH):tests python3 -m unittest $(UNIT_TESTS),@echo 'unit: no test modules yet')
 
+# Evals are not tests: each puts a recorded moment to the captain agent through the project's own harness,
+# several times, and scores the order it gives. They spend a person's tokens, so they are never part of
+# `verify` and never gate a merge; the score is advice (docs/captain-evals.md). PROJECT names the project
+# whose initialised harness is used, or CAPTAIN a command that stands in for the agent.
+.PHONY: evals evals-rescore
+evals: ## Put the recorded captain cases to the captain agent: DECISION=, N= runs, BOUND= seconds, PROJECT= or CAPTAIN=
+	python3 scripts/evals.py run $(if $(DECISION),--decision $(DECISION)) --runs $(or $(N),3) --bound $(or $(BOUND),60) $(if $(PROJECT),--project "$(PROJECT)") $(if $(CAPTAIN),--captain "$(CAPTAIN)")
+evals-rescore: ## Score a saved eval run again against the labels as they are now, calling no agent: RUN=
+	python3 scripts/evals.py rescore "$(RUN)"
+
 .PHONY: glossary
 glossary: ## Rewrite GLOSSARY.md from the plan's vocabulary (tests/test_glossary.py holds them in step)
 	python3 scripts/glossary.py

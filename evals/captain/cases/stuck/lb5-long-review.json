@@ -1,0 +1,321 @@
+{
+ "situation": "LB5's review has run twenty-five minutes; its other tasks took two.",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "library",
+  "slices": {
+   "LB5": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T16:20:25Z",
+    "kind": "read",
+    "told": "2026-10-21T15:48:59Z"
+   },
+   {
+    "t": "2026-10-22T08:00:25Z",
+    "kind": "read",
+    "told": "2026-10-21T16:26:23Z"
+   },
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:22:15Z"
+   },
+   {
+    "t": "2026-10-22T11:16:30Z",
+    "kind": "read",
+    "told": "2026-10-22T11:15:11Z"
+   },
+   {
+    "t": "2026-10-22T12:52:37Z",
+    "kind": "told",
+    "message": "Have another go.",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T14:24:40Z"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T14:08:40Z"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T13:25:52Z"
+   },
+   {
+    "t": "2026-10-22T18:38:54Z",
+    "kind": "claimed",
+    "slice": "LB5"
+   },
+   {
+    "t": "2026-10-22T18:43:47Z",
+    "kind": "mark-set",
+    "slice": "LB5",
+    "mark": "AudioFetched",
+    "contract": "specs/001-project-b/contracts/LB5-audio-fetch.md",
+    "examples": "specs/001-project-b/slices/LB5/examples.md",
+    "commit": "e0e02e6"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:08Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:40Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:40Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:56Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:44:29Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:11:07Z",
+    "what": "sorted, carry on: slice/LB4 is 361 commits behind main (1 ahead, merge-base 4f3463b); sail.md says stop when behind rather than derive from stale artifacts, and rebasing a branc…"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:11:43Z",
+    "what": "sorted, carry on: slice/LB15 is 361 commits behind main (1 ahead: the dispatch ledger line; merge-base 4f3463b); main carries no LB15 work"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:38:21Z",
+    "what": "sorted, carry on: the chart says LB9 sets PositionSyncedFromServer, and this turn wrote no `mark-set` for PositionSyncedFromServer"
+   },
+   {
+    "t": "2026-10-22T18:51:46Z",
+    "kind": "slots",
+    "slots": 2,
+    "running": 2
+   }
+  ],
+  "activity": {
+   "LB5": [
+    {
+     "t": "2026-10-22T19:02:28Z",
+     "stage": "drive",
+     "agent": "ab48103",
+     "kind": "ran",
+     "what": "git add apps specs/001-project-b/decisions.md specs/001-project-b/slices/LB5/examples.md &&",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T19:02:38Z",
+     "stage": "drive",
+     "agent": "ab48103",
+     "kind": "ran",
+     "what": "python3 - <<'EOF'",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T19:02:51Z",
+     "stage": "drive",
+     "agent": "ab48103",
+     "kind": "edit",
+     "what": "e2e.txt",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T19:02:52Z",
+     "stage": "drive",
+     "agent": "ab48103",
+     "kind": "ran",
+     "what": "sed -n '/^## Design review/,$p' specs/001-project-b/slices/LB5/tasks.md",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T19:03:02Z",
+     "stage": "drive",
+     "agent": "ab48103",
+     "kind": "ran",
+     "what": "python3 - <<'EOF'",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T19:03:13Z",
+     "stage": "drive",
+     "agent": "call-bUQzBy",
+     "kind": "start",
+     "what": "Review LB5 slice diff",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:03:13Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "link",
+     "what": "sail-review-mate",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:03:16Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "git diff 8f52ffa...HEAD --stat | tail",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:03:19Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api/src && cat application/library/fetch-audio.ts domain/library/audio-fetch.ts",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:03:28Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api/src && cat adapters/driven/book-audio-audiobookshelf.ts adapters/driving/worker/audio-fetch-worker.ts",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:03:43Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api && cat src/application/library/ports/book-audio.ts src/application/library/ports/audio-fetch-todo.ts",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:03:52Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api && cat src/application/library/ports/book-audio.ts src/application/library/ports/audio-fetch-todo.ts",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:02Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api/tests && grep -rnE \"LB5-[0-9]+\"",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:04Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api/tests && grep -rnoE \"(it|test)(\\.each)?\\([^)]{0,30}['\\\"\\`](.{0,110})\"",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:07Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api/tests && grep -rn \"LB5-\"",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:16Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api/tests && sed -n 1,176p",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:26Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api && cat src/domain/library/events/audio-fetched.ts migrations/202610221849_server_books_awaiting_audio.js;",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:37Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "grep -n \"D96\" -A14 specs/001-project-b/decisions.md |",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:54Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api && grep -rn \"BookRemoved\\|removed\"",
+     "role": "sail-review-mate"
+    },
+    {
+     "t": "2026-10-22T19:04:59Z",
+     "stage": "drive",
+     "agent": "a32e1ef",
+     "kind": "ran",
+     "what": "cd ../project-b-LB5/apps/project-b-api && grep -rn \"audiobookshelf-companion\\|COMPANION\"",
+     "role": "sail-review-mate"
+    }
+   ]
+  },
+  "warnings": {
+   "LB5": []
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "lb5-long-review",
+  "t": "2026-10-22T19:05:20Z",
+  "kind": "stuck",
+  "slice": "LB5"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "stop",
+    "slice": "LB5"
+   },
+   {
+    "verb": "park",
+    "slice": "LB5"
+   }
+  ],
+  "why": "A whole-diff review is longer than a task; it finished moments later.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the activity tail shows the review agent still reading files seconds before the moment. What happened: the review ended within the minute and LB5 merged seven minutes after. The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

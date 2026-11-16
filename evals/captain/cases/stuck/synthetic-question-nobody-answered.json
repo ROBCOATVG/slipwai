@@ -1,0 +1,81 @@
+{
+ "synthetic": true,
+ "situation": "S1 asked a product question fifty minutes ago and has been waiting on the answer since; nobody has answered it.",
+ "source": "made up, not recorded: neither run recorded a question left unanswered past its wait",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   },
+   {
+    "t": "2026-11-20T10:05:00Z",
+    "kind": "question",
+    "slice": "S1",
+    "id": "S1-Q1",
+    "what": "Does a cancelled booking free its table at once, or at the end of the day?"
+   }
+  ],
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:05:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "wait",
+     "what": "an answer to S1-Q1"
+    }
+   ]
+  },
+  "warnings": {
+   "S1": [
+    {
+     "kind": "quiet",
+     "level": "red",
+     "said": "nothing for 50m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "question-nobody-answered",
+  "t": "2026-11-20T10:55:00Z",
+  "kind": "stuck",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "ask"
+   },
+   {
+    "verb": "say"
+   },
+   {
+    "verb": "park",
+    "slice": "S1"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "stop",
+    "slice": "S1"
+   }
+  ],
+  "why": "The captain does not answer product questions; the person has to be told one is waiting.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: the deck holds S1-Q1 with no decision line, and the activity log's last line waits on its answer."
+ }
+}

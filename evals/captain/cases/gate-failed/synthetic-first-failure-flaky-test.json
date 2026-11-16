@@ -1,0 +1,64 @@
+{
+ "synthetic": true,
+ "situation": "S1's gate failed on its first run: one integration test timed out. The same test passed on the run before, and two attempts remain.",
+ "source": "made up, not recorded: every recorded gate failure was already at the retry ceiling",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "attempts": {
+   "used": 1,
+   "allowed": 3
+  },
+  "gate": "S1: make verify failed: tests/integration/booking.test.ts 'books a table' timed out after 30000ms.",
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:30:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Run the integration suite (88 passing)"
+    },
+    {
+     "t": "2026-11-20T10:41:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "failed",
+     "what": "Run the full gate",
+     "said": "booking.test.ts timed out"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "first-failure-flaky-test",
+  "t": "2026-11-20T10:42:00Z",
+  "kind": "gate-failed",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "retry",
+    "slice": "S1"
+   }
+  ],
+  "wrong": [],
+  "why": "A timeout on a test that passed minutes earlier, with attempts left, is worth another run.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: `attempts` shows 1 of 3 used, the gate names a timeout, and the activity tail shows the suite green before."
+ }
+}

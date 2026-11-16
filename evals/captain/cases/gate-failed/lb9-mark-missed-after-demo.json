@@ -1,0 +1,202 @@
+{
+ "situation": "LB9's demo was accepted seconds ago, and the gate refused it for want of a `mark-set` line for PositionSyncedFromServer this turn.",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "library",
+  "slices": {
+   "LB9": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T16:20:25Z",
+    "kind": "read",
+    "told": "2026-10-21T15:48:59Z"
+   },
+   {
+    "t": "2026-10-22T08:00:25Z",
+    "kind": "read",
+    "told": "2026-10-21T16:26:23Z"
+   },
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:22:15Z"
+   },
+   {
+    "t": "2026-10-22T11:16:30Z",
+    "kind": "read",
+    "told": "2026-10-22T11:15:11Z"
+   },
+   {
+    "t": "2026-10-22T12:52:37Z",
+    "kind": "told",
+    "message": "Have another go.",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T14:06:23Z",
+    "kind": "claimed",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T14:09:11Z",
+    "kind": "mark-set",
+    "slice": "LB9",
+    "mark": "PositionSyncedFromServer",
+    "contract": "docs/event-model/model.yaml#PositionSyncedFromServer",
+    "examples": "specs/001-project-b/slices/LB9/examples.md",
+    "commit": "2716311",
+    "note": "PositionSyncedFromServer v1 on listening-{bookId} with bookId, syncId, position (whole seconds), lastListened (the server's lastUpdate), syncedAt (the service's now); in step on an equal position (D43); no isFinished (D44)"
+   },
+   {
+    "t": "2026-10-22T14:23:13Z",
+    "kind": "told",
+    "slice": "LB9",
+    "by": "session",
+    "message": "LB4 (preparing): LB9 reads book-{bookId} for the server item with a tolerant reader that asserts two fields of ServerBookAdded and nothing else - listenerId (as LB6's owner reader already does) and serverItemId, a non-empty string holding the Audiobookshelf library item id (the id GET /api/me/progress/:id takes, v2.37.1). LB9's tests seed ServerBookAdded in that shape. If LB4 names the item otherwise, tell LB9 and the reader follows."
+   },
+   {
+    "t": "2026-10-22T14:23:13Z",
+    "kind": "told",
+    "slice": "LB9",
+    "by": "session",
+    "message": "LB1, and the host (D64, awaiting confirmation): slice/LB9 carries LB1's service half, its commits 69b84f1 through 25a6177 (not its ledger line) taken by cherry-pick, and extends three of LB1's files additively with one method - BookServer.progressOf in application/library/ports/book-server.ts, the Audiobookshelf adapter (GET /api/me/progress/:id, the same fetch options as prove) and tests/stubs/audiobookshelf.ts, plus tests/fakes/book-server.ts. LB1: please keep those files' shapes stable before merging, or say what changed; at LB9's merge rung the rebase onto main drops the picked commits and …"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T14:24:40Z"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T14:08:40Z"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T13:25:52Z"
+   },
+   {
+    "t": "2026-10-22T14:44:29Z",
+    "kind": "parked",
+    "why": "LB9: the harness would not run LB9: it reported its session limit reached, lifting at 6:10pm local time. Paused until 18:10, no attempt spent",
+    "slice": "LB9",
+    "cause": "limit",
+    "until": "2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:08Z",
+    "kind": "claimed",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T17:30:21Z",
+    "kind": "mark-set",
+    "slice": "LB9",
+    "mark": "PositionSyncedFromServer",
+    "contract": "docs/event-model/model.yaml#PositionSyncedFromServer",
+    "examples": "specs/001-project-b/slices/LB9/examples.md",
+    "commit": "3c00a49",
+    "note": "re-entry on slice/LB9 at 3c00a49 (T001-T018 and T021 done; make unit, lint, typecheck green); first set 2026-10-22T14:09:11Z at 2716311; shape unchanged: bookId, syncId, position (whole seconds), lastListened, syncedAt (D43, D44). T019 and T020 are the capability's gates under flagged"
+   },
+   {
+    "t": "2026-10-22T17:38:14Z",
+    "kind": "demo",
+    "slice": "LB9",
+    "verdict": "accepted",
+    "outcome": "accepted",
+    "accepted-by": "sail-demo-hand",
+    "what": "Walked via agent-browser and HTTP: R6 (not-a-server-book, 404, 401) and R8 (imported book, service down, not found, flag off) passed; R1-R5 and R7 and the server-book lines of R6/R8 unreachable until LB4's door adds a server book, left to audiobookshelf-companion's capability gates. See specs/001-project-b/slices/LB9/demo-log.md"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T12:12:08Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T14:44:36Z",
+    "kind": "park",
+    "why": "LB9: the harness would not run LB9: it reported its session limit reached, lifting at 6:10pm local time. Paused until 18:10, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:41:57Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:08Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:40Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:40Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:56Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:44:29Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:38:10Z",
+    "kind": "slots",
+    "slots": 3,
+    "running": 3
+   }
+  ],
+  "gate": "LB9: the chart says LB9 sets PositionSyncedFromServer, and this turn wrote no `mark-set` for PositionSyncedFromServer. A stage that wrote no line made no progress, so nothing here is evidence the slice was built. That was the last of 3 run(s), which is what `attempts` allows"
+ },
+ "event": {
+  "v": 1,
+  "id": "lb9-mark-missed-after-demo",
+  "t": "2026-10-22T17:38:21Z",
+  "kind": "gate-failed",
+  "slice": "LB9",
+  "may": [
+   "park",
+   "say",
+   "ask",
+   "none"
+  ]
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "park",
+    "slice": "LB9"
+   },
+   {
+    "verb": "ask"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [],
+  "why": "The slice is accepted and only the mark-set line is missing; with the attempts spent, a person clears it.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the deck holds LB9's accepted demo seconds before the refusal, and the gate text says the attempts are spent. What happened: retried after a person cleared it, LB9 merged twelve minutes later. The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

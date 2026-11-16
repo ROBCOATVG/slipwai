@@ -185,7 +185,7 @@ class TheRunner(unittest.TestCase):
             f"pathlib.Path({str(marker)!r}).write_text(str(child.pid), encoding='utf-8')\n", encoding="utf-8")
         self.run_with(command_captain(f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"), runs=1)
         pid = int(marker.read_text(encoding="utf-8"))
-        self.addCleanup(lambda: alive(pid) and os.kill(pid, 9))
+        self.addCleanup(lambda: os.kill(pid, 9) if alive(pid) else None)
         deadline = time.monotonic() + 2
         while time.monotonic() < deadline and alive(pid):
             time.sleep(0.05)

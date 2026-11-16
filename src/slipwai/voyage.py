@@ -547,8 +547,9 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
             intake.append(f"{folder.name}:{flags}")
     verdicts = sorted(f"{page.parent.parent.name}:{int(page.stat().st_mtime)}"
                       for page in specs.glob(f"*/{MOCKUPS}/mock-states.md")) if specs.is_dir() else []
-    berths = [str(one.get("state", "")) for one in (fleet.get("berths") or []) if isinstance(one, dict)]
-    return "|".join((feature, "".join(str(row["state"])[:2] for row in rows), ",".join(drawn),
-                     ",".join(photographed), ",".join(verdicts),
-                     str(int(picture.stat().st_mtime) if picture.is_file() else 0), ",".join(berths),
-                     str(len(fleet.get("inbox") or [])), "f" if made else "", ",".join(intake)))
+    # Not the slices' states, the berths' or the inbox: those are bands the one poll swaps in place, and a
+    # reload on each of them closed every card a person had open. Only whether there are slices at all.
+    del fleet
+    return "|".join((feature, "s" if rows else "", ",".join(drawn), ",".join(photographed), ",".join(verdicts),
+                     str(int(picture.stat().st_mtime) if picture.is_file() else 0), "f" if made else "",
+                     ",".join(intake)))

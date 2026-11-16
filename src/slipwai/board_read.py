@@ -26,7 +26,7 @@ from .activity import live
 from .fleet import ASKED, board, harbour_log
 from .harbour import config
 from .logs import Entry
-from .shell_environment import KEEP_LOGIN
+from .shell_environment import ANSWERED, KEEP_LOGIN
 from .voyage import feedback_points, fleet_running, folded
 
 #: Seconds a read is kept. Under the page's poll, so each poll of a window on its own still reads the run
@@ -73,6 +73,9 @@ def fold(root: Path) -> Read:
         rows, fault = folded(root)
         held = config(root)
         fleet = {**board(root, held), "running": fleet_running(root)}
+        unreadable = fleet.get("unreadable")
+        if fault or (isinstance(unreadable, dict) and unreadable.get("clearance")):
+            ANSWERED.clear()  # the shell's answer may be why: the next read asks it again
         return Read(rows, fault, fleet, held, live(root, rows), feedback_points(root), trunk_of(harbour_log(root)))
     finally:
         ASKED.reset(asked)

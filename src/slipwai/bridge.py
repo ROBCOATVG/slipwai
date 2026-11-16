@@ -269,6 +269,8 @@ class Bridge(BaseHTTPRequestHandler):
         if isinstance(body, str) and kind.startswith("text/html"):
             body = with_notice(body, self.root)  # an app and a project out of step say so on every page
         data = body.encode("utf-8") if isinstance(body, str) else body
+        if self.command == "POST":
+            forget(self.root)  # before the answer: a poll the moment it lands must not see the action undone
         self.send_response(code)
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))

@@ -37,9 +37,9 @@ from .slice_card import (  # noqa: F401 — the card's names, kept importable he
 )
 from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
-from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
+from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 
-# budget: 830 — the one poll that keeps every band current, and the bands of one window, and who decided
+# budget: 840 — the one poll that keeps every band current, and the bands of one window, and who decided
 # each state the storyboard's note counts: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
@@ -250,10 +250,14 @@ function paintPassage(found){
     try { found = await (await fetch('/live.json')).json(); }
     catch (fault) { setTimeout(poll, 8000); return; }
     // Not while somebody is typing an answer into a card: the reload would throw the words away.
-    const typing = [...document.querySelectorAll('details.slice textarea, #feedback-box textarea')]
-      .some(box => box.value.trim());
+    const typing = [...document.querySelectorAll('textarea, input')]
+      .some(box => !/^(checkbox|radio|button|submit|hidden)$/.test(box.type) && box.value.trim() && changed(box));
     if (shape !== null && found.passage.shape !== shape && !typing) { location.reload(); return; }
     paintPassage(found.passage);
+    // The model is drawn once by draw.io's viewer, and drawing it again under somebody panning it is worse
+    // than a colour a moment old: so the poll only says the strokes have moved, and Redraw redraws.
+    const model = document.querySelector('[data-model-said]');
+    if (model) model.querySelector('.stale').hidden = model.dataset.modelSaid === found.model;
     if (window.waiting) waiting.set(found.waiting);
     count('[data-waiting-count]', found.waiting.count, 'waiting');
     count('[data-decisions-unread]', found.decisions, 'unread');
@@ -280,6 +284,7 @@ function paintPassage(found){
     const link = event.target.closest('a[href^="#card-"]');
     const card = link && document.getElementById(link.getAttribute('href').slice(1));
     if (card) { view('cards'); card.open = true; setTimeout(() => card.scrollIntoView({block: 'start'}), 0); }
+    if (event.target.closest('[data-model-redraw]')) location.reload();
     if (event.target.closest('[data-fleet-stop]')) { event.target.disabled = true; send('/stop', {}); }
   }, true);
 })();
@@ -507,7 +512,7 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
             f'<div class="next"><p id="now">{esc(said)}</p><div class="ask">{button}</div></div></div>')
 
 
-def model_card(xml: str, note: str, viewer_fault: str) -> str:
+def model_card(xml: str, note: str, viewer_fault: str, said: str = "") -> str:
     if not xml:
         return f'<div class="card"><h2>The model</h2><p class="empty">{esc(note)}</p></div>'
     # The controls are the board's, not the viewer's toolbar: the viewer's offers zoom in, out and fit, and a
@@ -524,7 +529,15 @@ def model_card(xml: str, note: str, viewer_fault: str) -> str:
             f'Where that never arrives, docs/event-model/model.drawio opens in draw.io.</p></div>'
             f'<p class="hint">Drag to pan, wheel to zoom, arrows nudge; ⤢ opens it full screen.</p>')
     warn = f'<p class="empty">{esc(note)}</p>' if note else ""
-    return f'<div class="card"><h2>The model</h2>{warn}<div class="viewer">{bar}{body}</div></div>'
+    stale = ('<p class="empty stale" hidden>A slice has moved since this was drawn, so its stroke is out of date '
+             '\u00b7 <button type="button" class="install" data-model-redraw>Redraw</button></p>')
+    return (f'<div class="card" data-model-said="{esc(said)}"><h2>The model</h2>{warn}{stale}'
+            f'<div class="viewer">{bar}{body}</div></div>')
+
+
+def model_said(rows: list[dict[str, str]]) -> str:
+    """What the model's strokes are drawn from: each slice's state, as the poll compares it."""
+    return signature(json.dumps(states_of(rows), sort_keys=True))
 
 
 def shot_html(shot: dict[str, str]) -> str:
@@ -766,7 +779,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("try", "Try it & feedback" if trying else "Feedback", f"{trying}{feedback}"),
             ("screens", "Screens", screens_card(shots or [], mocks or [], "" if trying else app)
              + mockups_card(left, root)),
-            ("model", "Model", model_card(xml, note, viewer_fault) if xml or note or viewer_fault else ""),
+            ("model", "Model",
+             model_card(xml, note, viewer_fault, model_said(rows)) if xml or note or viewer_fault else ""),
             ("fleet", "Fleet", machinery),
             ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
                           f"{decisions[1]} unread</span>", decisions[0]),

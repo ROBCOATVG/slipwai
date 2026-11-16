@@ -38,7 +38,7 @@ from .try_card import card as try_card
 from .try_card import payload as try_payload
 from .try_card import trunk_head
 from .voyage import counts, mockups, model_xml, running_app, screens, states_of
-from .voyage_page import band, expect_card, feedback_points_card, signature, work_card
+from .voyage_page import band, expect_card, feedback_points_card, model_said, signature, work_card
 from .voyage_page import page as voyage_page
 from .voyage_page import payload as voyage_payload
 
@@ -97,7 +97,7 @@ def live_json(board: Any) -> str:
              "expect": expect_card(found),
              "fleet": machinery(kept, rows, flags["stoppable"])}
     return json.dumps({"passage": json.loads(passage(board, found, kept.rows, fleet, flags, listed)),
-                       "waiting": listed, "decisions": decision_card(board.root)[1],
+                       "waiting": listed, "decisions": decision_card(board.root)[1], "model": model_said(kept.rows),
                        "bands": {name: {"said": signature(html), "html": html} for name, html in drawn.items()}})
 
 

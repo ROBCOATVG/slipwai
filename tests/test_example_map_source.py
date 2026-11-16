@@ -9,10 +9,11 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
-from slipwai import example_map
-from slipwai.example_map import card_line, found_map
+from slipwai import example_map_source
+from slipwai.example_map_source import card_line, found_map
 from slipwai.live_page import window, window_payload
 
 FOLDER = "specs/001-demo/slices/S01"
@@ -23,7 +24,9 @@ MAPPED = ("## Story\nA thing.\n\n## R1 — It holds\n\n### Scenario: It holds (S
 class SourceTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
-        example_map.SEEN.clear()
+        for held in (example_map_source.SEEN, example_map_source.FOLDERS, example_map_source.DONE,
+                     example_map_source.FLIGHT):
+            held.clear()
         self.git("init", "-q", "-b", "main")
         (self.root / "README.md").write_text("x\n", encoding="utf-8")
         self.git("add", "-A")
@@ -67,7 +70,7 @@ class SourceTest(unittest.TestCase):
     def test_a_poll_with_the_branch_where_it_was_reads_nothing_again(self) -> None:
         self.on_branch(MAPPED)
         first = found_map(self.root, "S01")
-        with mock.patch.object(example_map, "read", side_effect=AssertionError("read again")):
+        with mock.patch.object(example_map_source, "read", side_effect=AssertionError("read again")):
             self.assertIs(found_map(self.root, "S01"), first)
         self.on_branch(MAPPED + "## R2 — Another\n")
         moved = found_map(self.root, "S01")
@@ -84,6 +87,62 @@ class SourceTest(unittest.TestCase):
         self.assertTrue(payload["map_said"])
         self.assertIn('id="slice-map"', payload["map_html"])
         self.assertIn('id="slice-live"', payload["html"])
+
+    def head(self) -> str:
+        return subprocess.run(["git", "rev-parse", "slice/S01"], cwd=self.root, capture_output=True, text=True,
+                              check=True).stdout.strip()
+
+    def spawns(self) -> Any:
+        return mock.patch.object(example_map_source, "git", wraps=example_map_source.git)
+
+    def test_the_card_reads_with_the_head_the_board_already_has_and_spawns_nothing_more(self) -> None:
+        self.on_branch(MAPPED)
+        head = self.head()
+        card_line(self.root, "001-demo", "S01", head)
+        with self.spawns() as spawned:
+            self.assertEqual(card_line(self.root, "001-demo", "S01", head), "1 rule · 1 example · no questions open")
+        self.assertEqual(spawned.call_count, 0)
+
+    def test_a_done_slice_spawns_nothing_at_all(self) -> None:
+        self.on_branch(MAPPED)
+        self.git("merge", "-q", "--no-ff", "-m", "merge S01", "slice/S01")
+        with self.spawns() as spawned:
+            self.assertEqual(card_line(self.root, "001-demo", "S01", done=True),
+                             "1 rule · 1 example · no questions open")
+            card_line(self.root, "001-demo", "S01", done=True)
+        self.assertEqual(spawned.call_count, 0)
+
+    def test_the_card_then_the_window_share_one_read(self) -> None:
+        self.on_branch(MAPPED)
+        first = found_map(self.root, "S01", "001-demo", self.head())
+        with mock.patch.object(example_map_source, "read", side_effect=AssertionError("read again")), \
+                self.spawns() as spawned:
+            self.assertIs(found_map(self.root, "S01"), first)
+            self.assertIs(found_map(self.root, "S01", "001-demo", self.head()), first)
+        self.assertEqual(spawned.call_count, 1, "the window's one rev-parse, and nothing for the card")
+
+    def test_a_done_slice_whose_branch_was_rebased_as_it_merged_is_read_from_trunk(self) -> None:
+        self.on_branch(MAPPED)
+        (self.root / FOLDER).mkdir(parents=True)
+        (self.root / FOLDER / "examples.md").write_text(MAPPED + "## R2 — Landed on trunk\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "S01 rebased onto trunk")
+        self.assertEqual(card_line(self.root, "001-demo", "S01", done=True), "2 rules · 1 example · no questions open")
+        found = found_map(self.root, "S01")
+        assert found is not None
+        self.assertEqual(len(found.rules), 2, "its window reads trunk too, though the branch is no ancestor")
+
+    def test_the_payload_s_signature_moves_only_when_the_map_does(self) -> None:
+        self.on_branch(MAPPED)
+        self.git("merge", "-q", "--no-ff", "-m", "merge S01", "slice/S01")
+        said = [json.loads(window_payload(self.root, "F", "S01"))["map_said"] for _ in range(2)]
+        page = self.root / FOLDER / "examples.md"
+        page.write_text(MAPPED + "## R2 — Another\n", encoding="utf-8")
+        said.append(json.loads(window_payload(self.root, "F", "S01"))["map_said"])
+        page.write_text(MAPPED + "## R2 — Another\n", encoding="utf-8")
+        said.append(json.loads(window_payload(self.root, "F", "S01"))["map_said"])
+        self.assertEqual((said[0] == said[1], said[1] == said[2], said[2] == said[3]), (True, False, True),
+                         "a file written again with the same words is the same map")
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 
 from .assets import SLIPWAI
-from .example_map import card_line
+from .example_map_source import card_line
 from .fleet import Fairway, clearance_query, fairways, harbour_log
 from .fleet_record import clock_of
 from .logs import held_slices, paused, run_dir
@@ -174,7 +174,7 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
             row["fairway"] = owner.name
             row.update(spans(owner.entries, str(slice_id)))
             if slice_id in owner.merged:
-                row.update(state="done", examples=card_line(root, feature, str(slice_id)))
+                row.update(state="done", examples=card_line(root, feature, str(slice_id), done=True))
             elif slice_id in owner.claimed:  # in flight, one of several: waiting where a park holds it
                 row["state"] = ("waiting" if slice_id not in owner.slices_now or owner.parked
                                 else "working" if slice_id in owner.at_work(now=now) else "queued")

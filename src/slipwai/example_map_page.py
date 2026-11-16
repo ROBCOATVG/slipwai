@@ -14,7 +14,8 @@ import re
 from pathlib import Path
 from urllib.parse import quote
 
-from .example_map import Example, ExampleMap, Question, found_map, summary
+from .example_map import Example, ExampleMap, Question, summary
+from .example_map_source import found_map
 from .page_shell import esc
 
 DARK = ("--map-story:#4a3f12;--map-rule:#1d3a55;--map-example:#1f4027;--map-question:#5c2419;"
@@ -100,8 +101,11 @@ def map_html(found: ExampleMap | None) -> str:
             named = f"<b>{esc(rule.id)} · </b>" if rule.id else ""
             columns += (f'<div class="col"><div class="rule">{named}{esc(plain(rule.text)) or "Not under a rule"}'
                         f"</div>{cards or NONE}</div>")
-        if found.questions:
-            columns += f'<div class="col">{"".join(question_html(one) for one in found.questions)}</div>'
+        # A section that is only a sentence — "None open — D72–D78 answered …" — is one faded card: the
+        # questions were asked and settled, which is not the same as none being asked.
+        notes = "".join(f'<div class="q answered note"><span>{esc(plain(note))}</span></div>' for note in found.notes)
+        if found.questions or notes:
+            columns += f'<div class="col">{"".join(question_html(one) for one in found.questions)}{notes}</div>'
         inner = (f'<div class="story"><b>Story · </b>{story}</div><span class="says">{esc(summary(found))}</span>'
                  f'<div class="map-row"><div class="cols">{columns}</div></div><span class="key">{KEY}</span>')
     said = hashlib.sha1(inner.encode("utf-8")).hexdigest()[:16]

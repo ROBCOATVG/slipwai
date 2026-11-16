@@ -16,5 +16,11 @@ story counts it all: `11 rules · 16 examples · 4 questions, 1 open · 14 of 16
 - **A file that strays from the shape is a partial map**, never an error: a rule with no example yet still
   shows, a scenario written as a list keeps its words, and a slice with no file says it has no map yet.
 
+- **Cheap on the board's poll.** A card in flight reads its map with the branch head the card already
+  resolved, and a done slice from trunk, so the map adds no git process to a poll; only an open window asks
+  git, once a poll.
+- **Known limit:** in flight the map is read off the slice's branch, so a map its session has written in the
+  berth and not yet committed shows once it is committed.
+
 **Catch-up:** nothing to run: the window and the card are the board's, and read the files a slice already
 writes.

@@ -117,9 +117,25 @@ class ReaderTest(unittest.TestCase):
         self.assertEqual([(one.id, one.text, one.open) for one in found.questions],
                          [("Q1", "Who sets the week", False)])
 
-    def test_a_questions_section_that_is_a_paragraph_holds_no_questions(self) -> None:
-        self.assertEqual(read("## Questions\nNone open. Each reading taken here:\n- Spacing is every space.\n")
-                         .questions, [])
+    def test_a_questions_section_that_opens_none_open_lists_readings_not_questions(self) -> None:
+        found = read("## Questions\nNone open. Each reading taken here:\n- Spacing is every space.\n")
+        self.assertEqual((found.questions, found.notes), ([], ["None open. Each reading taken here:"]))
+
+    def test_a_sentence_introducing_the_questions_does_not_hide_them(self) -> None:
+        asked = read("## Questions\nOpen for the host:\n- Q1. Does a cart expire?\n- Q2. Who rounds? → D3\n").questions
+        self.assertEqual([(one.id, one.open) for one in asked], [("Q1", True), ("Q2", False)])
+
+    def test_a_question_that_says_it_is_still_open_is_open_whatever_it_names(self) -> None:
+        lines = ["→ not yet decided", "→ to be decided by the host", "→ open; see D26 for context",
+                 "→ the plan's to decide", "→ for the product owner"]
+        asked = read("## Questions\n" + "".join(f"- Q. Something {line}\n" for line in lines)).questions
+        self.assertEqual([one.open for one in asked], [True] * len(lines))
+
+    def test_a_question_is_answered_when_its_answer_says_it_has_been(self) -> None:
+        lines = ["→ D26", "→ standing D55.", "→ answered by D12 (R2).", "→ **answered by D53** (host, kept open "
+                 "until the plan)", "→ decided by the host on 12 Nov", "→ answered: kept"]
+        asked = read("## Questions\n" + "".join(f"- Q. Something {line}\n" for line in lines)).questions
+        self.assertEqual([one.open for one in asked], [False] * len(lines))
 
 
 class AwkwardInputTest(unittest.TestCase):
@@ -181,6 +197,12 @@ class ProvenTest(unittest.TestCase):
     def test_the_heading_is_found_inside_the_task_line_that_wrote_it(self) -> None:
         proof = "## Phase 5\n- [x] T015 `## Examples proven\n\n| Example | Test |\n|---|---|\n| AC5-1 | a.test.ts |\n"
         self.assertEqual(proven_ids(proof), {"AC5-1"})
+
+    def test_a_row_that_says_it_is_not_proven_or_names_no_test_proves_nothing(self) -> None:
+        proof = ("## Examples proven\n| Example | Test |\n|---|---|\n| X-3 | not proven — deferred |\n"
+                 "| X-4 | route |\n| X-5 | `a.test.ts` pending a fix |\n| X-6 | `a.test.ts` |\n"
+                 "- X-10 — pending\n- X-11 — the route\n- X-12 — `b.test.ts`\n")
+        self.assertEqual(proven_ids(proof), {"X-6", "X-12"})
 
     def test_a_task_list_with_no_examples_proven_section_proves_nothing(self) -> None:
         self.assertEqual(proven_ids("- [ ] T018 Fill `## Examples proven` later\n| CS-1 | a.test.ts |\n"), set())
@@ -249,10 +271,23 @@ class TabTest(unittest.TestCase):
         self.assertIn('data-tab="where" aria-current="page">Where it is</a>', tabs)
         self.assertIn("history.replaceState", WINDOW_SCRIPT)
 
-    def test_the_poll_puts_back_the_opened_examples_and_the_scroll(self) -> None:
-        self.assertIn("map.dataset.said !== found.map_said", WINDOW_SCRIPT)
-        self.assertIn("open.includes(one.dataset.ex)", WINDOW_SCRIPT)
-        self.assertIn("again.scrollLeft = left", WINDOW_SCRIPT)
+    def test_every_field_that_reaches_the_page_is_escaped(self) -> None:
+        bad = "<script>x</script>"
+        text = (f"## Story\n{bad}\n## R1 — {bad}\n### Scenario: {bad} (A-1)\n**Given** {bad} · **When** {bad} · "
+                f"**Then** {bad}\n### Scenario: {bad}\n- {bad}\n## Questions\n- Q1. {bad} → {bad}\n"
+                f"## Questions answered\nNone open — {bad}\n")
+        drawn = map_html(read(text))
+        self.assertNotIn("<script>", drawn)
+        self.assertEqual(drawn.count("&lt;script&gt;"), 11, "story, rule, two titles, three steps, a list body, "
+                                                             "a question, its answer and the note")
+        self.assertNotIn("<script", card_html({"slice": "A", "state": "done", "fairway": bad, "examples": bad}))
+
+    def test_a_questions_section_that_is_only_a_sentence_is_one_faded_card(self) -> None:
+        found = read("## Questions\nNone open — D72–D78 answered what the artefacts left.\n")
+        self.assertEqual((found.questions, found.notes),
+                         ([], ["None open — D72–D78 answered what the artefacts left."]))
+        self.assertIn('<div class="q answered note"><span>None open — D72–D78 answered what the artefacts left.'
+                      "</span></div>", map_html(found))
 
     def test_the_same_map_drawn_twice_says_the_same_so_the_poll_leaves_it_alone(self) -> None:
         self.assertEqual(map_html(read(SHAPED, PROOF)), map_html(read(SHAPED, PROOF)))

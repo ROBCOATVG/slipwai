@@ -7,23 +7,27 @@ heading marked `*(gaps pass)*`, a `## Questions answered` beside `## Questions`,
 paragraph — so this reads what it can and never raises: a file that does not follow the shape is a partial
 map, and a slice with no file has none.
 
-**A question is open until its line says what answered it.** The questions are the list items under any
-heading that starts `## Questions`, up to the first paragraph that is not one (what follows is a note or the
-stage's recommendations, not another question). An item with an arrow is answered when what follows the
-arrow says `answered` or `decided`, or names a decision (`D26`); without an arrow only `answered by` or
-`decided by` counts. AC1's `Q4 … → the plan's to decide (research.md), with an ADR` is open.
+**A question is open until its line says it has been answered.** The questions are the list items under any
+heading that starts `## Questions`, after any sentence that introduces them and up to the next paragraph
+(what follows is a note or the stage's recommendations, not another question). A section that opens with
+"None open" holds no questions, and its sentence is kept as the map's note. An item is answered when its
+answer says so — `answered by`, `decided by`, or an arrow straight onto a decision (`→ D26`,
+`→ standing D55`) — and nothing before that says it is still open: `→ not yet decided`,
+`→ to be decided by the host` and `→ open; see D26` are open, and so is AC1's `Q4 … → the plan's to decide`.
 
-**An example is proven when `tasks.md`'s `## Examples proven` names it** in the first cell of a table row,
-or at the head of a list item, beside a test: `| AC1-3 What Discord shares | screen | SignIn.test.tsx … |`,
-`| CL4-1, 3, 5 | route | … |`, `- TB1-1 Priya sets … — set-club-week.test.ts`. A row naming nothing is a
-note, and a slice whose list has no such section has nothing proven.
+**An example is proven when `tasks.md`'s `## Examples proven` names it beside a test**: in the first cell
+of a table row, or at the head of a list item, with a test named after it (a path, a quoted test name, a
+backtick) and no word that it is not proven, deferred or pending. `| AC1-3 What Discord shares | screen |
+SignIn.test.tsx … |`, `| CL4-1, 3, 5 | route | … |` and `- TB1-1 Priya sets … — set-club-week.test.ts` are;
+`| X-3 | not proven — deferred |` is not, and a slice whose list has no such section has nothing proven.
+
+**A berth's uncommitted map is not seen**: in flight the map is read off the slice's branch, so what a
+session has written and not yet committed shows once it is.
 """
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass, field
-from pathlib import Path
 
 RULE = re.compile(r"^##\s+(R\d+)\b\s*[—–:.-]?\s*(.*)$")
 SCENARIO = re.compile(r"^###\s+(?:Scenario|Example)\b:?\s*(.*)$", re.I)
@@ -34,8 +38,17 @@ GWT = re.compile(r"\*\*(Given|When|Then)\*\*", re.I)
 ITEM = re.compile(r"^(?:[-*]|\d+[.)])\s+(.*)$")
 #: A question's own id, where it carries one: `Q1.`, `**AC2-q1**`. One without is called by its place.
 ASKED_ID = re.compile(r"^(?:\*\*)?([A-Za-z0-9]+-q\d+|Q\d+)(?:\*\*)?[.:]?\s*(?:—\s*)?")
-ANSWERED = re.compile(r"\banswered\b|\bdecided\b|\bD\d+\b", re.I)
+#: Where an answer says it has been answered: the end of the match is how far the open words are looked for.
+ANSWERED = re.compile(r"\b(?:answered|decided) by\b|^\W*(?:answered\b|(?:standing\s+)?D\d+\b)", re.I)
 ANSWERED_BY = re.compile(r"\b(?:answered|decided) by\b", re.I)
+#: The words that keep a question open whatever follows them.
+STILL_OPEN = re.compile(r"\bnot yet\b|\bto be (?:decided|answered)\b|\bopen\b|\bundecided\b|\bunanswered\b|"
+                        r"\bto decide\b|\bpending\b", re.I)
+#: The sentence a Questions section opens with when it has none to list.
+NONE_OPEN = re.compile(r"^\W*(?:none\b|no questions?\b|nothing open\b)", re.I)
+#: A proof row's test cell names a test (a backtick, a quoted name, a file), and says nothing against it.
+NAMES_A_TEST = re.compile(r'[`"“]|\b[\w-]+\.\w{1,4}\b|\btests?\b', re.I)
+NOT_PROVEN = re.compile(r"\bnot (?:yet )?proven\b|\bunproven\b|\bdeferred\b|\bpending\b|\bnot yet\b", re.I)
 #: A scenario id as a proof row names it, and what may follow it: a range, or more numbers of the same prefix.
 FULL = re.compile(r"\b([A-Z][A-Za-z0-9]*)-(\d+)\b")
 #: The proof's heading: at the start of a line, or ending one after an unclosed backtick. A task that says
@@ -75,6 +88,8 @@ class ExampleMap:
     story: str = ""
     rules: list[Rule] = field(default_factory=list)
     questions: list[Question] = field(default_factory=list)
+    #: A Questions section written as a sentence ("None open — D72–D78 answered …"): asked and settled.
+    notes: list[str] = field(default_factory=list)
 
     @property
     def examples(self) -> list[Example]:
@@ -150,19 +165,32 @@ def rule_of(heading: str, lines: list[str]) -> Rule:
     return rule
 
 
-def questions_of(lines: list[str]) -> list[Question]:
+def questions_of(lines: list[str]) -> tuple[list[Question], str]:
+    """The section's questions, and the sentence it opens with where it lists none."""
     items: list[list[str]] = []
+    opening: list[str] = []
     for line in lines:
         if not line.strip():
             continue
         item = ITEM.match(line)
         if item and not line[0].isspace():
+            if NONE_OPEN.match(joined(opening)):
+                break  # "None open. Each reading taken here …": what is listed is not a question
             items.append([item.group(1)])
         elif line[0].isspace() and items:
             items[-1].append(line)
-        else:
+        elif items:
             break  # a paragraph: what follows is a note or a recommendation, not a question
-    return [question(joined(item), f"Q{index}") for index, item in enumerate(items, 1)]
+        else:
+            opening.append(line)  # "Open for the host:", or a section that is only this sentence
+    found = [question(joined(item), f"Q{index}") for index, item in enumerate(items, 1)]
+    return found, "" if found else joined(opening)
+
+
+def answered(said: str, arrowed: bool) -> bool:
+    plain = said.replace("*", "")
+    mark = (ANSWERED if arrowed else ANSWERED_BY).search(plain)
+    return mark is not None and not STILL_OPEN.search(plain[:mark.end()])
 
 
 def question(text: str, fallback: str) -> Question:
@@ -170,9 +198,8 @@ def question(text: str, fallback: str) -> Question:
     named = ASKED_ID.match(text)
     ident, text = (named.group(1), text[named.end():]) if named else (fallback, text)
     asked, arrow, after = text.partition("→")
-    answered = bool(ANSWERED.search(after)) if arrow else bool(ANSWERED_BY.search(text))
     return Question(id=ident, text=asked.strip().rstrip(".") if arrow else text, answer=after.strip(),
-                    open=not answered)
+                    open=not answered(after if arrow else text, bool(arrow)))
 
 
 def read(text: str, proof: str = "") -> ExampleMap:
@@ -186,7 +213,9 @@ def read(text: str, proof: str = "") -> ExampleMap:
         elif RULE.match(heading):
             found.rules.append(rule_of(heading, lines))
         elif title.lower().startswith("questions"):
-            found.questions += questions_of(lines)
+            asked, note = questions_of(lines)
+            found.questions += asked
+            found.notes += [note] if note else []
         elif not found.rules:
             # Scenarios written before any rule is named: kept, under a rule with no name.
             loose.examples += rule_of("", lines).examples
@@ -231,82 +260,15 @@ def proven_ids(text: str) -> set[str]:
             continue
         elif line.startswith("|"):
             cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-            if len(cells) > 1 and any(cells[1:]):
+            if len(cells) > 1 and beside_a_test(" | ".join(cells[1:])):
                 found |= named_ids(cells[0])
         elif item := ITEM.match(line):
             head, dash, rest = item.group(1).partition(" — ")
-            head, tick, _ = head.partition("`")
-            if (dash and rest.strip()) or tick:
+            head, tick, after = head.partition("`")
+            if beside_a_test(rest if dash else tick + after):
                 found |= named_ids(head)
     return found
 
 
-# Where it is read from: the slice's branch while it is in flight, trunk's working tree once merged.
-
-#: What was read last time, by slice: the stamp it was read at (a branch head, or the files' times) and the map.
-SEEN: dict[tuple[str, str], tuple[tuple, ExampleMap | None]] = {}
-#: Whether a branch head is in trunk yet, by the pair of heads, so a poll asks git once a pair.
-MERGED: dict[tuple[str, str], bool] = {}
-
-
-def git(root: Path, *argv: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", "-C", str(root), *argv], capture_output=True, text=True, check=False,
-                          encoding="utf-8", errors="replace")
-
-
-def folder_of(root: Path, slice_id: str, feature: str, ref: str = "") -> str:
-    """`specs/<feature>/slices/<id>/`, the feature found where it was not given."""
-    if feature:
-        return f"specs/{feature}/slices/{slice_id}/"
-    if ref:
-        listed = git(root, "ls-tree", "-r", "--name-only", ref, "specs/").stdout.splitlines()
-        names = sorted(line for line in listed if re.fullmatch(rf"specs/[^/]+/slices/{re.escape(slice_id)}/"
-                                                               r"examples\.md", line))
-    else:
-        names = sorted(str(path.relative_to(root)) for path in root.glob(f"specs/*/slices/{slice_id}/examples.md"))
-    return names[0].removesuffix("examples.md") if names else ""
-
-
-def found_map(root: Path, slice_id: str, feature: str = "") -> ExampleMap | None:
-    """The slice's map, or None where it has no `examples.md` yet. Cached by what it was read from."""
-    if not slice_id or "/" in slice_id or slice_id.startswith("."):
-        return None
-    key = (str(root.resolve()), slice_id)
-    ref = f"refs/heads/slice/{slice_id}"
-    asked = git(root, "rev-parse", "--verify", "--quiet", ref)
-    heads = [asked.stdout.strip(), git(root, "rev-parse", "HEAD").stdout.strip()] if asked.returncode == 0 else []
-    if len(heads) == 2 and not merged(root, heads[0], heads[1]):
-        stamp: tuple = ("branch", heads[0], feature)
-        if SEEN.get(key, ((), None))[0] == stamp:
-            return SEEN[key][1]
-        folder = folder_of(root, slice_id, feature, ref)
-        shown = git(root, "show", f"{ref}:{folder}examples.md") if folder else None
-        found = (read(shown.stdout, git(root, "show", f"{ref}:{folder}tasks.md").stdout)
-                 if shown is not None and shown.returncode == 0 else None)
-    else:
-        folder = folder_of(root, slice_id, feature) or "-/"
-        page, proof = root / folder / "examples.md", root / folder / "tasks.md"
-        stamp = ("trunk", folder, *(path.stat().st_mtime_ns if path.is_file() else 0 for path in (page, proof)))
-        if SEEN.get(key, ((), None))[0] == stamp:
-            return SEEN[key][1]
-        try:
-            found = read(page.read_text(encoding="utf-8"),
-                         proof.read_text(encoding="utf-8") if proof.is_file() else "") if page.is_file() else None
-        except (OSError, UnicodeDecodeError):
-            found = None
-    SEEN[key] = (stamp, found)
-    return found
-
-
-def merged(root: Path, branch: str, trunk: str) -> bool:
-    if (branch, trunk) not in MERGED:
-        MERGED[(branch, trunk)] = git(root, "merge-base", "--is-ancestor", branch, trunk).returncode == 0
-    return MERGED[(branch, trunk)]
-
-
-def card_line(root: Path, feature: str, slice_id: str) -> str:
-    """The counts the card's Examples step carries, or nothing before the file exists."""
-    try:
-        return card_counts(found_map(root, slice_id, feature))
-    except OSError:
-        return ""
+def beside_a_test(said: str) -> bool:
+    return bool(NAMES_A_TEST.search(said)) and not NOT_PROVEN.search(said)

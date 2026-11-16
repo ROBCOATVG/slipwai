@@ -176,7 +176,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # capability's film: the hand's one recording of the whole walk, a chapter a slice.
               "film", "slice_card",
               # And the slice's example map, read off its examples file and drawn in its window.
-              "example_map", "example_map_page",
+              "example_map", "example_map_source", "example_map_page",
               # And the stop above the chart answered without a person, where the project says so.
               "upstream",
               # What a handed-over document stands on, carried in with it.

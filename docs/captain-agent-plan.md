@@ -67,9 +67,12 @@ layout and wording, not for code: `Board.dc.html` on the owner's design canvas.
 12. **What an agent asks mid-turn.** A permission inside its berth is allowed. One outside it goes to the
     slice's captain, which allows what the rules allow and refuses the rest, saying why; nothing here waits
     on a person. An operational question the captain answers. A product question follows the project's
-    *who answers* setting: **the skipper by default, and nothing blocks**; only where the setting says a
-    person answers does it become a card under *Waiting on you*, the turn held five minutes for a quick
-    answer before the slice pauses.
+    *Who answers* settings. **A fleet cast off under `/cruise` — which is what the board's Cast off is —
+    answers every one itself by default**: the stage's recommendation or the skipper (or the skipper every
+    time), and nothing blocks or is listed as waiting. A person is asked only where a person is at the
+    wheel: under `/sail`, in a project with no cruise settings, or for a stop the settings set to *park and
+    ask me*. There it is a card under *Waiting on you*, the turn held five minutes for a quick answer before
+    the slice pauses.
 13. **Where conversations live.** Each in a window of its own: a slice's (where it is, example map,
     conversation) and a captain's (its slices, what it decided today, conversation). The board carries a
     marker and the last thing said on a card, and a one-line quick send in the opened card. Captains are

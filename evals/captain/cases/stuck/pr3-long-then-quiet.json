@@ -1,8 +1,8 @@
 {
  "situation": "PR3 has been thirteen minutes on one task and silent for eight.",
- "source": "a recorded run of an audiobook-recap project, the preparation stream, 2026-10-23",
+ "source": "a recorded run of project-b, the preparation stream, 2026-10-23",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "preparation",
   "slices": {
    "PR3": "claimed, in flight"
@@ -18,8 +18,8 @@
     "slice": "PR3",
     "kind": "mark-set",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "entries delta + digest, firstAppearance set by the use case, shared stream, nothing personal (D107, D113, D114)"
    },
@@ -38,7 +38,7 @@
    {
     "t": "2026-10-22T20:05:11Z",
     "kind": "told",
-    "message": "fix the no mark set - model correectly",
+    "message": "Fix the missing mark-set problem, and model it properly.",
     "by": "person"
    },
    {
@@ -74,7 +74,7 @@
    {
     "t": "2026-10-23T05:48:06Z",
     "kind": "told",
-    "message": "sort all mark set issues",
+    "message": "Sort out every mark-set problem.",
     "by": "person"
    },
    {
@@ -82,8 +82,8 @@
     "kind": "mark-set",
     "slice": "PR3",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "re-entry: first set 2026-10-22T19:26:50Z at eb810fa, unchanged; check-chart, check-model, check-decisions green this turn. Entries delta + digest, firstAppearance set by the use case, shared stream, nothing personal (D107, D113, D114, ADR 0014)"
    },
@@ -92,8 +92,8 @@
     "kind": "mark-set",
     "slice": "PR3",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "re-entry under the demo-gate park: preparation band only, no implementation, so no demo is due; check-chart, check-model, check-decisions green; no open question"
    },
@@ -107,8 +107,8 @@
     "kind": "mark-set",
     "slice": "PR3",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "re-entry: first set 2026-10-22T19:26:50Z at eb810fa, unchanged; check-chart, check-model, check-decisions green this turn; no open question (D107, D113, D114, ADR 0014); preparation band only, no demo due"
    }
@@ -147,15 +147,15 @@
      "kind": "done",
      "what": "Write PR3 tasks.md",
      "role": "sail-tasks-quartermaster",
-     "id": "aa08a692eba38b639",
+     "id": "aa08a69",
      "tokens": 61887
     },
     {
      "t": "2026-10-23T05:55:00Z",
      "stage": "drive",
-     "agent": "a6f5be24322015e04",
+     "agent": "a6f5be2",
      "kind": "ran",
-     "what": "git add specs/001-audiobook-recap/slices/PR3/tasks.md && git commit",
+     "what": "git add specs/001-project-b/slices/PR3/tasks.md && git commit",
      "role": "sail-slice-watch"
     },
     {
@@ -165,12 +165,12 @@
      "kind": "start",
      "what": "Implement PR3 T002-T008",
      "role": "sail-implement-shipwright",
-     "model": "sonnet"
+     "model": "a-model"
     },
     {
      "t": "2026-10-23T05:55:10Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "link",
      "what": "sail-implement-shipwright",
      "role": "sail-implement-shipwright"
@@ -178,7 +178,7 @@
     {
      "t": "2026-10-23T05:55:12Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
      "what": "cat docs/delegated-agent-safety.md | head -80; cat",
      "role": "sail-implement-shipwright"
@@ -186,87 +186,87 @@
     {
      "t": "2026-10-23T05:55:13Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cat specs/001-audiobook-recap/slices/PR3/examples.md specs/001-audiobook-recap/slices/PR3/plan.md; git show a89a840:specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
+     "what": "cat specs/001-project-b/slices/PR3/examples.md specs/001-project-b/slices/PR3/plan.md; git show a89a840:specs/001-project-b/contracts/PR2-transcribe-chapter.md",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:55:24Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api && git ls-files |",
+     "what": "cd ../project-b-PR3/apps/project-b-api && git ls-files |",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:55:27Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api && cat src/domain/preparation/*.ts src/application/preparation/*.ts",
+     "what": "cd ../project-b-PR3/apps/project-b-api && cat src/domain/preparation/*.ts src/application/preparation/*.ts",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:55:30Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api && cat tests/domain/preparation/start-preparation.test.ts tests/fixtures/audio-events.ts;",
+     "what": "cd ../project-b-PR3/apps/project-b-api && cat tests/domain/preparation/start-preparation.test.ts tests/fixtures/audio-events.ts;",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:55:32Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api && cat tests/fixtures/audio-events.ts; sed",
+     "what": "cd ../project-b-PR3/apps/project-b-api && cat tests/fixtures/audio-events.ts; sed",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:55:33Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api && cat src/application/ports/events.ts; cat",
+     "what": "cd ../project-b-PR3/apps/project-b-api && cat src/application/ports/events.ts; cat",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:55:44Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api && cat src/application/ports/event-context.ts |",
+     "what": "cd ../project-b-PR3/apps/project-b-api && cat src/application/ports/event-context.ts |",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:56:00Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api && sed -n 80,200p",
+     "what": "cd ../project-b-PR3/apps/project-b-api && sed -n 80,200p",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:56:16Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api/src/domain/preparation &&",
+     "what": "cd ../project-b-PR3/apps/project-b-api/src/domain/preparation &&",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:56:48Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd ../recap-PR3/apps/recap-api/tests/domain/preparation &&",
+     "what": "cd ../project-b-PR3/apps/project-b-api/tests/domain/preparation &&",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:56:52Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
      "what": "ls; ls node_modules 2>&1 | head",
      "role": "sail-implement-shipwright"
@@ -274,24 +274,24 @@
     {
      "t": "2026-10-23T05:56:55Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "cd <path> && ls recap/apps/recap-api/node_modules 2>&1",
+     "what": "cd <path> && ls recap/apps/project-b-api/node_modules 2>&1",
      "role": "sail-implement-shipwright"
     },
     {
      "t": "2026-10-23T05:56:55Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "failed",
-     "what": "cd <path> && ls recap/apps/recap-api/node_modules 2>&1",
+     "what": "cd <path> && ls recap/apps/project-b-api/node_modules 2>&1",
      "role": "sail-implement-shipwright",
      "said": "Exit code 1"
     },
     {
      "t": "2026-10-23T05:56:57Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
      "what": "cat .gitignore | head -20; ls",
      "role": "sail-implement-shipwright"
@@ -299,9 +299,9 @@
     {
      "t": "2026-10-23T05:57:01Z",
      "stage": "drive",
-     "agent": "ac92138d27e7218f7",
+     "agent": "ac92138",
      "kind": "ran",
-     "what": "ln -s ../recap-PR1/node_modules node_modules && ls",
+     "what": "ln -s ../project-b-PR1/node_modules node_modules && ls",
      "role": "sail-implement-shipwright"
     }
    ]
@@ -358,6 +358,6 @@
   ],
   "why": "It had stopped to give its berth the dependencies it lacked; it came back on its own.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: it carried on sixteen minutes later and its demo was accepted forty minutes after."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the activity tail shows the agent setting up its berth's dependencies just before the quiet. What happened: it carried on sixteen minutes later and its demo was accepted forty minutes after. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

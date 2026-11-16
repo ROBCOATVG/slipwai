@@ -1,8 +1,8 @@
 {
  "situation": "TB1's gate has just failed for the second time with the same words: no `mark-set` for ClubWeekSet this turn, although the mark was set that morning and the slice was seeded green. The session cannot write the line; nothing in the tree is owed.",
- "source": "a recorded run of a game-club manager project, the tables stream, 2026-11-13",
+ "source": "a recorded run of project-a, the tables stream, 2026-11-13",
  "snapshot": {
-  "feature": "001-game-club-manager",
+  "feature": "001-project-a",
   "fairway": "tables",
   "slices": {
    "TB1": "claimed, in flight"
@@ -13,7 +13,7 @@
     "kind": "mark-set",
     "slice": "TB1",
     "mark": "ClubWeekSet",
-    "where": "apps/game-club-manager-service/src/domain/tables/events.ts at 2a3356c"
+    "where": "apps/project-a-service/src/domain/tables/events.ts at 2a3356c"
    },
    {
     "t": "2026-11-13T09:16:23Z",
@@ -30,10 +30,10 @@
     "kind": "told",
     "slice": "TB1",
     "by": "session",
-    "message": "TB1 needs DEV_SIGN_IN=on and DEV_CLUB_ORGANISERS=c-tt=p-organiser in .env.example (shared configuration, the host's) so Try it can seed the club's week; the text is in specs/001-game-club-manager/slices/TB1/env-example-additions.txt on slice/TB1.",
+    "message": "TB1 needs DEV_SIGN_IN=on and DEV_CLUB_ORGANISERS=c-tt=p-organiser in .env.example (shared configuration, the host's) so Try it can seed the club's week; the text is in specs/001-project-a/slices/TB1/env-example-additions.txt on slice/TB1.",
     "needs": [
      {
-      "what": "Land specs/001-game-club-manager/slices/TB1/env-example-additions.txt in .env.example on main",
+      "what": "Land specs/001-project-a/slices/TB1/env-example-additions.txt in .env.example on main",
       "by": "fleet",
       "check": {
        "kind": "text",
@@ -77,8 +77,8 @@
     "kind": "seeded",
     "slice": "TB1",
     "records": 2,
-    "commit": "a3e00969abf2460192acd8c2e65b2011abbcb728",
-    "story": "specs/001-game-club-manager/slices/TB1/try-it.json",
+    "commit": "a3e0096",
+    "story": "specs/001-project-a/slices/TB1/try-it.json",
     "api": "http://localhost:4142"
    }
   ],
@@ -110,14 +110,20 @@
     "running": 1
    }
   ],
-  "gate": "TB1: the chart says TB1 sets ClubWeekSet, and this turn wrote no `mark-set` for ClubWeekSet. A stage that wrote no line made no progress, so nothing here is evidence the slice was built."
+  "gate": "TB1: the chart says TB1 sets ClubWeekSet, and this turn wrote no `mark-set` for ClubWeekSet. A stage that wrote no line made no progress, so nothing here is evidence the slice was built. That was the last of 4 run(s), which is what `attempts` allows"
  },
  "event": {
   "v": 1,
   "id": "tb1-mark-set-refused-twice",
   "t": "2026-11-13T15:46:30Z",
   "kind": "gate-failed",
-  "slice": "TB1"
+  "slice": "TB1",
+  "may": [
+   "park",
+   "say",
+   "ask",
+   "none"
+  ]
  },
  "label": {
   "accept": [
@@ -129,14 +135,9 @@
     "verb": "ask"
    }
   ],
-  "wrong": [
-   {
-    "verb": "retry",
-    "slice": "TB1"
-   }
-  ],
-  "why": "The same refusal twice, on a slice whose work is done, is not a thing another run fixes: park it for a person with the reason, or ask one.",
+  "wrong": [],
+  "why": "The attempts are spent, and the same refusal came at 12:49; park it for a person with the reason, or ask one.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: the slice was re-dispatched 24 more times over two hours for the same reason, each session saying a person had to act, until a person did on another day; it then merged in eight minutes."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the gate text says this was the last run `attempts` allows, and the deck holds the same refusal at 12:49. The event offers no retry, because the program refuses one past its ceiling. What happened next: it was re-dispatched 24 more times for the same reason."
  }
 }

@@ -1,8 +1,8 @@
 {
  "situation": "TB1's gate has failed again for want of a `mark-set` line. The session's own told lines say the harness's permission check refuses it the write, that re-dispatching will not change that, and to hold the slice until the permission exists.",
- "source": "a recorded run of a game-club manager project, the tables stream, 2026-11-13",
+ "source": "a recorded run of project-a, the tables stream, 2026-11-13",
  "snapshot": {
-  "feature": "001-game-club-manager",
+  "feature": "001-project-a",
   "fairway": "tables",
   "slices": {
    "TB1": "claimed, in flight"
@@ -21,11 +21,11 @@
    {
     "t": "2026-11-13T15:56:03Z",
     "kind": "told",
-    "message": "TB1 is built and proven at 3eadb9e4: verify green at ce276ddb (0 behind trunk), story seeded this turn, and the hand re-walked the screen on the rebased head and accepted it (iteration 3). This session cannot append the mark-set and demo lines: the harness permission classifier refuses a session writing them by hand, as it did in the last two runs. Re-dispatching will not change that; it needs a permission rule for the deck writes, or the two lines written by a person, and then the merge request.",
+    "message": "TB1 is built and proven at 3eadb9e: verify green at ce276dd (0 behind trunk), story seeded this turn, and the hand re-walked the screen on the rebased head and accepted it (iteration 3). This session cannot append the mark-set and demo lines: the harness permission classifier refuses a session writing them by hand, as it did in the last two runs. Re-dispatching will not change that; it needs a permission rule for the deck writes, or the two lines written by a person, and then the merge request.",
     "by": "session",
     "needs": [
      {
-      "what": "A person approves or writes the two deck lines TB1 owes this turn: mark-set ClubWeekSet (apps/game-club-manager-service/src/domain/tables/events.ts at 3eadb9e4) and demo accepted by sail-demo-hand (iteration 3, 2026-11-13T15:54:27Z, demo-log.md at 3eadb9e4)",
+      "what": "A person approves or writes the two deck lines TB1 owes this turn: mark-set ClubWeekSet (apps/project-a-service/src/domain/tables/events.ts at 3eadb9e) and demo accepted by sail-demo-hand (iteration 3, 2026-11-13T15:54:27Z, demo-log.md at 3eadb9e)",
       "by": "person"
      }
     ],
@@ -36,18 +36,18 @@
     "kind": "seeded",
     "slice": "TB1",
     "records": 2,
-    "commit": "b2626d03547bff821cb772be4855a817ca0bcbdb",
-    "story": "specs/001-game-club-manager/slices/TB1/try-it.json",
+    "commit": "b2626d0",
+    "story": "specs/001-project-a/slices/TB1/try-it.json",
     "api": "http://localhost:4142"
    },
    {
     "t": "2026-11-13T16:05:20Z",
     "kind": "told",
-    "message": "TB1 at a15ee76c: rebased onto d7e02611 (LB4), verify green, 88 integration tests green on the berth database, story seeded this turn, hand re-walked and accepted (iteration 4). The mark-set line was refused by the harness permission classifier for the fourth run; running the slice again will end the same way. GN2 has since landed on trunk and conflicts in adversary-log.md only, so one more rebase is owed before the merge.",
+    "message": "TB1 at a15ee76: rebased onto d7e0261 (LB4), verify green, 88 integration tests green on the berth database, story seeded this turn, hand re-walked and accepted (iteration 4). The mark-set line was refused by the harness permission classifier for the fourth run; running the slice again will end the same way. GN2 has since landed on trunk and conflicts in adversary-log.md only, so one more rebase is owed before the merge.",
     "by": "session",
     "needs": [
      {
-      "what": "A person approves the two deck lines TB1 owes: mark-set ClubWeekSet (domain/tables/events.ts at a15ee76c) and demo accepted by sail-demo-hand (iteration 4, 2026-11-13T16:03:38Z, walked at b2626d03, demo-log.md at a15ee76c)",
+      "what": "A person approves the two deck lines TB1 owes: mark-set ClubWeekSet (domain/tables/events.ts at a15ee76) and demo accepted by sail-demo-hand (iteration 4, 2026-11-13T16:03:38Z, walked at b2626d0, demo-log.md at a15ee76)",
       "by": "person"
      }
     ],
@@ -58,8 +58,8 @@
     "kind": "seeded",
     "slice": "TB1",
     "records": 2,
-    "commit": "c6cf8452e21864ccf20f0ce9d13c9605c739285f",
-    "story": "specs/001-game-club-manager/slices/TB1/try-it.json",
+    "commit": "c6cf845",
+    "story": "specs/001-project-a/slices/TB1/try-it.json",
     "api": "http://localhost:4142"
    },
    {
@@ -67,18 +67,18 @@
     "kind": "seeded",
     "slice": "TB1",
     "records": 2,
-    "commit": "ec30585e38e5fdf7dd2577dc4f3f70528e95079b",
-    "story": "specs/001-game-club-manager/slices/TB1/try-it.json",
+    "commit": "ec30585",
+    "story": "specs/001-project-a/slices/TB1/try-it.json",
     "api": "http://localhost:4142"
    },
    {
     "t": "2026-11-13T16:15:59Z",
     "kind": "told",
-    "message": "TB1 at a8b113d2 is rebased over GN2 and CL3, 0 behind trunk 2d8ea74b, verify green, 107 integration tests green, story seeded, hand accepted iteration 6. The permission classifier refused the merge request line as well as mark-set, for the fifth run. Running TB1 again ends the same way while trunk changes under it. Hold TB1 until the permission exists.",
+    "message": "TB1 at a8b113d is rebased over GN2 and CL3, 0 behind trunk 2d8ea74, verify green, 107 integration tests green, story seeded, hand accepted iteration 6. The permission classifier refused the merge request line as well as mark-set, for the fifth run. Running TB1 again ends the same way while trunk changes under it. Hold TB1 until the permission exists.",
     "by": "session",
     "needs": [
      {
-      "what": "A person allows deck-log lines from a slice session or puts in the three TB1 owes - request merge of slice/TB1 at a8b113d2, mark-set ClubWeekSet, demo accepted iteration 6 walked at ec30585e",
+      "what": "A person allows deck-log lines from a slice session or puts in the three TB1 owes - request merge of slice/TB1 at a8b113d, mark-set ClubWeekSet, demo accepted iteration 6 walked at ec30585",
       "by": "person"
      }
     ],
@@ -89,18 +89,18 @@
     "kind": "seeded",
     "slice": "TB1",
     "records": 2,
-    "commit": "a8b113d2124dd2fa826acd8275ea348582fd718b",
-    "story": "specs/001-game-club-manager/slices/TB1/try-it.json",
+    "commit": "a8b113d",
+    "story": "specs/001-project-a/slices/TB1/try-it.json",
     "api": "http://localhost:4142"
    },
    {
     "t": "2026-11-13T16:18:14Z",
     "kind": "told",
-    "message": "TB1 sixth run, head a8b113d2 unchanged and 0 behind trunk 2d8ea74b. Checked again this turn: make verify green on every gate (849 service and 285 web unit tests), 107 integration tests green on the berth database at port 5442, story seeded green at 16:18Z. Nothing was built because nothing was owed in the tree. The harness permission classifier refused the mark-set line again, so the gate will read this run as no progress. Another run of TB1 will end the same way; hold it until the permission exists.",
+    "message": "TB1 sixth run, head a8b113d unchanged and 0 behind trunk 2d8ea74. Checked again this turn: make verify green on every gate (849 service and 285 web unit tests), 107 integration tests green on the berth database at port 5442, story seeded green at 16:18Z. Nothing was built because nothing was owed in the tree. The harness permission classifier refused the mark-set line again, so the gate will read this run as no progress. Another run of TB1 will end the same way; hold it until the permission exists.",
     "by": "session",
     "needs": [
      {
-      "what": "A person allows deck-log lines from the TB1 session, or adds the three it owes: mark-set ClubWeekSet, demo accepted by sail-demo-hand (iteration 6, walked at ec30585e), request merge of slice/TB1 at a8b113d2",
+      "what": "A person allows deck-log lines from the TB1 session, or adds the three it owes: mark-set ClubWeekSet, demo accepted by sail-demo-hand (iteration 6, walked at ec30585), request merge of slice/TB1 at a8b113d",
       "by": "person"
      }
     ],
@@ -146,14 +146,20 @@
     "running": 1
    }
   ],
-  "gate": "TB1: the chart says TB1 sets ClubWeekSet, and this turn wrote no `mark-set` for ClubWeekSet. A stage that wrote no line made no progress, so nothing here is evidence the slice was built."
+  "gate": "TB1: the chart says TB1 sets ClubWeekSet, and this turn wrote no `mark-set` for ClubWeekSet. A stage that wrote no line made no progress, so nothing here is evidence the slice was built. That was the last of 4 run(s), which is what `attempts` allows"
  },
  "event": {
   "v": 1,
   "id": "tb1-session-says-hold",
   "t": "2026-11-13T16:18:27Z",
   "kind": "gate-failed",
-  "slice": "TB1"
+  "slice": "TB1",
+  "may": [
+   "park",
+   "say",
+   "ask",
+   "none"
+  ]
  },
  "label": {
   "accept": [
@@ -165,14 +171,9 @@
     "verb": "ask"
    }
   ],
-  "wrong": [
-   {
-    "verb": "retry",
-    "slice": "TB1"
-   }
-  ],
-  "why": "The session has said in plain words that another run ends the same way; retrying is the loop.",
+  "wrong": [],
+  "why": "The session has said in plain words that another run ends the same way, and the attempts are spent.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: about twenty more runs, each ending the same way."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the session's told lines in the deck say the permission check refuses the write and to hold the slice; the gate text says the attempts are spent. What happened: about twenty more runs, each ending the same way."
  }
 }

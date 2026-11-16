@@ -1,14 +1,14 @@
 {
  "situation": "CU5 has just merged. CU11 is stacked on CU5 and CU12 on CU11; CU9 waits only on its merge. One slot is free.",
- "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-26",
+ "source": "a recorded run of project-b, the catch-up stream, 2026-10-26",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "catch-up",
   "slices": {
-   "CU11": "parked, answered and cleared: CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one th",
-   "CU12": "parked: Re-entry at 49525aa. CU12 has no incomplete stage. CU12-Q1..Q8 were decided (D150-D156, D162). The person's told of 15:56:51Z is acknowledged and turned into re",
+   "CU11": "parked, answered and cleared: CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was th",
+   "CU12": "parked: Re-entry at 49525aa. CU12 has no incomplete stage. CU12-Q1..Q8 were decided (D150-D156, D162). The person's told of 15:56:51Z is acknowledged and turned into request host-chart-BookRemoved-CU5-CU11. T",
    "CU5": "merged",
-   "CU9": "parked, answered and cleared: CU9: 52 decisions stand unread, over the ceiling of 10. A backlog of judgement nobody has looked at is not judgement. Read them under *Waiting on you* on the bo"
+   "CU9": "parked, answered and cleared: CU9: 52 decisions stand unread, over the ceiling of 10. A backlog of judgement nobody has looked at is not judgement. Read them under *Waiting on you* on the board and press Mark read, which writes ea"
   },
   "deck": [
    {
@@ -16,8 +16,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "QuestionAnswered",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -26,8 +26,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "QuestionRefused",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -36,8 +36,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "AnswerFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -60,7 +60,7 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "sail-demo-hand",
-    "what": "Walked over HTTP and agent-browser against the running app: signed-out transcript read 401 unauthenticated with private no-store (CU9-14), OpenAPI lists GET only with 200/401/404/422 (CU9-17), flag on mounts the catch-up screen signed out, flag off mounts nothing (CU9-25); component states read from the slice previews. CU9-1..13,15,16,18 unreachable until CU4 R-2 bearer validation and CU5 recaps land; proved by tests per tasks.md (not re-run by the hand). Render gates unmeasured (playwright does not resolve). Note: failed state repeats 'Try again'. See specs/001-audiobook-recap/slices/CU9/demo …"
+    "what": "Walked over HTTP and agent-browser against the running app: signed-out transcript read 401 unauthenticated with private no-store (CU9-14), OpenAPI lists GET only with 200/401/404/422 (CU9-17), flag on mounts the catch-up screen signed out, flag off mounts nothing (CU9-25); component states read from the slice previews. CU9-1..13,15,16,18 unreachable until CU4 R-2 bearer validation and CU5 recaps land; proved by tests per tasks.md (not re-run by the hand). Render gates unmeasured (playwright does not resolve). Note: failed state repeats 'Try again'. See specs/001-project-b/slices/CU9/demo-log.m …"
    },
    {
     "t": "2026-10-22T21:50:48Z",
@@ -90,10 +90,10 @@
     "kind": "parked",
     "slice": "CU12",
     "cause": "host",
-    "why": "Re-entry at 49525aa (seventeenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were decided before this run (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b75; slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it; the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: the retry reason is stale, and only landing CU5 then CU11 on main moves CU12.",
+    "why": "Re-entry at 49525aa (seventeenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were decided before this run (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b7; slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it; the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: the retry reason is stale, and only landing CU5 then CU11 on main moves CU12.",
     "needs": [
      {
-      "what": "Land slice/CU5 on main: add BookRemoved to CU5 steers_by in specs/001-audiobook-recap/chart.yaml on main (D124), then rebase slice/CU5 linear, re-verify and merge",
+      "what": "Land slice/CU5 on main: add BookRemoved to CU5 steers_by in specs/001-project-b/chart.yaml on main (D124), then rebase slice/CU5 linear, re-verify and merge",
       "by": "person"
      },
      {
@@ -111,7 +111,7 @@
    {
     "t": "2026-10-26T15:56:51Z",
     "kind": "told",
-    "message": "get the slices blocked by me in - thsi shouldnt happen",
+    "message": "Land the slices that are waiting on me; this should not happen.",
     "by": "person"
    },
    {
@@ -125,7 +125,7 @@
     "slice": "CU5",
     "id": "host-chart-BookRemoved-CU5-CU11",
     "what": "merge",
-    "detail": "Answers the person's told of 15:56:51Z ('get the slices blocked by me in'). A captain may not write trunk, so this needs a person's grant. Commit on main, to specs/001-audiobook-recap/chart.yaml only: add '- BookRemoved' (alphabetical, after '- BookImported') to the steers_by of CU5 and of CU11 (D124). Both lines, not one: slice/CU11 adds the same line to CU11, which earlier parks did not name. Then slice/CU5 (aa6b62d, 60 commits behind main) can be rebased linear, pass check-slice-scope and make verify, and request merge-CU5; then CU11 (no longer stacked on the rebased CU5) the same; then CU1 …"
+    "detail": "Answers the person's told of 15:56:51Z ('get the slices blocked by me in'). A captain may not write trunk, so this needs a person's grant. Commit on main, to specs/001-project-b/chart.yaml only: add '- BookRemoved' (alphabetical, after '- BookImported') to the steers_by of CU5 and of CU11 (D124). Both lines, not one: slice/CU11 adds the same line to CU11, which earlier parks did not name. Then slice/CU5 (aa6b62d, 60 commits behind main) can be rebased linear, pass check-slice-scope and make verify, and request merge-CU5; then CU11 (no longer stacked on the rebased CU5) the same; then CU12."
    },
    {
     "t": "2026-10-26T15:58:02Z",
@@ -135,7 +135,7 @@
     "why": "Re-entry at 49525aa. CU12 has no incomplete stage. CU12-Q1..Q8 were decided (D150-D156, D162). The person's told of 15:56:51Z is acknowledged and turned into request host-chart-BookRemoved-CU5-CU11. The trunk change is two chart.yaml lines (BookRemoved in CU5 and in CU11 steers_by), not the one earlier parks named. A captain cannot write trunk or merge, so this waits on a person granting that request. Nothing was edited or rebased.",
     "needs": [
      {
-      "what": "Commit on main: add '- BookRemoved' to CU5 and CU11 steers_by in specs/001-audiobook-recap/chart.yaml (D124), granting request host-chart-BookRemoved-CU5-CU11",
+      "what": "Commit on main: add '- BookRemoved' to CU5 and CU11 steers_by in specs/001-project-b/chart.yaml (D124), granting request host-chart-BookRemoved-CU5-CU11",
       "by": "person"
      },
      {
@@ -160,46 +160,46 @@
     "slice": "CU5",
     "id": "merge-CU5",
     "what": "merge",
-    "detail": "Asks again after the refusal of host-chart-BookRemoved-CU5-CU11 (main.ts conflict, resolve: true). Resolved in this berth: slice/CU5 rebased linear on main 8fd57b75, now b454147e (19 commits); main.ts keeps PR2's transcription, PR3's indexing and CU5's recapWriter registrars side by side; CU5's migration renamed 202610222245 -> 202610261600 so it sorts after main's PR3/PR2 migrations (node-pg-migrate checks order). Gates on b454147e: lint, typecheck, unit (3049), check-imports/migrations/chart/dispatch/rendered/surfaces/extensions/agents/speckit/constitution/benchmark/decisions/try/styles/mode …"
+    "detail": "Asks again after the refusal of host-chart-BookRemoved-CU5-CU11 (main.ts conflict, resolve: true). Resolved in this berth: slice/CU5 rebased linear on main 8fd57b7, now b454147 (19 commits); main.ts keeps PR2's transcription, PR3's indexing and CU5's recapWriter registrars side by side; CU5's migration renamed 202610222245 -> 202610261600 so it sorts after main's PR3/PR2 migrations (node-pg-migrate checks order). Gates on b454147: lint, typecheck, unit (3049), check-imports/migrations/chart/dispatch/rendered/surfaces/extensions/agents/speckit/constitution/benchmark/decisions/try/styles/model/d …"
    },
    {
     "t": "2026-10-26T16:07:37Z",
     "kind": "merged",
     "slice": "CU5",
-    "commit": "b454147e1b674f17c83cd4eea67ac8083ed486e7"
+    "commit": "b454147"
    }
   ],
   "harbour": [
    {
     "t": "2026-10-26T15:49:06Z",
     "kind": "park",
-    "why": "Re-entry at 49525aa (thirteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 have decision lines in the log and D150-D156, D162 in decisions.md. The slice is built and reviewed, its examples are proven, and its fifth walk was accepted. Main is still 8fd57b75. slice/CU5 and slice/CU11 are not ancestors of it, and the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing was edited, rebased or requested."
+    "why": "Re-entry at 49525aa (thirteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 have decision lines in the log and D150-D156, D162 in decisions.md. The slice is built and reviewed, its examples are proven, and its fifth walk was accepted. Main is still 8fd57b7. slice/CU5 and slice/CU11 are not ancestors of it, and the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing was edited, rebased or requested."
    },
    {
     "t": "2026-10-26T15:50:42Z",
     "kind": "park",
-    "why": "Re-entry at 49525aa (fourteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were already decided before this run (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b75; slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it; the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: stop re-dispatching CU12 until a person lands CU5 then CU11."
+    "why": "Re-entry at 49525aa (fourteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were already decided before this run (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b7; slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it; the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: stop re-dispatching CU12 until a person lands CU5 then CU11."
    },
    {
     "t": "2026-10-26T15:52:19Z",
     "kind": "park",
-    "why": "Re-entry at 49525aa (fifteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were already decided before this run (decision lines in the log; D150-D156, D162 in decisions.md). The slice is built and reviewed, its examples are proven, and its fifth walk was accepted. Main is still 8fd57b75. slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it, and the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing was edited, rebased or requested. The told of 15:49:03Z stands."
+    "why": "Re-entry at 49525aa (fifteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were already decided before this run (decision lines in the log; D150-D156, D162 in decisions.md). The slice is built and reviewed, its examples are proven, and its fifth walk was accepted. Main is still 8fd57b7. slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it, and the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing was edited, rebased or requested. The told of 15:49:03Z stands."
    },
    {
     "t": "2026-10-26T15:54:02Z",
     "kind": "park",
-    "why": "Re-entry at 49525aa (sixteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were already decided (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b75, slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it, main's chart still lacks BookRemoved in CU5 steers_by, and the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: the re-dispatch reason (Q1..Q8) is stale; only landing CU5 then CU11 on main moves CU12."
+    "why": "Re-entry at 49525aa (sixteenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were already decided (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b7, slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it, main's chart still lacks BookRemoved in CU5 steers_by, and the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: the re-dispatch reason (Q1..Q8) is stale; only landing CU5 then CU11 on main moves CU12."
    },
    {
     "t": "2026-10-26T15:55:47Z",
     "kind": "park",
-    "why": "Re-entry at 49525aa (seventeenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were decided before this run (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b75; slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it; the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: the retry reason is stale, and only landing CU5 then CU11 on main moves CU12."
+    "why": "Re-entry at 49525aa (seventeenth since 15:28) found no incomplete stage. CU12-Q1..Q8 were decided before this run (decision lines in the log; D150-D156, D162 in decisions.md); built, reviewed, examples proven, fifth walk accepted. Main is still 8fd57b7; slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not ancestors of it; the host park of 2026-10-26T15:28:12Z has no cleared line. Nothing edited, rebased or requested. The told of 15:49:03Z stands: the retry reason is stale, and only landing CU5 then CU11 on main moves CU12."
    },
    {
     "t": "2026-10-26T15:58:33Z",
     "kind": "refused",
     "request": "host-chart-BookRemoved-CU5-CU11",
-    "why": "slice/CU5 conflicts with main in apps/recap-api/src/main.ts. The rebase was aborted, so nothing is half-done; resolve it in your own berth and ask again",
+    "why": "slice/CU5 conflicts with main in apps/project-b-api/src/main.ts. The rebase was aborted, so nothing is half-done; resolve it in your own berth and ask again",
     "resolve": true,
     "slice": "CU5",
     "waited_s": 18,
@@ -223,7 +223,7 @@
     "request": "merge-CU5",
     "what": "merge",
     "slice": "CU5",
-    "commit": "b454147e1b674f17c83cd4eea67ac8083ed486e7",
+    "commit": "b454147",
     "ci": "unverified",
     "waited_s": 13,
     "attempt": 2,
@@ -258,6 +258,6 @@
   ],
   "why": "CU12 cannot merge before CU11 does; CU11 is next in the stack and CU9 is ready on its own.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: CU12 was started first and could not land; CU9 merged in seven minutes, CU11 in twelve, and CU12 last."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: CU12's park in `slices` is open (not cleared) and says it is stacked on CU11; CU11 and CU9 are cleared. What happened: CU12 was started first and could not land; CU9 merged in seven minutes, CU11 in twelve, and CU12 last. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

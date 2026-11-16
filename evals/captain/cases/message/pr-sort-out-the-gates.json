@@ -1,13 +1,13 @@
 {
- "situation": "A person tells the preparation stream: sort out the gate not closed issues.",
- "source": "a recorded run of an audiobook-recap project, the preparation stream, 2026-10-22",
+ "situation": "A person tells the preparation stream: \"Deal with the slices whose gates did not close.\" (their words paraphrased)",
+ "source": "a recorded run of project-b, the preparation stream, 2026-10-22",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "preparation",
   "slices": {
    "PR1": "merged",
-   "PR2": "parked: PR2: the chart says PR2 sets ChapterTranscribed, ChapterTranscriptionFailed, PreparationCompleted, and this turn wrote no `mark-set` for ChapterTranscribed, Cha",
-   "PR3": "parked: PR3: the chart says PR3 sets ChapterIndexed, and this turn wrote no `mark-set` for ChapterIndexed. A stage that wrote no line made no progress, so nothing here "
+   "PR2": "parked: PR2: the chart says PR2 sets ChapterTranscribed, ChapterTranscriptionFailed, PreparationCompleted, and this turn wrote no `mark-set` for ChapterTranscribed, ChapterTranscriptionFailed, PreparationComp",
+   "PR3": "parked: PR3: the chart says PR3 sets ChapterIndexed, and this turn wrote no `mark-set` for ChapterIndexed. A stage that wrote no line made no progress, so nothing here is evidence the slice was built. That wa"
   },
   "deck": [
    {
@@ -20,8 +20,8 @@
     "kind": "mark-set",
     "slice": "PR1",
     "mark": "PreparationStarted",
-    "contract": "specs/001-audiobook-recap/contracts/PR1-start-preparation.md",
-    "examples": "specs/001-audiobook-recap/slices/PR1/examples.md",
+    "contract": "specs/001-project-b/contracts/PR1-start-preparation.md",
+    "examples": "specs/001-project-b/slices/PR1/examples.md",
     "commit": "fa941a9"
    },
    {
@@ -41,8 +41,8 @@
     "kind": "mark-set",
     "slice": "PR1",
     "mark": "PreparationStarted",
-    "contract": "specs/001-audiobook-recap/contracts/PR1-start-preparation.md",
-    "examples": "specs/001-audiobook-recap/slices/PR1/examples.md",
+    "contract": "specs/001-project-b/contracts/PR1-start-preparation.md",
+    "examples": "specs/001-project-b/slices/PR1/examples.md",
     "commit": "6da4b24",
     "note": "re-entry after the rebase onto main (5ad66b9): first set at fa941a9 (90abfd2 after the rebase); shape unchanged: audioHash, chapters, startedAt on preparation-{audioHash}, nothing personal"
    },
@@ -53,7 +53,7 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "examples proven by tests (tasks.md ## Examples proven); no hand walked it",
-    "what": "No screen and no route: every example PR1-1..PR1-23 is proven by a test through the sweep or the worker (api 1737 tests green at 6da4b24); the built service was also run over a disposable Postgres and started one PreparationStarted, logged the heartbeat and reported a poison event. The capability's hand walks it at prepare-a-book's gates. See specs/001-audiobook-recap/slices/PR1/tasks.md"
+    "what": "No screen and no route: every example PR1-1..PR1-23 is proven by a test through the sweep or the worker (api 1737 tests green at 6da4b24); the built service was also run over a disposable Postgres and started one PreparationStarted, logged the heartbeat and reported a poison event. The capability's hand walks it at prepare-a-book's gates. See specs/001-project-b/slices/PR1/tasks.md"
    },
    {
     "t": "2026-10-22T19:16:18Z",
@@ -67,15 +67,15 @@
     "t": "2026-10-22T19:17:01Z",
     "kind": "merged",
     "slice": "PR1",
-    "commit": "6da4b24ab7512da6f2b10a009bf6caa9122d68f6"
+    "commit": "6da4b24"
    },
    {
     "t": "2026-10-22T19:19:01Z",
     "slice": "PR2",
     "kind": "mark-set",
     "mark": "ChapterTranscribed",
-    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "contract": "specs/001-project-b/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-project-b/slices/PR2/examples.md",
     "commit": "a89a840",
     "note": "words inline, book seconds, covers the whole chapter (D101, ADR 0013)"
    },
@@ -84,8 +84,8 @@
     "slice": "PR2",
     "kind": "mark-set",
     "mark": "ChapterTranscriptionFailed",
-    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "contract": "specs/001-project-b/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-project-b/slices/PR2/examples.md",
     "commit": "a89a840",
     "note": "reason codes provider-rejected|not-english|audio-missing, attempts (D103)"
    },
@@ -94,8 +94,8 @@
     "slice": "PR2",
     "kind": "mark-set",
     "mark": "PreparationCompleted",
-    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "contract": "specs/001-project-b/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-project-b/slices/PR2/examples.md",
     "commit": "a89a840",
     "note": "appended with the last chapter in one append (D101)"
    },
@@ -116,8 +116,8 @@
     "slice": "PR3",
     "kind": "mark-set",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "entries delta + digest, firstAppearance set by the use case, shared stream, nothing personal (D107, D113, D114)"
    },
@@ -148,7 +148,7 @@
     "request": "merge-PR1-6da4b24",
     "what": "merge",
     "slice": "PR1",
-    "commit": "6da4b24ab7512da6f2b10a009bf6caa9122d68f6",
+    "commit": "6da4b24",
     "ci": "unverified",
     "waited_s": 13,
     "attempt": 1,
@@ -176,7 +176,7 @@
    "id": "m-pr-sort-out-the-gates",
    "t": "2026-10-22T19:47:43Z",
    "from": "person",
-   "text": "sort out the gate not closed issues"
+   "text": "Deal with the slices whose gates did not close."
   }
  },
  "event": {
@@ -191,25 +191,18 @@
    {
     "verb": [
      "message",
-     "resume"
+     "resume",
+     "retry"
     ],
-    "slices": [
+    "required": [
      "PR2",
      "PR3"
     ]
    }
   ],
-  "wrong": [
-   {
-    "verb": [
-     "message",
-     "resume"
-    ],
-    "naming": "PR1"
-   }
-  ],
+  "wrong": [],
   "why": "PR2 and PR3 are the two slices parked on an unclosed gate; PR1 has merged.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: both were run again the next morning and both went on to merge."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the snapshot shows PR2 and PR3 each with an open gate park and PR1 merged. What happened: both were run again the next morning and both went on to merge. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

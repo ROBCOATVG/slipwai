@@ -1,8 +1,8 @@
 {
- "situation": "CL4's session exited 1 at once, and in the same minute the sessions of every other stream in the harbour exited 1 too.",
- "source": "a recorded run of a game-club manager project, the clubs stream, 2026-11-13",
+ "situation": "CL4's session exited 1 at once. Other streams' deck logs show exit-1 parks in the same minute.",
+ "source": "a recorded run of project-a, the clubs stream, 2026-11-13",
  "snapshot": {
-  "feature": "001-game-club-manager",
+  "feature": "001-project-a",
   "fairway": "clubs",
   "slices": {
    "CL3": "merged",
@@ -47,10 +47,10 @@
     "kind": "told",
     "slice": "CL3",
     "by": "session",
-    "message": "CL3 hands back three shared surfaces it may not write: the Settings screen decision for docs/design.md, one proposed mock state, and the .env.example lines for its redirect address and release flag. Texts are in specs/001-game-club-manager/slices/CL3/design.md and plan.md (Stubs and Deferrals).",
+    "message": "CL3 hands back three shared surfaces it may not write: the Settings screen decision for docs/design.md, one proposed mock state, and the .env.example lines for its redirect address and release flag. Texts are in specs/001-project-a/slices/CL3/design.md and plan.md (Stubs and Deferrals).",
     "needs": [
      {
-      "what": "Land the passage 'Settings — Discord section (CL3, 2026-11-13)' from specs/001-game-club-manager/slices/CL3/design.md into docs/design.md as 'Decided (CL3, 2026-11-13)'",
+      "what": "Land the passage 'Settings — Discord section (CL3, 2026-11-13)' from specs/001-project-a/slices/CL3/design.md into docs/design.md as 'Decided (CL3, 2026-11-13)'",
       "by": "fleet",
       "check": {
        "kind": "text",
@@ -59,11 +59,11 @@
       }
      },
      {
-      "what": "Add '- Connected, no channel yet (CL3, until CL16) — proposed (D84)' under Surface: Settings (organisers) in specs/001-game-club-manager/mockups/mock-states.md",
+      "what": "Add '- Connected, no channel yet (CL3, until CL16) — proposed (D84)' under Surface: Settings (organisers) in specs/001-project-a/mockups/mock-states.md",
       "by": "fleet",
       "check": {
        "kind": "text",
-       "path": "specs/001-game-club-manager/mockups/mock-states.md",
+       "path": "specs/001-project-a/mockups/mock-states.md",
        "has": "Connected, no channel yet (CL3, until CL16)"
       }
      },
@@ -94,7 +94,7 @@
     "slice": "CL3",
     "id": "CL3-merge-1",
     "what": "merge",
-    "detail": "Merge slice/CL3 at f527851b into main (0 behind origin/main; slice/CL3 merged origin/main twice, last at b1063644, resolving composition.ts imports, config.ts — CL3 now reads AC1's DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET and adds only DISCORD_CONNECT_REDIRECT_URI — composition.test.ts, and decisions.md/adversary-log.md, both purely additive over trunk). make -k verify green at b1063644 (service 747, web 272); make test-integration 107 passed against CL3's own Postgres on :5461 (container game-club-manager-cl3-postgres), not the inherited :5433. Slice: example map R1-R9 + CL3-33, decisions D80- …"
+    "detail": "Merge slice/CL3 at f527851 into main (0 behind origin/main; slice/CL3 merged origin/main twice, last at b106364, resolving composition.ts imports, config.ts — CL3 now reads AC1's DISCORD_CLIENT_ID/DISCORD_CLIENT_SECRET and adds only DISCORD_CONNECT_REDIRECT_URI — composition.test.ts, and decisions.md/adversary-log.md, both purely additive over trunk). make -k verify green at b106364 (service 747, web 272); make test-integration 107 passed against CL3's own Postgres on :5461 (container project-a-cl3-postgres), not the inherited :5433. Slice: example map R1-R9 + CL3-33, decisions D80-D84 and D90 …"
    },
    {
     "t": "2026-11-13T16:07:13Z",
@@ -102,13 +102,13 @@
     "slice": "CL3",
     "id": "CL3-merge-2",
     "what": "merge",
-    "detail": "Merge slice/CL3 at 2d8ea74b into main, asked again after CL3-merge-1 was refused for a conflict in specs/001-game-club-manager/decisions.md. The branch is now rebased linearly onto origin/main ad639da9 (0 behind, no merge commits; decisions.md is trunk's text with CL3's entries after it, so a rebase onto the same trunk is a no-op). The tree equals the merged one the first request named, apart from three records that now cite the rebased commits. make verify green at this head (service 747, web 272); make test-integration 107 passed against CL3's own Postgres on :5461. Everything else is as CL3 …"
+    "detail": "Merge slice/CL3 at 2d8ea74 into main, asked again after CL3-merge-1 was refused for a conflict in specs/001-project-a/decisions.md. The branch is now rebased linearly onto origin/main ad639da (0 behind, no merge commits; decisions.md is trunk's text with CL3's entries after it, so a rebase onto the same trunk is a no-op). The tree equals the merged one the first request named, apart from three records that now cite the rebased commits. make verify green at this head (service 747, web 272); make test-integration 107 passed against CL3's own Postgres on :5461. Everything else is as CL3-merge-1 s …"
    },
    {
     "t": "2026-11-13T16:08:16Z",
     "kind": "merged",
     "slice": "CL3",
-    "commit": "2d8ea74b92d2916bc640a1c4a20cd944ac06a2ff"
+    "commit": "2d8ea74"
    },
    {
     "t": "2026-11-13T16:08:51Z",
@@ -172,7 +172,7 @@
     "t": "2026-11-13T16:03:50Z",
     "kind": "refused",
     "request": "CL3-merge-1",
-    "why": "slice/CL3 conflicts with origin/main in specs/001-game-club-manager/decisions.md. The rebase was aborted, so nothing is half-done; resolve it in your own berth and ask again",
+    "why": "slice/CL3 conflicts with origin/main in specs/001-project-a/decisions.md. The rebase was aborted, so nothing is half-done; resolve it in your own berth and ask again",
     "resolve": true,
     "slice": "CL3",
     "waited_s": 10,
@@ -185,9 +185,9 @@
     "request": "CL3-merge-2",
     "what": "merge",
     "slice": "CL3",
-    "commit": "2d8ea74b92d2916bc640a1c4a20cd944ac06a2ff",
+    "commit": "2d8ea74",
     "ci": "green",
-    "onto": "ad639da9ebc6e830cc22abf92d812f6edcc29374",
+    "onto": "ad639da",
     "waited_s": 16,
     "attempt": 2,
     "lock_s": 2,
@@ -200,14 +200,98 @@
     "running": 1
    }
   ],
-  "gate": "CL4: `/sail` exited 1."
+  "others": {
+   "tables": [
+    {
+     "t": "2026-11-13T16:22:43Z",
+     "kind": "claimed",
+     "slice": "TB1"
+    },
+    {
+     "t": "2026-11-13T16:23:32Z",
+     "kind": "told",
+     "message": "TB1 eleventh run: this stage cannot be closed by the session. Head a8b113d and trunk 2d8ea74 are unchanged since the sixth run checked them at 16:18Z (verify green, 107 integration tests green, story seeded, demo iteration 6 accepted); tree clean, 0 behind, no granted line. Nothing was built or re-run, and the refused line write was not attempted again. Hold the tables fairway until a person approves or writes the lines.",
+     "by": "session",
+     "needs": [
+      {
+       "what": "A person writes or permits the deck lines TB1 owes in .slipwai/run/logs/001-project-a/tables.jsonl: mark-set ClubWeekSet and a merge request for slice/TB1 at a8b113d",
+       "by": "person"
+      }
+     ],
+     "slice": "TB1"
+    },
+    {
+     "t": "2026-11-13T16:24:11Z",
+     "kind": "told",
+     "message": "TB1 twelfth run: this stage cannot be closed by the session. Head a8b113d and trunk 2d8ea74 are unchanged since the 16:18Z check (verify green, 107 integration tests green, story seeded, demo iteration 6 accepted); tree clean, 0 behind, no granted line. Nothing was built or re-run, and the refused line write was not attempted again. Hold the tables fairway until a person approves or writes the lines.",
+     "by": "session",
+     "needs": [
+      {
+       "what": "A person writes or permits the deck lines TB1 owes: mark-set ClubWeekSet and the merge request",
+       "by": "person"
+      }
+     ],
+     "slice": "TB1"
+    },
+    {
+     "t": "2026-11-13T16:24:53Z",
+     "kind": "told",
+     "message": "TB1 thirteenth run: this stage cannot be closed by the session. Head a8b113d and trunk 2d8ea74 are unchanged since the 16:18Z check (verify green, 107 integration tests green, story seeded, demo iteration 6 accepted); tree clean, 0 behind, no granted line. Nothing was built or re-run, and the refused mark-set write was not attempted again. Hold the tables fairway until a person approves or writes the lines.",
+     "by": "session",
+     "needs": [
+      {
+       "what": "A person writes or permits the deck lines TB1 owes: mark-set ClubWeekSet, demo accepted by sail-demo-hand (iteration 6, walked at ec30585), request merge of slice/TB1 at a8b113d",
+       "by": "person"
+      }
+     ],
+     "slice": "TB1"
+    },
+    {
+     "t": "2026-11-13T16:25:03Z",
+     "kind": "parked",
+     "why": "TB1: `/sail` exited 1. That was the last of 4 run(s), which is what `attempts` allows",
+     "cause": "exit"
+    }
+   ],
+   "game-nights": [
+    {
+     "t": "2026-11-13T16:25:13Z",
+     "kind": "parked",
+     "why": "GN3: `/sail` exited 1. That was the last of 4 run(s), which is what `attempts` allows",
+     "cause": "exit"
+    }
+   ],
+   "library": [
+    {
+     "t": "2026-11-13T16:25:15Z",
+     "kind": "parked",
+     "why": "LB5: `/sail` exited 1. That was the last of 4 run(s), which is what `attempts` allows",
+     "cause": "exit"
+    }
+   ],
+   "campaigns": [
+    {
+     "t": "2026-11-13T16:25:15Z",
+     "kind": "parked",
+     "why": "CP1: `/sail` exited 1. That was the last of 4 run(s), which is what `attempts` allows",
+     "cause": "exit"
+    }
+   ]
+  },
+  "gate": "CL4: `/sail` exited 1. That was the last of 4 run(s), which is what `attempts` allows"
  },
  "event": {
   "v": 1,
   "id": "cl4-every-stream-exits-at-once",
   "t": "2026-11-13T16:25:15Z",
   "kind": "gate-failed",
-  "slice": "CL4"
+  "slice": "CL4",
+  "may": [
+   "park",
+   "say",
+   "ask",
+   "none"
+  ]
  },
  "label": {
   "accept": [
@@ -222,14 +306,9 @@
     "verb": "say"
    }
   ],
-  "wrong": [
-   {
-    "verb": "retry",
-    "slice": "CL4"
-   }
-  ],
-  "why": "Every stream failing in the same minute is the harness or the machine, not this slice; a retry spends an attempt on it.",
+  "wrong": [],
+  "why": "Several streams failing in the same minute is the harness or the machine, not this slice; park it with that reason, or ask a person.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: a person said three days later that this was a usage limit read as a crash, and the slice merged half an hour after it was run again."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: `others` holds the other streams' exit-1 parks from the same minute, and the gate text says the attempts are spent. What happened: a person said three days later that this was a usage limit read as a crash, and the slice merged half an hour after it was run again."
  }
 }

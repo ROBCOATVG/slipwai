@@ -1,8 +1,8 @@
 {
  "situation": "LB9's demo was accepted seconds ago, and the gate refused it for want of a `mark-set` line for PositionSyncedFromServer this turn.",
- "source": "a recorded run of an audiobook-recap project, the library stream, 2026-10-22",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "library",
   "slices": {
    "LB9": "claimed, in flight"
@@ -31,7 +31,7 @@
    {
     "t": "2026-10-22T12:52:37Z",
     "kind": "told",
-    "message": "try again",
+    "message": "Have another go.",
     "by": "person"
    },
    {
@@ -45,7 +45,7 @@
     "slice": "LB9",
     "mark": "PositionSyncedFromServer",
     "contract": "docs/event-model/model.yaml#PositionSyncedFromServer",
-    "examples": "specs/001-audiobook-recap/slices/LB9/examples.md",
+    "examples": "specs/001-project-b/slices/LB9/examples.md",
     "commit": "2716311",
     "note": "PositionSyncedFromServer v1 on listening-{bookId} with bookId, syncId, position (whole seconds), lastListened (the server's lastUpdate), syncedAt (the service's now); in step on an equal position (D43); no isFinished (D44)"
    },
@@ -81,7 +81,7 @@
    {
     "t": "2026-10-22T14:44:29Z",
     "kind": "parked",
-    "why": "LB9: the harness would not run LB9 (You've hit your session limit · resets 6:10pm (local time)). Paused until 18:10, no attempt spent",
+    "why": "LB9: the harness would not run LB9: it reported its session limit reached, lifting at 6:10pm local time. Paused until 18:10, no attempt spent",
     "slice": "LB9",
     "cause": "limit",
     "until": "2026-10-22T17:10:00Z"
@@ -97,7 +97,7 @@
     "slice": "LB9",
     "mark": "PositionSyncedFromServer",
     "contract": "docs/event-model/model.yaml#PositionSyncedFromServer",
-    "examples": "specs/001-audiobook-recap/slices/LB9/examples.md",
+    "examples": "specs/001-project-b/slices/LB9/examples.md",
     "commit": "3c00a49",
     "note": "re-entry on slice/LB9 at 3c00a49 (T001-T018 and T021 done; make unit, lint, typecheck green); first set 2026-10-22T14:09:11Z at 2716311; shape unchanged: bookId, syncId, position (whole seconds), lastListened, syncedAt (D43, D44). T019 and T020 are the capability's gates under flagged"
    },
@@ -108,7 +108,7 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "sail-demo-hand",
-    "what": "Walked via agent-browser and HTTP: R6 (not-a-server-book, 404, 401) and R8 (imported book, service down, not found, flag off) passed; R1-R5 and R7 and the server-book lines of R6/R8 unreachable until LB4's door adds a server book, left to audiobookshelf-companion's capability gates. See specs/001-audiobook-recap/slices/LB9/demo-log.md"
+    "what": "Walked via agent-browser and HTTP: R6 (not-a-server-book, 404, 401) and R8 (imported book, service down, not found, flag off) passed; R1-R5 and R7 and the server-book lines of R6/R8 unreachable until LB4's door adds a server book, left to audiobookshelf-companion's capability gates. See specs/001-project-b/slices/LB9/demo-log.md"
    }
   ],
   "harbour": [
@@ -121,7 +121,7 @@
    {
     "t": "2026-10-22T14:44:36Z",
     "kind": "park",
-    "why": "LB9: the harness would not run LB9 (You've hit your session limit · resets 6:10pm (local time)). Paused until 18:10, no attempt spent"
+    "why": "LB9: the harness would not run LB9: it reported its session limit reached, lifting at 6:10pm local time. Paused until 18:10, no attempt spent"
    },
    {
     "t": "2026-10-22T17:10:06Z",
@@ -166,25 +166,37 @@
     "running": 3
    }
   ],
-  "gate": "LB9: the chart says LB9 sets PositionSyncedFromServer, and this turn wrote no `mark-set` for PositionSyncedFromServer. A stage that wrote no line made no progress, so nothing here is evidence the slice was built."
+  "gate": "LB9: the chart says LB9 sets PositionSyncedFromServer, and this turn wrote no `mark-set` for PositionSyncedFromServer. A stage that wrote no line made no progress, so nothing here is evidence the slice was built. That was the last of 3 run(s), which is what `attempts` allows"
  },
  "event": {
   "v": 1,
   "id": "lb9-mark-missed-after-demo",
   "t": "2026-10-22T17:38:21Z",
   "kind": "gate-failed",
-  "slice": "LB9"
+  "slice": "LB9",
+  "may": [
+   "park",
+   "say",
+   "ask",
+   "none"
+  ]
  },
  "label": {
   "accept": [
    {
-    "verb": "retry",
+    "verb": "park",
     "slice": "LB9"
+   },
+   {
+    "verb": "ask"
+   },
+   {
+    "verb": "say"
    }
   ],
   "wrong": [],
-  "why": "The slice is built and accepted; the missing line is what a retry writes.",
+  "why": "The slice is accepted and only the mark-set line is missing; with the attempts spent, a person clears it.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: retried after a person cleared it, LB9 merged twelve minutes later."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the deck holds LB9's accepted demo seconds before the refusal, and the gate text says the attempts are spent. What happened: retried after a person cleared it, LB9 merged twelve minutes later. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

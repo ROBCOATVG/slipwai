@@ -1,13 +1,13 @@
 {
  "situation": "LB7's session exited 1 within seconds of starting. LB3 and LB8 in the same stream did the same in the same minute.",
- "source": "a recorded run of an audiobook-recap project, the library stream, 2026-10-21",
+ "source": "a recorded run of project-b, the library stream, 2026-10-21",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "library",
   "slices": {
-   "LB3": "parked: LB3: `/sail` exited 1.",
+   "LB3": "parked: LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
    "LB7": "claimed, in flight",
-   "LB8": "claimed, in flight"
+   "LB8": "parked: LB8: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"
   },
   "deck": [
    {
@@ -43,6 +43,12 @@
     "t": "2026-10-21T13:59:06Z",
     "kind": "claimed",
     "slice": "LB8"
+   },
+   {
+    "t": "2026-10-21T13:59:20Z",
+    "kind": "parked",
+    "why": "LB8: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB8"
    }
   ],
   "harbour": [
@@ -58,14 +64,20 @@
     "running": 1
    }
   ],
-  "gate": "LB8: `/sail` exited 1."
+  "gate": "LB7: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"
  },
  "event": {
   "v": 1,
   "id": "lb7-library-exits-together",
   "t": "2026-10-21T13:59:20Z",
   "kind": "gate-failed",
-  "slice": "LB7"
+  "slice": "LB7",
+  "may": [
+   "park",
+   "say",
+   "ask",
+   "none"
+  ]
  },
  "label": {
   "accept": [
@@ -77,14 +89,9 @@
     "verb": "ask"
    }
   ],
-  "wrong": [
-   {
-    "verb": "retry",
-    "slice": "LB7"
-   }
-  ],
-  "why": "Three slices failing identically in a minute is not LB7's work; retrying spends its attempts.",
+  "wrong": [],
+  "why": "Three slices of this stream exited 1 within a minute; that is not LB7's work.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: every slice of the stream was retried and exited 1 again, twice, until a person cleared them all the next morning."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the deck holds LB3's and LB8's exit-1 parks from the same minute, and LB7's own gate text says the attempts are spent. What happened: every slice of the stream was retried and exited 1 again, twice, until a person cleared them all the next morning."
  }
 }

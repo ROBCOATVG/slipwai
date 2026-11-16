@@ -1,13 +1,13 @@
 {
  "situation": "CU12's session parked itself for the second time in two minutes: every stage is closed, it is stacked on CU5 and CU11, neither of which is on trunk, and only a person can change that.",
- "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-26",
+ "source": "a recorded run of project-b, the catch-up stream, 2026-10-26",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "catch-up",
   "slices": {
-   "CU11": "parked, answered and cleared: CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one th",
+   "CU11": "parked, answered and cleared: CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was th",
    "CU12": "claimed, in flight",
-   "CU5": "parked, answered and cleared: CU5 is built and linear on main (aa6b62d); marks re-written this turn. make verify still stops at check-slice-scope: chart.yaml (BookRemoved in CU5 steers_by, D"
+   "CU5": "parked, answered and cleared: CU5 is built and linear on main (aa6b62d); marks re-written this turn. make verify still stops at check-slice-scope: chart.yaml (BookRemoved in CU5 steers_by, D124) is 'not a slice's to write' while c"
   },
   "deck": [
    {
@@ -15,8 +15,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "AnswerFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "pending"
    },
    {
@@ -31,8 +31,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "QuestionAnswered",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -41,8 +41,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "QuestionRefused",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -51,8 +51,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "AnswerFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -68,8 +68,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); the slice is built, reviewed and its examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133."
    },
@@ -95,8 +95,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapGenerated",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
    },
@@ -105,8 +105,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapRefused",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
    },
@@ -115,8 +115,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
    },
@@ -150,7 +150,7 @@
    {
     "t": "2026-10-23T05:47:58Z",
     "kind": "told",
-    "message": "sort all mark set issues",
+    "message": "Sort out every mark-set problem.",
     "by": "person"
    },
    {
@@ -164,8 +164,8 @@
     "kind": "seeded",
     "slice": "CU12",
     "records": 4,
-    "commit": "629aab3313f5c752a637d12efd81e8212e379955",
-    "story": "specs/001-audiobook-recap/slices/CU12/try-it.json",
+    "commit": "629aab3",
+    "story": "specs/001-project-b/slices/CU12/try-it.json",
     "api": "http://127.0.0.1:3112"
    },
    {
@@ -195,7 +195,7 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "sail-demo-hand",
-    "commit": "49525aaa",
+    "commit": "49525aa",
     "what": "Fifth walk, the first signed-in one (D164/D165, FLAG_ASK_ABOUT_THE_BOOK=on), at 33f41ea: try-it story seeded green; over HTTP CU12-1, -2, -3, -15, -16, -18, -19, -22 and three cases of -17 passed; in the browser signed in through the app's own login, CU12-25 awaiting, CU12-37 reads at 1/2/4/8s stopping at 120s with Check again, CU12-33 404 branch (book removed mid-wait), CU12-36 flag on/off. Unreachable while CU11's answerer is off: every example needing an answer, refusal or failure (proven by tests per tasks.md; drawing read from previews). Evidence demo/walk5-*, demo-log iteration 5."
    },
    {
@@ -204,15 +204,15 @@
     "slice": "CU12",
     "to": "host",
     "by": "session",
-    "message": "CU12 is built, reviewed, examples proven and now walked signed-in (fifth walk accepted, 49525aaa). It still cannot merge: slice/CU12 is stacked on slice/CU11, which is stacked on slice/CU5, and neither is on main; main has also moved 98 commits (the slipwai 2.0.0rc2 migration). Order to land: CU5, CU11, then CU12, each rebased linear on main and re-verified. Host note from the walk: seeding the try-it story works only because this berth's running Keycloak allows the password grant on the web client; the realm file has it off, so a fresh realm refuses it."
+    "message": "CU12 is built, reviewed, examples proven and now walked signed-in (fifth walk accepted, 49525aa). It still cannot merge: slice/CU12 is stacked on slice/CU11, which is stacked on slice/CU5, and neither is on main; main has also moved 98 commits (the slipwai 2.0.0rc2 migration). Order to land: CU5, CU11, then CU12, each rebased linear on main and re-verified. Host note from the walk: seeding the try-it story works only because this berth's running Keycloak allows the password grant on the web client; the realm file has it off, so a fresh realm refuses it."
    },
    {
     "t": "2026-10-26T15:27:51Z",
     "kind": "seeded",
     "slice": "CU12",
     "records": 4,
-    "commit": "49525aaa44713da2f32d450d09d04d70483cb51e",
-    "story": "specs/001-audiobook-recap/slices/CU12/try-it.json",
+    "commit": "49525aa",
+    "story": "specs/001-project-b/slices/CU12/try-it.json",
     "api": "http://127.0.0.1:3112"
    },
    {
@@ -293,7 +293,7 @@
     "running": 1
    }
   ],
-  "gate": "Re-entry found nothing CU12 can do. CU12-Q1 to Q8 were decided on 2026-10-22 (D150-D156, D162), and every per-slice stage is closed: built, reviewed, examples proven, fifth walk accepted at 49525aa. The only stage left is the merge rung. It is still blocked by the host park of 2026-10-26T15:28:12Z, which has no cleared line: slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not on main (main is 27282083), and main's chart still has no BookRemoved in CU5 steers_by. Rebasing CU12 now would carry CU5 and CU11 into its diff and fail check-slice-scope. No gate was edited and no commit was made."
+  "gate": "Re-entry found nothing CU12 can do. CU12-Q1 to Q8 were decided on 2026-10-22 (D150-D156, D162), and every per-slice stage is closed: built, reviewed, examples proven, fifth walk accepted at 49525aa. The only stage left is the merge rung. It is still blocked by the host park of 2026-10-26T15:28:12Z, which has no cleared line: slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not on main (main is 2728208), and main's chart still has no BookRemoved in CU5 steers_by. Rebasing CU12 now would carry CU5 and CU11 into its diff and fail check-slice-scope. No gate was edited and no commit was made."
  },
  "event": {
   "v": 1,
@@ -320,6 +320,6 @@
   ],
   "why": "Nothing CU12 can do moves it; it waits on two other slices and a person.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: it was re-dispatched seventeen times in thirty minutes, each saying the same, until a person told the stream to land the blocked slices."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: CU12's own park text in the gate says every stage is closed and it is stacked on CU5 and CU11; the deck shows its first park two minutes earlier saying the same. What happened: it was re-dispatched seventeen times in thirty minutes, each saying the same, until a person told the stream to land the blocked slices. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

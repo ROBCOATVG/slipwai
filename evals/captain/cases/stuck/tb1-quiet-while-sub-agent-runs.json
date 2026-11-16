@@ -1,8 +1,8 @@
 {
  "situation": "TB1 has been silent for eight minutes, with three sub-agents it started still out.",
- "source": "a recorded run of a game-club manager project, the tables stream, 2026-11-12",
+ "source": "a recorded run of project-a, the tables stream, 2026-11-12",
  "snapshot": {
-  "feature": "001-game-club-manager",
+  "feature": "001-project-a",
   "fairway": "tables",
   "slices": {
    "TB1": "claimed, in flight"
@@ -27,7 +27,7 @@
     {
      "t": "2026-11-12T15:00:40Z",
      "stage": "drive",
-     "agent": "a457f33fae731e39b",
+     "agent": "a457f33",
      "kind": "ran",
      "what": "Read TB1 model slice and TB slice list",
      "role": "sail-decide-skipper"
@@ -35,7 +35,7 @@
     {
      "t": "2026-11-12T15:00:44Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "ran",
      "what": "Find LB1 and AC1 refs and worktrees",
      "role": "sail-decide-skipper"
@@ -43,7 +43,7 @@
     {
      "t": "2026-11-12T15:00:46Z",
      "stage": "drive",
-     "agent": "a457f33fae731e39b",
+     "agent": "a457f33",
      "kind": "ran",
      "what": "Read FR-056, edge cases and TB10",
      "role": "sail-decide-skipper"
@@ -51,7 +51,7 @@
     {
      "t": "2026-11-12T15:00:49Z",
      "stage": "drive",
-     "agent": "aa276384fac6c76f2",
+     "agent": "aa27638",
      "kind": "ran",
      "what": "Find cross-fairway need protocol",
      "role": "sail-decide-skipper"
@@ -59,7 +59,7 @@
     {
      "t": "2026-11-12T15:00:50Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "ran",
      "what": "Read D31 and LB1 stubs from LB1 worktree",
      "role": "sail-decide-skipper"
@@ -67,7 +67,7 @@
     {
      "t": "2026-11-12T15:00:51Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "failed",
      "what": "Read D31 and LB1 stubs from LB1 worktree",
      "role": "sail-decide-skipper",
@@ -76,7 +76,7 @@
     {
      "t": "2026-11-12T15:00:53Z",
      "stage": "drive",
-     "agent": "aa276384fac6c76f2",
+     "agent": "aa27638",
      "kind": "ran",
      "what": "Find cross-fairway need protocol",
      "role": "sail-decide-skipper"
@@ -91,7 +91,7 @@
     {
      "t": "2026-11-12T15:00:57Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "ran",
      "what": "Read stubs, constitution IX, owner brief, ADR",
      "role": "sail-decide-skipper"
@@ -99,7 +99,7 @@
     {
      "t": "2026-11-12T15:00:57Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "failed",
      "what": "Read stubs, constitution IX, owner brief, ADR",
      "role": "sail-decide-skipper",
@@ -108,7 +108,7 @@
     {
      "t": "2026-11-12T15:00:59Z",
      "stage": "drive",
-     "agent": "aa276384fac6c76f2",
+     "agent": "aa27638",
      "kind": "ran",
      "what": "Slice-scope rule and src layout",
      "role": "sail-decide-skipper"
@@ -123,7 +123,7 @@
     {
      "t": "2026-11-12T15:01:05Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "ran",
      "what": "LB1 stubs table and constitution headings",
      "role": "sail-decide-skipper"
@@ -131,7 +131,7 @@
     {
      "t": "2026-11-12T15:01:06Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "failed",
      "what": "LB1 stubs table and constitution headings",
      "role": "sail-decide-skipper",
@@ -140,7 +140,7 @@
     {
      "t": "2026-11-12T15:01:06Z",
      "stage": "drive",
-     "agent": "aa276384fac6c76f2",
+     "agent": "aa27638",
      "kind": "ran",
      "what": "Shared-surface rule and main.ts install wiring",
      "role": "sail-decide-skipper"
@@ -148,7 +148,7 @@
     {
      "t": "2026-11-12T15:01:10Z",
      "stage": "drive",
-     "agent": "a457f33fae731e39b",
+     "agent": "a457f33",
      "kind": "ran",
      "what": "Get current UTC instant",
      "role": "sail-decide-skipper"
@@ -163,7 +163,7 @@
     {
      "t": "2026-11-12T15:11:11Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "ran",
      "what": "Constitution headings, owner brief, TB1 files",
      "role": "sail-decide-skipper"
@@ -178,7 +178,7 @@
     {
      "t": "2026-11-12T15:11:15Z",
      "stage": "drive",
-     "agent": "aae4e28af56cd5b61",
+     "agent": "aae4e28",
      "kind": "ran",
      "what": "Constitution IX/IV, ADR, mock states",
      "role": "sail-decide-skipper"
@@ -223,6 +223,6 @@
   ],
   "why": "The sub-agent was working; nothing was stuck.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: the session wrote again two minutes later and its sub-agents reported back within the hour."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the activity tail shows three sub-agents started and none reported back. What happened: the session wrote again two minutes later and its sub-agents reported back within the hour."
  }
 }

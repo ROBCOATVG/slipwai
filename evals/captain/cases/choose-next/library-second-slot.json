@@ -1,42 +1,40 @@
 {
  "situation": "The library stream has been given a second session slot while LB6 runs. Nine slices have had their parks answered by a person and are cleared to start.",
- "source": "a recorded run of an audiobook-recap project, the library stream, 2026-10-22",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "library",
   "slices": {
-   "LB1": "parked, answered and cleared: LB1: `/sail` exited 1.",
-   "LB11": "parked, answered and cleared: LB11: `/sail` exited 1.",
-   "LB15": "parked, answered and cleared: LB15: `/sail` exited 1.",
-   "LB2": "parked, answered and cleared: LB2: `/sail` exited 1.",
-   "LB3": "parked, answered and cleared: LB3: `/sail` exited 1.",
-   "LB4": "parked, answered and cleared: LB4: `/sail` exited 1.",
+   "LB1": "parked, answered and cleared: LB1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB11": "parked, answered and cleared: LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB15": "parked, answered and cleared: LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB2": "parked, answered and cleared: LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB3": "parked, answered and cleared: LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB4": "parked, answered and cleared: LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
    "LB6": "claimed, in flight",
-   "LB7": "parked, answered and cleared: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed on",
-   "LB8": "parked, answered and cleared: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and t",
-   "LB9": "parked, answered and cleared: LB9: `/sail` exited 1."
+   "LB7": "parked, answered and cleared: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed on slice/LB7 at 83f5d36; mark ListeningSto",
+   "LB8": "parked, answered and cleared: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and the Designed line committed on slice/LB8 ",
+   "LB9": "parked, answered and cleared: LB9: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"
   },
   "deck": [
    {
-    "t": "2026-10-21T13:32:41Z",
-    "kind": "question",
-    "slice": "chart",
-    "id": "D8",
-    "what": "Recaps, answers, ratings and reports are per book and never served across accounts; only the transcription and index are shared by hash (keeps Principle IX exact). Confirm or overturn D8 in specs/001-audiobook-recap/decisions.md."
+    "t": "2026-10-21T16:13:06Z",
+    "kind": "parked",
+    "slice": "LB7",
+    "why": "LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed on slice/LB7 at 83f5d36; mark ListeningStopped set 16:02:45Z) and waits at the implementation rung on the same host change LB6 parked on (D31/D32): land on main `context: catch-up` for LB6, LB7, LB8, LB9, LB10 (and LB13, recommended) in docs/event-model/model.yaml - check-model's one-stream-one-context rule means all together - then make chart and make decisions so chart.yaml and the split's Fairways table put them in the catch-up fairway …"
    },
    {
-    "t": "2026-10-21T13:32:41Z",
-    "kind": "question",
-    "slice": "chart",
-    "id": "D15",
-    "what": "v1 prepares English only; a book whose first transcribed chapter is in another language fails preparation with that reason. Scope the PRD did not state. Confirm or overturn D15."
+    "t": "2026-10-21T16:15:03Z",
+    "kind": "mark-set",
+    "slice": "LB8",
+    "mark": "PositionEntered",
+    "contract": "docs/event-model/model.yaml#PositionEntered",
+    "examples": "specs/001-project-b/slices/LB8/examples.md"
    },
    {
-    "t": "2026-10-21T13:32:41Z",
-    "kind": "question",
-    "slice": "chart",
-    "id": "D19",
-    "what": "Split order: walking skeleton first (LB3 import heads the library, CU4-CU6 request/generate/hear head catch-up after CU1), companion mode after position tracking. Confirm or overturn D19; reasons per row in story-split.md."
+    "t": "2026-10-21T16:20:25Z",
+    "kind": "read",
+    "told": "2026-10-21T16:14:38Z"
    },
    {
     "t": "2026-10-21T16:20:25Z",
@@ -56,10 +54,31 @@
     "message": "LB4 (abreast): LB8's EnterPosition turns chapter plus minutes into a position from the book's chapters, read off book-{bookId} by a tolerant reader that folds BookImported.chapters and ServerBookAdded.chapters alike and asserts number, start and length of each chapter and nothing else (slices/LB8/research.md section 1). Please carry chapters[] on ServerBookAdded as { number, title?, start, length } in whole seconds, numbered 1..N in the server's order - the server's start/end pairs mapped to start/length in your translation - the shape LB3's data model gives BookImported.chapters. Until the sh …"
    },
    {
+    "t": "2026-10-21T16:28:54Z",
+    "kind": "mark-set",
+    "slice": "LB1",
+    "mark": "ServerConnected",
+    "contract": "docs/event-model/model.yaml#ServerConnected",
+    "examples": "specs/001-project-b/slices/LB1/examples.md",
+    "commit": "62952c1"
+   },
+   {
     "t": "2026-10-21T16:30:52Z",
     "kind": "parked",
     "slice": "LB8",
     "why": "LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and the Designed line committed on slice/LB8 at fc0ee23; mark PositionEntered set 16:15:03Z) and waits at the implementation rung on the same host change LB6 (16:03:03Z) and LB7 (16:13:06Z) parked on (D31/D32): land on main `context: catch-up` for LB6, LB7, LB8, LB9, LB10 (and LB13, recommended) in docs/event-model/model.yaml - check-model's one-stream-one-context rule means all together - then make chart and make decisions so chart.yaml and …"
+   },
+   {
+    "t": "2026-10-21T16:31:31Z",
+    "kind": "claimed",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-21T16:35:27Z",
+    "kind": "stowed",
+    "slice": "LB3",
+    "from": "review",
+    "what": "1 item: every imported file is read in full up to three times (the D20 digest tie-break, the book hash, an M4B chapter text track) - correctness holds, the cost is time on a 1 GB book; one pass that scans and hashes is a reshape of the store and the reader together. Recorded in specs/001-project-b/slices/LB3/review.md #6; fairways/library/careen.md is outside what a slice branch may write, so the host carries the row."
    },
    {
     "t": "2026-10-21T16:40:06Z",
@@ -134,6 +153,13 @@
     "t": "2026-10-22T08:00:25Z",
     "kind": "read",
     "told": "2026-10-21T16:26:23Z"
+   },
+   {
+    "t": "2026-10-22T10:04:16Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB6 is planned and tasked (plan, tasks, Designed line committed on slice/LB6) and waits at the implementation rung on a host change the person decided (D32): l…",
+    "by": "person",
+    "slice": "LB6"
    },
    {
     "t": "2026-10-22T10:04:22Z",
@@ -315,27 +341,14 @@
    {
     "verb": "start",
     "within": [
-     "LB3",
-     "LB7"
+     "LB7",
+     "LB8"
     ]
    }
   ],
-  "wrong": [
-   {
-    "verb": "start",
-    "naming": "LB4"
-   },
-   {
-    "verb": "start",
-    "naming": "LB11"
-   },
-   {
-    "verb": "start",
-    "naming": "LB15"
-   }
-  ],
-  "why": "LB3 was one step from its merge and freed the slot in fourteen minutes; LB4, LB11 and LB15 had no work on main and stopped at once on a stale branch.",
+  "wrong": [],
+  "why": "LB7 and LB8 are the slices the log shows prepared, planned and tasked; the others show only an exit 1.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: LB3 was started and merged fourteen minutes later."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: LB7's and LB8's park text in `slices` says prepared, planned and tasked; every other cleared slice's says only that `/sail` exited 1.  The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

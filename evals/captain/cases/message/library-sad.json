@@ -1,17 +1,20 @@
 {
- "situation": "A person tells the library stream one word: sad.",
- "source": "a recorded run of an audiobook-recap project, the library stream, 2026-11-04",
+ "situation": "A person tells the library stream: \"That is disappointing.\" (their words paraphrased)",
+ "source": "a recorded run of project-b, the library stream, 2026-11-04",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "library",
   "slices": {
-   "LB10": "parked: LB10 rebased onto main (a199afd, linear, two doc conflicts and main.ts imports resolved); lint, typecheck and make unit are green, but make verify stops at chec"
+   "LB10": "parked: LB10 rebased onto main (a199afd, linear, two doc conflicts and main.ts imports resolved); lint, typecheck and make unit are green, but make verify stops at check-chart, which fails on main itself: cha",
+   "LB12": "not started; cleared by the chart",
+   "LB13": "not started; cleared by the chart",
+   "LB14": "not started; cleared by the chart"
   },
   "deck": [
    {
     "t": "2026-10-22T12:47:53Z",
     "kind": "told",
-    "message": "For the captain, from feedback 0001 (docs/feedback/0001-i-dont-seem-to-see-the-catch.md), confirmed by a person: something a person missed while trying the app, which is already planned in LB13. I dont seem to see the catch up part, only upload Read it when LB13 is planned; it changes nothing that has been decided.",
+    "message": "For the captain, from feedback 0001, confirmed by a person: something a person missed while trying the app (paraphrased), already planned in LB13.",
     "by": "feedback",
     "slice": "LB13"
    },
@@ -40,15 +43,15 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "sail-demo-hand",
-    "what": "Walked over HTTP against the built service, Postgres and the Audiobookshelf stub (no screen, no route): stop pushed in one sweep (ProgressPushed 8049), nothing resent, unreachable recorded once with 1/2/4/8 min backoff, restart settled 9000 and todo row cleared. Rejected-token, race and crash examples left to the suites. See specs/001-audiobook-recap/slices/LB10/demo-log.md"
+    "what": "Walked over HTTP against the built service, Postgres and the Audiobookshelf stub (no screen, no route): stop pushed in one sweep (ProgressPushed 8049), nothing resent, unreachable recorded once with 1/2/4/8 min backoff, restart settled 9000 and todo row cleared. Rejected-token, race and crash examples left to the suites. See specs/001-project-b/slices/LB10/demo-log.md"
    },
    {
     "t": "2026-10-22T20:14:19Z",
     "kind": "mark-set",
     "slice": "LB10",
     "mark": "ProgressPushed",
-    "contract": "specs/001-audiobook-recap/contracts/LB10-progress-push.md",
-    "examples": "specs/001-audiobook-recap/slices/LB10/examples.md",
+    "contract": "specs/001-project-b/contracts/LB10-progress-push.md",
+    "examples": "specs/001-project-b/slices/LB10/examples.md",
     "commit": "111ecbd",
     "note": "re-entry: first set at 52c4edc (rebased since); the slice is built, reviewed, proven and demo-accepted at 111ecbd; shape unchanged: bookId, position (whole seconds), pushedAt."
    },
@@ -57,8 +60,8 @@
     "kind": "mark-set",
     "slice": "LB10",
     "mark": "ServerSyncFailed",
-    "contract": "specs/001-audiobook-recap/contracts/LB10-progress-push.md",
-    "examples": "specs/001-audiobook-recap/slices/LB10/examples.md",
+    "contract": "specs/001-project-b/contracts/LB10-progress-push.md",
+    "examples": "specs/001-project-b/slices/LB10/examples.md",
     "commit": "111ecbd",
     "note": "re-entry: first set at 52c4edc; built, reviewed, proven and demo-accepted at 111ecbd; reason is unreachable|token-rejected|not-on-server (additive, D105, LB10-Q1), told once per outage; bookId, reason, failedAt."
    },
@@ -96,7 +99,7 @@
    {
     "t": "2026-10-23T05:48:01Z",
     "kind": "told",
-    "message": "sort all mark set issues",
+    "message": "Sort out every mark-set problem.",
     "by": "person"
    },
    {
@@ -129,14 +132,14 @@
    {
     "t": "2026-10-26T16:41:39Z",
     "kind": "told",
-    "message": "For the captain, from feedback 0004 (docs/feedback/0004-that-i-cant-do-much-other-than.md), confirmed by a person: something a person missed while trying the app, which is already planned in LB12. that i cant do much other than connect audio bookshelf and add the book from there - but then cant do anything with it Read it when LB12 is planned; it changes nothing that has been decided.",
+    "message": "For the captain, from feedback 0004, confirmed by a person: something a person missed while trying the app (paraphrased), already planned in LB12.",
     "by": "feedback",
     "slice": "LB12"
    },
    {
     "t": "2026-11-04T17:05:37Z",
     "kind": "told",
-    "message": "LB10 go make chart - unblock, get going",
+    "message": "LB10: fix the chart so it is unblocked, and get it going.",
     "by": "person"
    }
   ],
@@ -205,7 +208,7 @@
    "id": "m-library-sad",
    "t": "2026-11-04T17:07:04Z",
    "from": "person",
-   "text": "sad"
+   "text": "That is disappointing."
   }
  },
  "event": {
@@ -228,6 +231,6 @@
   "wrong": [],
   "why": "It names no slice and asks for nothing; it is for the captain to acknowledge, not to route.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. "
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the message names no slice and asks for nothing; the snapshot has one parked and three cleared slices it could be wrongly sent to.  The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

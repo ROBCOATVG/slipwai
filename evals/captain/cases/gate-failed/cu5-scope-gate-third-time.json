@@ -1,8 +1,8 @@
 {
  "situation": "CU5's full gate stops at check-slice-scope for the third time this evening: the chart file the slice needs changed is not a slice's to write.",
- "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-22",
+ "source": "a recorded run of project-b, the catch-up stream, 2026-10-22",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "catch-up",
   "slices": {
    "CU5": "claimed, in flight"
@@ -16,7 +16,7 @@
    {
     "t": "2026-10-22T12:52:32Z",
     "kind": "told",
-    "message": "try again",
+    "message": "Have another go.",
     "by": "person"
    },
    {
@@ -94,7 +94,7 @@
     "kind": "parked",
     "slice": "CU5",
     "cause": "other",
-    "why": "CU5 is implemented and rebased linear on main (17 commits + 1 fix; make unit/lint/typecheck green), but make verify stops at check-slice-scope: specs/001-audiobook-recap/chart.yaml (BookRemoved in CU5 steers_by, commit 87de119) is 'not a slice's to write', while check-chart demands it. No gate edited. Host: land that one line on main, then re-run make verify here; the Postgres integration test also needs a database run."
+    "why": "CU5 is implemented and rebased linear on main (17 commits + 1 fix; make unit/lint/typecheck green), but make verify stops at check-slice-scope: specs/001-project-b/chart.yaml (BookRemoved in CU5 steers_by, commit 87de119) is 'not a slice's to write', while check-chart demands it. No gate edited. Host: land that one line on main, then re-run make verify here; the Postgres integration test also needs a database run."
    },
    {
     "t": "2026-10-22T21:01:15Z",
@@ -135,7 +135,7 @@
    {
     "t": "2026-10-22T20:30:26Z",
     "kind": "park",
-    "why": "CU5 is implemented and rebased linear on main (17 commits + 1 fix; make unit/lint/typecheck green), but make verify stops at check-slice-scope: specs/001-audiobook-recap/chart.yaml (BookRemoved in CU5 steers_by, commit 87de119) is 'not a slice's to write', while check-chart demands it. No gate edited. Host: land that one line on main, then re-run make verify here; the Postgres integration test also needs a database run."
+    "why": "CU5 is implemented and rebased linear on main (17 commits + 1 fix; make unit/lint/typecheck green), but make verify stops at check-slice-scope: specs/001-project-b/chart.yaml (BookRemoved in CU5 steers_by, commit 87de119) is 'not a slice's to write', while check-chart demands it. No gate edited. Host: land that one line on main, then re-run make verify here; the Postgres integration test also needs a database run."
    },
    {
     "t": "2026-10-22T20:30:26Z",
@@ -177,6 +177,6 @@
   ],
   "why": "A file only a person may change will not change on another run.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: it was parked again later the same evening for the same reason, and landed four days later once a person changed the chart."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the gate text names check-slice-scope refusing a chart file that is not a slice's to write, and the deck holds two earlier parks for the same reason. What happened: it was parked again later the same evening for the same reason, and landed four days later once a person changed the chart. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

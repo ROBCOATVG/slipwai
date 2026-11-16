@@ -1,11 +1,11 @@
 {
  "situation": "PR3's gate says the turn wrote no `demo` line, yet an accepted demo for PR3 is in the log two minutes earlier.",
- "source": "a recorded run of an audiobook-recap project, the preparation stream, 2026-10-23",
+ "source": "a recorded run of project-b, the preparation stream, 2026-10-23",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "preparation",
   "slices": {
-   "PR2": "parked: PR2: this turn wrote no `demo` line for PR2, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thin",
+   "PR2": "parked: PR2: this turn wrote no `demo` line for PR2, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was the ",
    "PR3": "claimed, in flight"
   },
   "deck": [
@@ -45,7 +45,7 @@
    {
     "t": "2026-10-22T20:05:11Z",
     "kind": "told",
-    "message": "fix the no mark set - model correectly",
+    "message": "Fix the missing mark-set problem, and model it properly.",
     "by": "person"
    },
    {
@@ -86,7 +86,7 @@
    {
     "t": "2026-10-23T05:48:06Z",
     "kind": "told",
-    "message": "sort all mark set issues",
+    "message": "Sort out every mark-set problem.",
     "by": "person"
    },
    {
@@ -94,8 +94,8 @@
     "kind": "mark-set",
     "slice": "PR3",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "re-entry: first set 2026-10-22T19:26:50Z at eb810fa, unchanged; check-chart, check-model, check-decisions green this turn. Entries delta + digest, firstAppearance set by the use case, shared stream, nothing personal (D107, D113, D114, ADR 0014)"
    },
@@ -104,8 +104,8 @@
     "kind": "mark-set",
     "slice": "PR2",
     "mark": "ChapterTranscribed",
-    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "contract": "specs/001-project-b/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-project-b/slices/PR2/examples.md",
     "commit": "a89a840",
     "note": "re-entry: first set 2026-10-22T19:19:01Z at a89a840, unchanged; check-chart, check-model, check-decisions green this turn. words inline, book seconds, covers the whole chapter (D101, ADR 0013)"
    },
@@ -114,8 +114,8 @@
     "kind": "mark-set",
     "slice": "PR2",
     "mark": "ChapterTranscriptionFailed",
-    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "contract": "specs/001-project-b/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-project-b/slices/PR2/examples.md",
     "commit": "a89a840",
     "note": "re-entry: first set 2026-10-22T19:19:01Z at a89a840, unchanged; check-chart, check-model, check-decisions green this turn. reason codes provider-rejected|not-english|audio-missing, attempts (D103)"
    },
@@ -124,8 +124,8 @@
     "kind": "mark-set",
     "slice": "PR2",
     "mark": "PreparationCompleted",
-    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "contract": "specs/001-project-b/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-project-b/slices/PR2/examples.md",
     "commit": "a89a840",
     "note": "re-entry: first set 2026-10-22T19:19:01Z at a89a840, unchanged; check-chart, check-model, check-decisions green this turn. appended with the last chapter in one append (D101)"
    },
@@ -141,8 +141,8 @@
     "kind": "mark-set",
     "slice": "PR3",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "re-entry under the demo-gate park: preparation band only, no implementation, so no demo is due; check-chart, check-model, check-decisions green; no open question"
    },
@@ -156,8 +156,8 @@
     "kind": "mark-set",
     "slice": "PR3",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "eb810fa",
     "note": "re-entry: first set 2026-10-22T19:26:50Z at eb810fa, unchanged; check-chart, check-model, check-decisions green this turn; no open question (D107, D113, D114, ADR 0014); preparation band only, no demo due"
    },
@@ -175,8 +175,8 @@
     "kind": "mark-set",
     "slice": "PR3",
     "mark": "ChapterIndexed",
-    "contract": "specs/001-audiobook-recap/contracts/PR3-index-chapter.md",
-    "examples": "specs/001-audiobook-recap/slices/PR3/examples.md",
+    "contract": "specs/001-project-b/contracts/PR3-index-chapter.md",
+    "examples": "specs/001-project-b/slices/PR3/examples.md",
     "commit": "c7f0b90",
     "note": "re-entry: slice built, examples proven, demo-accepted 2026-10-23T06:46:28Z (sail-demo-hand); D163 recorded. make unit (627), lint, typecheck, check-model, check-decisions green this turn. check-chart fails (chart behind model), the same failure LB10 recorded on main; the regenerated chart commit was reverted by hand at c7f0b90, so it is left for a person or a main-wide chart regeneration, not re-done here."
    }
@@ -216,30 +216,37 @@
     "running": 1
    }
   ],
-  "gate": "PR3: this turn wrote no `demo` line for PR3, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read."
+  "gate": "PR3: this turn wrote no `demo` line for PR3, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was the last of 3 run(s), which is what `attempts` allows"
  },
  "event": {
   "v": 1,
   "id": "pr3-demo-written-before-the-gate",
   "t": "2026-10-23T06:48:01Z",
   "kind": "gate-failed",
-  "slice": "PR3"
+  "slice": "PR3",
+  "may": [
+   "park",
+   "say",
+   "ask",
+   "none"
+  ]
  },
  "label": {
   "accept": [
    {
-    "verb": "retry",
-    "slice": "PR3"
-   }
-  ],
-  "wrong": [
-   {
     "verb": "park",
     "slice": "PR3"
+   },
+   {
+    "verb": "ask"
+   },
+   {
+    "verb": "say"
    }
   ],
-  "why": "The demo was accepted; a retry that records it again closes the gate.",
+  "wrong": [],
+  "why": "The demo was accepted and the gate missed it; with the attempts spent, a person decides.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: after a person cleared it, the next run merged PR3 within fifteen minutes."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the deck holds PR3's accepted demo line two minutes before the refusal, and the gate text says the attempts are spent. What happened: after a person cleared it, the next run merged PR3 within fifteen minutes. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

@@ -1,14 +1,14 @@
 {
- "situation": "A person sends the same line to every stream: sort all mark set issues. Nothing in the catch-up stream is parked on a missing `mark-set`.",
- "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-23",
+ "situation": "A person tells the catch-up stream: \"Sort out every mark-set problem.\" (their words paraphrased)",
+ "source": "a recorded run of project-b, the catch-up stream, 2026-10-23",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "catch-up",
   "slices": {
-   "CU11": "parked: CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one th",
+   "CU11": "parked: CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was th",
    "CU12": "claimed, in flight",
-   "CU5": "parked: CU5 is built and linear on main (aa6b62d); marks re-written this turn. make verify still stops at check-slice-scope: chart.yaml (BookRemoved in CU5 steers_by, D",
-   "CU9": "parked, answered and cleared: CU9: 52 decisions stand unread, over the ceiling of 10. A backlog of judgement nobody has looked at is not judgement. Read them under *Waiting on you* on the bo"
+   "CU5": "parked: CU5 is built and linear on main (aa6b62d); marks re-written this turn. make verify still stops at check-slice-scope: chart.yaml (BookRemoved in CU5 steers_by, D124) is 'not a slice's to write' while c",
+   "CU9": "parked, answered and cleared: CU9: 52 decisions stand unread, over the ceiling of 10. A backlog of judgement nobody has looked at is not judgement. Read them under *Waiting on you* on the board and press Mark read, which writes ea"
   },
   "deck": [
    {
@@ -16,8 +16,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "QuestionRefused",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -26,8 +26,8 @@
     "kind": "mark-set",
     "slice": "CU11",
     "mark": "AnswerFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
-    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "contract": "specs/001-project-b/contracts/cu11-answer-question.md",
+    "examples": "specs/001-project-b/slices/CU11/examples.md",
     "commit": "9f78891",
     "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
    },
@@ -48,8 +48,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); the slice is built, reviewed and its examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133."
    },
@@ -86,7 +86,7 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "sail-demo-hand",
-    "what": "Walked over HTTP and the browser against the running app: signed-out reads/audio all 401 unauthenticated with private no-store (CU12-15), flag on shows Ask with sign-in panel, flag off mounts nothing (CU12-36); answer states read from the slice previews (awaiting, playing, not-come-up, not-yet, not-ready, failed, cannot-play, waited-long). Signed-in examples unreachable until CU4 R-2 bearer validation and CU11 answerer land; proved by tests per tasks.md. See specs/001-audiobook-recap/slices/CU12/demo-log.md"
+    "what": "Walked over HTTP and the browser against the running app: signed-out reads/audio all 401 unauthenticated with private no-store (CU12-15), flag on shows Ask with sign-in panel, flag off mounts nothing (CU12-36); answer states read from the slice previews (awaiting, playing, not-come-up, not-yet, not-ready, failed, cannot-play, waited-long). Signed-in examples unreachable until CU4 R-2 bearer validation and CU11 answerer land; proved by tests per tasks.md. See specs/001-project-b/slices/CU12/demo-log.md"
    },
    {
     "t": "2026-10-22T21:29:50Z",
@@ -103,7 +103,7 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "sail-demo-hand",
-    "what": "Walked over HTTP and agent-browser against the running app: signed-out transcript read 401 unauthenticated with private no-store (CU9-14), OpenAPI lists GET only with 200/401/404/422 (CU9-17), flag on mounts the catch-up screen signed out, flag off mounts nothing (CU9-25); component states read from the slice previews. CU9-1..13,15,16,18 unreachable until CU4 R-2 bearer validation and CU5 recaps land; proved by tests per tasks.md (not re-run by the hand). Render gates unmeasured (playwright does not resolve). Note: failed state repeats 'Try again'. See specs/001-audiobook-recap/slices/CU9/demo …"
+    "what": "Walked over HTTP and agent-browser against the running app: signed-out transcript read 401 unauthenticated with private no-store (CU9-14), OpenAPI lists GET only with 200/401/404/422 (CU9-17), flag on mounts the catch-up screen signed out, flag off mounts nothing (CU9-25); component states read from the slice previews. CU9-1..13,15,16,18 unreachable until CU4 R-2 bearer validation and CU5 recaps land; proved by tests per tasks.md (not re-run by the hand). Render gates unmeasured (playwright does not resolve). Note: failed state repeats 'Try again'. See specs/001-project-b/slices/CU9/demo-log.m …"
    },
    {
     "t": "2026-10-22T21:50:48Z",
@@ -128,8 +128,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapGenerated",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
    },
@@ -138,8 +138,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapRefused",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
    },
@@ -148,8 +148,8 @@
     "kind": "mark-set",
     "slice": "CU5",
     "mark": "RecapFailed",
-    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
-    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "contract": "specs/001-project-b/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-project-b/slices/CU5/examples.md",
     "commit": "aa6b62d",
     "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
    },
@@ -167,7 +167,7 @@
     "verdict": "accepted",
     "outcome": "accepted",
     "accepted-by": "sail-demo-hand",
-    "what": "Second walk this run, over HTTP and the browser against the running app: signed-out GET, audio and POST all 401 unauthenticated, reads private no-store, routes in openapi (CU12-15); flag on mounts Ask with the sign-in panel, flag off mounts nothing (CU12-36, CU12-33 401 branch); answer states read from the eight slice previews. Signed-in examples unreachable until CU4 R-2 bearer validation and CU11's answerer land; proved by tests per tasks.md and not re-run by the hand. See specs/001-audiobook-recap/slices/CU12/demo-log.md"
+    "what": "Second walk this run, over HTTP and the browser against the running app: signed-out GET, audio and POST all 401 unauthenticated, reads private no-store, routes in openapi (CU12-15); flag on mounts Ask with the sign-in panel, flag off mounts nothing (CU12-36, CU12-33 401 branch); answer states read from the eight slice previews. Signed-in examples unreachable until CU4 R-2 bearer validation and CU11's answerer land; proved by tests per tasks.md and not re-run by the hand. See specs/001-project-b/slices/CU12/demo-log.md"
    },
    {
     "t": "2026-10-22T21:55:56Z",
@@ -277,7 +277,7 @@
    "id": "m-catch-up-mark-set-issues",
    "t": "2026-10-23T05:47:58Z",
    "from": "person",
-   "text": "sort all mark set issues"
+   "text": "Sort out every mark-set problem."
   }
  },
  "event": {
@@ -292,6 +292,7 @@
    {
     "verb": [
      "say",
+     "ask",
      "none"
     ]
    }
@@ -299,6 +300,6 @@
   "wrong": [],
   "why": "No slice here has a mark-set problem; the right answer says so rather than wakes a slice.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: CU12 was woken and replied that it sets no mark, so none was owed."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: no park in the snapshot mentions a mark-set. What happened: CU12 was woken and replied that it sets no mark, so none was owed. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

@@ -25,8 +25,26 @@ LABEL = {"accept": [{"verb": "park", "slice": "S1"}, {"verb": "ask"}],
 MAY = ["retry", "park", "say", "ask", "none"]
 #: A path under somebody's home, on any of the three platforms, or an email address.
 PERSONAL = re.compile(r"/Users/|/home/|[A-Za-z]:\\Users\\|[\w.+-]+@[\w-]+\.[A-Za-z]{2,}")
-#: Harnesses a case copied from a transcript could name; nothing a person reads names one.
-HARNESSES = re.compile(r"\b(claude|codex|copilot|gemini|cursor-agent|opencode|qwen|auggie)\b", re.IGNORECASE)
+#: Words in the registry's harness names that are ordinary English, or a forge rather than a harness: a case
+#: may say "agent" or "code" without naming a product.
+ORDINARY = {"agent", "ai", "build", "cli", "code", "coding", "factory", "for", "github", "my", "oh", "terminal"}
+#: A harness's own sentence when its session limit is reached, which names it as surely as its name does.
+HARNESS_SENTENCES = ("hit your session limit",)
+
+
+def product_names() -> re.Pattern[str]:
+    """Every harness and model a case could name, read from where the keel keeps them, never typed here."""
+    from slipwai.project import stage_models
+
+    rows = json.loads(stage_models.REGISTRY.read_text(encoding="utf-8"))["harnesses"]
+    words = {row["key"].lower() for row in rows}
+    words |= {word.lower() for row in rows for word in re.findall(r"[A-Za-z][\w-]+", row["name"])}
+    template = json.loads(stage_models.stage_models())
+    models = {value for role in template["roles"].values() for value in role.values()
+              if value and value != stage_models.HOST}
+    models |= set(re.findall(r"--set \w+\.\w+=([\w.-]+)", template["_comment"]))
+    names = sorted((words - ORDINARY) | models | set(HARNESS_SENTENCES))
+    return re.compile("|".join(rf"\b{re.escape(name)}\b" for name in names), re.IGNORECASE)
 
 
 def orders(folder: Path, *bodies: object) -> list[Path]:
@@ -52,18 +70,31 @@ class TheCasesOnFile(unittest.TestCase):
             with self.subTest(decision=decision):
                 self.assertTrue(eval_cases.every(decision=decision))
 
-    def test_a_case_copied_from_a_run_carries_no_home_path_email_or_harness_name(self) -> None:
+    def test_a_case_copied_from_a_run_carries_no_home_path_email_or_harness_or_model_name(self) -> None:
+        named = product_names()
         for path in eval_cases.every():
             text = path.read_text(encoding="utf-8")
             with self.subTest(case=eval_cases.case_id(path)):
                 self.assertIsNone(PERSONAL.search(text), PERSONAL.search(text))
-                self.assertIsNone(HARNESSES.search(text), HARNESSES.search(text))
+                self.assertIsNone(named.search(text), named.search(text))
 
-    def test_a_label_nobody_has_signed_off_says_it_is_a_draft(self) -> None:
+    def test_the_name_check_catches_a_harness_a_model_and_a_harness_sentence(self) -> None:
+        named = product_names()
+        for text in ('"model": "sonnet"', "ran under Claude Code", "You've hit your session limit"):
+            with self.subTest(text=text):
+                self.assertIsNotNone(named.search(text))
+        self.assertIsNone(named.search("the agent wrote code for the terminal"))
+
+    def test_a_label_nobody_has_signed_off_says_it_is_a_draft_or_made_up_and_what_it_rests_on(self) -> None:
         for path in eval_cases.every():
-            label = eval_cases.load(path)["label"]
+            case = eval_cases.load(path)
+            note = case["label"].get("note", "")
             with self.subTest(case=eval_cases.case_id(path)):
-                self.assertTrue(label["signed_off"] or "Draft" in label.get("note", ""))
+                self.assertTrue(case["label"]["signed_off"] or note.startswith("Synthetic" if case.get("synthetic")
+                                                                               else "Draft"))
+                self.assertIn("Rests on:", note)
+                if case.get("synthetic"):
+                    self.assertTrue(case["source"].startswith("made up"))
 
 
 class ACaseReadAndLaidOut(unittest.TestCase):
@@ -86,7 +117,7 @@ class ACaseReadAndLaidOut(unittest.TestCase):
         case = self.case()
         case["label"]["accept"] = [{"verb": "park", "slice": "S1", "slices": ["S1"]}, {"verb": "merge"}]
         said = " ".join(eval_cases.faults(case))
-        self.assertIn("one of slice, slices, within, naming at most", said)
+        self.assertIn("one of slice, slices, within, naming, required/optional at most", said)
         self.assertIn("`verb` is one of", said)
 
     def test_a_label_with_no_accepted_order_or_no_reason_is_refused(self) -> None:

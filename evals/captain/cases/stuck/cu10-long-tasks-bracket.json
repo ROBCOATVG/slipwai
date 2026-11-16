@@ -1,8 +1,8 @@
 {
  "situation": "CU10 has been fourteen minutes on one task; its others took two.",
- "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-22",
+ "source": "a recorded run of project-b, the catch-up stream, 2026-10-22",
  "snapshot": {
-  "feature": "001-audiobook-recap",
+  "feature": "001-project-b",
   "fairway": "catch-up",
   "slices": {
    "CU10": "claimed, in flight"
@@ -22,7 +22,7 @@
    {
     "t": "2026-10-22T12:52:32Z",
     "kind": "told",
-    "message": "try again",
+    "message": "Have another go.",
     "by": "person"
    },
    {
@@ -61,7 +61,7 @@
     "slice": "CU10",
     "mark": "QuestionAsked",
     "contract": "docs/event-model/model.yaml#QuestionAsked",
-    "examples": "specs/001-audiobook-recap/slices/CU10/examples.md",
+    "examples": "specs/001-project-b/slices/CU10/examples.md",
     "commit": "94c3388",
     "note": "fields settled at the gaps rung: questionId, bookId, position, question sealed as { keyId, iv, ciphertext }, via voice | typing, askedAt; CU11 and CU12 open the words through the service's sealing port"
    }
@@ -91,7 +91,7 @@
     {
      "t": "2026-10-22T14:12:48Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Check web tests layout and ADR shape",
      "role": "sail-slice-watch"
@@ -99,7 +99,7 @@
     {
      "t": "2026-10-22T14:13:03Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "edit",
      "what": "0011-question-asked-with-sealed-words.md",
      "role": "sail-slice-watch"
@@ -107,7 +107,7 @@
     {
      "t": "2026-10-22T14:14:01Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "edit",
      "what": "plan.md",
      "role": "sail-slice-watch"
@@ -115,7 +115,7 @@
     {
      "t": "2026-10-22T14:14:02Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Mark CU10 planned and regenerate canvas",
      "role": "sail-slice-watch"
@@ -123,7 +123,7 @@
     {
      "t": "2026-10-22T14:14:08Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Commit plan, close plan bracket",
      "role": "sail-slice-watch"
@@ -131,7 +131,7 @@
     {
      "t": "2026-10-22T14:14:11Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Commit plan artifacts",
      "role": "sail-slice-watch"
@@ -139,7 +139,7 @@
     {
      "t": "2026-10-22T14:14:12Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Close plan bracket",
      "role": "sail-slice-watch"
@@ -154,7 +154,7 @@
     {
      "t": "2026-10-22T14:14:18Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Open tasks bracket",
      "role": "sail-slice-watch"
@@ -169,7 +169,7 @@
     {
      "t": "2026-10-22T14:14:19Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Look at CU3 tasks shape for brief",
      "role": "sail-slice-watch"
@@ -177,7 +177,7 @@
     {
      "t": "2026-10-22T14:14:24Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Check UX kits and gate targets",
      "role": "sail-slice-watch"
@@ -185,7 +185,7 @@
     {
      "t": "2026-10-22T14:14:28Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "ran",
      "what": "Check UX kits installed",
      "role": "sail-slice-watch"
@@ -193,7 +193,7 @@
     {
      "t": "2026-10-22T14:14:28Z",
      "stage": "drive",
-     "agent": "a4d7459bd565a408d",
+     "agent": "a4d7459",
      "kind": "failed",
      "what": "Check UX kits installed",
      "role": "sail-slice-watch",
@@ -206,12 +206,12 @@
      "kind": "start",
      "what": "CU10 tasks.md from plan",
      "role": "sail-tasks-quartermaster",
-     "model": "sonnet"
+     "model": "a-model"
     },
     {
      "t": "2026-10-22T14:14:53Z",
      "stage": "drive",
-     "agent": "afc76259080b67494",
+     "agent": "afc7625",
      "kind": "link",
      "what": "sail-tasks-quartermaster",
      "role": "sail-tasks-quartermaster"
@@ -219,7 +219,7 @@
     {
      "t": "2026-10-22T14:14:57Z",
      "stage": "drive",
-     "agent": "afc76259080b67494",
+     "agent": "afc7625",
      "kind": "ran",
      "what": "cat docs/delegated-agent-safety.md | head -60; wc",
      "role": "sail-tasks-quartermaster"
@@ -227,23 +227,23 @@
     {
      "t": "2026-10-22T14:15:25Z",
      "stage": "drive",
-     "agent": "afc76259080b67494",
+     "agent": "afc7625",
      "kind": "ran",
-     "what": "cd ../recap-CU10/apps && ls recap-api/src/application recap-api/src/application/ports",
+     "what": "cd ../project-b-CU10/apps && ls project-b-api/src/application project-b-api/src/application/ports",
      "role": "sail-tasks-quartermaster"
     },
     {
      "t": "2026-10-22T14:15:30Z",
      "stage": "drive",
-     "agent": "afc76259080b67494",
+     "agent": "afc7625",
      "kind": "ran",
-     "what": "cd ../recap-CU10/apps && ls recap-api/src/application recap-api/src/application/ports",
+     "what": "cd ../project-b-CU10/apps && ls project-b-api/src/application project-b-api/src/application/ports",
      "role": "sail-tasks-quartermaster"
     },
     {
      "t": "2026-10-22T14:17:04Z",
      "stage": "drive",
-     "agent": "afc76259080b67494",
+     "agent": "afc7625",
      "kind": "edit",
      "what": "tasks.md",
      "role": "sail-tasks-quartermaster"
@@ -282,6 +282,6 @@
   ],
   "why": "Writing the task list for a slice takes longer than one of its tasks.",
   "signed_off": "",
-  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: the task closed and the next stage began."
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the activity tail shows the task-list agent editing tasks.md seconds before the moment. What happened: the task closed and the next stage began. The person's words here are paraphrased, keeping what the routing turns on."
  }
 }

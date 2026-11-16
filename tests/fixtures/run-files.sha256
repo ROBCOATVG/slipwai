@@ -38,6 +38,7 @@
 # why: 2026-11-16 bbcd89f3d39e50fd 2026-11-16, changelog.d/demo-is-feedback.md: cruise.py takes a demos setting (hand by default, or person); deck_line.py writes a capability's accepted and demo-due lines; clearance.py and capabilities.py read demos to say whether a capability waits on a person. Deliberate, and the same on macOS and Linux; nothing else these files do moved
 # why: 2026-11-16 0f477ca6b75219fd 2026-11-16, changelog.d/demo-is-feedback.md (review): deck_line.py refuses an accepted or demo-due unless the capability is whole and cleared, takes only the hand's acceptance and refuses the line the demos setting does not take; capabilities.py has the one rule (acceptable), a --json port, says under hand that nothing is owed a person, and reads the hand's acceptance off a register or demo-log written before the line existed. Deliberate, and the same on macOS and Linux; nothing else these files do moved
 # why: 2026-11-16 82c619b40e11079c merge of the held driver and the demo acceptance: drive.py, captain.py, talk.py, abreast.py and cruise.py (sessions: auto) move with the driver held open and the conversation files; deck_line.py and capabilities.py with the hand's acceptance; no other behaviour on macOS and Linux moves
+# why: 2026-11-16 dd6dcf4c3d4a4a5f 2026-11-16, changelog.d/driver-held-open.md second review: talk.py signs every message for its slice and makes its key private; drive.py verifies a pid before ending it, falls back to print where auto cannot take the protocol, and reads absent sessions as print; captain.py bounds a captain's turn by deck lines and commits only and a message's by time, and lets only a person lift a person's hold; cruise.py reads absent sessions as print. Print mode and every project that does not say auto run on macOS and Linux as before
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -81,10 +82,6 @@
 23f454becf5501dd9089a5a3b237543e11f6a5d72e8871b8be42149972a3eee0  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
 23f454becf5501dd9089a5a3b237543e11f6a5d72e8871b8be42149972a3eee0  standard-memory-none  scripts/agents/surfaces.py
 23f454becf5501dd9089a5a3b237543e11f6a5d72e8871b8be42149972a3eee0  standard-postgres-toy-serve  scripts/agents/surfaces.py
-249555aa484adf206dae7ef205c3050b8055ffcb22d72e2cb3df2ff9882dd298  event-modelling-memory-none  scripts/agents/cruise.py
-249555aa484adf206dae7ef205c3050b8055ffcb22d72e2cb3df2ff9882dd298  event-modelling-postgres-toy-serve  scripts/agents/cruise.py
-249555aa484adf206dae7ef205c3050b8055ffcb22d72e2cb3df2ff9882dd298  standard-memory-none  scripts/agents/cruise.py
-249555aa484adf206dae7ef205c3050b8055ffcb22d72e2cb3df2ff9882dd298  standard-postgres-toy-serve  scripts/agents/cruise.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-memory-none  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-postgres-toy-serve  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-memory-none  scripts/check-crossing.py
@@ -106,10 +103,6 @@
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  event-modelling-postgres-toy-serve  scripts/extensions/hooks.py
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  standard-memory-none  scripts/extensions/hooks.py
 335d6af2156e4cc1574df4e846d14b9fdde70fb19c055b96bf9ddfc074afab47  standard-postgres-toy-serve  scripts/extensions/hooks.py
-34c8637bae1bfbced68bfe78423a503beaabe7dc4a452837ca149cd37f64594a  event-modelling-memory-none  scripts/agents/captain.py
-34c8637bae1bfbced68bfe78423a503beaabe7dc4a452837ca149cd37f64594a  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-34c8637bae1bfbced68bfe78423a503beaabe7dc4a452837ca149cd37f64594a  standard-memory-none  scripts/agents/captain.py
-34c8637bae1bfbced68bfe78423a503beaabe7dc4a452837ca149cd37f64594a  standard-postgres-toy-serve  scripts/agents/captain.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  event-modelling-memory-none  scripts/check-slice-scope.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  standard-memory-none  scripts/check-slice-scope.py
@@ -132,6 +125,10 @@
 4d01015df1d5601a14f6b32a608f71109decb17f99a546ce954afb159317f7e2  event-modelling-postgres-toy-serve  scripts/agents/berths.py
 4d01015df1d5601a14f6b32a608f71109decb17f99a546ce954afb159317f7e2  standard-memory-none  scripts/agents/berths.py
 4d01015df1d5601a14f6b32a608f71109decb17f99a546ce954afb159317f7e2  standard-postgres-toy-serve  scripts/agents/berths.py
+4f015ca8856da827d4ea06a1feeaba9480ca49603b5466707194e40d87793b7d  event-modelling-memory-none  scripts/agents/captain.py
+4f015ca8856da827d4ea06a1feeaba9480ca49603b5466707194e40d87793b7d  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+4f015ca8856da827d4ea06a1feeaba9480ca49603b5466707194e40d87793b7d  standard-memory-none  scripts/agents/captain.py
+4f015ca8856da827d4ea06a1feeaba9480ca49603b5466707194e40d87793b7d  standard-postgres-toy-serve  scripts/agents/captain.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  event-modelling-memory-none  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  event-modelling-postgres-toy-serve  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-memory-none  scripts/agents/run-state.py
@@ -140,6 +137,10 @@
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-postgres-toy-serve  scripts/event-model/drawio.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-memory-none  scripts/event-model/check.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-postgres-toy-serve  scripts/event-model/check.ts
+56e5a2966edc8a40a9df298fee49244c795bbe95160b48305786548fe121f0c5  event-modelling-memory-none  scripts/agents/talk.py
+56e5a2966edc8a40a9df298fee49244c795bbe95160b48305786548fe121f0c5  event-modelling-postgres-toy-serve  scripts/agents/talk.py
+56e5a2966edc8a40a9df298fee49244c795bbe95160b48305786548fe121f0c5  standard-memory-none  scripts/agents/talk.py
+56e5a2966edc8a40a9df298fee49244c795bbe95160b48305786548fe121f0c5  standard-postgres-toy-serve  scripts/agents/talk.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-memory-none  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-postgres-toy-serve  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  standard-memory-none  scripts/agents/command_text.py
@@ -180,10 +181,6 @@
 7362f04004ce6eea16440de0b9466458131c892618f5fafaa637abbc22949e59  event-modelling-postgres-toy-serve  scripts/agents/deck_line.py
 7362f04004ce6eea16440de0b9466458131c892618f5fafaa637abbc22949e59  standard-memory-none  scripts/agents/deck_line.py
 7362f04004ce6eea16440de0b9466458131c892618f5fafaa637abbc22949e59  standard-postgres-toy-serve  scripts/agents/deck_line.py
-73a07e363099e48e205ab3abebff1c58b26c980535f47afa88ca1afe6092f984  event-modelling-memory-none  scripts/agents/talk.py
-73a07e363099e48e205ab3abebff1c58b26c980535f47afa88ca1afe6092f984  event-modelling-postgres-toy-serve  scripts/agents/talk.py
-73a07e363099e48e205ab3abebff1c58b26c980535f47afa88ca1afe6092f984  standard-memory-none  scripts/agents/talk.py
-73a07e363099e48e205ab3abebff1c58b26c980535f47afa88ca1afe6092f984  standard-postgres-toy-serve  scripts/agents/talk.py
 73fa81ee42af50e2df6cedecc5428eaff9427c3bfd0ee0496dc1e5d6834b0934  event-modelling-memory-none  scripts/extensions/guards.py
 73fa81ee42af50e2df6cedecc5428eaff9427c3bfd0ee0496dc1e5d6834b0934  event-modelling-postgres-toy-serve  scripts/extensions/guards.py
 73fa81ee42af50e2df6cedecc5428eaff9427c3bfd0ee0496dc1e5d6834b0934  standard-memory-none  scripts/extensions/guards.py
@@ -238,6 +235,10 @@
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  event-modelling-postgres-toy-serve  scripts/agents/benchmark.py
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  standard-memory-none  scripts/agents/benchmark.py
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  standard-postgres-toy-serve  scripts/agents/benchmark.py
+989a356de4ff12fdb42d6fb0af369f9054e3f1eaa60d3cf8dfb04f6b3b8f4851  event-modelling-memory-none  scripts/agents/drive.py
+989a356de4ff12fdb42d6fb0af369f9054e3f1eaa60d3cf8dfb04f6b3b8f4851  event-modelling-postgres-toy-serve  scripts/agents/drive.py
+989a356de4ff12fdb42d6fb0af369f9054e3f1eaa60d3cf8dfb04f6b3b8f4851  standard-memory-none  scripts/agents/drive.py
+989a356de4ff12fdb42d6fb0af369f9054e3f1eaa60d3cf8dfb04f6b3b8f4851  standard-postgres-toy-serve  scripts/agents/drive.py
 9b1b06d938a25e8ff6218840129ea97778ba581e6b568105e5b5234577728c94  event-modelling-postgres-toy-serve  init
 9b1b06d938a25e8ff6218840129ea97778ba581e6b568105e5b5234577728c94  standard-postgres-toy-serve  init
 9b21d9961571e6bb948d1cacad9b0e2972f92cccae2f178bf95019ab956bfdca  event-modelling-memory-none  scripts/render-fairways.py
@@ -278,6 +279,10 @@ b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modellin
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-postgres-toy-serve  scripts/event-model/render-drawio.ts
 bf97d168e72d89ba00378a96231bcb6fd6b02643f0bb866ad0a5e120d938f5ec  event-modelling-memory-none  scripts/event-model/patch-mermaid-swimlanes.ts
 bf97d168e72d89ba00378a96231bcb6fd6b02643f0bb866ad0a5e120d938f5ec  event-modelling-postgres-toy-serve  scripts/event-model/patch-mermaid-swimlanes.ts
+c1188bbe22f9f08d241e74f46219f18e8ac65bfed76900bcb3334e4ebf896071  event-modelling-memory-none  scripts/agents/cruise.py
+c1188bbe22f9f08d241e74f46219f18e8ac65bfed76900bcb3334e4ebf896071  event-modelling-postgres-toy-serve  scripts/agents/cruise.py
+c1188bbe22f9f08d241e74f46219f18e8ac65bfed76900bcb3334e4ebf896071  standard-memory-none  scripts/agents/cruise.py
+c1188bbe22f9f08d241e74f46219f18e8ac65bfed76900bcb3334e4ebf896071  standard-postgres-toy-serve  scripts/agents/cruise.py
 c1b553eaae94bea81af7760499b59df823f0513728a97d467c432310d841d70b  standard-postgres-toy-serve  Makefile
 c1d4022978876a55194b020b17016f13a60e9ea4dade2cc463adfbf286edc427  event-modelling-memory-none  scripts/check-decisions.py
 c1d4022978876a55194b020b17016f13a60e9ea4dade2cc463adfbf286edc427  event-modelling-postgres-toy-serve  scripts/check-decisions.py
@@ -323,10 +328,6 @@ d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  event-modellin
 d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  event-modelling-postgres-toy-serve  scripts/check-surfaces.py
 d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  standard-memory-none  scripts/check-surfaces.py
 d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  standard-postgres-toy-serve  scripts/check-surfaces.py
-ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  event-modelling-memory-none  scripts/agents/drive.py
-ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  event-modelling-postgres-toy-serve  scripts/agents/drive.py
-ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  standard-memory-none  scripts/agents/drive.py
-ddd37ca706c6d9c111d63cbb929a4474d3dc95d761ef77debf690e10d7633661  standard-postgres-toy-serve  scripts/agents/drive.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modelling-memory-none  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modelling-postgres-toy-serve  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  standard-memory-none  scripts/check-migrations.py

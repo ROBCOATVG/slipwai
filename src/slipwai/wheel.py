@@ -63,6 +63,9 @@ STOPS: tuple[tuple[str, str, dict[str, str]], ...] = (
      {"hand": "the hand's verdict accepts it; the film is there when I have time",
       "person": "wait for me to accept it"}),
 )
+#: What a stop reads as where the file says nothing and that is not the generator's default: `sessions` written
+#: before `auto` existed is print mode, which migrating never changes.
+ABSENT = {"sessions": "print"}
 #: The value that means a person is asked. A stop sitting on this is `/sail`'s answer to it.
 ASKS = "park"
 #: The stops whose asking value is a word of their own rather than `park`.
@@ -97,7 +100,7 @@ def orders(root: Path) -> dict[str, str]:
         return {}
     # A stop added after the file was written reads as its default, which is what the project's own script
     # takes it to be: the card then shows where it stands rather than a dial with nothing on.
-    later = {key: str(default) for key, _, default, _ in SETTINGS
+    later = {key: ABSENT.get(key, str(default)) for key, _, default, _ in SETTINGS
              if key not in held and any(key == name for name, _, _ in STOPS)}
     return later | {str(a): str(b) for a, b in held.items() if not str(a).startswith("_")}
 

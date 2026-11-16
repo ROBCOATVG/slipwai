@@ -140,8 +140,13 @@ class GuardTest(unittest.TestCase):
         self.addCleanup(agent.kill)
         gone = subprocess.run([sys.executable, "-c", "import os; print(os.getpid())"], capture_output=True, text=True)
         self.home.mkdir(parents=True)
-        (self.home / "agent.pid").write_text(json.dumps({"pid": agent.pid, "captain": int(gone.stdout)}),
-                                             encoding="utf-8")
+        record = {"pid": agent.pid, "captain": int(gone.stdout), "identity": "Mon Jan  1 00:00:00 1990 not it"}
+        (self.home / "agent.pid").write_text(json.dumps(record), encoding="utf-8")
+        self.assertEqual(self.drive.reap(self.home.parent), [], "a pid that is not the agent recorded is left alone")
+        self.assertIsNone(agent.poll())
+        record["identity"] = self.drive.identity(agent.pid)
+        self.assertTrue(record["identity"], "ps reads the process's start and command line")
+        (self.home / "agent.pid").write_text(json.dumps(record), encoding="utf-8")
         self.assertEqual(self.drive.reap(self.home.parent), [agent.pid])
         self.assertIsNotNone(agent.wait(10))
         self.assertFalse((self.home / "agent.pid").exists())

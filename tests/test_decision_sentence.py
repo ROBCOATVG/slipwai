@@ -71,12 +71,13 @@ class GateTest(unittest.TestCase):
         self.module = gate()
         self.module.ROOT = self.root
 
-    def check(self, *entries: str, since: str | None = None) -> list[str]:
+    def check(self, *entries: str, since: str | None = None, begun: tuple[str, ...] = ()) -> list[str]:
         path = self.root / "specs/f/decisions.md"
         path.write_text("# Decisions\n\n" + "".join(entries), encoding="utf-8")
         if since:
             (self.root / ".specify").mkdir(exist_ok=True)
-            (self.root / SENTENCE_FROM).write_text(json.dumps({"from": since}), encoding="utf-8")
+            (self.root / SENTENCE_FROM).write_text(json.dumps({"from": since, "in_flight": list(begun)}),
+                                                   encoding="utf-8")
         return self.module.check_decisions(path, self.module.sentence_from())
 
     def test_a_migrated_project_of_old_entries_passes(self) -> None:
@@ -88,6 +89,17 @@ class GateTest(unittest.TestCase):
                            since="2026-11-16T09:00:00Z")
         self.assertEqual(len(found), 1, found)
         self.assertIn("D2 has no **In short:**", found[0])
+        self.assertIn(f"after the instant in {SENTENCE_FROM}", found[0], "a person who hits it is told why")
+
+    def test_a_slice_in_flight_when_the_rule_came_in_is_not_asked(self) -> None:
+        self.assertEqual(self.check(entry(2, "2026-11-17T08:00:00Z"), since="2026-11-16T09:00:00Z",
+                                    begun=("CL2",)), [])
+        self.assertEqual(len(self.check(entry(2, "2026-11-17T08:00:00Z"), since="2026-11-16T09:00:00Z",
+                                        begun=("CL1",))), 1)
+
+    def test_a_date_with_no_time_on_the_rules_day_is_held_and_one_before_is_not(self) -> None:
+        self.assertEqual(len(self.check(entry(2, "2026-11-16"), since="2026-11-16T09:00:00Z")), 1)
+        self.assertEqual(self.check(entry(2, "2026-11-15"), since="2026-11-16T09:00:00Z"), [])
 
     def test_a_new_entry_with_one_passes(self) -> None:
         self.assertEqual(self.check(entry(2, "2026-11-17T08:00:00Z", "A pasted link is refused for now."),
@@ -96,21 +108,34 @@ class GateTest(unittest.TestCase):
     def test_a_project_made_under_the_rule_holds_every_entry(self) -> None:
         found = self.check(entry(1, "2026-01-01T00:00:00Z"))
         self.assertEqual(len(found), 1, found)
+        self.assertIn(f"no {SENTENCE_FROM}", found[0])
 
     def test_an_old_entry_with_an_impossible_second_is_read_to_the_minute_and_passes(self) -> None:
         """game-club-manager's D13 was written at `13:10:60Z`."""
         self.assertEqual(self.check(entry(13, "2026-11-12T13:10:60Z"), since="2026-11-16T09:00:00Z"), [])
 
-    def test_a_new_entry_whose_when_cannot_be_read_is_held(self) -> None:
-        self.assertEqual(len(self.check(entry(2, "later"), since="2026-11-16T09:00:00Z")), 1)
+    def test_a_when_that_cannot_be_read_is_reported_as_that_and_not_as_a_missing_sentence(self) -> None:
+        for said in ("later", "2026-11-17T25:00:00Z", "16 Nov 2026"):
+            with self.subTest(when=said):
+                found = self.check(entry(2, said), since="2026-11-16T09:00:00Z")
+                self.assertEqual(len(found), 1, found)
+                self.assertIn("is not an instant this can read", found[0])
 
     def test_a_sentence_that_leans_on_an_id_or_a_file_is_refused(self) -> None:
-        for leaned in ("Joins by code only, as D24 says.", "FR-010 is met by the code alone.",
-                       "The rule R2 holds.", "Written in examples.md.", "The `JoinWithCode` check refuses it."):
+        for leaned in ("Joins by code only, as D-CLB-07 says.", "FR-010 is met by the code alone.",
+                       "SC-3 holds.", "Example GN2-1 is what happens.", "Written in specs/f/examples.md.",
+                       "The `JoinWithCode` check refuses it."):
             with self.subTest(sentence=leaned):
                 found = self.check(entry(2, "2026-11-17T08:00:00Z", leaned))
                 self.assertEqual(len(found), 1, found)
-                self.assertIn("without requirement, decision or event ids", found[0])
+                self.assertIn("without requirement, decision or example ids", found[0])
+
+    def test_plain_words_that_look_like_ids_or_files_are_accepted(self) -> None:
+        """This project's own test bed is a game club, where a D20 is a die."""
+        for word in ("D20", "D6", "DOTA2", "SC2", "R2 bucket", "R5", "DDR4", "US-1", "Node.js", "next.js",
+                     "Pay.go", "shelf.json", "and/or"):
+            with self.subTest(word=word):
+                self.assertEqual(self.check(entry(2, "2026-11-17T08:00:00Z", f"A member may bring a {word}.")), [])
 
     def test_a_placeholder_is_no_sentence(self) -> None:
         self.assertEqual(len(self.check(entry(2, "2026-11-17T08:00:00Z", "<one sentence>"))), 1)
@@ -139,6 +164,21 @@ class MigrateTest(unittest.TestCase):
         self.assertFalse(date_sentence_rule(self.root, datetime(2027, 1, 1, tzinfo=UTC)))
         self.assertEqual(json.loads((self.root / SENTENCE_FROM).read_text(encoding="utf-8"))["from"],
                          "2026-11-16T09:00:00Z")
+
+    def git(self, *words: str) -> None:
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", *words],
+                       capture_output=True, check=True)
+
+    def test_decisions_only_in_a_berth_count_and_its_slice_is_named_in_flight(self) -> None:
+        (self.root / "README.md").write_text("x\n", encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-qm", "start")
+        berth = self.root.parent / f"{self.root.name}-CL2"
+        self.git("worktree", "add", "-q", "-b", "slice/CL2", str(berth))
+        (berth / "specs/f").mkdir(parents=True)
+        (berth / "specs/f/decisions.md").write_text(entry(1, "2026-11-12T12:00:00Z"), encoding="utf-8")
+        self.assertTrue(date_sentence_rule(self.root, datetime(2026, 11, 16, 9, tzinfo=UTC)))
+        self.assertEqual(json.loads((self.root / SENTENCE_FROM).read_text(encoding="utf-8"))["in_flight"], ["CL2"])
 
     def test_a_project_with_no_decision_gets_nothing_and_is_held_from_its_first(self) -> None:
         self.assertFalse(date_sentence_rule(self.root))

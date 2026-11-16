@@ -40,6 +40,7 @@
 # why: 2026-11-16 82c619b40e11079c merge of the held driver and the demo acceptance: drive.py, captain.py, talk.py, abreast.py and cruise.py (sessions: auto) move with the driver held open and the conversation files; deck_line.py and capabilities.py with the hand's acceptance; no other behaviour on macOS and Linux moves
 # why: 2026-11-16 272a5edf728f1dc7 check-decisions asks an entry written since the plain-sentence rule for its In short line, the rule's instant read from .specify/decisions-in-short.json, which migrate writes once; an entry written before it is checked exactly as before, and the script reads and writes the same on macOS and Linux
 # why: 2026-11-16 4fe7341a9ee30191 check-decisions reads an entry's When to the minute where its seconds are impossible (a real 13:10:60Z), so an entry from before the plain-sentence rule is not held to it for a typo; behaviour on macOS and Linux is otherwise unchanged
+# why: 2026-11-16 378c056e689ae079 check-decisions spares the slices in flight when migrate brought the plain-sentence rule in, reads a date-only When at the rule's time of day, reports an unreadable When as that, refuses only this method's own ids, backticks and paths, and names .specify/decisions-in-short.json in its finding; behaviour on macOS and Linux is otherwise unchanged
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -164,6 +165,10 @@
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-postgres-toy-serve  scripts/test_benchmark.py
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-memory-none  scripts/event-model/model.ts
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-postgres-toy-serve  scripts/event-model/model.ts
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-memory-none  scripts/check-decisions.py
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-postgres-toy-serve  scripts/check-decisions.py
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-memory-none  scripts/check-decisions.py
+6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-postgres-toy-serve  scripts/check-decisions.py
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-memory-none  scripts/event-model/palette.ts
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-postgres-toy-serve  scripts/event-model/palette.ts
 7251998719c9c652a4742cb9e62e827f8aa4b68f4f78e072aa3a6cc3f58e93ee  event-modelling-memory-none  scripts/agents/preflight.py
@@ -235,10 +240,6 @@
 93cbde4e454f22a30b1add18e6c7ac956410e40712f173dc35cc38cc1487095b  standard-memory-none  Makefile
 9402457cffa2988a4c71aecf794c42fd2d544d3a5bbee2529c1a4e0ee6b7561f  event-modelling-postgres-toy-serve  scripts/backing-services.py
 9402457cffa2988a4c71aecf794c42fd2d544d3a5bbee2529c1a4e0ee6b7561f  standard-postgres-toy-serve  scripts/backing-services.py
-9681215fc49d7ee0820ac0a12bca6d51f1630d80fd97dfe95b976f1c095d1e27  event-modelling-memory-none  scripts/check-decisions.py
-9681215fc49d7ee0820ac0a12bca6d51f1630d80fd97dfe95b976f1c095d1e27  event-modelling-postgres-toy-serve  scripts/check-decisions.py
-9681215fc49d7ee0820ac0a12bca6d51f1630d80fd97dfe95b976f1c095d1e27  standard-memory-none  scripts/check-decisions.py
-9681215fc49d7ee0820ac0a12bca6d51f1630d80fd97dfe95b976f1c095d1e27  standard-postgres-toy-serve  scripts/check-decisions.py
 970085a6312d045a0da05ac0c917dc8691640f6fbc8581a6662502e3eed7df7a  event-modelling-postgres-toy-serve  Makefile
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  event-modelling-memory-none  scripts/agents/benchmark.py
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  event-modelling-postgres-toy-serve  scripts/agents/benchmark.py

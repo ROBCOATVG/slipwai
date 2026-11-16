@@ -31,6 +31,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .example_map_source import card_line
 from .logs import Entry
 
 #: Rung, the word on the chip, and what moves a slice onto it: a line in its log, or a file on its branch.
@@ -91,7 +92,7 @@ def branch_facts(root: Path, feature: str, slice_id: str) -> dict[str, str]:
     files = [Path(line).name for line in git(root, "ls-tree", "--name-only", ref, folder).splitlines()]
     facts = {"files": ",".join(sorted(name.removesuffix(".md") for name in files if name in FILED)),
              "commit": git(root, "log", "-1", "--format=%cI %s", ref).strip(),
-             "at": git(root, "log", "-1", "--format=%ct", ref).strip()}
+             "at": git(root, "log", "-1", "--format=%ct", ref).strip(), "head": head}
     if "tasks.md" in files:
         ticks = TASK.findall(git(root, "show", f"{ref}:{folder}tasks.md"))
         ticked = {name for tick, name in ticks if tick.strip() and name}
@@ -277,4 +278,5 @@ def rung(root: Path, feature: str, slice_id: str, entries: list[Entry],
     return {"stage": stage, "rank": str(rank), "chip": chip, "tasks": tasks,
             "artifacts": facts.get("files", ""), "commit": facts.get("commit", ""), "last": last,
             "refused": refused, "ladder": json.dumps(ladder(root, feature, slice_id, stage, rank)),
-            "since": opened, "next": facts.get("next", "") if stage == "Implementing" else ""}
+            "since": opened, "next": facts.get("next", "") if stage == "Implementing" else "",
+            "examples": card_line(root, feature, slice_id, facts.get("head", ""))}

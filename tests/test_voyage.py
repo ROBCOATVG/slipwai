@@ -535,14 +535,16 @@ class AnswerCardTest(unittest.TestCase):
         self.assertIn('data-answer="leaver" data-slice="L07"', card)
         self.assertIn("Send to L07", card)
 
-    def test_a_slice_held_by_its_stream_s_park_answers_the_stream(self) -> None:
+    def test_a_slice_held_by_its_stream_s_park_is_still_answered_as_that_slice(self) -> None:
+        """The card is the slice's whatever the park's own fields name: an answer sent to the stream was
+        read by no captain without an agent, so it goes to the slice, whose captain takes it for the park."""
         from slipwai.voyage_page import slice_html
 
         row = {"slice": "L02", "title": "", "state": "waiting", "fairway": "leaver", "clearance": "running",
                "why": "", "park": "the gate stayed red", "asked": "", "aim": ""}
         card = slice_html(row)
-        self.assertIn('data-slice=""', card)
-        self.assertIn("Send to the leaver stream", card)
+        self.assertIn('data-slice="L02"', card)
+        self.assertIn("Send to L02", card)
 
     def test_a_closed_card_is_its_number_its_title_and_its_stage(self) -> None:
         """The rest is behind a click: a column of cards carrying every reason was too loud to scan."""

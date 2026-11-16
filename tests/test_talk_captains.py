@@ -119,8 +119,9 @@ class StripTest(BoardTest):
                   via="captain:ORD", of=record["ids"]["ORD"])
         drawn = strip_html(self.root, [], set())
         self.assertIn("You told every captain:</b> use the club accent colour", drawn)
-        self.assertIn("Captain · ORD · Queued · goes in when its current turn ends · went to ORD-01", drawn)
-        self.assertIn("Captain · BIL · Queued", drawn)
+        self.assertIn("Captain · ORD · sent · the fleet is not running: read when it is cast off · went to ORD-01",
+                      drawn)
+        self.assertIn("Captain · BIL · sent · the fleet is not running", drawn)
         self.assertEqual(self.post("/talk/all", {"message": "  "})[0], 400)
 
 
@@ -165,7 +166,7 @@ class AskTest(unittest.TestCase):
     def test_where_the_skipper_answers_nothing_waits_and_its_answer_is_in_the_thread(self) -> None:
         self.cruise(enabled=True, decide="recommended-first")
         self.assertEqual(self.listed()["count"], 0)
-        self.assertIn("The skipper answers product questions in this project",
+        self.assertIn("This fleet is cruising, so it answers product questions itself",
                       payload(self.root, "ORD", "ORD-01")["log"])
         talk.note(self.home, "answer", to="ask-1", by="skipper", text="the undecided")
         self.assertIn("Answered by the skipper: the undecided", payload(self.root, "ORD", "ORD-01")["log"])

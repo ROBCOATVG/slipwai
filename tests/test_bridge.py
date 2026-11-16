@@ -56,7 +56,8 @@ class TellTest(Fixture):
         said = tell(self.root, "ORD", "stop and talk to me")
         [sent] = self.inbox()
         self.assertEqual((sent["text"], sent["from"]), ("stop and talk to me", "person"))
-        self.assertEqual(said, f"told the ORD captain · message {sent['id']}")
+        self.assertEqual(said, f"the ORD captain: sent · the fleet is not running: read when it is cast off · "
+                               f"message {sent['id']}", "never told for something nothing has read")
         self.assertEqual([e for e in self.read("ORD") if e.kind == "told"], [])
 
     def test_a_stream_with_no_log_says_so_rather_than_making_one(self) -> None:
@@ -159,7 +160,8 @@ class ServerTest(BoardTest):
         code, said = self.post("/tell", {"fairway": "ORD", "message": "from the page"})
         self.assertEqual(code, 200)
         [sent] = talk.inbox(talk.place(logs.run_dir(self.root), "ORD"))
-        self.assertEqual((sent["text"], said), ("from the page", f"told the ORD captain · message {sent['id']}"))
+        self.assertEqual(sent["text"], "from the page")
+        self.assertTrue(said.endswith(f"message {sent['id']}"), said)
         self.assertEqual([e for e in self.read("ORD") if e.kind == "told"], [], "no deck line for anything said")
 
     def test_an_answer_to_a_question_goes_to_the_slice_that_asked_it(self) -> None:
@@ -169,7 +171,9 @@ class ServerTest(BoardTest):
         self.assertIn('data-question="D13"', self.rendered())
         code, said = self.post("/tell", {"fairway": "ORD", "message": "Yes, one context.", "question": "D13"})
         [sent] = talk.inbox(talk.place(logs.run_dir(self.root), "ORD", "ORD-01"))
-        self.assertEqual((code, said), (200, f"answered D13 · message {sent['id']}"))
+        self.assertEqual((code, said), (200, f"answered D13 · ORD-01: sent · the fleet is not running: read when "
+                                             f"it is cast off · message {sent['id']}"))
+        self.assertEqual(sent["of"], "question:D13", "what lets the question's row show it was answered")
         self.assertEqual((sent["text"], sent["from"]), ("Yes, one context.", "person"))
         self.assertEqual([e for e in self.read("ORD") if e.kind in ("decision", "told")], [])
         self.assertEqual(self.post("/tell", {"fairway": "ORD", "message": "x", "question": "../D"})[0], 400)

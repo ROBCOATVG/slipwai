@@ -126,7 +126,8 @@ class PrintModeTest(unittest.TestCase):
         found = payload(root, "ORD", "ORD-01")
         self.assertEqual(found["how"], "print")
         self.assertNotIn("Interrupt now", found["log"])
-        self.assertIn("Queued · goes in when the slice next starts", found["log"])
+        self.assertIn("Queued · goes in when the captain next starts it; if it merges first, it is not delivered",
+                      found["log"])
         drawn = pane(root, "ORD", "ORD-01", "/talk.json")
         self.assertIn('data-how="print"', drawn)
         self.assertIn("No Interrupt: this slice runs in print mode", drawn)
@@ -230,8 +231,12 @@ class RouteTest(BoardTest):
         code, said = self.get("/talk.json?fairway=ORD&slice=ORD-01")
         found = json.loads(said)
         self.assertEqual(set(found), {"log", "log_said", "state", "state_said", "how", "heard"})
-        self.assertEqual(self.post("/talk/seen", {"fairway": "ORD", "slice": "ORD-01", "heard": 3}), (200, "3"))
-        self.assertEqual(seen(self.root), {"ORD/ORD-01": 3})
+        self.assertEqual(self.post("/talk/seen", {"fairway": "ORD", "slice": "ORD-01", "heard": 3}), (200, "0"),
+                         "never more than the thread holds")
+        place = talk.place(logs.run_dir(self.root), "ORD", "ORD-01")
+        talk.note(place, "unaddressed", id="x")
+        self.assertEqual(self.post("/talk/seen", {"fairway": "ORD", "slice": "ORD-01", "heard": 10**12}), (200, "1"))
+        self.assertEqual(seen(self.root), {"ORD/ORD-01": 1})
 
 
 if __name__ == "__main__":

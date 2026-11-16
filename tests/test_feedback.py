@@ -148,9 +148,9 @@ class ConfirmTest(Project):
         held = self.proposed("Fewer questions.", "change", **{"in-flight": "L01"})
         feedback.confirm(self.root, parked.number, rows, hold="park")
         feedback.confirm(self.root, held.number, rows, hold="after-merge")
-        first, second = self.told()
-        self.assertIn("park L01 at its next boundary", first.fields["message"])
-        self.assertIn("leave L01 as it is while it is in flight", second.fields["message"])
+        said = " | ".join(one.fields["message"] for one in self.told())  # sent in one second: either order
+        self.assertIn("park L01 at its next boundary", said)
+        self.assertIn("leave L01 as it is while it is in flight", said)
         self.assertEqual(feedback.find(self.root, parked.number).fields["hold"], "park")
 
     def test_a_slice_nobody_has_claimed_is_told_to_the_stream_its_chart_names(self) -> None:

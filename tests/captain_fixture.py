@@ -26,6 +26,8 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "id
            "harness.py", "registry.json",
            # A drive over the Agent Client Protocol, and the client it rides on, where `SLIPWAI_ACP` says so.
            "drive.py", "acp.py",
+           # A slice's conversation — its inbox, its thread — which its driver delivers and the captain reads.
+           "talk.py",
            # The claim a captain takes before it writes `claimed`, and what travels between machines when
            # a lapsed one is taken over.
            "claims.py", "travel.py",

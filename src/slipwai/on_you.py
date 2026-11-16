@@ -14,12 +14,14 @@ links to where it is acted on, and the column draws exactly the slices this name
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from .bridge_page import inbox_rows
 from .feedback import items
 from .fleet_page import first_sentence, group_card, parks_table, plural
+from .page_shell import esc
 from .stage_session import running
 from .upstream import unjudged
 
@@ -62,6 +64,41 @@ def slice_item(row: dict[str, str]) -> dict[str, Any]:
     return {"n": 1, "text": f"{name}: {why}", "href": f"#card-{row['slice']}", "slice": row["slice"]}
 
 
+def parked(fleet: dict[str, Any], rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+    """Every park and hand-back a person has to act on, read from the fleet's own logs, each slice it holds
+    with the fold's row for it where there is one. The fleet first and the fold second: the fold has no row
+    for a slice whose chart it cannot read, and none at all when the clearance script faults — and neither
+    is nothing waiting. A paused park lifts by itself and is not on the list."""
+    found: list[dict[str, Any]] = []
+    by_slice = {row["slice"]: row for row in rows}
+    seen: set[str] = set()
+    for group in fleet.get("groups") or []:
+        if group.get("paused") == "yes":
+            continue
+        title = first_sentence(str(group.get("what") or ""), 90) or "waiting on you"
+        if group.get("source") == "told":
+            needs = [str(need.get("what") or "") for need in group.get("needs") or []]
+            found.append({"n": 1, "href": "#from-streams",
+                          "text": f"A slice needs this on trunk: {first_sentence(needs[0], 90) if needs else title}"})
+            continue
+        for park in group.get("parks") or []:
+            named, fairway = str(park.get("slice") or ""), str(park.get("fairway") or "")
+            held = [named] if named else [row["slice"] for row in rows
+                                          if row.get("fairway") == fairway and row.get("state") == "waiting"]
+            if not held and f"stream:{fairway}" not in seen:
+                seen.add(f"stream:{fairway}")
+                found.append({"n": 1, "href": "#from-streams", "text": f"The {fairway} stream: {title}"})
+            for one in held:
+                if one in seen:
+                    continue
+                seen.add(one)
+                found.append(slice_item(by_slice[one]) if one in by_slice else
+                             {"n": 1, "href": "#from-streams", "text": f"{one}: {title}"})
+    # A slice the fold holds on a person that no park of the fleet's names is still the person's.
+    found += [slice_item(row) for row in rows if row.get("state") == "waiting" and row["slice"] not in seen]
+    return found
+
+
 def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
             rows: list[dict[str, str]] | None = None, root: Path | None = None) -> dict[str, Any]:
     """The list: how many things, the first of them in its own words with the way to it, both groups, and
@@ -72,7 +109,7 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     if asked:
         holding.append({"n": asked, "href": "#stage-asks", "text": "The agent asks you something" if asked == 1
                         else f"The agent asks you {asked} things"})
-    holding += [slice_item(row) for row in rows or [] if row.get("state") == "waiting"]
+    holding += parked(fleet, rows or [])
     holding += [{"n": 1, "text": f"The {row['fairway']} log cannot be read: its captain cannot start",
                  "href": "#from-streams"} for row in fleet.get("inbox") or [] if row.get("kind") == "unreadable"]
     said, where = button_waiting(board, able)
@@ -96,15 +133,31 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
     a question no park holds, a hand-back, a note, the decisions nobody has read, a log nobody can read.
 
     The Fleet tab carried this, and it is not machinery. It sits under the work because that is where the
-    slices it is about are; a paused park is left out, since nothing in it is a person's to do.
+    slices it is about are. So do the two things a person could do from that tab before it became the
+    machinery: try the slices a limit has paused now anyway, and say something to a stream (until each
+    stream has a window of its own to be told things in). A paused park is not drawn as a thing to do.
     """
     groups = [g for g in fleet.get("groups") or [] if g.get("paused") != "yes"]
     others = [row for row in fleet.get("inbox") or [] if row["kind"] != "parked"]
-    if not groups and not others:
+    limit = next((g for g in fleet.get("groups") or [] if g.get("cause") == "limit"), None)
+    streams = sorted({str(row["fairway"]) for row in fleet.get("berths") or []}) if controls else []
+    if not groups and not others and limit is None and not streams:
         return ""
     cards = "".join(group_card(group, controls) for group in groups)
     listed = inbox_rows(others, controls, fleet.get("streams")) if others else ""
+    paused = ""
+    if controls and limit is not None:
+        lifts = f"; it lifts by itself at {limit['clock']}" if limit.get("clock") else ""
+        parks = esc(json.dumps(limit.get("parks") or []))
+        paused = (f'<div class="ask"><button type="button" class="quiet-button" data-tell-each=\'{parks}\' '
+                  f'data-message="resume now">Try the {len(limit.get("slices") or [])} paused slices now anyway'
+                  f'</button><span class="empty">Before then the harness will just say no again{esc(lifts)}'
+                  f"</span></div>")
+    boxes = "".join(f'<div class="ask"><input id="tell-{esc(one)}" placeholder="Tell {esc(one)} something…">'
+                    f'<button class="go" data-tell="{esc(one)}">Send</button></div>' for one in streams)
+    told = f"<h3>Say something to a stream</h3>{boxes}" if boxes else ""
     return (f'<div class="card" id="from-streams"><h2>From the streams</h2><p class="empty">What each stream '
             f"has asked of you or left for you, answered from here. Notes and unread decisions hold nothing up, "
-            f"so they are not counted as waiting on you.</p>{cards}{listed}</div>{parks_table(fleet)}")
+            f"so they are not counted as waiting on you.</p>{cards}{listed}{paused}{told}</div>"
+            f"{parks_table(fleet)}")
 

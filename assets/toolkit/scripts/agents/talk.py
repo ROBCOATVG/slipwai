@@ -36,7 +36,7 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 520 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
+# budget: 545 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
 # and the fold into receipts for every kind, which a reader and the writer must not disagree on
 from __future__ import annotations
@@ -76,6 +76,8 @@ REKEYED = "the board's key changed before this was delivered: send it again"
 #: One lock for every thread file this process appends to and every cached read of one: a slice's driver and
 #: the captain acting for a closed one are two threads of one process, and the rule is one writer.
 WRITING = threading.RLock()
+#: Files in an inbox this process refused and could not move aside: never read again while it runs.
+REJECTED: set[Path] = set()
 READ: dict[Path, tuple[int, list[dict[str, Any]], bytes]] = {}
 
 
@@ -227,13 +229,40 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
     return message
 
 
+#: The largest file in the run folder the program reads as JSON: a message, an order, an event is a few lines.
+LARGEST = 1_000_000
+
+
+def regular(path: Path) -> bool:
+    """Whether a path is a plain file, not followed through a link: nothing else is ever opened — a pipe would
+    wait for ever, a device or a directory is not a message, and a link may lead anywhere."""
+    try:
+        return stat.S_ISREG(Path(path).lstat().st_mode)
+    except (OSError, ValueError):
+        return False
+
+
+def read_json(path: Path) -> Any:
+    """The one reader for a JSON file the program takes from the run folder — a message, an order, an event, a
+    result — or None where it will not read it: not a plain file, larger than `LARGEST`, or anything at all
+    that fails while it is read or parsed (nesting deep enough to exhaust the parser included). It never
+    raises: a file somebody put in a folder is never what stops the program."""
+    try:
+        if not regular(path) or Path(path).lstat().st_size > LARGEST:
+            return None
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — a recursion, an encoding, a race with whoever removed it: all a refusal
+        return None
+
+
 def read_box(folder: Path) -> tuple[list[dict[str, Any]], list[Path]]:
     """The messages in one folder of the inbox, and the files in it that are not one."""
     found, bad = [], []
     for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
-        try:
-            message = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, UnicodeDecodeError):
+        if path in REJECTED:
+            continue
+        message = read_json(path)
+        if message is None:
             bad.append(path)
             continue
         if isinstance(message, dict) and message.get("kind") in KINDS and message.get("id") == path.stem:
@@ -307,14 +336,14 @@ def settle(home: Path, ident: str) -> None:
 def reject(home: Path, path: Path, why: str = "it is not a message this reads") -> None:
     """A file in the inbox that will not be delivered: moved aside, with a receipt saying so — and what it
     said, where it said anything, so a message refused for a remade key can be sent again as it was."""
-    try:
-        held = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
-        held = None
+    held = read_json(path)
     text = str(held.get("text") or "") if isinstance(held, dict) else ""
-    (path.parent / DONE).mkdir(exist_ok=True)
-    os.replace(path, path.parent / DONE / f"{path.stem}.{secrets.token_hex(2)}.bad")
-    note(home, "failed", id=path.stem, why=why, refused=True, text=text or None)
+    try:
+        (path.parent / DONE).mkdir(exist_ok=True)
+        os.replace(path, path.parent / DONE / f"{secrets.token_hex(8)}.bad")
+    except OSError:
+        REJECTED.add(Path(path))  # it cannot be moved aside: it is not looked at again by this process
+    note(home, "failed", id=path.stem[:64], why=why, refused=True, text=text[:2000] or None)
 
 
 def thread(home: Path) -> list[dict[str, Any]]:
@@ -323,6 +352,8 @@ def thread(home: Path) -> list[dict[str, Any]]:
     path = Path(home) / "thread.jsonl"
     with WRITING:
         offset, lines, rest = READ.get(path, (0, [], b""))
+        if not regular(path):
+            return list(lines)
         try:
             with path.open("rb") as held:
                 size = held.seek(0, 2)
@@ -338,7 +369,7 @@ def thread(home: Path) -> list[dict[str, Any]]:
         for line in whole:
             try:
                 one = json.loads(line.decode("utf-8"))
-            except (ValueError, UnicodeDecodeError):
+            except Exception:  # noqa: BLE001 — a line nobody can parse, however deep, is skipped, never raised
                 continue
             if isinstance(one, dict) and one.get("kind"):
                 lines.append(one)
@@ -398,7 +429,12 @@ def halted(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, 
         # captain's stop or pause on top of it is not a second hold, and its stop does not hand the slice
         # back to the queue. A merge ends it as well, since a merged slice is held by nothing.
         person_holds = last[1] == PERSON
-        if kind == "resumed":
+        if kind == "pausing" and by == PERSON:
+            # A person's pause holds from the moment it is heard, whatever then ends the turn: it is the hold.
+            last = ("paused", by, str(one.get("why", "")))
+        elif kind == "pausing":
+            continue  # anyone else's is only asked for until its turn ends and it is `paused`
+        elif kind == "resumed":
             if not person_holds or by in (PERSON, "merge"):
                 last = ("", "", "")
         elif kind in ("paused", "stopped") and person_holds and by != PERSON:
@@ -408,20 +444,6 @@ def halted(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, 
         elif kind in ("paused", "stopped"):
             last = (str(kind), by, str(one.get("why", "")))
     return last
-
-
-def pending_pause(home: Path, lines: list[dict[str, Any]] | None = None) -> str:
-    """Who asked for a pause that waits for the turn under way to end — a `pausing` line no `paused`,
-    `resumed` or `stopped` has followed — or `''`. Written the moment the pause is heard, so a hold a person
-    asked for is on the thread, and nobody else's word can take its place, before the turn has ended."""
-    asked = ""
-    for one in thread(home) if lines is None else lines:
-        kind = one.get("kind")
-        if kind == "pausing":
-            asked = str(one.get("by", ""))
-        elif kind in ("paused", "resumed", "stopped"):
-            asked = ""
-    return asked
 
 
 def paused(home: Path, lines: list[dict[str, Any]] | None = None) -> bool:

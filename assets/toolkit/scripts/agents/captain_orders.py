@@ -53,6 +53,8 @@ class Stream(Protocol):
 
     def decided(self, slice_id: str, question: str, answer: str) -> str: ...
 
+    def noted(self, why: str) -> None: ...
+
 
 @dataclass
 class Taken:
@@ -93,8 +95,8 @@ def refusal(helm: Any, order: Any, path: Path, held: dict[str, Any], check: Call
 def person_asked(home: Path) -> str:
     """A hold a person has asked for and that is not yet on the thread as `paused` or `stopped`: a pause
     waiting for the turn under way to end, or a pause or stop still in the inbox. `pause`, `stop` or `''`."""
-    if talk.pending_pause(home) == talk.PERSON:
-        return "pause"
+    if talk.halted(home)[1] == talk.PERSON:
+        return talk.halted(home)[0]
     waiting = [one for one in talk.unseen(home) if one.get("from") == talk.PERSON and one.get("kind") in ("pause", "stop")]
     return str(waiting[-1]["kind"]) if waiting else ""
 
@@ -117,7 +119,7 @@ class Acts:
             # "yes, go ahead" cannot be attached to whatever the captain says next.
             if held["kind"] != "message" or str(order["of"]) != str(held["facts"].get("inbox") or ""):
                 return f"{order['of']} is not the message this event put to the captain"
-            if str(order["of"]) in self.used:
+            if str(order["of"]) in self.used or str(order["of"]) in self.routed_before():
                 return f"{order['of']} has been routed already"
             if self.routed(str(order["of"])) is None:
                 return f"{order['of']} is not a genuine message in {self.fairway}'s captain's conversation"
@@ -144,7 +146,14 @@ class Acts:
             return f"{target} is not paused or stopped"
         if verb in ("pause", "stop") and ((how and by == talk.PERSON) or asked):
             return (f"a person holds {target} already ({how or asked}), and their hold stands until they lift it")
+        if verb == "message" and order.get("interrupt") and ((how and by == talk.PERSON) or asked):
+            return f"a person holds {target}, and nobody else's message interrupts it meanwhile"
         return ""
+
+    def routed_before(self) -> set[str]:
+        """The messages this captain has routed, by any process before this one: its thread says so."""
+        return {str(one.get("to", "")) for one in talk.thread(self.home)
+                if one.get("kind") == "reply" and str(one.get("text", "")).startswith("routed to ")}
 
     def carries_key(self, order: Order) -> bool:
         """Whether an order's words carry the conversation key, as raw bytes or written out in hex."""

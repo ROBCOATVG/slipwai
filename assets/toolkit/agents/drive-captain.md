@@ -35,9 +35,11 @@ is a choice to make.
 
 ## How you act: one door
 
-You act only by running, from the project's root,
+You act only by running the order command your prompt hands you — this program's own interpreter and the
+project's own `orders.py`, both by their full paths, exactly as given (also in `SLIPWAI_CAPTAIN_ORDERS_CMD`);
+any other way of running it is refused —
 
-    python3 scripts/agents/orders.py <verb> [<slice or ask>] [--text …] [--note …] [--why …] [--needs …] [--of <id>] [--interrupt] [--options a,b] --event <event id>
+    <the order command> <verb> [<slice or ask>] [--text …] [--note …] [--why …] [--needs …] [--of <id>] [--interrupt] [--options a,b] --event <event id>
 
 once per order, and you do nothing else: no file edits, no log lines, no git, no other command. Your session
 is given a key that signs your orders; a slice's session has none, which is how the program knows an order is

@@ -32,7 +32,6 @@ import argparse
 import json
 import os
 import shlex
-import shutil
 import signal
 import subprocess
 import sys
@@ -122,6 +121,17 @@ def launch() -> tuple[list[str], dict[str, Any] | None] | str:
     return (argv, row) if argv else NO_LAUNCH
 
 
+def order_command() -> str:
+    """The command the captain runs to give an order: this program's own interpreter and this project's own
+    `orders.py`, both by their paths. Handed to it in its prompt and in `SLIPWAI_CAPTAIN_ORDERS_CMD`, so a shim
+    on its PATH (pyenv, asdf, mise) is never what it runs."""
+    return f"{shlex.quote(sys.executable)} {shlex.quote(str(ORDERS))}"
+
+
+#: Why the captain session was refused a command, kept until the captain program says so in the deck log.
+REFUSED: list[str] = []
+
+
 def say_status(events: Path, agent: bool, why: str = "") -> None:
     """Write whether this stream's captain is an agent, and why not, for the board's reader."""
     events.mkdir(parents=True, exist_ok=True)
@@ -134,7 +144,8 @@ def prompt(fairway: str, event: Path, state: Path, held: dict[str, Any]) -> str:
     return (f"You are the captain of the `{fairway}` stream of the project at {ROOT}. Read {ROOT / BRIEF} for what "
             f"you are asked and what you may do. Event {held['id']} ({held['kind']}) needs you: read {event}. The "
             f"stream's state, as its log says it now, is {state} — believe it over anything you remember. Act only "
-            f"by running `python3 {ORDERS} <verb> … --event {held['id']}`, and change nothing else anywhere; this "
+            f"by running `{order_command()} <verb> … --event {held['id']}` — that command exactly, as written — and "
+            f"change nothing else anywhere; this "
             f"event takes {', '.join(held.get('may') or [])}. Say what you did in one sentence a person can read, "
             f"with `say`, where it is worth saying, and end your turn.")
 
@@ -179,6 +190,11 @@ def permit(tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | No
         return allowed
     if kind == "execute" and allowed and ordering(tool_call):
         return allowed
+    if kind == "execute":
+        raw = tool_call.get("rawInput") or {}
+        command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
+        REFUSED.append(f"the captain session was refused `{command[:200] or tool_call.get('title') or 'a command'}`:"
+                       f" it may run only `{order_command()} …`")
     return refused
 
 
@@ -203,14 +219,8 @@ def ordering(tool_call: dict[str, Any]) -> bool:
         words = shlex.split(command)
     except ValueError:
         return False
-    if len(words) < 2:
-        return False
-    interpreter = words[0] if Path(words[0]).is_absolute() else shutil.which(words[0])
-    try:
-        if interpreter is None or Path(interpreter).resolve() != Path(sys.executable).resolve():
-            return False
-    except OSError:
-        return False
+    if len(words) < 2 or words[0] != sys.executable:
+        return False  # exactly the interpreter it was handed: not a name looked up on PATH, which a shim answers
     script = Path(words[1]).expanduser()
     script = script if script.is_absolute() else ROOT / script
     try:
@@ -230,6 +240,12 @@ class Runner:
 
     def bound(self, turn: Any) -> float:
         return float(self.bounds["bound"])
+
+    def refusals(self) -> list[str]:
+        """Why the session was refused a command since this was last asked: for the deck log, once each."""
+        said = list(dict.fromkeys(REFUSED))
+        REFUSED.clear()
+        return said
 
     def holds_session(self) -> bool:
         return self.driver is not None and self.driver.alive

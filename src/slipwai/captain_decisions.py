@@ -12,21 +12,20 @@ file must not cost the rest.
 """
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from .logs import run_dir
+from .talk import read_json
 
 EVENTS, ORDERS = "events", "orders"
 
 
 def held(path: Path) -> dict[str, Any] | None:
-    try:
-        found = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
-        return None
+    """A file the captain program wrote, through the one reader the run folder is read with: plain files only,
+    bounded, and never raising."""
+    found = read_json(path)
     return found if isinstance(found, dict) else None
 
 

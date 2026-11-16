@@ -89,6 +89,14 @@ def now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def mtime(path: Path) -> float:
+    """When a plain file was last written, or 0 for anything else — a link that leads nowhere among them."""
+    try:
+        return path.lstat().st_mtime if talk.regular(path) else 0.0
+    except OSError:
+        return 0.0
+
+
 def write_json(path: Path, body: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     aside = path.with_name(f".{path.name}.{secrets.token_hex(2)}.part")
@@ -122,8 +130,11 @@ class Helm:
         #: — its session's reads, and `orders.py` — cannot reset it. Seeded from the closing records this
         #: process and the ones before it wrote, so a restart does not hand the captain a fresh hour.
         since = time.time() - HOUR
-        self.woken: list[float] = sorted(path.stat().st_mtime for path in self.events.glob("*.closed.json")
-                                         if path.stat().st_mtime >= since) if self.events.is_dir() else []
+        self.woken: list[float] = sorted(stamp for stamp in (mtime(path) for path in self.events.glob("*.closed.json"))
+                                         if stamp >= since) if self.events.is_dir() else []
+        #: Order files this process will not look at again: refused, and — where its result could not be
+        #: written beside it — remembered here instead.
+        self.refused: set[Path] = set()
 
     def environment(self) -> dict[str, str]:
         """What the captain's agent is started under, beside its harness's own: a new key unless the session
@@ -132,6 +143,7 @@ class Helm:
             self.key = secrets.token_bytes(32)
         return {order_door.KEY: self.key.hex(), order_door.FAIRWAY: self.fairway,
                 order_door.EVENTS: str(self.events), order_door.ORDERS: str(self.orders), "SLIPWAI_STAGE": "captain",
+                "SLIPWAI_CAPTAIN_ORDERS_CMD": f"{sys.executable} {Path(__file__).resolve().parent / 'orders.py'}",
                 "SLIPWAI_CAPTAIN_ORDERS_PY": str(Path(__file__).resolve().parent / "orders.py")}
 
     # -- whose turn ---------------------------------------------------------------------------------------------
@@ -202,6 +214,8 @@ class Helm:
             how, why = self.watch(turn, held, check, done, taken)
             ready = turn.ready()
         self.take(held, check, done, taken)
+        for why in getattr(self.runner, "refusals", list)():
+            self.stream.noted(why)
         if taken.rekey:
             self.key = secrets.token_bytes(32)
             self.runner.reset()
@@ -238,7 +252,10 @@ class Helm:
             except Exception as fault:  # noqa: BLE001
                 self.say(f"captain: {kind} decided by the rule — the decision failed ({type(fault).__name__}: {fault})")
                 chosen, by = default, "rule"
-            then(chosen, by)
+            try:
+                then(chosen, by)
+            except Exception as fault:  # noqa: BLE001 — what is done with an answer never ends the program
+                self.say(f"captain: carrying out {kind} failed ({type(fault).__name__}: {fault})")
         asked = threading.Thread(target=run, name=f"captain-{kind}", daemon=True)
         self.asked = [one for one in self.asked if one.is_alive()] + [asked]
         asked.start()
@@ -285,17 +302,23 @@ class Helm:
 
     def waiting(self) -> list[Path]:
         return [path for path in sorted(self.orders.glob("*.json")) if not path.name.endswith(".result.json")
+                and path not in self.refused
                 and not path.with_name(f"{path.stem}.result.json").exists()] if self.orders.is_dir() else []
 
     def answer(self, path: Path, state: str, why: str) -> None:
-        write_json(path.with_name(f"{path.stem}.result.json"), {"v": 1, "t": now(), "state": state, "why": why})
+        """The result beside the order — or, where none can be written there (a name too long, a folder gone
+        read-only), the order remembered so it is not looked at again."""
+        self.refused.add(path)
+        try:
+            write_json(path.with_name(f"{path.stem}.result.json"), {"v": 1, "t": now(), "state": state, "why": why})
+        except OSError:
+            return
 
     def take(self, held: dict[str, Any], check: Check | None, done: list[Order], taken: captain_orders.Taken) -> None:
         """Read every order not yet read, and do each that passes as it comes."""
         for path in self.waiting():
-            try:
-                order = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, ValueError, UnicodeDecodeError):
+            order = talk.read_json(path)
+            if order is None:
                 self.answer(path, "refused", "it is not an order this reads")
                 continue
             taken.seen.append(path.stem)

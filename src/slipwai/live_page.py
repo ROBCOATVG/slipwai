@@ -1,13 +1,14 @@
-"""What the slices are doing now, drawn: the Now strip on the Voyage tab and a window per slice.
+"""What the slices are doing now, drawn: the Needs a look strip on the Voyage tab and a window per slice.
 
-`activity.py` folds each slice's activity log; this draws it. The strip is one row per working slice — its
-stage, who is on it, the last thing it said, how long it has been quiet, and a warning where a person would
-step in — and the window is one slice at length: a lane per sub-agent over the last hour, the feed in plain
+`activity.py` folds each slice's activity log; this draws it. The strip was a row per working slice, and a
+slice's card says where it is and what it is doing now, so the strip says only what is wrong: a slice stuck
+on one task, going in circles or gone quiet, a merge the harbour refused, and a red trunk — one line when
+nothing is. The window is one slice at length: a lane per sub-agent over the last hour, the feed in plain
 words, and what the slice has cost so far in time.
 
-Both repaint themselves from the board, the strip from `/now.json` and the window from `/slice.json`, with
-the HTML drawn here and swapped whole: a page that redrew from data would be a second renderer to keep in
-step with this one.
+Both repaint themselves from the board, the strip as a band of `/live.json` and the window from
+`/slice.json`, with the HTML drawn here and swapped whole: a page that redrew from data would be a second
+renderer to keep in step with this one.
 """
 from __future__ import annotations
 
@@ -25,15 +26,18 @@ from .page_shell import document, esc
 SPAN = 60 * 60
 
 STYLE = """
-#now-strip .rows{display:grid;
-  grid-template-columns:70px minmax(120px,.8fr) minmax(200px,1.4fr) minmax(180px,1.2fr) 80px;
-  font-size:.86rem;overflow-x:auto}
-#now-strip .rows>div{padding:8px 10px;border-top:1px solid var(--rule-2);display:flex;flex-direction:column;gap:2px;
-  min-width:0}
-#now-strip .rows>.h{font-size:.78rem;font-weight:500;color:var(--ink-3);border-top:0;
-  padding-top:0}
-#now-strip .sid{font-family:var(--mono);font-weight:500}
-#now-strip .sub,.lane-name .sub{color:var(--ink-3);font-size:.78rem}
+#look{display:grid;gap:8px}
+#look .head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}
+#look .head h2{margin:0}#look .head span,#look small{font-size:.8rem;color:var(--ink-2)}
+#look.calm{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}
+#look .look{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:8px 12px;border-radius:6px;
+  border:1px solid var(--warn)}
+#look .look.red{border-color:var(--critical)}#look .look.trunk{background:var(--critical-soft)}
+#look .look b{flex:0 0 140px;font-size:.86rem}#look .look.trunk b{color:var(--critical)}
+#look .look .says{flex:1 1 260px;font-size:.86rem}#look .look .did{flex:1 1 100%;font-size:.8rem;color:var(--ink-2)}
+#look .look a{font-size:.84rem;padding:6px 12px;border-radius:6px;border:1px solid var(--teal);color:var(--teal);
+  text-decoration:none;white-space:nowrap}
+#look .look a:hover{background:var(--teal-soft)}
 .role{font-family:var(--mono);font-size:.72rem;padding:1px 6px;border-radius:4px;background:var(--brass-soft);
   color:var(--brass);width:fit-content}
 .role.main{background:var(--teal-soft);color:var(--teal)}
@@ -41,14 +45,8 @@ STYLE = """
 .warn.amber{background:var(--brass-soft);color:var(--brass)}
 .warn.red{background:transparent;border:1px solid var(--critical);color:var(--critical)}
 .ago{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);font-variant-numeric:tabular-nums}
-.live-dot{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:500;color:var(--teal)}
-.live-dot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--teal);
-  animation:blink 1.6s ease-in-out infinite}
-@keyframes blink{50%{opacity:.25}}
-@media (prefers-reduced-motion:reduce){.live-dot::before{animation:none}}
 .slice .live-cap{font-size:.78rem;color:var(--ink-2);border-left:2px solid var(--teal);padding-left:7px}
-@media (max-width:760px){#now-strip .rows{grid-template-columns:60px 1fr;}#now-strip .rows>.h:nth-child(n+3),
-  #now-strip .rows>.said,#now-strip .rows>.quiet{display:none}}
+.lane-name .sub{color:var(--ink-3);font-size:.78rem}
 """
 
 WINDOW_STYLE = """
@@ -73,21 +71,6 @@ WINDOW_STYLE = """
 .two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:860px){.two{grid-template-columns:1fr}}
 .facts-list{margin:0;padding-left:18px;display:grid;gap:6px;font-size:.88rem}
-"""
-
-STRIP_SCRIPT = """
-// The Now strip: repainted from /now.json every few seconds, swapped whole when what it says has changed.
-(function(){
-  if (!document.getElementById('now-strip')) return;
-  const poll = async () => {
-    let found;
-    try { found = await (await fetch('/now.json')).json(); } catch (fault) { setTimeout(poll, 8000); return; }
-    const card = document.getElementById('now-strip');
-    if (card && card.dataset.said !== found.said) card.outerHTML = found.html;
-    setTimeout(poll, 4000);
-  };
-  setTimeout(poll, 4000);
-})();
 """
 
 WINDOW_SCRIPT = """
@@ -142,56 +125,59 @@ def window_address(fairway: str, slice_id: str) -> str:
     return f"/slice?fairway={quote(fairway, safe='')}&slice={quote(slice_id, safe='')}"
 
 
-def who_html(found: dict) -> str:
-    current = found["current"]
-    if found["waiting"]:
-        return (f'<span class="role main">session</span><span>waiting on {esc(found["waiting"])}</span>')
-    if current:
-        took = minutes(now_stamp() - current["started"])
-        model = f" · {current['model']}" if current["model"] else ""
-        role = current["role"].removeprefix("sail-").removesuffix("-shipwright") or "sub-agent"
-        words = " ".join(part for part in (current["task"], current["what"]) if part)
-        return (f'<span class="role">{esc(role)}</span><span class="sub">{esc(model.lstrip(" ·"))}'
-                f'{" · " if model else ""}{esc(took)}</span><span>{esc(words)}</span>')
-    return f'<span class="role main">session</span><span>{esc(found["last"])}</span>'
+#: The warnings `activity.fold` raises that are a person's to look at: a task taking far longer than its
+#: siblings, the same failure round and round, and a session gone silent.
+LOOKED = {"long": "Stuck on one task", "circles": "Going in circles", "quiet": "Gone quiet"}
+#: What a slice has to be for the strip to count it: in flight, whether at work, queued or held.
+IN_FLIGHT = ("working", "queued", "waiting")
 
 
-def strip_html(rows: list[dict[str, str]], folds: dict[str, dict]) -> str:
-    """The Now strip: every working slice, the one a person should look at first at the top."""
-    working = [row for row in rows if row.get("state") == "working"]
-    if not working:
-        return ""
+def looks(rows: list[dict[str, str]], folds: dict[str, dict], trunk: dict[str, str]) -> list[dict[str, str]]:
+    """What needs a look, worst first: a red trunk, then each slice with a warning or a refused merge.
 
-    def order(row: dict[str, str]) -> tuple:
-        found = folds.get(f"{row.get('fairway')}/{row['slice']}")
-        warned = bool(found and found["warnings"])
-        return (not warned, -(found["quiet"] if found else 0))
-
-    cells = ""
-    for row in sorted(working, key=order):
-        found = folds.get(f"{row.get('fairway')}/{row['slice']}")
-        link = (f'<a class="sid" href="{esc(window_address(row.get("fairway", ""), row["slice"]))}" '
-                f'target="_blank" rel="noopener">{esc(row["slice"])}</a>')
-        stage = row.get("chip") or row.get("stage") or ""
-        if found is None:
-            cells += (f'<div>{link}</div><div><span>{esc(stage)}</span></div>'
-                      '<div><span class="sub">no activity log yet: its session predates it, or its harness '
-                      'writes none</span></div><div class="said"></div><div class="quiet"></div>')
+    `did` is where what its captain already did about it goes, once captains decide things; empty until then,
+    and nothing is drawn for it while it is.
+    """
+    found: list[dict[str, str]] = []
+    if trunk.get("state") == "red":
+        since = minutes(now_stamp() - stamp(trunk.get("t", ""))) if trunk.get("t") else ""
+        why = trunk.get("why") or trunk.get("job") or ""
+        found.append({"name": "Trunk is red", "level": "red trunk", "href": "#tab-fleet", "verb": "See the fleet",
+                      "says": f"Trunk's CI failed{' ' + since + ' ago' if since else ''}"
+                              f"{': ' + why if why else ''}. Merges are held until it is green.", "did": ""})
+    for row in rows:
+        warned = [one for one in (folds.get(f"{row.get('fairway')}/{row['slice']}") or {}).get("warnings", [])
+                  if one["kind"] in LOOKED]
+        refused = row.get("refused", "") if row.get("stage") == "Merge refused" else ""
+        if not warned and not refused:
             continue
-        warnings = "".join(f'<span class="warn {esc(one["level"])}">{esc(one["said"])}</span>'
-                           for one in found["warnings"])
-        said = f"“{found['said']}”" if found["said"] else ""
-        cells += (f'<div>{link}</div><div><span>{esc(stage)}</span></div>'
-                  f'<div>{who_html(found)}{warnings}</div>'
-                  f'<div class="said"><span>{esc(said)}</span></div>'
-                  f'<div class="quiet"><span class="ago">{esc(minutes(found["quiet"]))}</span></div>')
-    said = json.dumps([[row["slice"], row.get("chip")] for row in working]
-                      + [[key, one["last_t"], one["said"], [w["said"] for w in one["warnings"]],
-                          one["current"]["agent"] if one["current"] else ""] for key, one in sorted(folds.items())])
-    head = ('<div class="h">Slice</div><div class="h">Stage</div><div class="h">Who is on it</div>'
-            '<div class="h">Last thing it said</div><div class="h">Quiet for</div>')
-    return (f'<div class="card" id="now-strip" data-said="{esc(said)}"><h2>Now <span class="live-dot">'
-            f'live · {len(working)} working</span></h2><div class="rows">{head}{cells}</div></div>')
+        said = [f"{LOOKED[one['kind']]}: {one['said']}" for one in warned]
+        said += [f"Merge refused: {refused}"] if refused else []
+        stage = row.get("stage") or ""
+        found.append({"name": f"{row['slice']} · {stage}" if stage else row["slice"], "says": "; ".join(said),
+                      "level": "red" if refused or any(one["level"] == "red" for one in warned) else "amber",
+                      "href": f"#card-{row['slice']}", "verb": "Open its card", "did": "", "slice": row["slice"]})
+    return sorted(found, key=lambda one: ("trunk" not in one["level"], one["level"] != "red"))
+
+
+def look_html(rows: list[dict[str, str]], folds: dict[str, dict], trunk: dict[str, str]) -> str:
+    """Needs a look: only what is wrong, each row linking to where to look, and one line when nothing is.
+    Nothing at all where no slice is in flight and trunk is not red: there is nothing yet to look at."""
+    working = len([row for row in rows if row.get("state") == "working"])
+    found = looks(rows, folds, trunk)
+    if not found:
+        if not any(row.get("state") in IN_FLIGHT for row in rows):
+            return ""
+        green = "Trunk green" if trunk.get("state") == "green" else ""
+        return (f'<div class="card calm" id="look"><span><b>{working} working</b> · nothing needs a look</span>'
+                f"<small>{green}</small></div>")
+    flagged = len({one["slice"] for one in found if one.get("slice")})
+    items = "".join(
+        f'<div class="look {esc(one["level"])}"><b>{esc(one["name"])}</b><span class="says">{esc(one["says"])}'
+        f'</span><a href="{esc(one["href"])}">{esc(one["verb"])}</a>'
+        + (f'<span class="did">{esc(one["did"])}</span>' if one["did"] else "") + "</div>" for one in found)
+    return (f'<div class="card" id="look"><div class="head"><h2>Needs a look · {len(found)}</h2>'
+            f"<span>{working} working · {max(0, working - flagged)} fine</span></div>{items}</div>")
 
 
 def lanes_html(found: dict, lines: list[dict], now: float) -> str:
@@ -300,8 +286,3 @@ def said_in(drawn: str) -> str:
 def window_payload(root: Path, fairway: str, slice_id: str) -> str:
     drawn, mapped = window_body(root, fairway, slice_id), map_panel(root, slice_id)
     return json.dumps({"said": said_in(drawn), "html": drawn, "map_said": said_in(mapped), "map_html": mapped})
-
-
-def strip_payload(rows: list[dict[str, str]], folds: dict[str, dict]) -> str:
-    drawn = strip_html(rows, folds)
-    return json.dumps({"said": said_in(drawn), "html": drawn})

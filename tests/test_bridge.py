@@ -130,15 +130,16 @@ class ServerTest(BoardTest):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
 
     def test_the_page_is_served(self) -> None:
-        """The Board is the landing — looking at, where it stands, what can be started — and the live cards
-        are on the Voyage tab, beside the stages and the model."""
+        """The Board is the landing — looking at, where it stands, what can be started — and the fleet's
+        machinery is on the Voyage window's Fleet tab, with its settings; the streams' rows are not."""
         code, said = self.get("/")
         self.assertEqual(code, 200)
         self.assertIn("Start something", said)
         self.assertNotIn("<h2>Streams</h2>", said)
         code, said = self.get("/voyage")
         self.assertEqual(code, 200)
-        self.assertIn("<h2>Streams</h2>", said)
+        self.assertIn("<h2>Fleet</h2>", said)
+        self.assertNotIn("<h2>Streams</h2>", said)
         self.assertIn("<h2>Settings</h2>", said)
         self.assertIn('for="tab-speed"', said, "the speed is a tab of the settings box now")
         self.assertIn('data-ring', said, "the controls came with the cards")
@@ -294,8 +295,9 @@ class LandingTest(BoardTest):
         self.patch("generate", lambda answers, root: (True, f"created: {self.made}"))
         self.patch("destination", lambda answers, root: self.made)
 
-    def patch(self, name: str, with_this: object) -> None:
-        import slipwai.bridge as module
+    def patch(self, name: str, with_this: object, where: str = "slipwai.bridge") -> None:
+        import importlib
+        module = importlib.import_module(where)
         held = getattr(module, name)
         setattr(module, name, with_this)
         self.addCleanup(setattr, module, name, held)
@@ -562,8 +564,9 @@ class LandingTest(BoardTest):
             "## Surface: Discover\n- Populated \u2014 parked: no styling at all\n", encoding="utf-8")
         found = json.loads(self.get("/voyage.json")[1])
         self.assertTrue(found["drawable"])
-        self.assertEqual(found["waiting"], {"count": 1, "href": "#draw",
-                                            "text": "The specification is ready: read it, then draw the storyboard"})
+        self.assertEqual({key: found["waiting"][key] for key in ("count", "href", "text")},
+                         {"count": 1, "href": "#draw",
+                          "text": "The specification is ready: read it, then draw the storyboard"})
         # Not while a redraw this board did not start is running: that offered a second drawing over the first.
         (self.made / ".slipwai").mkdir(exist_ok=True)
         (self.made / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
@@ -656,7 +659,7 @@ class LandingTest(BoardTest):
         self.assertEqual(self.post("/cast-off", {})[0], 400, "no split, nothing to cast off")
         rows = [{"slice": "S01", "state": "todo", "title": "", "why": "", "fairway": "", "clearance": "blocked",
                  "feature": "001-demo"}]
-        self.patch("folded", lambda root, feature="": (rows, ""))
+        self.patch("folded", lambda root, feature="": (rows, ""), "slipwai.board_read")
         (self.made / "Makefile").write_text("cruise:\n\t@echo 'captain started'\n", encoding="utf-8")
         found = json.loads(self.get("/voyage.json")[1])
         self.assertTrue(found["castable"])
@@ -680,7 +683,7 @@ class LandingTest(BoardTest):
         (self.made / "harbour.json").write_text('{"v": 1}\n', encoding="utf-8")
         rows = [{"slice": "S01", "state": "todo", "title": "", "why": "", "fairway": "", "clearance": "blocked",
                  "feature": "001-demo"}]
-        self.patch("folded", lambda root, feature="": (rows, ""))
+        self.patch("folded", lambda root, feature="": (rows, ""), "slipwai.board_read")
         self.assertIn('id="remote-card"', self.get("/voyage")[1])
         code, said = self.post("/cast-off", {})
         self.assertEqual(code, 400)

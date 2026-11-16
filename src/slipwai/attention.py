@@ -8,9 +8,10 @@ carrying the way to it, a count on the tab's title, a badge on the installed boa
 have asked for it — a notification from the browser, while the page is not the one they are looking at.
 
 Nothing here decides what counts as waiting; the pages do, each from what it already knows. The Voyage's
-poll carries `upstream.on_voyage`, folded on the server from the same flags that show its buttons. The
-first page folds its own from the poll it already has: a card not yet answered, and the brief being ready
-to hand over.
+poll carries `on_you.waiting`, the one list, folded on the server from the same flags that show its buttons
+and in two groups — what holds work up, and what can wait until a person has time — which the strip opens
+onto, each item a link to where it is acted on. The first page folds its own from the poll it already has:
+a card not yet answered, and the brief being ready to hand over; it has no groups, and the strip is a line.
 
 The notification is a permission, so it is a switch the person throws, in the corner beside the theme, and
 it stays off until they do. It is never asked for on a page's behalf: a browser's prompt on a page that
@@ -29,12 +30,23 @@ STYLE = """
 #waiting a{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:7px;border:1px solid var(--brass);
   color:var(--ink);text-decoration:none;background:var(--paper);white-space:nowrap}
 #waiting a:hover{background:var(--brass-soft)}
+#waiting .groups{font-size:.85rem;color:var(--ink-2)}
+#waiting .more{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:7px;border:1px solid var(--brass);
+  background:transparent;color:var(--ink);cursor:pointer}
+#waiting .all{flex:1 1 100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+#waiting .all[hidden]{display:none}
+#waiting .all b{display:block;font-size:.8rem;font-weight:500;margin-bottom:4px}
+#waiting .all ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+#waiting .all a{display:block;white-space:normal}
 """
 
 #: The strip, hidden until a page has something to put in it, and the switch, hidden until the script finds
 #: a browser that can notify at all.
 STRIP = ('<div id="waiting" hidden role="status" aria-live="polite"><span class="what"></span>'
-         '<a href="#">Go to it</a></div>')
+         '<span class="groups"></span><a href="#" class="go">Go to it</a>'
+         '<button type="button" class="more" aria-expanded="false" hidden>Show all</button>'
+         '<div class="all" hidden><div class="hold"><b>Holding work up</b><ul></ul></div>'
+         '<div class="later"><b>When you have time</b><ul></ul></div></div></div>')
 TELL = '<button class="install" id="tell-me" hidden>Tell me when it waits on me</button>'
 
 SCRIPT = """
@@ -42,7 +54,27 @@ SCRIPT = """
   const strip = document.getElementById('waiting');
   if (!strip) return;
   const KEY = 'slipwai-tell-me', BASE = document.title;
-  const what = strip.querySelector('.what'), go = strip.querySelector('a'), tell = document.getElementById('tell-me');
+  const what = strip.querySelector('.what'), go = strip.querySelector('a.go');
+  const tell = document.getElementById('tell-me');
+  const groups = strip.querySelector('.groups'), more = strip.querySelector('.more'), all = strip.querySelector('.all');
+  more.addEventListener('click', () => {
+    all.hidden = !all.hidden;
+    more.setAttribute('aria-expanded', String(!all.hidden));
+    more.textContent = all.hidden ? 'Show all' : 'Hide';
+    go.hidden = !all.hidden;
+  });
+  // Each item is its own words and a link to where it is acted on, written as text: what a stream or a
+  // slice wrote is never markup here.
+  const fill = (list, items) => {
+    list.closest('div').hidden = !items.length;
+    list.replaceChildren(...items.map(item => {
+      const line = document.createElement('li'), link = document.createElement('a');
+      link.href = item.href || '#'; link.textContent = item.text;
+      line.append(link);
+      return line;
+    }));
+  };
+  const total = items => items.reduce((sum, item) => sum + (item.n || 1), 0);
   const can = 'Notification' in window;
   const on = () => { try { return can && Notification.permission === 'granted' && !!localStorage.getItem(KEY); }
                      catch (fault) { return false; } };
@@ -63,8 +95,10 @@ SCRIPT = """
   paintTell();
   // The way to it: a tab is opened by its button, anything else is a place on the page the tab script
   // already knows how to reach.
-  go.addEventListener('click', event => {
-    const name = (go.getAttribute('href').match(/^#tab-([a-z]+)$/) || [])[1];
+  strip.addEventListener('click', event => {
+    const link = event.target.closest('a');
+    if (!link) return;
+    const name = (link.getAttribute('href').match(/^#tab-([a-z]+)$/) || [])[1];
     const tab = name && document.querySelector('.tabs [data-tab="' + name + '"]');
     if (tab) { event.preventDefault(); tab.click(); }
   });
@@ -79,6 +113,21 @@ SCRIPT = """
     const count = said && said.count ? said.count : 0;
     strip.hidden = !count;
     if (count) { what.textContent = said.text; go.setAttribute('href', said.href || '#'); }
+    // The one list, where the page has it: its count, its two groups in a line, and both of them a click away.
+    const hold = (said && said.holding) || [], later = (said && said.later) || [];
+    const listed = hold.length + later.length > 0;
+    if (listed) {
+      what.textContent = 'Waiting on you \u00b7 ' + count;
+      groups.textContent = [hold.length ? total(hold) + ' holding work up' : '',
+                            later.length ? total(later) + ' when you have time' : ''].filter(Boolean).join(' \u00b7 ');
+      fill(all.querySelector('.hold ul'), hold);
+      fill(all.querySelector('.later ul'), later);
+    } else {
+      groups.textContent = '';
+      all.hidden = true;
+    }
+    more.hidden = !listed;
+    go.hidden = listed && !all.hidden;
     document.title = (count ? '(' + count + ') ' : '') + BASE;
     if (navigator.setAppBadge) (count ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
     const key = count ? said.text : '';

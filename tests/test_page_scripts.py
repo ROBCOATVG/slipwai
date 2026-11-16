@@ -36,7 +36,7 @@ SCRIPTS = {
     "adopt_page": adopt_page.SCRIPT, "attention": attention.SCRIPT, "bridge_page": bridge_page.SCRIPT,
     "brief_page": brief_page.SCRIPT,
     "captain_page": captain_page.SCRIPT, "chandlery_page": chandlery_page.SCRIPT, "console_page": console_page.SCRIPT,
-    "fleet_page": fleet_page.SCRIPT, "landing_page": landing_page.SCRIPT, "live_page.strip": live_page.STRIP_SCRIPT,
+    "fleet_page": fleet_page.SCRIPT, "landing_page": landing_page.SCRIPT,
     "live_page.window": live_page.WINDOW_SCRIPT, "settings_page": settings_page.SCRIPT,
     "timeline_page": timeline_page.SCRIPT, "turn_cards": turn_cards.SCRIPT, "voyage_page": voyage_page.SCRIPT,
     "voyage_page.model": voyage_page.MODEL_SCRIPT,

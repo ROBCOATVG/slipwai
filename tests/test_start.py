@@ -134,7 +134,7 @@ class OpenedBoardTest(unittest.TestCase):
     def test_what_can_be_started_is_on_the_landing_and_nothing_live_is(self) -> None:
         said = self.board(self.root)
         self.assertIn("Start from a PRD", said)
-        self.assertNotIn("Waiting on you", said)
+        self.assertNotIn("<h2>Waiting on you</h2>", said, "the strip every served page carries says it, empty")
 
 
 class FallbackTest(unittest.TestCase):

@@ -2,8 +2,8 @@
 
 The point of the page is not that it is prettier than the terminal. It is that a person answers from one
 seat: a question from a stream is a line in that stream's deck log, and finding the right terminal to type
-into is the friction that has questions go unanswered for an hour. Typing the answer here writes the `told`
-line into the right log, and the stream's next boundary reads it.
+into is the friction that has questions go unanswered for an hour. Typing the answer here places it in the
+slice's or the captain's inbox (`talk_routes.py`), whose driver delivers it and writes the receipt.
 
 **`http.server` and nothing else.** A dashboard that needed a web framework would be a dashboard most people
 never ran. The whole server is a handful of routes and a render.
@@ -62,7 +62,7 @@ from .console import answered as console_answer
 from .console import for_root as console_for
 from .decision_log import confirm as confirm_decision
 from .decision_log import mark as mark_decisions
-from .deck import answer, dismiss, mark_read, tell, tick_need
+from .deck import dismiss, mark_read, tick_need
 from .dials import set_dial
 from .errors import Busy, GenerationError
 from .feedback_card import act as feedback_act
@@ -106,6 +106,7 @@ from .passage import (
     specifications,
     surfaces,
 )
+from .post_guard import refusal as cross_site
 from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .settings_page import route_get as settings_get
@@ -117,6 +118,8 @@ from .stage_session import route_post as stage_post
 from .stage_steps import begin_model
 from .stage_steps import launch as continue_build
 from .stage_steps import triage as begin_triage
+from .talk_routes import route_get as talk_get
+from .talk_routes import route_post as talk_post
 from .telegraph import Refused
 from .trunk_remote import ASK, add_remote, given, no_ci, publishing, unasked
 from .try_card import VIDEOS, WALK_ROUTE, walk_file
@@ -139,8 +142,8 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 935 — the app-version guard (2.1) on every change and page, one server and every route the
-# board answers, the need tick and the timeline among them, each a few lines handing off to a page
+# budget: 940 — the cross-site guard and the app-version guard (2.1) on every change and page, one server
+# and every route the board answers, the need tick and the timeline among them, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
@@ -149,6 +152,7 @@ from .wheel import set_stop
 # handing to `feedback_card.py`, and the triage it starts; and a film served in ranges (`film.py`). The
 # Voyage window's own reads — the page, `/live.json`, the slice window — are `voyage_live.py`'s.
 # Mark read writes the receipts the decision ceiling counts, and Confirm a decision awaiting a person.
+# And one check, before any of them, that a POST came from the board's own pages (`post_guard.py`).
 # And the console's three routes — `/console.json`, `/console/ask`, `/console/reset` — each a line or two handing
 # to `console.py`, which holds the conversation.
 # The number is the route count rather than any one route's length: a control a person can press is ten
@@ -329,6 +333,8 @@ class Bridge(BaseHTTPRequestHandler):
         if self.controls and stage_get(self, where, query):  # a stage over the protocol: `stage_session.py`
             return
         if self.controls and voyage_get(self, where, query):  # the Voyage and its one poll: `voyage_live.py`
+            return
+        if self.controls and talk_get(self, where, query):  # a conversation's poll, a captain's window
             return
         # One captain's window, and its poll: `captain_page` says what it reads.
         if where in ("/captain", "/captain.json") and self.controls:
@@ -677,6 +683,9 @@ class Bridge(BaseHTTPRequestHandler):
         if not self.controls:
             self.send(403, "This copy is read only.", "text/plain; charset=utf-8")
             return
+        if refused := cross_site(self):  # only the board's own pages change it: `post_guard.py`
+            self.send(403, refused, "text/plain; charset=utf-8")
+            return
         if refused := out_of_step(self.root):  # an older app writes where a newer project no longer reads
             self.send(409, refused, "text/plain; charset=utf-8")
             return
@@ -691,6 +700,8 @@ class Bridge(BaseHTTPRequestHandler):
             if where == "/stage/say" and self.fitting is None and (command := kept_stage(self.root)):
                 self.fitting = resumed(self.root, command)  # a stage kept from before a restart, carried on
             if stage_post(self, where, held):
+                return
+            if talk_post(self, where, held):  # everything said to a slice or a captain: `talk_routes.py`
                 return
             if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one
@@ -863,11 +874,6 @@ class Bridge(BaseHTTPRequestHandler):
                 said = console_for(self.root).reset()
             elif where in ("/console/answer", "/console/cancel"):
                 said = console_answer(console_for(self.root), where, held)
-            elif where == "/tell":
-                said = (answer(self.root, str(held.get("fairway", "")), str(held["question"]),
-                               str(held.get("message", ""))) if held.get("question") else
-                        tell(self.root, str(held.get("fairway", "")), str(held.get("message", "")),
-                             str(held.get("slice", ""))))
             # The receipt the decision ceiling counts, for the decisions a person has read on this page.
             elif where == "/read":
                 stamps = held.get("decisions")

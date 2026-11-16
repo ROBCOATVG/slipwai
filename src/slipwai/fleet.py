@@ -68,6 +68,7 @@ from .logs import (
     unmerged,
 )
 from .shell_environment import login_environment, project_python
+from .talk_placed import placed
 from .timeline import spans
 
 
@@ -619,7 +620,8 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
             clearance_faults.add(feature)
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
     demos, accepted, due_in = on_board(root, [(one.name, one.entries) for one in found])
-    waiting = inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)
+    # Each park and question with the slice it is about and any answer a person has placed: `talk_placed`.
+    waiting = placed(root, inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults))
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same

@@ -98,8 +98,8 @@ def accept(root: Path, capability: str) -> str:
     """A person's Accept, written as the `accepted` line with `by: person`, or why not.
 
     Held to the same rule as the hand's command, `capabilities.acceptable`, read through the project's own
-    script so there is one rule and not two. The board writes the line itself, as `deck.tell` writes a
-    `told`: a person's acceptance is not something a session should be able to write for itself, and once
+    script so there is one rule and not two. The board writes the line itself, as `deck.mark_read` writes a
+    `read`: a person's acceptance is not something a session should be able to write for itself, and once
     every slice of a capability has merged there may be no session left to read a message asking it to.
     (A later stream moves the board's deck-log writes behind the stream's captain; this is one of them.)
     """

@@ -141,7 +141,7 @@ the start of a slice. When the captain has read the message, it writes a `read` 
 the message that it answers. This makes the `read` line a receipt, not just a claim that somebody looked.
 
 **A message to a parked fairway clears the park.** The message is a `told` line in the fairway's deck log.
-The board's answer box writes the same line. On its next pass, the harbourmaster writes a `cleared` receipt
+The board's answer box places your answer in the parked slice's inbox, and its captain writes the same line. On its next pass, the harbourmaster writes a `cleared` receipt
 in the harbour log for each open park that the message came after. It keeps the message as the answer. On
 the pass after that, it starts the captain again.
 

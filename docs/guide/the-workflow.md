@@ -120,10 +120,12 @@ board shows every open park under **Waiting on you**, with how long it has waite
 
 Tell the fairway something. Use one of these:
 
-- the answer box under **Waiting on you**, or **Say something to a stream**, on the board;
+- the answer box on the parked slice's card, or under **Waiting on you**, on the board;
 - `/cruise-tell <fairway> <the answer>` in the agent.
 
-Each writes a `told` line in the fairway's deck log. On its next pass, the harbourmaster writes a
+The board places your answer in the parked slice's inbox, and its captain writes it as a `told` line in the
+fairway's deck log when it next runs; the row on the board says whether that has happened yet, and whether the
+fleet is running at all. `/cruise-tell` writes the `told` line itself. On its next pass, the harbourmaster writes a
 `cleared` receipt in the harbour log for every open park that the message came after. The receipt keeps
 your message as the answer. On the pass after that, the harbourmaster lights the captain again.
 

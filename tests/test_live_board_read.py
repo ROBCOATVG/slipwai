@@ -84,9 +84,10 @@ class LoadTest(unittest.TestCase):
 
 #: Every route that changes something, each with a body. Most are refused for want of what they act on;
 #: refused or done, a person pressed something, and the next poll reads afresh.
-ROUTES = ("/tell", "/dismiss", "/read", "/decisions/read", "/decisions/confirm", "/need", "/ring", "/set",
-          "/attach", "/cast-off", "/stop", "/draw", "/draft", "/model", "/launch", "/intake", "/storyboard",
-          "/feedback", "/try", "/wheel", "/dial", "/remote", "/ci-off", "/console/reset")
+ROUTES = ("/tell", "/talk/say", "/talk/steer", "/talk/interrupt", "/talk/again", "/talk/all", "/dismiss", "/read",
+          "/decisions/read", "/decisions/confirm", "/need", "/ring", "/set", "/attach", "/cast-off", "/stop",
+          "/draw", "/draft", "/model", "/launch", "/intake", "/storyboard", "/feedback", "/try", "/wheel", "/dial",
+          "/remote", "/ci-off", "/console/reset")
 
 
 class DropTest(BoardTest):
@@ -138,7 +139,7 @@ class FromTheFleetTest(BoardTest):
                                     until="2099-01-01T00:00:00Z"))
         streams = json.loads(self.get("/live.json")[1])["bands"]["streams"]["html"]
         self.assertIn("Try the 1 paused slices now anyway", streams)
-        self.assertIn('data-tell="ORD"', streams)
+        self.assertIn('href="/captain-window?fairway=ORD"', streams, "a stream is told in its captain's window")
 
 
 class NoReloadTest(BoardTest):

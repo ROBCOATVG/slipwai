@@ -18,6 +18,7 @@ from urllib.parse import unquote
 
 from .adoption_card import adoption_card, strategy_dates
 from .board_read import Read, read
+from .captains_strip import strip_html
 from .decision_cards import polled as decisions_polled
 from .decision_cards import tab as decision_tab
 from .feedback_card import card as feedback_card
@@ -96,6 +97,7 @@ def live_json(board: Any) -> str:
              "points": feedback_points_card(kept.points),
              "work": work_card(rows, fault, set(listed["slices"])),
              "streams": streams_card(fleet),
+             "captains": strip_html(board.root, kept.rows, set(listed["slices"])),
              "expect": expect_card(found),
              "fleet": machinery(kept, rows, flags["stoppable"])}
     if cards:  # the tab exists only once there is a decision; the first one is a change of the page's shape
@@ -129,7 +131,8 @@ def voyage(board: Any) -> str:
                        + feedback_card(root, rows, fleet, board.triaging(), trunk_head(root)),
                        decision_tab(root, band), points=kept.points, adopting=adopting,
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
-                       draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed)
+                       draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed,
+                       captains=strip_html(root, kept.rows, set(listed["slices"])))
 
 
 def route_get(board: Any, where: str, query: str) -> bool:

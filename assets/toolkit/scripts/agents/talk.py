@@ -36,9 +36,9 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 470 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
-# the key and what makes one trustworthy, the thread read by offset, and the fold into receipts for every kind,
-# which a reader and the writer must not disagree on
+# budget: 490 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
+# the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
+# and the fold into receipts for every kind, which a reader and the writer must not disagree on
 from __future__ import annotations
 
 import hashlib
@@ -460,7 +460,8 @@ def receipts(home: Path) -> list[dict[str, Any]]:
     for one in lines:
         if one.get("kind") == "failed" and (one.get("refused") or one.get("malformed")):
             found.append({"id": str(one.get("id", "")), "kind": "", "t": str(one.get("t", "")), "from": "",
-                          "text": str(one.get("text", "")), "mode": "wait", "state": "not delivered", "delivered": "", "reply": "",
+                          "text": str(one.get("text", "")), "mode": "wait", "state": "not delivered",
+                          "delivered": "", "reply": "",
                           "why": str(one.get("why", ""))})
     return found
 

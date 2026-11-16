@@ -139,14 +139,64 @@ Verbs: `start <slice>`, `message <slice> --text … [--interrupt] [--of <id>]`, 
 the captain's conversation), `ask --text … [--options …]` (becomes *Waiting on you*), `allow|refuse <ask-id>
 --why …`, `none --why …` (decline to act; the fixed rule applies).
 
-An **event** is what wakes it: `events/<fairway>/<id>.json` with `{"v":1,"id","t","kind","slice","facts","may"}`.
-`kind` is `message`, `question` (operational), `permission`, `gate-failed`, `stuck`, `choose-next`,
-`trunk-red`; `facts` is the fold the decision needs; `may` lists the orders the program will accept for it.
-An event is closed by its orders' results or by the fallback, recorded as `events/<fairway>/<id>.closed.json`
-(`by`: `captain`|`rule`, `why`).
+An **event** is what wakes it: `events/<fairway>/<id>.json` with `{"v":1,"id","t","kind","fairway","slice",
+"facts","may","default"}`. `kind` is `message`, `question` (operational), `permission`, `gate-failed`, `stuck`,
+`choose-next`, `trunk-red`; `facts` is the fold the decision needs; `may` lists the orders the program will
+accept for it; `default` is the orders the fixed rule would give, in the order shape below. An event is closed
+by its orders' results or by the fallback, recorded as `events/<fairway>/<id>.closed.json` (`by`:
+`captain`|`rule`, `why`, `orders`: the order ids read for it, `cost`: `{"seconds", "ready_seconds", "ended":
+"finished"|"bound"|"unavailable", "runner": "protocol"|"headless"|"named"|"none", "tokens": null}`). Beside the
+events, `events/<fairway>/state.json` is the stream as its log says it at the moment of the event (`in_flight`,
+`unmerged`, `merged`, `parked`, `stream_parked`, `attempts`, `trunk_red`, `recent`: the newest forty deck
+lines without `fairway`), rewritten at every event.
+
+*Settled in stream E (2026-11-16), for the evals and the board:*
+
+**The order file** is one JSON object, `{"v":1,"id","t","event","fairway","verb", …, "sig"}`, `id` equal to the
+file's name. `event` is the id of the event it answers — always: `orders.py` takes `--event <id>` and otherwise
+the one event still open. `sig` is an HMAC-SHA256, with the key the program hands the captain's session in
+`SLIPWAI_CAPTAIN_KEY`, over the JSON of the fields `v id t event fairway verb slice ask text note why needs of
+options interrupt` (sorted keys, absent ones `null`); an order the program cannot verify is refused. Beyond the
+six, by verb (every value a string unless said):
+
+| verb | keys |
+| --- | --- |
+| `start` | `slice` |
+| `message` | `slice` (a slice of this stream, or `captain:<fairway>`), `text`, `interrupt` (bool, optional), `of` (optional: the inbox id it routes; `text` may then be left out and the original's is sent) |
+| `retry` | `slice`, `note` |
+| `park` | `slice`, `why`, `needs` (optional) |
+| `pause`, `resume`, `stop` | `slice`, `why` |
+| `say` | `text`, `of` (optional: the message it answers) |
+| `ask` | `text`, `options` (optional, list of strings) |
+| `allow`, `refuse` | `ask` (the ask's id), `why` (for an allowed question, `why` is the answer) |
+| `none` | `why` |
+
+**`facts` by kind**, as small as the decision needs and kept stable:
+
+| kind | `slice` | `facts` |
+| --- | --- | --- |
+| `choose-next` | null | `free` (slots free now), `in_flight` (slices), `cleared`: `[{"slice", "steers_by", "sets", "progress"}]` in the rule's order (`progress` 0–8, the captain's rung) |
+| `gate-failed` | the slice | `slice`, `why`, `cause` (`silence`, `exit`, `demo`, `gate`), `tried`, `attempts`, `sets` |
+| `stuck` | the slice | `slice`, `warnings`: `[{"kind": "long"|"circles"|"quiet", "level", "said"}]` |
+| `message` | null | `inbox` (the message's id in `talk/<fairway>/_captain/`), `from`, `text`, `mode`, `t` |
+| `question`, `permission` | the asking slice | `ask` (its id), `text`, `options`, `tool` (`{"title", "kind", "locations"}` for a permission, else null) |
+| `trunk-red` | null | `commit`, `job`, `t` |
+
+**Bounds.** `captain.bound` (default 60 seconds) runs from when the captain's session is ready to take the
+event — over the protocol, once its turn has begun — and `captain.headless_bound` (default 180) from launch,
+where a headless session cannot say when it is ready. Each closing record carries what the decision took.
+
+**The evals' entry point.** `python3 scripts/agents/captain_agent.py decide <event> [--bound N]`, run in the
+project: wakes the captain this project would run, once, with that event and the `state.json` beside it (one
+is written if absent), lets it write orders under `.slipwai/run/orders/<fairway>/`, ends it at the bound, and
+prints `{"exit", "timed_out", "tokens", "seconds", "orders"}`. It fits `command_captain` as it stands. A
+headless session started some other way with `SLIPWAI_EVAL=1` and no key may still use `orders.py`: its orders
+are written unsigned, for the eval to read; the program never acts on one.
 
 ### 2.3 Settings
-`harbour.json`: `captain: {"agent": true, "bound": 60}`. `.specify/cruise.json`: `sessions` defaults to
+`harbour.json`: `captain: {"agent": true, "bound": 60, "headless_bound": 180}` (a new project's; absent is the
+program alone, and `SLIPWAI_CAPTAIN` in the environment says first: a command to run as the captain, or `off`).
+`.specify/cruise.json`: `sessions` defaults to
 `protocol` where the harness's registry row has a launch; `demos` is `hand` (default) or `person`.
 
 ## 3. Rules every stream keeps

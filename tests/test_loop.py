@@ -191,7 +191,9 @@ class LoopTest(unittest.TestCase):
                 time.sleep(0.02)
 
     def run_in(self, *argv: str, sail: bool = False) -> subprocess.CompletedProcess:
-        env = {**os.environ}
+        # A generated project's captain is an agent, and an agent here would be whichever harness this machine
+        # has: these cases are the loop's wiring, so its captain runs on the program alone.
+        env = {**os.environ, "SLIPWAI_CAPTAIN": "off"}
         if sail:
             env["SLIPWAI_SAIL"] = f"{sys.executable} {self.project / 'sail-stand-in.py'}"
         return subprocess.run([sys.executable, *argv], cwd=self.project, capture_output=True, text=True,

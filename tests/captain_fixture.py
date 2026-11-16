@@ -7,6 +7,7 @@ fake set `Placed` whatever slice it was driving, which passed only because nothi
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -36,8 +37,13 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "id
            "fleet.py",
            # How many of a fairway's slices run at once, and the berth each one is worked in.
            "abreast.py", "moorings.py",
-           # The fixed rules each of the captain's choices falls back to.
-           "captain_rules.py")
+           # The fixed rules each of the captain's choices falls back to, and the captain's agent over them:
+           # the helm that checks its orders, its session, the door it gives them through, and the fold of a
+           # slice's activity that says when one is stuck.
+           "captain_rules.py", "captain_events.py", "captain_agent.py", "orders.py", "stuck.py")
+#: Where a run of these suites leaves each case's deck lines, for `test_captain_agent_parity` to compare a run
+#: with the stand-in captain agent against one without: set in the environment, read once.
+RECORD = os.environ.get("SLIPWAI_TEST_RECORD", "")
 #: The chart these tests run against, as data, so the fake `/sail` below sets the marks this says it does.
 #: They were two copies and the fake set `Placed` whatever it was driving, which passed only because the
 #: captain did not read the chart's `sets` — exactly the gap slice 7.8 closes.
@@ -105,6 +111,31 @@ class Fixture(unittest.TestCase):
         subprocess.run(["git", "init", "--quiet", "--initial-branch=main"], cwd=self.root, check=False,
                        capture_output=True)
         self.budget(minutes=5)
+        if RECORD:
+            self.addCleanup(self.record_deck)
+
+    def record_deck(self) -> None:
+        """This case's deck lines as kinds and slices in order — instants, ids and heartbeats aside, which
+        differ between any two runs — and how the captain's agent closed each event it was woken for."""
+        logs_root = logs.deck_path(self.root, "f", "w").parent.parent
+        def lines(path: Path) -> list[list[str]]:
+            found = []
+            for line in path.read_text(encoding="utf-8").splitlines():
+                try:
+                    one = json.loads(line)
+                except ValueError:
+                    found.append(["unreadable", ""])  # a case may plant a line no reader takes, on purpose
+                    continue
+                if isinstance(one, dict) and one.get("kind") != "heartbeat":
+                    found.append([str(one.get("kind", "")), str(one.get("slice", ""))])
+            return found
+        decks = {f"{path.parent.name}/{path.stem}": lines(path)
+                 for path in sorted(logs_root.glob("*/*.jsonl")) if path.parent.name != "harbour"}
+        closed = [json.loads(path.read_text(encoding="utf-8")).get("by")
+                  for path in sorted(logs.run_dir(self.root).glob("events/*/*.closed.json"))]
+        out = Path(RECORD) / f"{self.id()}.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps({"decks": decks, "closed": closed}), encoding="utf-8")
 
     def budget(self, minutes: float, **held: object) -> None:
         # `wait_bound` in seconds-worth-of-minutes: these tests stand in for the harbourmaster by writing

@@ -68,7 +68,11 @@ COMMENT = (
     "retry, not a park — before the fairway parks naming what is still missing. `browsers` is how many "
     "browser-driven test runs may be in flight on this machine at once, whichever worktrees they are in — "
     "several berths are still one machine's CPU, and the symptom of too many is a suite that is slow one "
-    "run and flaky the next. `ci` is how the "
+    "run and flaky the next. `captain` says whether each stream's captain is an agent choosing over the "
+    "program (`agent`) — which slice starts next, what follows a missed gate, what to do about a stuck slice, "
+    "where something said to the stream goes — and how many seconds it has for each choice from when its "
+    "session is ready (`bound`), or from launch where it runs headless (`headless_bound`), before the "
+    "program's own rule decides. `ci` is how the "
     "harbourmaster asks the forge whether trunk is green before it grants any merge: absent means `gh` "
     "where it is installed, a list of words is a command for another forge with `{trunk}` and `{limit}` "
     "filled in, and `off` says not to ask — which reads as unverified and never as green. Change "
@@ -86,6 +90,9 @@ def harbour_config() -> str:
         "v": 1,
         "position": START,
         "stages": STAGE_BUDGETS,
+        # A new project's stream captains are agents over the program (`scripts/agents/captain_agent.py`);
+        # an existing project is never switched by migrating, and runs on the program alone until it says so.
+        "captain": {"agent": True, "bound": 60, "headless_bound": 180},
         # Last, so the file matches the position it declares exactly. `bar`, `decision_ceiling` and
         # `wait_bound` are the telegraph's rows now, and `START`'s are the three constants above — written
         # once here rather than twice, because two sources for one number is how a board starts lying.

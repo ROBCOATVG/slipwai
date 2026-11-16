@@ -68,7 +68,10 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                     # archived — here so the command page in `parts` and the writers in `assembly` both reach it.
                     "catch_up_page",
                     # A conversation's inbox, thread and receipts, carried into every project as the captain's.
-                    "talk")),
+                    "talk",
+                    # Whether a slice is stuck, read off its activity log: the board's warning and the
+                    # captain's wake-up, carried into every project so the two never disagree.
+                    "stuck")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.
@@ -89,7 +92,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "images")),
     # One validated answer per axis, which applications a project has, and what they add up to being able
     # to do.
-    ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
+    # `captain_decisions` reads back what a stream's captain agent decided, for the board.
+    ("answers", ("captain_decisions",
+                 "selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
                  "fleet_record", "timeline", "deck",
                  # Who accepts a whole capability — the hand or a person — read once for the board's fold.
                  "demos",

@@ -63,6 +63,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "on_you", "fleet_tab", "demos",
        # A conversation with a slice: the experiment wrote what a person said into the deck log.
        "talk",
+       # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.
+       "stuck", "captain_decisions",
        "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_crossing",
        "migration_result", "migration_merge", "migration_renames", "catalog_checks", "catalog_options",
        "cli_offered", "cli_search",

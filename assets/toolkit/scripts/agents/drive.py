@@ -326,14 +326,19 @@ class Drive:
 
     def __init__(self, argv: list[str], cwd: Path | str, env: dict[str, str], prompt: str,
                  model: str | None = None, kept: Path | None = None, conversation: Path | None = None,
-                 activity: Path | None = None, fresh: bool = False, harness_key: str = "") -> None:
+                 activity: Path | None = None, fresh: bool = False, harness_key: str = "", inbox: bool = True,
+                 permit: Any = None) -> None:
         import acp  # noqa: PLC0415 — carried beside this; imported here so a project without it fails at the drive, not the captain
         self.acp = acp
         self.cwd, self.model, self.env = Path(cwd), model, env
         self.home = Path(conversation) if conversation is not None else None
         self.activity, self.fresh, self.harness_key = activity, fresh, harness_key
-        self.session = acp.Session(argv, self.cwd, self.update, acp.policy(self.cwd, self.refuse), self.decline,
-                                   env=env, kept=Path(kept) if kept is not None else logs.run_dir(self.cwd) / "acp")
+        # A captain's own session: its conversation is read by the captain program, which hands what is said
+        # to it as an event, so the drive delivers nothing from it; and its policy is the captain's (`permit`).
+        self.inbox = inbox
+        self.session = acp.Session(argv, self.cwd, self.update, permit or acp.policy(self.cwd, self.refuse),
+                                   self.decline, env=env,
+                                   kept=Path(kept) if kept is not None else logs.run_dir(self.cwd) / "acp")
         self.held = ""  # the message chunk not yet ended by a newline
         self.text = ""  # everything the agent said this turn: a refusal's words, a reply
         self.code: int | None = None  # the captain's turn as a process's exit: published once nothing waits on it
@@ -360,7 +365,7 @@ class Drive:
         self.kept_back: set[str] = set()
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
-        if self.home is not None:
+        if self.home is not None and self.inbox:
             threading.Thread(target=self.look, daemon=True).start()
 
     # -- a process's face --------------------------------------------------------------------------------
@@ -501,7 +506,7 @@ class Drive:
 
     def waiting(self) -> list[dict[str, Any]]:
         """The messages to deliver now: none while the captain is not waiting on a turn or has held them."""
-        if self.home is None or self.pausing:
+        if self.home is None or self.pausing or not self.inbox:
             return []
         messages = talk.queued(self.home)
         if self.holding:
@@ -745,24 +750,33 @@ class Drive:
 
     # -- what the agent asks -----------------------------------------------------------------------------------
 
-    def asked(self, what: str, text: str, options: list[str]) -> tuple[str, dict[str, Any]]:
+    def asked(self, what: str, text: str, options: list[str],
+              tool: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         self.asks += 1
         ident = f"ask-{self.asks}"
-        answer = ruling({"id": ident, "what": what, "text": text, "options": options})
+        # Which slice asked, and what it would touch: what a captain answering in the rule's place needs.
+        answer = ruling({"id": ident, "what": what, "text": text, "options": options, "tool": tool,
+                         "slice": self.env.get("SLIPWAI_SLICE", ""), "fairway": self.env.get("SLIPWAI_FAIRWAY", ""),
+                         "root": str(self.cwd)})
         if self.home is not None:
             talk.note(self.home, "ask", id=ident, what=what, text=text, options=options)
             said = ("allowed" if answer.get("allow") else "refused") if what == "permission" else str(answer.get("action"))
-            talk.note(self.home, "answer", to=ident, by="rule", text=f"{said}: {answer.get('why', '')}")
+            talk.note(self.home, "answer", to=ident, by=str(answer.get("by") or "rule"),
+                      text=f"{said}: {answer.get('why', '')}")
         return ident, answer
 
     def refuse(self, tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | None:
         title = str(tool_call.get("title") or "a tool call")
-        _, answer = self.asked("permission", title, [str(one.get("kind", "")) for one in options])
+        places = [str(one.get("path")) for one in tool_call.get("locations") or [] if isinstance(one, dict) and one.get("path")]
+        _, answer = self.asked("permission", title, [str(one.get("kind", "")) for one in options],
+                               {"title": title, "kind": str(tool_call.get("kind") or ""), "locations": places})
         wanted = "allow_once" if answer.get("allow") else "reject_once"
         say(f"session: {'allowed' if answer.get('allow') else 'refused'} {title} — {answer.get('why', '')}")
         return next((str(one["optionId"]) for one in options if one.get("kind") == wanted and "optionId" in one), None)
 
     def decline(self, params: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
         _, answer = self.asked("question", str(params.get("message") or ""), [])
-        say(f"session: declined a question — {params.get('message') or ''} — {answer.get('why', '')}")
-        return str(answer.get("action") or "decline"), None
+        action = str(answer.get("action") or "decline")
+        say(f"session: {'answered' if action == 'accept' else 'declined'} a question — {params.get('message') or ''} "
+            f"— {answer.get('why', '')}")
+        return action, answer.get("content") if action == "accept" else None

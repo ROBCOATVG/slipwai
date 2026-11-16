@@ -68,6 +68,8 @@ SIGNED = ("id", "t", "from", "kind", "text", "mode", "of", "via")
 #: The shortest key believed: a file emptied or cut short makes every message unsigned, so it is made again.
 KEY_BYTES = 32
 UNSIGNED = "it is not signed by the board or the fleet for this slice"
+#: Why a message signed before the key was made again cannot be delivered, said with its text kept.
+REKEYED = "the board's key changed before this was delivered: send it again"
 #: One lock for every thread file this process appends to and every cached read of one: a slice's driver and
 #: the captain acting for a closed one are two threads of one process, and the rule is one writer.
 WRITING = threading.RLock()
@@ -106,7 +108,10 @@ def key_trouble(path: Path) -> str:
         return "missing"
     if stat.S_ISLNK(held.st_mode) or not stat.S_ISREG(held.st_mode):
         return f"{path} is not a plain file"
-    if held.st_mode & 0o077:
+    # Windows (this runs there under Git Bash) has no such modes: `st_mode` always reads as open to everybody,
+    # so the check would refuse every key it ever made. There a key is held by where it is — the user's own
+    # profile — and the mode says nothing either way, so it is not asked.
+    if os.name != "nt" and held.st_mode & 0o077:
         return f"{path} can be read by others (mode {stat.S_IMODE(held.st_mode):o}), so the board did not write it"
     if hasattr(os, "getuid") and held.st_uid != os.getuid():
         return f"{path} belongs to another user"
@@ -135,6 +140,10 @@ def ready(run: Path) -> str:
             os.link(aside, path)  # the first to place it wins, and every sender then reads the same key
     except FileExistsError:
         pass
+    except OSError as fault:
+        # A file system that takes no hard link, or a folder gone read-only: said, and the run goes on without
+        # messages rather than not at all.
+        return f"the conversation key could not be placed at {path} ({fault})"
     finally:
         aside.unlink(missing_ok=True)
     return key_trouble(path)
@@ -243,8 +252,19 @@ def refused(home: Path) -> list[tuple[Path, str]]:
         if str(message["id"]) in done:
             out.append((path, "it was handled already"))
         elif not genuine(home, message):
-            out.append((path, UNSIGNED))
+            out.append((path, REKEYED if rekeyed(home, message) else UNSIGNED))
     return out
+
+
+def rekeyed(home: Path, message: dict[str, Any]) -> bool:
+    """Whether a signed message failed only because the key was made again after it was sent: it carries a
+    signature and is older than the key. A signed message copied in from elsewhere is newer, and stays a
+    forgery."""
+    try:
+        made = datetime.fromtimestamp(key_path(home).stat().st_mtime, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except OSError:
+        return False
+    return bool(message.get("sig")) and str(message.get("t", "")) < made
 
 
 def malformed(home: Path) -> list[Path]:
@@ -269,10 +289,16 @@ def settle(home: Path, ident: str) -> None:
 
 
 def reject(home: Path, path: Path, why: str = "it is not a message this reads") -> None:
-    """A file in the inbox that will not be delivered: moved aside, with a receipt saying so."""
+    """A file in the inbox that will not be delivered: moved aside, with a receipt saying so — and what it
+    said, where it said anything, so a message refused for a remade key can be sent again as it was."""
+    try:
+        held = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        held = None
+    text = str(held.get("text") or "") if isinstance(held, dict) else ""
     (path.parent / DONE).mkdir(exist_ok=True)
     os.replace(path, path.parent / DONE / f"{path.stem}.{secrets.token_hex(2)}.bad")
-    note(home, "failed", id=path.stem, why=why, refused=True)
+    note(home, "failed", id=path.stem, why=why, refused=True, text=text or None)
 
 
 def thread(home: Path) -> list[dict[str, Any]]:
@@ -351,11 +377,20 @@ def halted(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, 
     holds it only where a person made it; any other stop put it back in the queue."""
     last: tuple[str, str, str] = ("", "", "")
     for one in thread(home) if lines is None else lines:
-        kind = one.get("kind")
-        if kind == "resumed" or (kind == "stopped" and one.get("by") != PERSON):
+        kind, by = one.get("kind"), str(one.get("by", ""))
+        # A hold a person placed stands until a person lifts it, whatever anyone else says meanwhile: a
+        # captain's stop or pause on top of it is not a second hold, and its stop does not hand the slice
+        # back to the queue. A merge ends it as well, since a merged slice is held by nothing.
+        person_holds = last[1] == PERSON
+        if kind == "resumed":
+            if not person_holds or by in (PERSON, "merge"):
+                last = ("", "", "")
+        elif kind in ("paused", "stopped") and person_holds and by != PERSON:
+            continue
+        elif kind == "stopped" and by != PERSON:
             last = ("", "", "")
         elif kind in ("paused", "stopped"):
-            last = (str(kind), str(one.get("by", "")), str(one.get("why", "")))
+            last = (str(kind), by, str(one.get("why", "")))
     return last
 
 
@@ -392,14 +427,17 @@ def receipts(home: Path) -> list[dict[str, Any]]:
         mine = [one for one in lines if ident in (str(one.get("id", "")), str(one.get("to", "")))
                 and not one.get("refused")]
         kinds = [one["kind"] for one in mine]
+        # Verified when it was handled: a message the thread has a word about is read from the thread, and
+        # only one nobody has handled yet is held to the key — which may have been made again since.
+        handled_already = bool(mine)
         delivered = next((one for one in reversed(mine) if one["kind"] == "delivered"), None) \
             if ident in given else None
         reply = next((one for one in mine if one["kind"] == "reply"), None)
         failed = next((one for one in mine if one["kind"] == "failed"), None)
         held = next((one for one in reversed(mine) if one["kind"] == "held"), None)
         state, why = "queued", str(held.get("why", "")) if held else held_back
-        if not genuine(home, message):
-            state, why = "not delivered", UNSIGNED
+        if not handled_already and not genuine(home, message):
+            state, why = "not delivered", REKEYED if rekeyed(home, message) else UNSIGNED
         elif failed is not None and reply is None:
             state, why = "not delivered", str(failed.get("why", ""))
         elif kind != "say":
@@ -419,7 +457,7 @@ def receipts(home: Path) -> list[dict[str, Any]]:
     for one in lines:
         if one.get("kind") == "failed" and (one.get("refused") or one.get("malformed")):
             found.append({"id": str(one.get("id", "")), "kind": "", "t": str(one.get("t", "")), "from": "",
-                          "text": "", "mode": "wait", "state": "not delivered", "delivered": "", "reply": "",
+                          "text": str(one.get("text", "")), "mode": "wait", "state": "not delivered", "delivered": "", "reply": "",
                           "why": str(one.get("why", ""))})
     return found
 

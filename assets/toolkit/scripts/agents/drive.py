@@ -33,9 +33,9 @@ commit rides to trunk past the gate. A person's message is believed only where t
 fenced off in the prompt. The agent runs in a process group of its own, ended when the captain exits, and
 its pid is kept beside the conversation for the next captain to end where this one was killed outright.
 
-The protocol is the default — `sessions: auto` in `.specify/cruise.json`, or nothing said — where the
-harness print mode would run has a launch the registry marks proven and this machine can make; `print`
-keeps print mode, `protocol` asks for it on any launch row, and `SLIPWAI_ACP` in the environment says first — `1` for the initialised
+The protocol is taken under `sessions: auto` in `.specify/cruise.json` where the harness print mode would
+run has a launch the registry marks proven and this machine can make; a project that says nothing stays in
+print mode, as it was before `auto` (a project is never switched by migrating); `print` keeps print mode, `protocol` asks for it on any launch row, and `SLIPWAI_ACP` in the environment says first — `1` for the initialised
 harness's row, any other value the command that starts an agent (the suite's stand-in).
 """
 from __future__ import annotations
@@ -120,10 +120,13 @@ def alive(pid: int) -> bool:
 
 def identity(pid: int) -> str:
     """What says a pid is still the process it was: its start time and its command line, as `ps` gives them
-    on macOS and Linux. `''` where it cannot be read — and then nothing is signalled on its strength."""
+    on macOS and Linux. `''` where it cannot be read — and then nothing is signalled on its strength.
+
+    In the C locale, always: `lstart` is written in the locale's words (`Mo. 16 Nov.` under German), and a
+    captain restarted under another locale would otherwise never recognise the agent it is looking for."""
     try:
         done = subprocess.run(["ps", "-o", "lstart=", "-o", "command=", "-p", str(pid)], capture_output=True,
-                              text=True, timeout=5, check=False)
+                              text=True, timeout=5, check=False, env={**os.environ, "LC_ALL": "C", "LANG": "C"})
     except (OSError, subprocess.SubprocessError):
         return ""
     return " ".join(done.stdout.split()) if done.returncode == 0 else ""
@@ -141,12 +144,23 @@ def reap(conversations: Path) -> list[int]:
             pid, captain, was = int(held["pid"]), int(held["captain"]), str(held["identity"])
         except (OSError, ValueError, KeyError, TypeError):
             continue
-        if captain == os.getpid() or alive(captain):
+        if captain == os.getpid():
             continue
-        if was and alive(pid) and identity(pid) == was:
+        # The captain is still the captain only where it is the process that was recorded: a pid reused by
+        # something else after it died would otherwise keep its agent from ever being ended.
+        captain_was = str(held.get("captain_identity") or "")
+        if alive(captain) and (not captain_was or identity(captain) in (captain_was, "")):
+            continue
+        if not alive(pid):
+            path.unlink(missing_ok=True)
+            continue
+        now = identity(pid)
+        if not was or not now:
+            continue  # cannot tell: the record is kept for a captain that can
+        if now == was:
             end_group(pid)
             ended.append(pid)
-        path.unlink(missing_ok=True)
+        path.unlink(missing_ok=True)  # ended, or a definite stranger at the pid
     return ended
 
 
@@ -456,7 +470,8 @@ class Drive:
         child = self.session.child
         if self.home is not None and child is not None:
             self.home.mkdir(parents=True, exist_ok=True)
-            said = json.dumps({"pid": child.pid, "captain": os.getpid(), "identity": identity(child.pid)}) + "\n"
+            said = json.dumps({"pid": child.pid, "captain": os.getpid(), "identity": identity(child.pid),
+                               "captain_identity": identity(os.getpid())}) + "\n"
             (self.home / AGENT_PID).write_text(said, encoding="utf-8")
 
     def open(self) -> None:
@@ -562,6 +577,9 @@ class Drive:
         ident = str(message["id"])
         talk.note(self.home, "delivered", id=ident, mode=str(message.get("mode") or "wait"))
         before, self.message_since = branch_head(self.cwd), time.monotonic()
+        # Only a message delivered after the captain's turn ended can move the head under a gate already read:
+        # one delivered ahead of the captain's prompt is before the ladder's turn, which reads the head after it.
+        after_turn = self.outcome is not None
         try:
             stop = self.turn(message_prompt(message), ident)
         except Exception:
@@ -570,7 +588,7 @@ class Drive:
             raise
         finally:
             self.message_since = None
-            self.message_commits = self.message_commits or branch_head(self.cwd) != before
+            self.message_commits = self.message_commits or (after_turn and branch_head(self.cwd) != before)
         self.interrupting = ""
         words = self.text.strip()
         if self.silent:
@@ -621,8 +639,9 @@ class Drive:
             if pending_pause or lifts(self.home, by):
                 self.pausing = None
                 talk.note(self.home, "resumed", by=by)
-            else:
+            elif self.pausing is not None or talk.halted(self.home)[0]:
                 talk.note(self.home, "failed", id=ident, why="only a person lifts a hold a person placed")
+            # With nothing held a resume has nothing to lift: it is done, harmlessly, like any control read.
         elif kind == "withdraw":
             of = str(message.get("of") or "")
             if of not in talk.handed(talk.thread(self.home)):

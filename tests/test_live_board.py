@@ -241,7 +241,7 @@ class OnePollTest(BoardTest):
 
     def test_the_poll_carries_every_band_and_the_page_was_drawn_with_the_same_signatures(self) -> None:
         found = json.loads(self.get("/live.json")[1])
-        self.assertEqual(set(found["bands"]), {"look", "points", "work", "streams", "expect", "fleet"})
+        self.assertEqual(set(found["bands"]), {"look", "points", "work", "streams", "expect", "fleet", "captains"})
         page = self.get("/voyage")[1]
         for name, band in found["bands"].items():
             with self.subTest(band=name):
@@ -272,8 +272,8 @@ class OnePollTest(BoardTest):
     def test_a_post_drops_the_kept_read_so_the_next_poll_shows_what_was_done(self) -> None:
         with mock.patch.object(board_read, "KEEP", 60.0):
             self.get("/live.json")
-            self.post("/tell", {"fairway": "ORD", "message": "told from the page"})
-            self.assertIn("told from the page", json.loads(self.get("/live.json")[1])["bands"]["streams"]["html"])
+            self.post("/talk/all", {"message": "told from the page"})
+            self.assertIn("told from the page", json.loads(self.get("/live.json")[1])["bands"]["captains"]["html"])
 
 
 if __name__ == "__main__":

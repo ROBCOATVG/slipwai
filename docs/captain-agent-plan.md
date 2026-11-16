@@ -208,6 +208,12 @@ closing record carries what the decision took. A slice has at most `2 × attempt
 attempt between a person's words to it, counted at the dispatch from its `dispatched` deck lines, whoever
 asks for them.
 
+**The trust boundary.** Every check here is against the captain's agent and a slice's session acting
+through their tools; none is against a process of the same user writing the run folder directly. Such a
+process can append a `told` line `by: person`, clear a park, write a thread line, or read the keys, and only
+running sessions as another user stops it. So the program believes a `told` by a person as the line the
+board and `fleet.py tell` write, and builds no proof against a forged one.
+
 **The evals' entry point.** `python3 scripts/agents/captain_agent.py decide <event> [--bound N]` runs the
 captain under test named in `SLIPWAI_CAPTAIN` once with the event's path, in a throwaway project the evals laid
 out, and prints `{"exit", "timed_out", "tokens", "seconds", "orders"}`. It is not how a fleet runs a captain:

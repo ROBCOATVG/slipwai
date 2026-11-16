@@ -185,18 +185,16 @@ class RulesTest(HelmBase):
             for entry in entries:
                 out.write(entry.line())
 
-    def test_only_a_person_s_proved_word_gives_a_slice_its_runs_back(self) -> None:
+    def test_a_decision_gives_a_slice_no_runs_back_and_a_person_s_told_does(self) -> None:
         module = self.captain()
         old, later = "2026-11-16T09:00:00Z", "2026-11-16T09:05:00Z"
         self.deck(logs.entry("dispatched", fairway="ORD", slice="ORD-01", t=old),
                   logs.entry("decision", fairway="ORD", id="Q1", what="x", slice="ORD-01",
-                             decided_by="sail-decide-skipper", t=later),
-                  logs.entry("told", fairway="ORD", message="carry on", by="person", slice="ORD-01", t=later))
-        self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), 1, "a decision and an unproved told")
-        said = talk.send(talk.place(self.run_dir, "ORD", "ORD-01"), "say", "carry on")
-        self.deck(logs.entry("told", fairway="ORD", message="carry on", by="person", slice="ORD-01", inbox=said["id"],
+                             decided_by="sail-decide-skipper", t=later))
+        self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), 1, "a skipper's decision resets nothing")
+        self.deck(logs.entry("told", fairway="ORD", message="carry on", by="person", slice="ORD-01",
                              t="2026-11-16T09:06:00Z"))
-        self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), 0, "a person's word, proved by its message")
+        self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), 0, "a person's word, however it came")
 
     def test_a_project_that_says_nothing_has_a_captain_that_answers_nothing(self) -> None:
         agent = loaded(self.root, "captain_agent")

@@ -15,7 +15,7 @@ from urllib.parse import quote
 from . import talk
 from .fleet_page import first_sentence
 from .logs import run_dir
-from .talk_fold import last, open_asks, person_answers, seen, turns, unseen
+from .talk_fold import last, open_asks, person_answers, placed_for, seen, turns, unseen
 
 IN_FLIGHT = ("working", "queued", "waiting")
 
@@ -59,9 +59,16 @@ def summaries(root: Path, rows: list[dict[str, str]]) -> dict[str, dict[str, Any
     for slice_id, folded in talking(root, rows).items():
         fairway = by_slice[slice_id].get("fairway", "")
         waiting = open_asks(folded) if asks_you else []
+        folded = {**folded, "turns": placed_for(folded["turns"], by_slice[slice_id].get("state", ""))}
+        mine = [one for one in folded["turns"] if one["kind"] == "said" and one["who"] == "You"
+                and not one["steer"] and one["state"] == "queued"]
         found[slice_id] = {"last": last(folded), "new": unseen(root, fairway, slice_id, folded["heard"], kept),
                            "ask": waiting[0] if waiting else None, "halted": folded["halted"],
-                           "by": folded["by"], "how": folded["how"]}
+                           "by": folded["by"], "how": folded["how"],
+                           # The person's newest message still waiting: on a parked slice, their answer.
+                           "answer": {"id": mine[-1]["id"], "text": mine[-1]["text"], "t": mine[-1]["t"],
+                                      "line": mine[-1]["line"], "tone": mine[-1]["tone"],
+                                      "changeable": True} if mine else None}
     return found
 
 

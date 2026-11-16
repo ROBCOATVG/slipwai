@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from . import talk
 from .logs import run_dir
 
 SEEN = "seen.json"
+SEEING = threading.Lock()
 #: The thread's lines that speak to a person, which "seen" counts.
 HEARD = ("reply", "ask", "failed", "unaddressed")
 WHO_ANSWERS = ".specify/cruise.json"
@@ -75,7 +77,7 @@ def says(receipt: dict[str, Any], how: str) -> tuple[str, str]:
         if why:
             return f"Queued · {why}", "wait"
         if how == "print":
-            return "Queued · goes in when the slice next starts", "wait"
+            return PRINT_WAIT, "wait"
         if receipt.get("mode") == "interrupt":
             return "Queued · interrupts its turn", "wait"
         return "Queued · goes in when its current turn ends", "wait"
@@ -93,14 +95,65 @@ def says(receipt: dict[str, Any], how: str) -> tuple[str, str]:
     return "Done", "quiet"
 
 
+PRINT_WAIT = "Queued · goes in when the captain next starts it; if it merges first, it is not delivered"
+#: What a waiting message will meet, by where its slice is: a message's turn needs a session, and a slice
+#: parked, queued for a slot or merged has none open.
+WHERE = {"done": "Queued · this slice has merged, so it will not be delivered: its captain says so when it "
+                 "next looks",
+         "waiting": "Queued · it is parked: its captain takes a person's message as the answer to the park",
+         "queued": "Queued · goes in when the slice next starts",
+         "todo": "Queued · goes in when the slice first starts"}
+
+
+def placed_for(found: list[dict[str, Any]], where: str) -> list[dict[str, Any]]:
+    """The turns with each plainly waiting message said as what it will meet where its slice now is."""
+    if where not in WHERE:
+        return found
+    return [{**one, "line": WHERE[where]} if one["kind"] == "said" and one["state"] == "queued"
+            and not one.get("held") and not one["steer"] else one for one in found]
+
+
 def answer_of(lines: list[dict[str, Any]], ident: str) -> dict[str, Any] | None:
     return next((one for one in reversed(lines) if one.get("kind") == "answer" and str(one.get("to")) == ident), None)
+
+
+#: Each conversation's fold, kept by what its files were when it was made: a poll every few seconds of a
+#: long thread that has not moved is then a few `stat`s, not every message read and every receipt folded.
+FOLDED: dict[Path, tuple[tuple, dict[str, Any]]] = {}
+FOLDING = threading.Lock()
+
+
+def stamp_of(home: Path) -> tuple:
+    """What the conversation's files are now: the thread's size and time, the inbox's and `done/`'s, the key's."""
+    found: list[tuple[int, int] | None] = []
+    for path in (home / "thread.jsonl", home / "inbox", home / "inbox" / talk.DONE, talk.key_path(home)):
+        try:
+            held = path.stat()
+            found.append((held.st_size, held.st_mtime_ns))
+        except OSError:
+            found.append(None)
+    return tuple(found)
 
 
 def turns(home: Path) -> dict[str, Any]:
     """Everything in one conversation, oldest first, ready to draw: `said` (a message and its receipt),
     `ask` (what the agent asked, and its answer where it has one), `note` (a pause, a resume, a stop and
-    who made it) — with how messages reach it, what holds it, and how many lines speak to a person."""
+    who made it) — with how messages reach it, what holds it, and how many lines speak to a person. Kept
+    while its files stay as they were; a caller reads it and never changes it."""
+    now = stamp_of(Path(home))
+    with FOLDING:
+        kept = FOLDED.get(Path(home))
+        if kept is not None and kept[0] == now:
+            return kept[1]
+    made = fold(Path(home))
+    with FOLDING:
+        FOLDED[Path(home)] = (now, made)
+        while len(FOLDED) > 512:
+            FOLDED.pop(next(iter(FOLDED)))
+    return made
+
+
+def fold(home: Path) -> dict[str, Any]:
     lines = talk.thread(home)
     how = held_open(lines)
     messages = {str(one["id"]): one for one in talk.inbox(home)}
@@ -116,7 +169,8 @@ def turns(home: Path) -> dict[str, Any]:
         text = (STEER_SAID[steer] + (f": {receipt['text']}" if receipt["text"] else "")) if steer else receipt["text"]
         found.append({"kind": "said", "t": receipt["t"], "id": receipt["id"], "who": who(message) if message else
                       "A file in its inbox", "text": text, "steer": steer, "state": receipt["state"],
-                      "line": line, "tone": tone, "reply": receipt["reply"], "of": str(message.get("of", ""))})
+                      "line": line, "tone": tone, "reply": receipt["reply"], "of": str(message.get("of", "")),
+                      "held": bool(receipt["why"])})
     for one in lines:
         kind = one.get("kind")
         if kind == "ask":
@@ -187,15 +241,16 @@ def seen(root: Path) -> dict[str, int]:
 def see(root: Path, fairway: str, slice_id: str, count: int) -> int:
     """Record that a window showed this conversation up to `count` of its lines; never backwards."""
     talk.place(run_dir(root), fairway, slice_id or talk.CAPTAIN)  # the names, checked as a conversation's
-    held = seen(root)
-    key = f"{fairway}/{slice_id or talk.CAPTAIN}"
-    held[key] = max(held.get(key, 0), max(0, int(count)))
-    path = seen_path(root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    aside = path.with_name(f".{SEEN}.{os.getpid()}.part")
-    aside.write_text(json.dumps(held, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(aside, path)
-    return held[key]
+    with SEEING:  # two windows showing threads at once read, change and write the one record in turn
+        held = seen(root)
+        key = f"{fairway}/{slice_id or talk.CAPTAIN}"
+        held[key] = max(held.get(key, 0), max(0, int(count)))
+        path = seen_path(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        aside = path.with_name(f".{SEEN}.{os.getpid()}.{threading.get_ident()}.part")
+        aside.write_text(json.dumps(held, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(aside, path)
+        return held[key]
 
 
 def unseen(root: Path, fairway: str, slice_id: str, count: int, kept: dict[str, int] | None = None) -> int:

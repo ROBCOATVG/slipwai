@@ -116,7 +116,9 @@ def decided_today(root: Path, fairway: str) -> list[dict[str, str]]:
     for one in orders(root, fairway):
         if not today(one["t"]):
             continue
-        said = VERBS.get(one["verb"], one["verb"] or "An order").format(slice=one["slice"] or "a slice")
+        # The sentence is ours and the slice only fills it: an order's own words are never the template.
+        known = VERBS.get(one["verb"])
+        said = known.replace("{slice}", one["slice"] or "a slice") if known else (one["verb"] or "An order")
         said += f": {one['text']}" if one["text"] else ""
         refused = f"refused: {one['why']}" if one["why"] else "refused"
         after = {"done": "done", "refused": refused}.get(one["result"], "")
@@ -129,16 +131,25 @@ def decided_today(root: Path, fairway: str) -> list[dict[str, str]]:
     return sorted(lines, key=lambda one: one["t"], reverse=True)
 
 
-def routed(root: Path, fairway: str, ident: str) -> list[str]:
-    """The slices a captain sent a message on to, by the id of what it routed: its orders that name it, and
-    the messages in its slices' inboxes that carry it (`via` the captain, `of` the id)."""
-    named = [one["slice"] for one in orders(root, fairway)
-             if one["of"] == ident and one["slice"] and one["result"] != "refused"]
+def routes(root: Path, fairway: str) -> dict[str, list[str]]:
+    """Where a captain sent each message on, by the id of what it routed — its orders that name it, and the
+    messages in its slices' inboxes that carry it (`via` the captain, `of` the id) — read once for them all."""
+    found: dict[str, list[str]] = {}
+    for one in orders(root, fairway):
+        if one["of"] and one["slice"] and one["result"] != "refused":
+            found.setdefault(one["of"], []).append(one["slice"])
     for slice_id in talk.conversations(run_dir(root), fairway):
-        if slice_id != talk.CAPTAIN and any(str(one.get("of", "")) == ident and str(one.get("via", ""))
-                                            for one in talk.inbox(talk.place(run_dir(root), fairway, slice_id))):
-            named.append(slice_id)
-    return list(dict.fromkeys(named))
+        if slice_id == talk.CAPTAIN:
+            continue
+        for one in talk.inbox(talk.place(run_dir(root), fairway, slice_id)):
+            if one.get("of") and one.get("via"):
+                found.setdefault(str(one["of"]), []).append(slice_id)
+    return {ident: list(dict.fromkeys(named)) for ident, named in found.items()}
+
+
+def routed(root: Path, fairway: str, ident: str) -> list[str]:
+    """The slices a captain sent one message on to."""
+    return routes(root, fairway).get(ident, [])
 
 
 def said_to_you(root: Path, fairway: str) -> list[dict[str, str]]:

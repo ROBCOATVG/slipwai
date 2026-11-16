@@ -27,7 +27,8 @@ from .page_shell import esc
 from .slice_rungs import AHEAD, COUNTED, instant
 from .talk_card import card_html as talk_html
 from .talk_card import fields as talk_fields
-from .talk_card import marker_html
+from .talk_card import held, marker_html
+from .talk_marks import placed_html
 
 #: The steps a chip word says no more than: `Implementing` on Build is Build.
 PLAIN = {"Example mapping", "Starting", "Planning", "Implementing", "Demo", "Review", "Merging"}
@@ -291,20 +292,21 @@ def answer_html(row: dict[str, str]) -> str:
     """What a slice waiting on a person waits for, and a box to answer it, inside its opened card.
 
     The answer box was a stream's, further down, and a stream with three slices parked on three questions
-    got one box. Opened, the card says the park and each open question, and what is typed goes to that slice
-    — a `told` naming it, which clears its park and no sibling's, and which the captain records as the
-    answer to its questions when it carries the slice on.
+    got one box. Opened, the card says the park and each open question, and what is typed goes to that slice's inbox
+    — whatever the park's own fields name, the card is the slice's — where its captain takes a person's message
+    as the answer to the park, clearing it and no sibling's. Once sent, the answer stands where the box was,
+    with where it is and Change my answer (`talk_marks`).
     """
     asked = "".join(f"<li>{esc(one)}</li>" for one in row.get("asked", "").splitlines() if one.strip())
     questions = f'<ol class="asked">{asked}</ol>' if asked else ""
     park = row.get("park") or row.get("why", "")
     box = f'answer-{row["slice"]}'
-    target = row["slice"] if row.get("aim") else f'the {row["fairway"]} stream'
-    return (f'<p class="park">{esc(park)}</p>{questions}'
-            f'<textarea id="{esc(box)}" rows="4" placeholder="Your answer, or what {esc(row["slice"])} needs to '
-            f'know"></textarea>'
-            f'<button type="button" data-answer="{esc(row["fairway"])}" data-slice="{esc(row.get("aim", ""))}" '
-            f'data-box="{esc(box)}">Send to {esc(target)}</button>')
+    given = (held(row).get("answer") or None) if row.get("talk") else None
+    return (f'<p class="park">{esc(park)}</p>{questions}{placed_html(given, box)}'
+            f'<div class="ask"{" hidden" if given else ""}><textarea id="{esc(box)}" rows="4" placeholder="Your '
+            f'answer, or what {esc(row["slice"])} needs to know"></textarea>'
+            f'<button type="button" class="go" data-answer="{esc(row["fairway"])}" data-slice="{esc(row["slice"])}" '
+            f'data-box="{esc(box)}">Send to {esc(row["slice"])}</button></div>')
 
 
 def slice_html(row: dict[str, str]) -> str:

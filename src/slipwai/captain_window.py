@@ -17,18 +17,16 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from . import talk
 from .board_read import read
-from .captain_files import agent, decided_today, routed, said_to_you
+from .captain_files import agent, decided_today, routes, said_to_you
 from .deck import feature_of
 from .live_page import window_address
 from .page_shell import document, esc
 from .slice_card import chip_of, step_now
 from .talk_fold import clock
 from .talk_page import SCRIPT as TALK_SCRIPT
+from .talk_page import SHOWN, pane, payload
 from .talk_page import STYLE as TALK_STYLE
-from .talk_page import pane, payload
-from .talk_said import home
 
 STYLE = TALK_STYLE + """
 .cap-win{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;align-items:start}
@@ -98,18 +96,15 @@ def talk_parts(root: Path, fairway: str) -> tuple[list[dict[str, Any]], dict[str
     went; and how many lines speak to a person beyond the thread's."""
     extra = [{"kind": "agent", "t": one["t"], "who": f"Captain · {fairway}" + (" asks" if one["verb"] == "ask" else ""),
               "text": one["text"]} for one in said_to_you(root, fairway)]
-    sent = {}
-    for message in talk.inbox(home(root, fairway)):
-        went = routed(root, fairway, str(message["id"]))
-        if went:
-            sent[str(message["id"])] = f"went to {', '.join(went)}"
+    went = routes(root, fairway)
+    sent = {ident: f"went to {', '.join(named)}" for ident, named in went.items() if named}
     return extra, sent, len(extra)
 
 
-def window_payload(root: Path, fairway: str) -> str:
+def window_payload(root: Path, fairway: str, limit: int = SHOWN) -> str:
     kept = read(root)
     extra, sent, said = talk_parts(root, fairway)
-    found = payload(root, fairway, "", extra, sent, said)
+    found = payload(root, fairway, "", extra, sent, said, limit)
     found.update(slices=slices_html(kept.rows, fairway), decided=decided_html(root, fairway))
     return json.dumps(found, ensure_ascii=False)
 

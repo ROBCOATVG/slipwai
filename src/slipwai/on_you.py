@@ -171,7 +171,7 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
     # Said to a stream in its captain's window now, where the receipt and the captain's routing are shown.
     links = " · ".join(f'<a href="{esc(captain_window(one))}" target="_blank" rel="noopener">Captain · {esc(one)}</a>'
                        for one in streams)
-    told = (f'<h3>Say something to a stream</h3><p class="talk-to">Open its captain\'s window: {links}</p>'
+    told = (f'<h3>Talk to a stream\'s captain</h3><p class="talk-to">{links}</p>'
             if links else "")
     return (f'<div class="card" id="from-streams"><h2>From the streams</h2><p class="empty">What each stream '
             f"has asked of you or left for you, answered from here. Notes and unread decisions hold nothing up, "

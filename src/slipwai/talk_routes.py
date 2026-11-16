@@ -15,10 +15,12 @@ from urllib.parse import unquote
 from . import talk
 from .captain_window import page as captain_page
 from .captain_window import window_payload as captain_payload
+from .captains_strip import heard as captain_heard
 from .seats import parameter
+from .talk_fold import heard as thread_heard
 from .talk_fold import see
-from .talk_page import dumps, payload
-from .talk_said import answer, home, say, steer, tell, tell_every_captain
+from .talk_page import SHOWN, dumps, payload
+from .talk_said import answer, home, receipt_line, say, steer, tell, tell_every_captain
 
 JSON = "application/json; charset=utf-8"
 TEXT = "text/plain; charset=utf-8"
@@ -27,13 +29,15 @@ TEXT = "text/plain; charset=utf-8"
 def route_get(board: Any, where: str, query: str) -> bool:
     """A conversation's poll, or a captain's window; or say it was not one of these."""
     fairway, named = unquote(parameter(query, "fairway")), unquote(parameter(query, "slice"))
+    asked = parameter(query, "limit")
+    limit = min(int(asked), 20000) if asked.isdigit() else SHOWN
     try:
         if where == "/talk.json":
-            board.send(200, dumps(payload(board.root, fairway, named)), JSON)
+            board.send(200, dumps(payload(board.root, fairway, named, limit=limit)), JSON)
         elif where == "/captain-window":
             board.send(*captain_page(board.root, fairway))
         elif where == "/captain-window.json":
-            board.send(200, captain_payload(board.root, fairway), JSON)
+            board.send(200, captain_payload(board.root, fairway, limit), JSON)
         else:
             return False
     except ValueError as fault:
@@ -55,12 +59,15 @@ def route_post(board: Any, where: str, held: dict[str, Any]) -> bool:
     fairway, slice_id = str(held.get("fairway", "")), str(held.get("slice", "") or "")
     if where == "/tell":
         mode = "interrupt" if held.get("mode") == "interrupt" else "wait"
-        said = (answer(root, fairway, str(held["question"]), str(held.get("message", ""))) if held.get("question")
-                else tell(root, fairway, str(held.get("message", "")), slice_id, mode=mode))
+        replaces = str(held.get("replaces", "") or "")
+        said = (answer(root, fairway, str(held["question"]), str(held.get("message", "")), replaces)
+                if held.get("question") else
+                tell(root, fairway, str(held.get("message", "")), slice_id, mode=mode, of=str(held.get("of", "") or ""),
+                     replaces=replaces))
     elif where == "/talk/say":
         mode = "interrupt" if held.get("mode") == "interrupt" else "wait"
         sent = say(root, fairway, slice_id, str(held.get("text", "")), mode, talk.PERSON, str(held.get("of", "")))
-        said = f"told {slice_id or f'the {fairway} captain'} · message {sent['id']}"
+        said = receipt_line(root, fairway, slice_id, sent)
     elif where == "/talk/steer":
         sent = steer(root, fairway, slice_id, str(held.get("kind", "")), str(held.get("why", "")),
                      str(held.get("of", "")))
@@ -73,13 +80,16 @@ def route_post(board: Any, where: str, held: dict[str, Any]) -> bool:
         sent = say(root, fairway, slice_id, str(was.get("text", "")),
                    "interrupt" if where == "/talk/interrupt" else str(was.get("mode") or "wait"), talk.PERSON,
                    str(was.get("of", "")))
-        said = f"told {slice_id or fairway} again · message {sent['id']}"
+        said = receipt_line(root, fairway, slice_id, sent)
     elif where == "/talk/seen":
         try:
             count = int(held.get("heard", 0))
         except (TypeError, ValueError):
             raise ValueError("`heard` is how many lines the window showed") from None
-        said = str(see(root, fairway, slice_id, count))
+        # Never more than the conversation holds: a count past it would silence the marker for good.
+        most = (thread_heard(talk.thread(home(root, fairway, slice_id))) if slice_id
+                else captain_heard(root, fairway))
+        said = str(see(root, fairway, slice_id, min(count, most)))
     elif where == "/talk/all":
         record = tell_every_captain(root, str(held.get("message", "")))
         board.send(200, json.dumps(record, ensure_ascii=False), JSON)

@@ -19,7 +19,9 @@ from .page_shell import esc
 from .talk_card import SCRIPT as CARD_SCRIPT
 from .talk_card import STYLE as CARD_STYLE
 from .talk_fold import heard as thread_heard
-from .talk_fold import says, seen, unseen
+from .talk_fold import seen, unseen
+from .talk_placed import running
+from .talk_placed import said as placed_said
 from .talk_said import every_stream, home, told_all
 from .talk_waits import captain_window
 
@@ -93,15 +95,14 @@ def heard(root: Path, fairway: str) -> int:
     return thread_heard(talk.thread(home(root, fairway))) + len(said_to_you(root, fairway))
 
 
-def told_lines(root: Path, record: dict[str, Any]) -> str:
-    """Under a "Tell every captain": each captain's receipt, and the slices it sent the message on to."""
+def told_lines(root: Path, record: dict[str, Any], live: bool) -> str:
+    """Under a "Tell every captain": where each captain's copy honestly stands, and the slices it went to."""
     lines = ""
     for fairway, ident in sorted(record["ids"].items()):
         try:
-            receipt = next((one for one in talk.receipts(home(root, fairway)) if one["id"] == ident), None)
+            said, tone = placed_said(root, fairway, "", str(ident), live)
         except ValueError:
             continue
-        said, tone = says(receipt, "") if receipt else ("Not found in its inbox", "bad")
         went = routed(root, fairway, str(ident))
         if went:
             said, tone = f"{said} · went to {', '.join(went)}", "good"
@@ -127,7 +128,8 @@ def strip_html(root: Path, rows: list[dict[str, str]], held: set[str]) -> str:
                     f'rel="noopener"><b>Captain · {esc(fairway)}{mark}</b>'
                     f"<span>{esc(state(rows, fairway, held))}</span></a>")
     records = told_all(root)
-    told = "".join(told_lines(root, one) for one in records)
+    live = running(root)
+    told = "".join(told_lines(root, one, live) for one in records)
     tell = (f'<details id="tell-every"{" open" if records else ""}><summary>Tell every captain</summary>'
             f'<div class="all"><label for="tell-all">One message to every captain. Each works out which of its own '
             f"slices it is for, and its line below says where it went.</label><div class=\"ask\">"

@@ -18,8 +18,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .board_read import read
 from .page_shell import esc
-from .talk_fold import person_answers, turns
+from .talk_fold import person_answers, placed_for, turns
 from .talk_said import home
 from .turn_cards import STYLE as CARDS
 
@@ -77,7 +78,7 @@ SCRIPT = r"""
 (function(){
   const talk = document.querySelector('section.talk[data-talk]');
   if (!talk) return;
-  const fairway = talk.dataset.fairway, slice = talk.dataset.slice || '', poll = talk.dataset.poll;
+  const fairway = talk.dataset.fairway, slice = talk.dataset.slice || '';
   const log = talk.querySelector('[data-talk-log]'), state = talk.querySelector('[data-talk-state]');
   const box = talk.querySelector('textarea[data-talk-text]'), fault = talk.querySelector('.fault');
   let shown = 0;
@@ -114,7 +115,7 @@ SCRIPT = r"""
   const refresh = async () => {
     clearTimeout(timer);
     let found;
-    try { found = await (await fetch(poll)).json(); }
+    try { found = await (await fetch(talk.dataset.poll)).json(); }
     catch (fault) { timer = setTimeout(refresh, 8000); return; }
     swap(log, found.log, found.log_said);
     swap(state, found.state, found.state_said);
@@ -147,6 +148,14 @@ SCRIPT = r"""
       steer.disabled = false;
       return;
     }
+    if (event.target.closest('[data-talk-earlier]')) {
+      const url = new URL(talk.dataset.poll, location.href);
+      url.searchParams.set('limit', String(Number(url.searchParams.get('limit') || 200) + 200));
+      talk.dataset.poll = url.pathname + url.search;
+      log.dataset.said = '';
+      refresh();
+      return;
+    }
     const withdraw = event.target.closest('[data-talk-withdraw]');
     if (withdraw) {
       withdraw.disabled = true;
@@ -169,6 +178,10 @@ SCRIPT = r"""
   timer = setTimeout(refresh, 3000);
 })();
 """
+
+
+#: How many turns a window draws at first; "Show earlier" draws as many again.
+SHOWN = 200
 
 
 def signature(drawn: str) -> str:
@@ -216,12 +229,13 @@ def ask_html(one: dict[str, Any], name: str, asks_you: bool, mine: dict[str, dic
     if kind == "permission":
         under = '<span class="small">Its captain rules on this; nothing here waits on you.</span>'
     elif not asks_you:
-        under = ('<span class="small">The skipper answers product questions in this project; nothing waits on '
-                 "you.</span>")
+        under = ('<span class="small">This fleet is cruising, so it answers product questions itself — the '
+                 "stage's recommendation or the skipper — and nothing waits on you.</span>")
     else:
         picks = "".join(f'<button type="button" data-ask-pick="{esc(option)}">{esc(option)}</button>'
                         for option in one["options"])
-        under = (f'<span class="small">Waiting on you: the project says a person answers its product questions.'
+        under = (f'<span class="small">Waiting on you: this run is not cruising, so a person answers its product '
+                 f"questions."
                  f'</span><span class="ans">{f"<span class=buttons>{picks}</span>" if picks else ""}'
                  f'<textarea rows="2" aria-label="Your answer to {esc(name)}"></textarea>'
                  f'<span class="buttons"><button type="button" class="allow" data-ask-send>Answer</button></span>'
@@ -231,13 +245,15 @@ def ask_html(one: dict[str, Any], name: str, asks_you: bool, mine: dict[str, dic
 
 
 def log_html(folded: dict[str, Any], name: str, asks_you: bool, extra: list[dict[str, Any]] | None = None,
-             routed: dict[str, str] | None = None) -> str:
-    """The turns, oldest first; `extra` are turns from elsewhere (a captain's own words), `routed` a line
-    beside a message saying where its captain sent it."""
+             routed: dict[str, str] | None = None, limit: int = SHOWN) -> str:
+    """The newest `limit` turns, oldest first, with a way to the earlier ones; `extra` are turns from
+    elsewhere (a captain's own words), `routed` a line beside a message saying where its captain sent it."""
     every = sorted(folded["turns"] + list(extra or []), key=lambda one: one["t"])
     mine = {one["id"]: one for one in every if one["kind"] == "said"}
-    drawn = ""
-    for one in every:
+    earlier = max(0, len(every) - limit)
+    drawn = (f'<p class="turn note"><button type="button" data-talk-earlier>Show {min(earlier, SHOWN)} earlier'
+             f"</button> of {earlier} not shown</p>") if earlier else ""
+    for one in every[earlier:]:
         if one["kind"] == "said":
             drawn += said_html(one, name, folded["how"], (routed or {}).get(one["id"], ""))
         elif one["kind"] == "ask":
@@ -293,13 +309,20 @@ def box_html(name: str, slice_id: str) -> str:
             f"is open. Until then a message goes in when the slice starts.</span></span></div>")
 
 
+def where_of(root: Path, fairway: str, slice_id: str) -> str:
+    """Where the slice is now — `working`, `waiting` (parked), `queued`, `todo`, `done` — off the board's read."""
+    return next((str(row.get("state", "")) for row in read(root).rows
+                 if row.get("slice") == slice_id and row.get("fairway") == fairway), "") if slice_id else ""
+
+
 def payload(root: Path, fairway: str, slice_id: str, extra: list[dict[str, Any]] | None = None,
-            routed: dict[str, str] | None = None, said: int = 0) -> dict[str, Any]:
+            routed: dict[str, str] | None = None, said: int = 0, limit: int = SHOWN) -> dict[str, Any]:
     """What the window's poll is given: the turns and the controls drawn, each with its signature, how the
     slice is reached, and how many lines speaking to a person it now shows."""
     folded = turns(home(root, fairway, slice_id))
+    folded = {**folded, "turns": placed_for(folded["turns"], where_of(root, fairway, slice_id))}
     name = slice_id or f"Captain · {fairway}"
-    log = log_html(folded, name, person_answers(root), extra, routed)
+    log = log_html(folded, name, person_answers(root), extra, routed, limit)
     state = steer_html(folded) if slice_id else ""
     return {"log": log, "log_said": signature(log), "state": state, "state_said": signature(state),
             "how": folded["how"], "heard": folded["heard"] + said}

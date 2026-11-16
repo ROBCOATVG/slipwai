@@ -22,18 +22,22 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 from pathlib import Path
 from typing import Any
 
 from . import talk
 from .deck import entries, feature_of, streams
 from .logs import run_dir
+from .talk_placed import said
 
 #: Where the board keeps the little it records about conversations, under the run folder: what a person has
 #: seen, and each "Tell every captain".
 BOARD = "board"
 TOLD_ALL = "told-all.jsonl"
 SLICE = re.compile(r"[A-Za-z0-9_.-]{1,40}")
+#: One writer at a time for the board's own small records, which two windows can write at once.
+WRITING = threading.Lock()
 STEERS = ("pause", "resume", "stop", "withdraw")
 
 
@@ -76,17 +80,32 @@ def steer(root: Path, fairway: str, slice_id: str, kind: str, why: str = "", of:
     return talk.send(home(root, fairway, slice_id), kind, why, by=talk.PERSON, of=of)
 
 
-def receipt_line(message: dict[str, Any], to: str) -> str:
-    """What a route answers: who it went to, and the id its receipt is followed by."""
-    return f"told {to} · message {message['id']}"
+def receipt_line(root: Path, fairway: str, slice_id: str, message: dict[str, Any]) -> str:
+    """What a route answers: where the message went, where it honestly stands, and the id to follow it by —
+    never "told" for something nothing has read yet."""
+    line, _ = said(root, fairway, slice_id, str(message["id"]))
+    return f"{slice_id or f'the {fairway} captain'}: {line} · message {message['id']}"
 
 
-def tell(root: Path, fairway: str, message: str, slice_id: str = "", by: str = "", mode: str = "wait") -> str:
-    """The board's one way to say something to a stream: to the slice named, or to the stream's captain."""
+def replace(root: Path, fairway: str, slice_id: str, was: str) -> None:
+    """Take back an answer not yet read, so the one that follows it stands in its place."""
+    if was:
+        old = next((one for one in talk.inbox(home(root, fairway, slice_id)) if str(one["id"]) == was), None)
+        if old is None or old.get("from") != talk.PERSON:
+            raise ValueError(f"{slice_id or fairway} has no answer {was} of yours to change")
+        steer(root, fairway, slice_id or talk.CAPTAIN, "withdraw", of=was)
+
+
+def tell(root: Path, fairway: str, message: str, slice_id: str = "", by: str = "", mode: str = "wait",
+         of: str = "", replaces: str = "") -> str:
+    """The board's one way to say something to a stream: to the slice named, or to the stream's captain. `of`
+    names what it answers (`park:<instant>`), and `replaces` an answer of the person's it takes back."""
     if not fairway or not message.strip():
         raise ValueError("a message needs a stream to go to and something to say")
-    sent = say(root, fairway, slice_id, message, mode, by)
-    return receipt_line(sent, slice_id or f"the {fairway} captain")
+    known(root, fairway)
+    replace(root, fairway, slice_id, replaces)
+    sent = say(root, fairway, slice_id, message, mode, by, of)
+    return receipt_line(root, fairway, slice_id, sent)
 
 
 def asked_by(root: Path, fairway: str, question: str) -> str:
@@ -98,20 +117,20 @@ def asked_by(root: Path, fairway: str, question: str) -> str:
     return str(asked[-1].fields.get("slice") or "")
 
 
-def answer(root: Path, fairway: str, question: str, message: str) -> str:
+def answer(root: Path, fairway: str, question: str, message: str, replaces: str = "") -> str:
     """A person's answer to a question: to the slice that asked it, where the captain carries it to the park
-    and records the decision when it carries the slice on; to the captain where no slice asked it."""
+    and records the decision when it carries the slice on; to the captain where no slice asked it. It carries
+    `question:<id>`, which is how the question's row shows it was answered."""
     if not fairway or not message.strip():
         raise ValueError("an answer needs a stream to go to and something to say")
     if not SLICE.fullmatch(question):
         raise ValueError(f"{question!r} is not a question's id")
     known(root, fairway)
     named = asked_by(root, fairway, question)
-    if named and not SLICE.fullmatch(named):
-        named = ""  # a question asked of the chart or the stream as a whole goes to its captain
     words = message if named else f"Answer to {question}: {message.strip()}"
-    sent = say(root, fairway, named, words, by=talk.PERSON)
-    return f"answered {question} · message {sent['id']}"
+    replace(root, fairway, named, replaces)
+    sent = say(root, fairway, named, words, by=talk.PERSON, of=f"question:{question}")
+    return f"answered {question} · " + receipt_line(root, fairway, named, sent)
 
 
 def told_all_path(root: Path) -> Path:
@@ -121,6 +140,10 @@ def told_all_path(root: Path) -> Path:
 def every_stream(root: Path) -> list[str]:
     """Every stream with a log, once each, in name order."""
     return sorted({fairway for _, fairway in streams(root)})
+
+
+#: How many "Tell every captain" the board keeps: the file is cut back to these on each write.
+KEEP_TOLD = 10
 
 
 def tell_every_captain(root: Path, message: str) -> dict[str, Any]:
@@ -134,16 +157,24 @@ def tell_every_captain(root: Path, message: str) -> dict[str, Any]:
     record = {"t": talk.now(), "text": message.strip(), "ids": ids}
     path = told_all_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as out:
-        out.write(json.dumps(record, ensure_ascii=False) + "\n")
+    with WRITING:
+        kept = [json.dumps(one, ensure_ascii=False) for one in reversed(told_all(root, KEEP_TOLD - 1))]
+        aside = path.with_name(f".{TOLD_ALL}.part")
+        aside.write_text("".join(f"{one}\n" for one in [*kept, json.dumps(record, ensure_ascii=False)]),
+                         encoding="utf-8")
+        os.replace(aside, path)
     return record
 
 
 def told_all(root: Path, keep: int = 3) -> list[dict[str, Any]]:
-    """The last few "Tell every captain", newest first; a line that is not one is passed over."""
+    """The last few "Tell every captain", newest first, read from the file's tail; a line that is not one
+    is passed over."""
     try:
-        lines = told_all_path(root).read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeDecodeError):
+        with told_all_path(root).open("rb") as held:
+            size = held.seek(0, 2)
+            held.seek(max(0, size - 64 * 1024))
+            lines = held.read().decode("utf-8", errors="replace").splitlines()
+    except OSError:
         return []
     found = []
     for line in lines:

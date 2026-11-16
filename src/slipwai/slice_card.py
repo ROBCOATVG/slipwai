@@ -18,6 +18,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .activity import caption, minutes, newest, now_stamp
+from .example_map_page import card_html
 from .feedback_card import opener
 from .live_page import window_address
 from .page_shell import esc
@@ -214,7 +215,7 @@ def steps_html(row: dict[str, str]) -> str:
         under = now_html(row) if one["state"] == "now" else \
             f"<small>{esc(AHEAD[index])}</small>" if one["state"] == "todo" and index < len(AHEAD) else ""
         items += (f'<li class="{esc(one["state"])}"><b>{esc(name)}</b><span class="t">{esc(when)}</span>'
-                  f"{under}</li>")
+                  f"{under}{card_html(row) if index == 0 else ''}</li>")
     return f'<ol class="steps">{items}</ol>'
 
 
@@ -281,4 +282,5 @@ def slice_html(row: dict[str, str]) -> str:
                                "slice": row["slice"]}, ask=f"What did {row['slice']} show you?")
     return (f'<details class="slice {esc(row["state"])}" data-card="{esc(row["slice"])}">{summary_html(row)}'
             f"{answer}{steps_html(row)}{facts_html(row)}{film_html(row)}{span_html(row)}"
+            f"{card_html(row) if row['state'] == 'done' else ''}"
             f'<div class="ask">{said}</div></details>')

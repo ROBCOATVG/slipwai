@@ -97,8 +97,8 @@ put it to the person.
 
 **Pass one always writes its context answer as the next entry of `specs/<feature>/decisions.md`**, whether
 it found several contexts or one — the shape `commands/cruise.md` shows and `make check-decisions` holds
-(Question, Options, Decision, Why with Read against, Decided by, Confidence with Would reverse if, Written
-to, Status). Head it `## D<n> — Which bounded contexts does <feature> touch?`, and put the seam table
+(Question, Options, Decision, In short, Why with Read against, Decided by, Confidence with Would reverse if,
+Written to, Status). Head it `## D<n> — Which bounded contexts does <feature> touch?`, and put the seam table
 under its `Options` line, indented two spaces so it stays inside the entry: candidate, entities it owns,
 the Language · Change · Flow evidence with file and line, what crosses, confidence. One context is an
 answer and the one that most needs its table: one fairway is one captain taking every slice in turn.

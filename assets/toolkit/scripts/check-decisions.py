@@ -27,6 +27,11 @@ an unwritten row is a pass that has to be run again, and until now nothing notic
   confirmation` (a stop for a person answered with nobody there), `confirmed by human <date>`, `overridden by D<m>`
   or `overridden by human <date>`;
 - every **Written to** path exists in the repository, and a path still carrying `<placeholders>` is a finding;
+- an entry written since the rule carries **In short**: one sentence a product owner reads without the
+  specification open, saying what the product now does, with no requirement, decision or event id in it and no
+  file name. "Since the rule" is its **When** at or after the instant `.specify/decisions-in-short.json` records,
+  which `slipwai migrate` writes once into a project that already had decisions; a project with no such file
+  was made under the rule, and every entry is held. An entry without a **When** that can be read is held too;
 - a demo entry is `## <instant> — <verdict> · iteration <n> · sail-demo-hand (<model>)`, its verdict one of
   `accepted`, `behaviour`, `implementation`, followed by **Started with**, **Driven through**, **Examples**,
   **Evidence**, **Feedback**; every **Evidence** path exists, beside the log or from the root, or is `none`;
@@ -46,9 +51,10 @@ A project with no record anywhere passes and says so: the gate runs in `make ver
 
 from __future__ import annotations
 
+import json
 import re
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 
@@ -90,6 +96,15 @@ DECIDED_BY = re.compile(r"^(host \(stage recommendation\)|host \(standing decisi
 STATUS = re.compile(r"^(standing|awaiting human confirmation|confirmed by human \S+|overridden by D\d+|"
                     r"overridden by human \S+)$")
 FIELD = re.compile(r"^- \*\*([^*]+):\*\* ?(.*)$")
+# The sentence a person reads first on the board. Not one of DECISION_FIELDS: an entry written before the rule
+# has none, and holding the nine in order is what every existing record is already checked by.
+SENTENCE = "In short"
+SENTENCE_FROM = ".specify/decisions-in-short.json"
+WHEN = re.compile(r"\*\*When:\*\*\s*(\S+)")
+# What a sentence for a product owner may not lean on: an id this method mints (FR-012, SC-3, D45, D-ORD-07,
+# R2, A-BIL-3), a backticked name, or a file.
+NOT_PLAIN = re.compile(r"\b(?:FR|SC|NFR|US)-?\d+|\bD-?[A-Z0-9]*-?\d+\b|\bR\d+\b|`|\b[\w./-]+\.(?:md|py|ts|tsx|js|"
+                       r"yaml|yml|json|java|cs|go|sql)\b")
 PLACEHOLDER = re.compile(r"<[^>]*>")
 
 
@@ -133,7 +148,48 @@ def path_findings(where: str, label: str, value: str, base: Path) -> list[str]:
     return findings
 
 
-def check_decisions(path: Path) -> list[str]:
+def instant(value: str) -> datetime | None:
+    """An entry's `When`, read as UTC where it names no zone: older entries wrote a date alone."""
+    try:
+        found = datetime.fromisoformat(value.strip().strip("`").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return found if found.tzinfo else found.replace(tzinfo=timezone.utc)
+
+
+def sentence_from() -> datetime | None:
+    """The instant the sentence rule reached this project, or None where it was made under the rule."""
+    path = ROOT / SENTENCE_FROM
+    if not path.is_file():
+        return None
+    try:
+        held = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        raise OSError(f"{SENTENCE_FROM} is not JSON; it holds {{\"from\": \"<ISO instant>\"}}") from None
+    found = instant(str(held.get("from", ""))) if isinstance(held, dict) else None
+    if found is None:
+        raise OSError(f"{SENTENCE_FROM} names no instant; it holds {{\"from\": \"<ISO instant>\"}}")
+    return found
+
+
+def sentence_findings(where: str, number: int, fields: dict[str, str], since: datetime | None) -> list[str]:
+    """An entry written since the rule says what was decided in one plain sentence."""
+    when = WHEN.search(fields.get("Stage", ""))
+    written = instant(when.group(1)) if when else None
+    if since is not None and written is not None and written < since:
+        return []
+    said = fields.get(SENTENCE, "").strip()
+    if not said or PLACEHOLDER.search(said):
+        return [f"{where}: D{number} has no **In short:** — one sentence a product owner reads without the "
+                "specification open, saying what the product now does"]
+    leaned = NOT_PLAIN.search(said)
+    if leaned:
+        return [f"{where}: D{number}'s **In short:** names {leaned.group(0)!r}; say it without requirement, "
+                "decision or event ids and without file names, so a person reads it without the specification"]
+    return []
+
+
+def check_decisions(path: Path, since: datetime | None = None) -> list[str]:
     relative = path.relative_to(ROOT).as_posix()
     findings: list[str] = []
     seen: dict[tuple[str, int], int] = {}
@@ -173,6 +229,7 @@ def check_decisions(path: Path) -> list[str]:
                             "human confirmation, confirmed by human <date>, overridden by D<m> or overridden by "
                             "human <date>")
         findings += path_findings(where, f"D{number} `Written to`", fields["Written to"], ROOT)
+        findings += sentence_findings(where, number, fields, since)
     return findings
 
 
@@ -302,8 +359,9 @@ def main() -> int:
     if not decisions and not logs and not findings:
         print("check-decisions: no decisions.md or demo-log.md under specs/ — nothing recorded yet")
         return 0
+    since = sentence_from()
     for path in decisions:
-        findings += check_decisions(path)
+        findings += check_decisions(path, since)
     for path in logs:
         findings += check_demo_log(path)
     if findings:

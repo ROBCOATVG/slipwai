@@ -96,7 +96,11 @@ A delegate cannot see what its siblings are adding, so it numbers nothing they s
 back as the same `D3`, with requirement ranges that overlapped, were exactly the reconciliation by hand this
 protocol exists to end.
 
-The entry's shape, which `{{make}} check-decisions` holds:
+The entry's shape, which `{{make}} check-decisions` holds. Its `In short` is written by whoever decides, at
+the time — this session or the delegate — and is one sentence a product owner reads without the
+specification open: what the product now does, with no requirement, decision or event identifiers and no
+file names. It is what the board leads the decision with, so a person can confirm or change it without
+reading the rest:
 
 ```markdown
 {{decision-entry}}

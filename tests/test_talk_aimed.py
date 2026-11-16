@@ -55,9 +55,8 @@ class WholeStreamParkTest(Fixture):
         self.assertEqual(answer["line"], "read by the captain · delivered when the slice carries on")
         self.assertFalse(answer["changeable"], "a told is written: nothing can take it back now")
 
-    # Waits for the captain stream's fix: the captain program reading its own inbox where there is no captain
-    # agent, and a person's message clearing a park that names no slice. Until then nothing reads `_captain`.
-    @unittest.expectedFailure
+    # With no captain agent the captain program reads its own inbox, and a person's message to the stream
+    # clears a park that names no slice: what telling a stream did before the board stopped writing the log.
     def test_an_unaimed_group_button_reaches_the_captain_which_answers_the_stream_s_park(self) -> None:
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t="2026-11-16T09:00:00Z"),
                   logs.entry("parked", fairway="ORD", why="the chart needs a person", t=PARKED))

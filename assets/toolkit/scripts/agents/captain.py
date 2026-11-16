@@ -608,10 +608,14 @@ def starter(slice_id: str, fairway: str, retry: str = "",
         argv, environment, _said = sail_command(slice_id, fairway, retry, berth, told)
 
         def headless() -> subprocess.Popen:
+            session = harness.Session(argv, berth or ROOT, environment)
+            # Written once the session is up with the messages in its prompt, never before: a harness that
+            # would not start leaves them queued, and `dispatch` puts back any a refused run never read.
             for one in told:
                 talk.note(home, "seen", id=str(one["id"]))
                 talk.note(home, "delivered", id=str(one["id"]), mode="wait")
-            return harness.Session(argv, berth or ROOT, environment)
+            session.told = [str(one["id"]) for one in told]  # type: ignore[attr-defined]
+            return session
         return headless
     launch, row, said = over
     prompt = sail_prompt(row, slice_id, fairway, retry, berth)
@@ -791,6 +795,10 @@ def watched(process: subprocess.Popen | drive.Drive, feature: str, fairway: str,
     at = head(branch) if branch else ""
     pausing: tuple[str, str] | None = None
     home = conversation(fairway, slice_id) if branch and not isinstance(process, drive.Drive) else None
+    # Over the protocol the drive writes the agent's tool calls and sentences into the slice's activity log,
+    # so a message's turn, which writes no deck line, is held to the bound by what it is seen doing.
+    acted = activity_of(fairway, slice_id) if isinstance(process, drive.Drive) else None
+    did = size_of(acted)
     while process.poll() is None:
         time.sleep(POLL)
         if STOP.is_set():
@@ -800,8 +808,10 @@ def watched(process: subprocess.Popen | drive.Drive, feature: str, fairway: str,
         if home is not None:
             pausing = steered(home, process, pausing)
         count = len(mine(entries(feature, fairway)[started:], slice_id))
-        if count > seen or getattr(process, "talking", False):
+        if count > seen:
             seen, last_line = count, now
+        if acted is not None and size_of(acted) != did:
+            did, last_line = size_of(acted), now
         moved = head(branch) if branch else ""
         if moved != at:
             at, last_line = moved, now
@@ -809,9 +819,12 @@ def watched(process: subprocess.Popen | drive.Drive, feature: str, fairway: str,
             write(feature, fairway, logs.entry("heartbeat", fairway=fairway, slice=slice_id))
             last_beat, seen = now, len(mine(entries(feature, fairway)[started:], slice_id))
         if now - last_line >= bound:
+            why = (f"nothing was written to the deck log for {bound / 60:.0f} minutes, so the stage "
+                   f"was ended. A stage that wrote no line made no progress")
+            if isinstance(process, drive.Drive):
+                process.silenced(why)  # a message under way fails with the reason, and the drive closes
             end(process)
-            return False, (f"nothing was written to the deck log for {bound / 60:.0f} minutes, so the stage "
-                           f"was ended. A stage that wrote no line made no progress")
+            return False, why
     if home is not None:
         pausing = steered(home, process, pausing)
     if home is not None and pausing is not None:
@@ -821,34 +834,58 @@ def watched(process: subprocess.Popen | drive.Drive, feature: str, fairway: str,
                                      else f"`/sail` exited {process.returncode}")
 
 
+def activity_of(fairway: str, slice_id: str) -> Path:
+    """The slice's activity log, in the main checkout's run folder, which its drive writes and the board reads."""
+    return logs.run_dir(ROOT) / "activity" / fairway / f"{slice_id}.jsonl"
+
+
+def size_of(path: Path | None) -> int:
+    try:
+        return path.stat().st_size if path is not None else 0
+    except OSError:
+        return 0
+
+
 def steered(home: Path, process: subprocess.Popen | None, pausing: tuple[str, str] | None,
             flying: bool = True) -> tuple[str, str] | None:
     """Act on what steers a slice whose session no driver holds — print mode, or no session at all: a stop
     ends it now, a pause is honoured when it ends, a resume undoes a pause, a withdrawal takes a message back
     before it is handed over. A message itself is left queued for the next dispatch. The pause still to be
     honoured, if any."""
+    for path in talk.malformed(home):
+        talk.reject(home, path)
     for message in talk.unseen(home):
         kind = str(message.get("kind"))
         if kind == "say":
             continue
-        by, why = str(message.get("from") or "person"), str(message.get("text") or "")
+        by, why = str(message.get("from") or ""), str(message.get("text") or "")
         talk.note(home, "seen", id=str(message["id"]))
-        if kind == "stop" and flying:
+        talk.settle(home, str(message["id"]))
+        if not talk.genuine(home, message):
+            talk.note(home, "failed", id=str(message["id"]),
+                      why="it says it is from a person and is not signed by the board")
+            continue
+        if kind == "stop":
+            # Held by its line on the thread where a person sent it: not claimed again until they resume it.
             talk.note(home, "stopped", by=by, why=why or None)
+            talk.forget_session(home)
             if process is not None:
                 end(process)
-            raise Halted("stopped", by, why)
+            if flying:
+                raise Halted("stopped", by, why)
+            continue
         if kind == "pause" and process is not None:
             pausing = (by, why)
         elif kind == "pause" and not talk.paused(home):
             talk.note(home, "paused", by=by, why=why or None)
-        elif kind == "resume" and (pausing is not None or talk.paused(home)):
+        elif kind == "resume" and (pausing is not None or talk.halted(home)[0]):
             pausing = None
             talk.note(home, "resumed", by=by)
         elif kind == "withdraw":
             of = str(message.get("of") or "")
-            if of not in talk.ids(talk.thread(home), "delivered"):
+            if of not in talk.handed(talk.thread(home)):
                 talk.note(home, "withdrawn", id=of)
+                talk.settle(home, of)
     return pausing
 
 
@@ -864,9 +901,42 @@ def halted(slice_id: str, fairway: str) -> None:
             return
     home = conversation(fairway, slice_id)
     steered(home, None, None)
-    if talk.paused(home):
-        last = [one for one in talk.thread(home) if one.get("kind") == "paused"][-1]
-        raise Halted("paused", str(last.get("by") or "person"), str(last.get("why") or ""))
+    how, by, why = talk.halted(home)
+    if how:
+        raise Halted(how, by, why)
+
+
+def hold_talk(fairway: str, slice_id: str, why: str) -> None:
+    """Keep what is said to the slice back from now until its next prompt: from its merge request to the
+    answer, a commit a message's turn made would ride to trunk on a branch whose gate had already passed.
+    The receipt says why. A refusal sends the slice back to its berth, and what was held goes with it."""
+    held = FLIGHT.get(slice_id, {}).get("driver")
+    if isinstance(held, drive.Drive) and held.alive:
+        held.hold(why)
+        return
+    home = conversation(fairway, slice_id)
+    for message in talk.queued(home):
+        talk.note(home, "held", id=str(message["id"]), why=why)
+
+
+def landed_talk(fairway: str, slice_id: str) -> None:
+    """The slice is on trunk: its driver closes, and what was held for the merge — a message, a pause, a
+    stop — is answered with that, so no receipt waits for a session that will never open again."""
+    held = FLIGHT.get(slice_id, {}).get("driver")
+    late = held.halted_by if isinstance(held, drive.Drive) and held.halted is not None else ""
+    close_driver(slice_id)
+    home = conversation(fairway, slice_id)
+    for message in talk.queued(home):
+        talk.note(home, "failed", id=str(message["id"]), why="the slice merged before this was delivered")
+        talk.settle(home, str(message["id"]))
+    for message in talk.unseen(home):
+        if message.get("kind") in ("pause", "stop"):
+            talk.note(home, "seen", id=str(message["id"]))
+            talk.settle(home, str(message["id"]))
+            late = late or str(message["id"])
+    if late:
+        talk.note(home, "failed", id=late, why="the slice merged before this took effect")
+        talk.note(home, "resumed", by="merge", why="the slice merged")
 
 
 def close_driver(slice_id: str) -> None:
@@ -1071,6 +1141,12 @@ def dispatch(slice_id: str, feature: str, fairway: str,
     refused = process.refusal
     if refused is not None:
         flying["refusal"] = refused
+    home = conversation(fairway, slice_id)
+    for ident in getattr(process, "told", []):
+        if refused is not None:
+            talk.note(home, "returned", id=ident, why="the harness would not run the session it was handed in")
+        else:
+            talk.settle(home, ident)
     fire("after-stage", stage="drive", slice=slice_id, fairway=fairway)
     return finished, why, entries(feature, fairway)[started:]
 
@@ -1443,6 +1519,7 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
     once rather than driving a slice four more times to be told the same thing.
     """
     for asked in range(bound + 1):
+        hold_talk(fairway, slice_id, "held: this slice is at its merge")
         landed, why, resolvable = ask_to_merge(slice_id, feature, fairway, asked)
         if landed:
             return True, ""
@@ -1569,6 +1646,7 @@ def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
         if not ok:
             return False, why
         if landed_already(slice_id, feature, fairway):
+            landed_talk(fairway, slice_id)
             kept = moorings.leave(ROOT, berth)
             if kept:
                 print(f"captain: {slice_id} merged; {kept}", flush=True)
@@ -1585,6 +1663,9 @@ def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
         fire("before-merge", slice=slice_id, fairway=fairway)
         landed, why = merged(slice_id, feature, fairway, bound)
         if landed:
+            # The driver closes and what was held is answered before the berth is left: nothing may be
+            # running in a worktree that is being taken away.
+            landed_talk(fairway, slice_id)
             kept = moorings.leave(ROOT, berth)
             if kept:
                 print(f"captain: {slice_id} merged; {kept}", flush=True)
@@ -1815,18 +1896,27 @@ def finished(feature: str, fairway: str, slice_id: str, done: bool, fault: str, 
 def let_go(feature: str, fairway: str, slice_id: str, how: str, by: str, why: str) -> str:
     """The line a slice paused or stopped through its conversation ends on: `stopped`, naming who and why, so
     its session slot is given back and its claim kept — the branch and the berth are left exactly as they
-    are. A pause says so and is carried on once resumed; a stop puts the slice back in the queue, though not
-    in front of this turn's next look, or the stop would be a restart."""
+    are. A pause says so and is carried on once resumed. A person's stop holds the slice until a person
+    resumes it, across turns and a restart, because its line on the thread says so; anyone else's puts it
+    back in the queue, though not in front of this turn's next look, or the stop would be a restart."""
     write(feature, fairway, logs.entry("stopped", fairway=fairway, slice=slice_id, by=by,
                                        **({"why": why} if why else {}), **({"paused": True} if how == "paused" else {})))
-    if how == "stopped":
+    if how == "stopped" and by != talk.PERSON:
         LET_GO.add(slice_id)
     return f"captain: {slice_id} {how} by {by}" + (f" — {why}" if why else "")
 
 
 def held_by_talk(fairway: str, slices: list[str]) -> list[str]:
-    """The slices a person paused, or stopped this turn: neither is started until that changes."""
-    return [one for one in slices if one in LET_GO or talk.paused(conversation(fairway, one))]
+    """The slices paused, or stopped by a person, or stopped by anyone this turn: none is started until that
+    changes."""
+    return [one for one in slices if one in LET_GO or talk.halted(conversation(fairway, one))[0]]
+
+
+def held_said(fairway: str, slices: list[str]) -> str:
+    """The slices held through their conversations, said for the line a turn with nothing to start ends on."""
+    named = [f"{one} is {talk.halted(conversation(fairway, one))[0]} by a person until they resume it"
+             for one in slices if talk.halted(conversation(fairway, one))[0]]
+    return "; ".join(named)
 
 
 def heard_closed(feature: str, fairway: str, found: list[logs.Entry]) -> None:
@@ -1850,7 +1940,10 @@ def heard_closed(feature: str, fairway: str, found: list[logs.Entry]) -> None:
         if not own:
             continue
         for message in talk.queued(home):
-            if message.get("from") != "person" or str(message["id"]) in told:
+            # Only what was said after the park can be the answer to it: a message sent before the question
+            # was asked is delivered as what it was, an ordinary message, when the driver opens again.
+            if message.get("from") != talk.PERSON or str(message["id"]) in told \
+                    or str(message.get("t", "")) <= own[-1].t:
                 continue
             talk.note(home, "seen", id=str(message["id"]))
             aimed = {"slice": slice_id} if own[-1].fields.get("slice") else {}
@@ -2041,7 +2134,8 @@ def turn(fairway: str) -> str:
                 # the time, rather than "nothing to start", which reads as a fairway with nothing to do.
                 return (f"captain: {fairway} is paused until {lifting} — {len(held)} claimed slice(s) wait "
                         f"for the harness, and {why}")
-            return f"captain: nothing to start in {fairway} — {why}"
+            holding = held_said(fairway, resuming(found))
+            return f"captain: nothing to start in {fairway} — {why}" + (f"; {holding}" if holding else "")
         said = sail_out(feature, fairway, first[:1], fresh=True)
     # Nothing started at all is a turn with nothing to start, said in the words that end the loop: a turn
     # that printed nothing would go round again for ever, saying nothing each time.
@@ -2117,6 +2211,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between turns")
     parsed = parser.parse_args(argv)
     signal.signal(signal.SIGTERM, on_term)
+    # A captain killed outright runs no exit handler, so its agents can outlive it: the next one ends them.
+    for pid in drive.reap(logs.run_dir(ROOT) / talk.TALK / parsed.fairway):
+        print(f"captain: ended agent {pid}, left running by a captain that is gone", flush=True)
     # What this prints is the harness's own words as often as its own, and a Windows pipe is the console's
     # code page: a character the page has not got — the replacement mark a refusal arrived with — would end
     # the captain in a traceback at the moment it had something to say. Said with a mark instead.

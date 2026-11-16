@@ -52,7 +52,17 @@ def shape(decks: dict[str, list[list[str]]]) -> dict[str, object]:
     every kind of line."""
     held: dict[str, object] = {}
     for deck, lines in decks.items():
-        held[f"{deck} claimed"] = [slice_id for kind, slice_id in lines if kind == "claimed"]
+        # Slices started together are threads that each write their own `claimed`, in whichever order the
+        # scheduler runs them: a run of `claimed` lines with nothing between them is one start, compared as a set.
+        starts: list[list[str]] = []
+        for number, (kind, slice_id) in enumerate(lines):
+            if kind != "claimed":
+                continue
+            if starts and number and lines[number - 1][0] == "claimed":
+                starts[-1] = sorted([*starts[-1], slice_id])
+            else:
+                starts.append([slice_id])
+        held[f"{deck} claimed"] = starts
         held[f"{deck} counts"] = sorted(Counter((slice_id, kind) for kind, slice_id in lines).items())
     return held
 

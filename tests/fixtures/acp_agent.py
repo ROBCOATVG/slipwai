@@ -14,6 +14,7 @@ answered `Reply: <text>` — or not at all where it says `quiet`. A captain's dr
 import hashlib
 import json
 import os
+import select
 import sys
 import tempfile
 import time
@@ -110,6 +111,23 @@ def linger(session):
             return "cancelled"
 
 
+def busy(session):
+    """Call tools, one finished every fifth of a second, and write nothing else, until the turn is cancelled:
+    an agent going round in circles, which the captain must still end."""
+    count = 0
+    while True:
+        count += 1
+        update(session, sessionUpdate="tool_call", toolCallId=f"busy-{count}", title="Read a file", kind="read",
+               status="completed")
+        ready, _, _ = select.select([sys.stdin], [], [], 0.2)
+        if ready:
+            line = sys.stdin.readline()
+            if not line:
+                os._exit(0)
+            if json.loads(line).get("method") == "session/cancel":
+                return "cancelled"
+
+
 def dawdle():
     """Wait for a `.go` file in the working directory, saying where with a `.dawdling` one."""
     (HOME / ".dawdling").write_text("", encoding="utf-8")
@@ -162,11 +180,13 @@ def turn(number, session, words):
     if "linger" in words:
         return linger(session)
     if " fairway=" in words:  # a captain's drive: the lines the chart says this slice publishes, and a demo
-        for marker in (".linger", ".dawdle"):
+        for marker in (".linger", ".dawdle", ".busy"):
             if (HOME / marker).exists():
                 (HOME / marker).unlink()
                 if marker == ".linger":
                     return linger(session)
+                if marker == ".busy":
+                    return busy(session)
                 dawdle()
         drove(words)
         return "end_turn"

@@ -21,19 +21,24 @@ driver — the one thing holding the slice's session — delivers it and writes 
 
 A receipt is never stored: a message in the inbox with no `delivered` is queued, and so on down the thread.
 
-**A person's word is signed.** A message `from: person` can answer a park and can stop or resume a slice,
-and a session with a shell can write a file into its own inbox. So `send` signs a person's message with a
-key kept at `talk/.key` (mode 0600, written by the first sender) and a reader believes `from: person` only
-where the signature holds. That stops a session forging a person by writing a file in the shape this page
-describes; it does not stop one that reads the key by its path, which only running sessions as another
-user would.
+**Every message is signed, for the place it is in.** A message `from: person` can answer a park and stop
+or resume a slice, and a session with a shell can write a file into its own inbox claiming to be anyone. So
+`send` — the only writer, used by the board and by the fleet's own programs — signs every message with a
+key kept at `talk/.key`, over who, what, how, its id and the stream and slice it is for, and a reader
+refuses any file whose signature does not hold or whose id was handled already. The key is made with mode
+0600 when the fleet starts or the board first writes, whichever is first; a key file that is anything else
+(another mode, another owner, a link, too short) is said to be wrong and not used. That stops a session
+forging a message by writing a file in the shape this page describes, and copying a signed one to another
+slice or back out of `done/`; it does not stop one that reads the key by its path, which only running
+sessions as another user would.
 
 Carried into every project by `scripts/shared-modules.py`, which is why this imports nothing but the
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 380 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
-# the thread read by offset, and the fold into receipts, which a reader and the writer must not disagree on
+# budget: 470 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
+# the key and what makes one trustworthy, the thread read by offset, and the fold into receipts for every kind,
+# which a reader and the writer must not disagree on
 from __future__ import annotations
 
 import hashlib
@@ -42,6 +47,7 @@ import json
 import os
 import re
 import secrets
+import stat
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
@@ -56,12 +62,15 @@ CONTROLS = ("pause", "resume", "stop", "withdraw")
 MODES = ("wait", "interrupt")
 PERSON = "person"
 #: What a receipt can say, in the order a message moves through them.
-STATES = ("queued", "delivered", "answered", "unaddressed", "not delivered", "withdrawn")
+STATES = ("queued", "delivered", "answered", "unaddressed", "not delivered", "withdrawn", "done")
 NAME = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 KEY = ".key"
 DONE = "done"
-#: The fields a signature covers: everything that says who, what and how.
+#: The fields a signature covers: everything that says who, what and how, and — beside them — where it is for.
 SIGNED = ("id", "t", "from", "kind", "text", "mode", "of", "via")
+#: The shortest key believed: a file emptied or cut short makes every message unsigned, so it is made again.
+KEY_BYTES = 32
+UNSIGNED = "it is not signed by the board or the fleet for this slice"
 #: One lock for every thread file this process appends to and every cached read of one: a slice's driver and
 #: the captain acting for a closed one are two threads of one process, and the rule is one writer.
 WRITING = threading.RLock()
@@ -87,44 +96,91 @@ def conversations(run: Path, fairway: str) -> list[str]:
     return [one for one in found if one != CAPTAIN] + [one for one in found if one == CAPTAIN]
 
 
-def key(home: Path, make: bool = False) -> bytes:
-    """The signing key of every conversation under this run folder, made on first use by a sender."""
-    path = Path(home).parent.parent / KEY
+def key_path(home: Path) -> Path:
+    return Path(home).parent.parent / KEY
+
+
+def key_trouble(path: Path) -> str:
+    """Why the key file at `path` is not one this believes, or `''`: a link, not a plain file, readable or
+    writable by anyone else, another user's. `missing` and `short` are the two a writer mends by making one."""
     try:
-        return path.read_bytes()
+        held = path.lstat()
     except OSError:
-        if not make:
-            return b""
+        return "missing"
+    if stat.S_ISLNK(held.st_mode) or not stat.S_ISREG(held.st_mode):
+        return f"{path} is not a plain file"
+    if held.st_mode & 0o077:
+        return f"{path} can be read by others (mode {stat.S_IMODE(held.st_mode):o}), so the board did not write it"
+    if hasattr(os, "getuid") and held.st_uid != os.getuid():
+        return f"{path} belongs to another user"
+    return "short" if held.st_size < KEY_BYTES else ""
+
+
+def ready(run: Path) -> str:
+    """Make this run folder's key where there is none, or one emptied or cut short, with mode 0600 from the
+    first byte. `''` once there is a key to believe; otherwise what is wrong with the one that is there,
+    said so it can be removed — never used."""
+    path = Path(run) / TALK / KEY
+    trouble = key_trouble(path)
+    if trouble not in ("missing", "short"):
+        return trouble
     path.parent.mkdir(parents=True, exist_ok=True)
     aside = path.with_name(f"{KEY}.{secrets.token_hex(4)}.part")
-    aside.write_bytes(secrets.token_bytes(32))
-    os.chmod(aside, 0o600)
+    handle = os.open(aside, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        os.link(aside, path)  # the first to place it wins, and every sender then reads the same key
+        os.write(handle, secrets.token_bytes(KEY_BYTES))
+    finally:
+        os.close(handle)
+    try:
+        if trouble == "short":
+            os.replace(aside, path)
+        else:
+            os.link(aside, path)  # the first to place it wins, and every sender then reads the same key
     except FileExistsError:
         pass
     finally:
         aside.unlink(missing_ok=True)
-    return path.read_bytes()
+    return key_trouble(path)
 
 
-def signature(secret: bytes, message: dict[str, Any]) -> str:
-    body = json.dumps({name: message.get(name) for name in SIGNED}, sort_keys=True, ensure_ascii=False)
+def key(home: Path, make: bool = False) -> bytes:
+    """The signing key of every conversation under this run folder, or nothing where there is none to
+    believe. A sender makes one where there is none (`make`); `ValueError` saying what to do where the one
+    there cannot be used."""
+    path = key_path(home)
+    if make:
+        trouble = ready(path.parent.parent)
+        if trouble:
+            raise ValueError(f"the conversation key is not one to sign with — {trouble}. Remove {path} and "
+                             f"send again: the next message makes a new one")
+    if key_trouble(path):
+        return b""
+    try:
+        return path.read_bytes()
+    except OSError as fault:
+        if make:
+            raise ValueError(f"the conversation key at {path} cannot be read ({fault}); check its owner, or "
+                             f"remove it and send again") from fault
+        return b""
+
+
+def signature(secret: bytes, message: dict[str, Any], home: Path) -> str:
+    body = json.dumps({**{name: message.get(name) for name in SIGNED},
+                       "for": [Path(home).parent.name, Path(home).name]}, sort_keys=True, ensure_ascii=False)
     return hmac.new(secret, body.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def genuine(home: Path, message: dict[str, Any]) -> bool:
-    """Whether the message is who it says: anyone but a person is taken at its word; a person's must carry
-    the signature `send` made with this run folder's key."""
-    if message.get("from") != PERSON:
-        return True
+    """Whether the message carries the signature `send` made with this run folder's key, for this stream and
+    slice. Nobody is taken at their word: a file any session could write is not a message."""
     secret = key(home)
-    return bool(secret) and hmac.compare_digest(str(message.get("sig", "")), signature(secret, message))
+    return bool(secret) and hmac.compare_digest(str(message.get("sig", "")), signature(secret, message, home))
 
 
 def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PERSON, of: str = "",
          via: str = "") -> dict[str, Any]:
-    """Drop one thing into a conversation's inbox, whole: written aside and renamed into place."""
+    """Drop one thing into a conversation's inbox, signed and whole: written aside and renamed into place.
+    `ValueError` with what to do where it cannot be."""
     if kind not in KINDS:
         raise ValueError(f"{kind!r} is not something a conversation takes: {', '.join(KINDS)}")
     if mode not in MODES:
@@ -140,8 +196,7 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
         message["of"] = of
     if via:
         message["via"] = via
-    if by == PERSON:
-        message["sig"] = signature(key(home, make=True), message)
+    message["sig"] = signature(key(home, make=True), message, home)
     box = Path(home) / "inbox"
     box.mkdir(parents=True, exist_ok=True)
     aside = box / f".{message['id']}.json.part"
@@ -166,9 +221,33 @@ def read_box(folder: Path) -> tuple[list[dict[str, Any]], list[Path]]:
     return sorted(found, key=lambda one: (str(one.get("t", "")), str(one["id"]))), bad
 
 
+def handled(home: Path) -> set[str]:
+    """The ids already moved aside: a file of one of these back in the inbox is a replay."""
+    folder = Path(home) / "inbox" / DONE
+    return {path.stem for path in folder.glob("*.json")} if folder.is_dir() else set()
+
+
 def pending(home: Path) -> list[dict[str, Any]]:
-    """The messages not yet handled, oldest first: what a driver looks at twice a second."""
-    return read_box(Path(home) / "inbox")[0]
+    """The messages not yet handled, oldest first, signed for this slice: what a driver looks at twice a
+    second. A file that is not one of these waits for `refused` to answer it."""
+    done = handled(home)
+    return [one for one in read_box(Path(home) / "inbox")[0] if str(one["id"]) not in done and genuine(home, one)]
+
+
+def refused(home: Path) -> list[tuple[Path, str]]:
+    """Files waiting in the inbox that will never be delivered, each with why: not a message this reads,
+    not signed for this slice, or one already handled."""
+    box = Path(home) / "inbox"
+    found, bad = read_box(box)
+    done = handled(home)
+    out = [(path, "it is not a message this reads") for path in bad]
+    for message in found:
+        path = box / f"{message['id']}.json"
+        if str(message["id"]) in done:
+            out.append((path, "it was handled already"))
+        elif not genuine(home, message):
+            out.append((path, UNSIGNED))
+    return out
 
 
 def malformed(home: Path) -> list[Path]:
@@ -179,8 +258,9 @@ def malformed(home: Path) -> list[Path]:
 def inbox(home: Path) -> list[dict[str, Any]]:
     """Every message, handled or not, oldest first: what receipts are read from."""
     waiting, _ = read_box(Path(home) / "inbox")
-    handled, _ = read_box(Path(home) / "inbox" / DONE)
-    return sorted([*handled, *waiting], key=lambda one: (str(one.get("t", "")), str(one["id"])))
+    moved, _ = read_box(Path(home) / "inbox" / DONE)
+    every = {str(one["id"]): one for one in [*waiting, *moved]}  # a replay of a handled one is that one
+    return sorted(every.values(), key=lambda one: (str(one.get("t", "")), str(one["id"])))
 
 
 def settle(home: Path, ident: str) -> None:
@@ -192,10 +272,10 @@ def settle(home: Path, ident: str) -> None:
 
 
 def reject(home: Path, path: Path, why: str = "it is not a message this reads") -> None:
-    """A file in the inbox that is not a message: moved aside, with a receipt saying so."""
+    """A file in the inbox that will not be delivered: moved aside, with a receipt saying so."""
     (path.parent / DONE).mkdir(exist_ok=True)
-    os.replace(path, path.parent / DONE / f"{path.stem}.bad")
-    note(home, "failed", id=path.stem, why=why, malformed=True)
+    os.replace(path, path.parent / DONE / f"{path.stem}.{secrets.token_hex(2)}.bad")
+    note(home, "failed", id=path.stem, why=why, refused=True)
 
 
 def thread(home: Path) -> list[dict[str, Any]]:
@@ -287,47 +367,62 @@ def paused(home: Path, lines: list[dict[str, Any]] | None = None) -> bool:
     return halted(home, lines)[0] == "paused"
 
 
+def waiting_why(lines: list[dict[str, Any]]) -> str:
+    """Why a queued message waits beyond the turn under way, where the slice is held or gone."""
+    if any(one.get("kind") == "merged" for one in lines):
+        return "this slice has merged"
+    how, by, _ = halted(Path("."), lines)
+    if how == "paused":
+        return "paused: delivered when it is resumed"
+    if how == "stopped":
+        return f"stopped by {'you' if by == PERSON else by}: resume it to deliver this"
+    return ""
+
+
 def receipts(home: Path) -> list[dict[str, Any]]:
-    """Every message said into this conversation with where it stands, oldest first: `state` one of
-    `STATES`; `delivered` the instant, `reply` the agent's words, `why` where it was not delivered or is
-    being held."""
+    """Everything sent into this conversation with where it stands, oldest first: `state` one of `STATES`
+    (`done` for a pause, resume, stop or withdrawal acted on); `delivered` the instant, `reply` the agent's
+    words, `why` where it was not delivered or is waiting on something. Files refused on arrival are listed
+    too, under the name they came in with."""
     lines = thread(home)
     messages = inbox(home)
     pending_withdrawals = {str(one.get("of", "")) for one in messages if one.get("kind") == "withdraw"}
     given = handed(lines)
+    held_back = waiting_why(lines)
     found = []
     for message in messages:
-        if message.get("kind") != "say":
-            continue
-        ident = str(message["id"])
-        mine = [one for one in lines if ident in (str(one.get("id", "")), str(one.get("to", "")))]
+        ident, kind = str(message["id"]), str(message.get("kind"))
+        mine = [one for one in lines if ident in (str(one.get("id", "")), str(one.get("to", "")))
+                and not one.get("refused")]
         kinds = [one["kind"] for one in mine]
         delivered = next((one for one in reversed(mine) if one["kind"] == "delivered"), None) \
             if ident in given else None
         reply = next((one for one in mine if one["kind"] == "reply"), None)
         failed = next((one for one in mine if one["kind"] == "failed"), None)
         held = next((one for one in reversed(mine) if one["kind"] == "held"), None)
-        state, why = "queued", str(held.get("why", "")) if held else ""
+        state, why = "queued", str(held.get("why", "")) if held else held_back
         if not genuine(home, message):
-            state, why = "not delivered", "it says it is from a person and is not signed by the board"
-        elif "withdrawn" in kinds or (ident in pending_withdrawals and delivered is None):
-            state = "withdrawn"
+            state, why = "not delivered", UNSIGNED
         elif failed is not None and reply is None:
             state, why = "not delivered", str(failed.get("why", ""))
+        elif kind != "say":
+            state, why = ("done", "") if "seen" in kinds else ("queued", why)
+        elif "withdrawn" in kinds or (ident in pending_withdrawals and delivered is None):
+            state, why = "withdrawn", ""
         elif reply is not None:
-            state = "answered"
+            state, why = "answered", ""
         elif "unaddressed" in kinds:
-            state = "unaddressed"
+            state, why = "unaddressed", ""
         elif delivered is not None:
             state, why = "delivered", ""
-        found.append({"id": ident, "t": str(message.get("t", "")), "from": str(message.get("from", "")),
+        found.append({"id": ident, "kind": kind, "t": str(message.get("t", "")), "from": str(message.get("from", "")),
                       "text": str(message.get("text", "")), "mode": str(message.get("mode", "wait")),
                       "state": state, "delivered": str(delivered.get("t", "")) if delivered else "",
                       "reply": str(reply.get("text", "")) if reply else "", "why": why})
     for one in lines:
-        if one.get("kind") == "failed" and one.get("malformed"):
-            found.append({"id": str(one.get("id", "")), "t": str(one.get("t", "")), "from": "", "text": "",
-                          "mode": "wait", "state": "not delivered", "delivered": "", "reply": "",
+        if one.get("kind") == "failed" and (one.get("refused") or one.get("malformed")):
+            found.append({"id": str(one.get("id", "")), "kind": "", "t": str(one.get("t", "")), "from": "",
+                          "text": "", "mode": "wait", "state": "not delivered", "delivered": "", "reply": "",
                           "why": str(one.get("why", ""))})
     return found
 

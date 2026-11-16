@@ -53,7 +53,8 @@ class TalkFilesTest(unittest.TestCase):
         talk.note(self.home, "reply", to=ids[2], text="done")
         talk.note(self.home, "failed", id=ids[3], why="the agent ended")
         talk.send(self.home, "withdraw", of=ids[4])
-        states = {one["id"]: (one["state"], one["reply"], one["why"]) for one in talk.receipts(self.home)}
+        states = {one["id"]: (one["state"], one["reply"], one["why"]) for one in talk.receipts(self.home)
+                  if one["kind"] == "say"}
         self.assertEqual(states, {ids[0]: ("queued", "", ""), ids[1]: ("delivered", "", ""),
                                   ids[2]: ("answered", "done", ""), ids[3]: ("not delivered", "", "the agent ended"),
                                   ids[4]: ("withdrawn", "", "")})

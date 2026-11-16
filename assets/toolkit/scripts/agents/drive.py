@@ -50,6 +50,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
@@ -117,21 +118,35 @@ def alive(pid: int) -> bool:
     return True
 
 
+def identity(pid: int) -> str:
+    """What says a pid is still the process it was: its start time and its command line, as `ps` gives them
+    on macOS and Linux. `''` where it cannot be read — and then nothing is signalled on its strength."""
+    try:
+        done = subprocess.run(["ps", "-o", "lstart=", "-o", "command=", "-p", str(pid)], capture_output=True,
+                              text=True, timeout=5, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return " ".join(done.stdout.split()) if done.returncode == 0 else ""
+
+
 def reap(conversations: Path) -> list[int]:
     """End every agent a captain that is no longer running left under this stream's conversations: the pids
-    a drive recorded, where the captain that recorded them is gone and the agent is not. What was ended."""
+    a drive recorded, where the captain that recorded them is gone and the process at the pid is still the
+    agent — the same start and command line as were recorded beside it. A pid reused after a reboot, or one
+    whose process cannot be read, is left alone. What was ended."""
     ended = []
     for path in sorted(Path(conversations).glob(f"*/{AGENT_PID}")):
         try:
             held = json.loads(path.read_text(encoding="utf-8"))
-            pid, captain = int(held["pid"]), int(held["captain"])
+            pid, captain, was = int(held["pid"]), int(held["captain"]), str(held["identity"])
         except (OSError, ValueError, KeyError, TypeError):
             continue
-        if captain != os.getpid() and not alive(captain):
-            if alive(pid):
-                end_group(pid)
-                ended.append(pid)
-            path.unlink(missing_ok=True)
+        if captain == os.getpid() or alive(captain):
+            continue
+        if was and alive(pid) and identity(pid) == was:
+            end_group(pid)
+            ended.append(pid)
+        path.unlink(missing_ok=True)
     return ended
 
 
@@ -174,16 +189,32 @@ def acp_environment(row: dict[str, Any] | None) -> dict[str, str]:
     return {str(k): str(v) for k, v in ((npx or {}).get("env") or {}).items()} if isinstance(npx, dict) else {}
 
 
+#: Said once a process: `auto` falling back to print mode, with why.
+FELL_BACK: set[str] = set()
+
+
 def proven() -> tuple[list[str], dict[str, Any], str] | None:
-    """The default: the harness print mode would run, over the protocol, where its registry row's launch is
-    marked proven and this machine can make it. Nothing otherwise, and print mode runs as it did."""
+    """`auto`: the harness print mode would run, over the protocol, where its registry row's launch is marked
+    proven and this machine can make it. Print mode otherwise, said once with why."""
     try:
         row, _said = harness.choose()
-    except harness.NoHarness:
-        return None
+    except harness.NoHarness as none:
+        return fell_back(f"no harness can run here ({none})")
     launch = row.get("acp") if isinstance(row, dict) else None
-    argv = acp_launch(row) if isinstance(launch, dict) and launch.get("proven") is True else []
-    return (argv, row, f"agent: {row['name']}, over the Agent Client Protocol") if argv else None
+    if not isinstance(launch, dict) or launch.get("proven") is not True:
+        return fell_back(f"the registry does not mark {row['name']}'s launch over the protocol proven")
+    argv = acp_launch(row)
+    if not argv:
+        return fell_back(f"this machine cannot make {row['name']}'s launch over the protocol (`npx`, or its "
+                         f"command, is not on PATH)")
+    return argv, row, f"agent: {row['name']}, over the Agent Client Protocol"
+
+
+def fell_back(why: str) -> None:
+    if why not in FELL_BACK:
+        FELL_BACK.add(why)
+        say(f"sessions: auto runs in print mode — {why}")
+    return None
 
 
 def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
@@ -194,8 +225,9 @@ def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
     if not named and chosen == "protocol":
         named = "1"
     if not named:
-        # `auto`, or nothing said: the protocol where the harness's launch is proven, print mode elsewhere.
-        return proven() if chosen != "print" else None
+        # `auto`: the protocol where the harness's launch is proven, print mode elsewhere. Nothing said is
+        # print mode, exactly as before `auto` was: a project is never switched by migrating.
+        return proven() if chosen == "auto" else None
     if named.lower() not in ON:
         # A Windows path is backslashes, which POSIX splitting reads as escapes and drops: kept as written.
         words = shlex.split(named.replace("\\", "\\\\") if os.name == "nt" else named)
@@ -230,6 +262,22 @@ def ruling(ask: dict[str, Any]) -> dict[str, Any]:
         return {"allow": False, "why": "outside the berth, and nobody is here to allow it"}
     return {"action": "decline", "why": "nobody is here; what a person must decide is a `question` line in the "
                                         "deck log"}
+
+
+def lifts(home: Path, by: str) -> bool:
+    """Whether a resume from `by` lifts what holds the slice: a hold a person placed, only a person's."""
+    how, placed, _ = talk.halted(home)
+    return bool(how) and (placed != talk.PERSON or by == talk.PERSON)
+
+
+def branch_head(cwd: Path) -> str:
+    """The commit the berth is at, or `''`."""
+    try:
+        done = subprocess.run(["git", "rev-parse", "HEAD"], cwd=cwd, capture_output=True, text=True, timeout=10,
+                              check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return done.stdout.strip() if done.returncode == 0 else ""
 
 
 def say(line: str, err: bool = False) -> None:
@@ -287,6 +335,9 @@ class Drive:
         self.halted_by = ""  # the id of the message that halted it
         self.holding = ""  # why messages are kept back now, where the captain said so
         self.silent = ""  # why the captain ended a turn that had gone quiet
+        self.message_since: float | None = None  # when the message under way was delivered, by the clock
+        self.message_commits = False  # a message's turn moved the branch: the gate is read again
+        self.unlaunched = ""  # the agent could not be started at all, and why
         self.closing = False
         self.closed = False
         self.replaying = False
@@ -365,7 +416,11 @@ class Drive:
 
     def run(self) -> None:
         try:
-            self.session.start()
+            try:
+                self.session.start()
+            except Exception as fault:
+                self.unlaunched = str(fault)
+                raise
             self.recorded()
             self.open()
             self.pick()
@@ -401,7 +456,7 @@ class Drive:
         child = self.session.child
         if self.home is not None and child is not None:
             self.home.mkdir(parents=True, exist_ok=True)
-            said = json.dumps({"pid": child.pid, "captain": os.getpid()}) + "\n"
+            said = json.dumps({"pid": child.pid, "captain": os.getpid(), "identity": identity(child.pid)}) + "\n"
             (self.home / AGENT_PID).write_text(said, encoding="utf-8")
 
     def open(self) -> None:
@@ -506,12 +561,16 @@ class Drive:
         assert self.home is not None
         ident = str(message["id"])
         talk.note(self.home, "delivered", id=ident, mode=str(message.get("mode") or "wait"))
+        before, self.message_since = branch_head(self.cwd), time.monotonic()
         try:
             stop = self.turn(message_prompt(message), ident)
         except Exception:
             talk.note(self.home, "failed", id=ident, why=self.silent or "the agent ended before it answered")
             talk.settle(self.home, ident)
             raise
+        finally:
+            self.message_since = None
+            self.message_commits = self.message_commits or branch_head(self.cwd) != before
         self.interrupting = ""
         words = self.text.strip()
         if self.silent:
@@ -535,8 +594,8 @@ class Drive:
         """Read every new thing in the inbox while the drive is up, and act on the ones that steer it."""
         assert self.home is not None
         while not self.closed:
-            for path in talk.malformed(self.home):
-                talk.reject(self.home, path)
+            for path, why in talk.refused(self.home):
+                talk.reject(self.home, path, why)
             for message in talk.unseen(self.home):
                 self.heard(message)
             with self.cond:
@@ -558,9 +617,12 @@ class Drive:
         elif kind == "pause":
             self.pausing = (ident, by, why)
         elif kind == "resume":
-            if self.pausing is not None or talk.halted(self.home)[0]:
+            pending_pause = self.pausing is not None and (self.pausing[1] != talk.PERSON or by == talk.PERSON)
+            if pending_pause or lifts(self.home, by):
                 self.pausing = None
                 talk.note(self.home, "resumed", by=by)
+            else:
+                talk.note(self.home, "failed", id=ident, why="only a person lifts a hold a person placed")
         elif kind == "withdraw":
             of = str(message.get("of") or "")
             if of not in talk.handed(talk.thread(self.home)):

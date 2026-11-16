@@ -90,6 +90,7 @@ sys.path.insert(0, str(HERE))
 import abreast  # noqa: E402
 import captain_agent  # noqa: E402
 import captain_events  # noqa: E402
+import captain_orders  # noqa: E402
 import captain_rules  # noqa: E402
 import claims  # noqa: E402
 import clearance  # noqa: E402
@@ -882,6 +883,11 @@ def steered(home: Path, process: subprocess.Popen | None, pausing: tuple[str, st
             talk.note(home, "failed", id=str(message["id"]),
                       why="it says it is from a person and is not signed by the board")
             continue
+        if kind in ("stop", "pause") and pausing is not None and pausing[0] == talk.PERSON and by != talk.PERSON:
+            # A person's pause stands from the moment it is heard: nobody else's stop or pause replaces it.
+            talk.note(home, "failed", id=str(message["id"]), why="a person's pause is waiting for this run to end, "
+                                                                 "and stands")
+            continue
         if kind == "stop":
             # Held by its line on the thread where a person sent it: not claimed again until they resume it.
             talk.note(home, "stopped", by=by, why=why or None)
@@ -893,6 +899,7 @@ def steered(home: Path, process: subprocess.Popen | None, pausing: tuple[str, st
             continue
         if kind == "pause" and process is not None:
             pausing = (by, why)
+            talk.note(home, "pausing", by=by, why=why or None)
         elif kind == "pause" and not talk.paused(home):
             talk.note(home, "paused", by=by, why=why or None)
         elif kind == "resume" and pausing is not None:
@@ -1154,21 +1161,34 @@ def ceiling() -> int:
 
 
 def counted_runs(feature: str, fairway: str, slice_id: str) -> int:
-    """The runs of this slice that cost an attempt since a person last spoke to it — a word to it, a word to the
-    stream after a park about it, an answer to one of its questions, a resume of it — read from the log and
-    the slice's conversation, never held in this process."""
+    """The runs of this slice that cost an attempt since a person last spoke to it — a word to it, or a word to
+    the stream after a park about it, or a resume of it — read from the log and the slice's conversation, never
+    held in this process. **Only a person's words count, and only where they are proved**: a `told` line any
+    session could append to the deck log is believed as a person's only where it names (`inbox`) a message a
+    person sent, signed, in this slice's conversation or the stream's. A `decision` is not a person's word —
+    the skipper writes them, and so could a session — and resets nothing."""
     found = entries(feature, fairway)
     parks = [e for e in found if e.kind == "parked" and about(e, slice_id)]
+    said = proved_said(fairway, slice_id)
     since = [e.t for e in found if e.kind == "told" and e.fields.get("by") == talk.PERSON
+             and str(e.fields.get("inbox") or "") in said
              and (str(e.fields.get("slice", "")) == slice_id
                   or (not e.fields.get("slice") and any(park.t < e.t for park in parks)))]
-    since += [e.t for e in found if e.kind == "decision" and str(e.fields.get("slice", "")) == slice_id
-              and not str(e.fields.get("decided_by") or "").startswith("captain:")]
     since += [str(one.get("t", "")) for one in talk.thread(conversation(fairway, slice_id))
               if one.get("kind") == "resumed" and one.get("by") == talk.PERSON]
     last = max(since, default="")
     return sum(1 for e in found if e.kind == "dispatched" and str(e.fields.get("slice", "")) == slice_id
                and e.t >= last and not e.fields.get("free"))
+
+
+def proved_said(fairway: str, slice_id: str) -> set[str]:
+    """The ids of the messages a person sent, signed, to this slice or to its stream: what proves a `told`."""
+    run = logs.run_dir(ROOT)
+    proved: set[str] = set()
+    for home in (conversation(fairway, slice_id), talk.place(run, fairway, talk.CAPTAIN)):
+        proved |= {str(one["id"]) for one in talk.inbox(home)
+                   if one.get("from") == talk.PERSON and talk.genuine(home, one)}
+    return proved
 
 
 def dispatch(slice_id: str, feature: str, fairway: str, retry: str = "",
@@ -1735,7 +1755,9 @@ def look_stuck(feature: str, fairway: str, flying: list[str]) -> None:
 
         def then(chosen: list[dict], _by: str, slice_id: str = slice_id) -> None:
             for one in chosen:
-                if one.get("verb") == "park" and slice_id in FLIGHT:
+                home = conversation(fairway, slice_id)
+                person = talk.halted(home)[1] == talk.PERSON or captain_orders.person_asked(home)
+                if one.get("verb") == "park" and slice_id in FLIGHT and not person:
                     # Ended through its conversation, as a person's stop is, and parked where it ends.
                     FLIGHT[slice_id]["parking"] = str(one.get("why") or "its captain parked it")
                     talk.send(conversation(fairway, slice_id), "stop", str(one.get("why") or ""),
@@ -2467,6 +2489,11 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
                     # The allowance is read again at once: the first slice was the lit right, the rest are slots.
                     woken = True
                     continue
+        if pending.get("done"):
+            # The captain answered when nothing could start — the turn drained, the stream parked or merging, no
+            # slot free: its choice is closed and dropped, and the loop can end. A pending choice is always
+            # answered, by the captain or by the rule at the bound (`captain_events.Helm.later`).
+            pending.clear()
         if not threads and not pending:
             return said
         try:

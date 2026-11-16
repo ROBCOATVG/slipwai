@@ -231,7 +231,14 @@ class Helm:
         asks, so that the loop never waits on its captain — it carries on, and the order or the rule is carried
         out when it arrives or the bound has passed."""
         def run() -> None:
-            then(*self.decide(kind, slice_id, facts, may, default, check))
+            # `then` is always called: a decision that raised is the rule's, so whatever waits on it — a choice
+            # the loop holds open — is always answered.
+            try:
+                chosen, by = self.decide(kind, slice_id, facts, may, default, check)
+            except Exception as fault:  # noqa: BLE001
+                self.say(f"captain: {kind} decided by the rule — the decision failed ({type(fault).__name__}: {fault})")
+                chosen, by = default, "rule"
+            then(chosen, by)
         asked = threading.Thread(target=run, name=f"captain-{kind}", daemon=True)
         self.asked = [one for one in self.asked if one.is_alive()] + [asked]
         asked.start()
@@ -292,7 +299,10 @@ class Helm:
                 self.answer(path, "refused", "it is not an order this reads")
                 continue
             taken.seen.append(path.stem)
-            why = captain_orders.refusal(self, order, path, held, check, done, taken)
+            try:
+                why = captain_orders.refusal(self, order, path, held, check, done, taken)
+            except Exception as fault:  # noqa: BLE001 — a file in a folder is never what stops the captain
+                why = f"it could not be read as an order ({type(fault).__name__})"
             if why:
                 self.answer(path, "refused", why)
             else:
@@ -301,8 +311,8 @@ class Helm:
     def carry(self, path: Path, order: Order, held: dict[str, Any], done: list[Order]) -> None:
         try:
             said = self.acts.act(order, held)
-        except ValueError as fault:
-            self.answer(path, "refused", str(fault))
+        except Exception as fault:  # noqa: BLE001 — refused with why, never the captain program's end
+            self.answer(path, "refused", str(fault) or type(fault).__name__)
             return
         done.append(order)
         self.answer(path, "done", said)
@@ -357,6 +367,8 @@ def readable(ask: dict[str, Any]) -> bool:
     places = [str(one) for one in tool.get("locations") or []]
     if str(tool.get("kind") or "") not in captain_orders.READS or not places or root is None:
         return False
+    if any(Path(place).name == talk.KEY for place in places):
+        return False  # a key file is read by nobody a captain answers for
     for place in places:
         try:
             Path(place).expanduser().resolve().relative_to(root)

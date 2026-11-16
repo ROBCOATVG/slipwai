@@ -12,8 +12,8 @@ and says so once (`STATUS`, beside its events, which the board's reader shows).
 
 Its launch is the first of: a command named in `SLIPWAI_CAPTAIN` that starts an agent speaking the protocol
 (the suite's stand-in is one); `SLIPWAI_CAPTAIN=1`, the initialised harness's launch row as `SLIPWAI_ACP=1`
-reads it; otherwise the harness print mode would run, where its registry row marks the launch proven and
-this machine can make it. The session is started in the project's root, its conversation
+reads it; otherwise the protocol launch of the harness this project runs (the row `harness.choose` names),
+where the registry marks that launch proven and this machine can make it. Nothing is ever run in print mode. The session is started in the project's root, its conversation
 `talk/<fairway>/_captain/`, saved and loaded like a slice's. Each wake-up hands it the event and the stream's
 state as the log says it now (`events/<fairway>/state.json`), never what it remembers, so a cold start
 answers as a warm one would; each is bounded by `captain.bound`, from when the session is ready.
@@ -32,6 +32,7 @@ import argparse
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -174,26 +175,41 @@ def permit(tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | No
     allowed = next((str(one["optionId"]) for one in options if one.get("kind") == "allow_once" and "optionId" in one), None)
     refused = next((str(one["optionId"]) for one in options if one.get("kind") == "reject_once" and "optionId" in one), None)
     kind = str(tool_call.get("kind") or "")
-    if kind in ("read", "search", "think") and allowed:
+    if kind in ("read", "search", "think") and allowed and not keyed(tool_call):
         return allowed
     if kind == "execute" and allowed and ordering(tool_call):
         return allowed
     return refused
 
 
+def keyed(tool_call: dict[str, Any]) -> bool:
+    """Whether a tool call names a key file — the conversation key or any other `.key` — which no captain reads."""
+    places = [str(one.get("path") or "") for one in tool_call.get("locations") or [] if isinstance(one, dict)]
+    raw = tool_call.get("rawInput") or {}
+    places += [str(value) for value in raw.values()] if isinstance(raw, dict) else []
+    return any(Path(place).name == talk.KEY or place.endswith(f"/{talk.KEY}") for place in places)
+
+
 def ordering(tool_call: dict[str, Any]) -> bool:
-    """Whether a command is one run of this project's own `orders.py`, by its resolved path, and nothing beside
-    it: no shell, and no copy of the script in a berth a slice could have edited."""
+    """Whether a command is one run of this project's own `orders.py`, by its resolved path, under the very
+    interpreter this program runs under, and nothing beside it: no shell, no copy of the script in a berth a
+    slice could have edited, and nothing where the command itself cannot be read — the display title is never
+    taken for it."""
     raw = tool_call.get("rawInput") or {}
     command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
-    command = command or str(tool_call.get("title") or "")
-    if any(mark in command for mark in (";", "&", "|", ">", "<", "`", "$", "\n")):
+    if not command or any(mark in command for mark in (";", "&", "|", ">", "<", "`", "$", "\n")):
         return False
     try:
         words = shlex.split(command)
     except ValueError:
         return False
-    if len(words) < 2 or not Path(words[0]).name.startswith("python"):
+    if len(words) < 2:
+        return False
+    interpreter = words[0] if Path(words[0]).is_absolute() else shutil.which(words[0])
+    try:
+        if interpreter is None or Path(interpreter).resolve() != Path(sys.executable).resolve():
+            return False
+    except OSError:
         return False
     script = Path(words[1]).expanduser()
     script = script if script.is_absolute() else ROOT / script

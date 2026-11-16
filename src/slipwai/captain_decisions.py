@@ -74,7 +74,8 @@ def decided(root: Path, fairway: str, since: str = "") -> list[dict[str, Any]]:
 def status(root: Path, fairway: str) -> dict[str, Any] | None:
     """Whether this stream's captain is an agent, and why not where it is not — "no captain agent: this harness
     has no proven protocol launch" — as its captain program said when it started (`captain.json` beside its
-    events). None where no captain program has said: the stream has never asked for an agent."""
+    events). None where no captain program has said: the stream has never asked for an agent. No page reads it
+    yet: it is here for the captain's window on the board (stream F), which draws it beside what it decided."""
     return held(run_dir(root) / EVENTS / fairway / "captain.json")
 
 

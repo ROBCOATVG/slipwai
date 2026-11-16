@@ -36,7 +36,7 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 500 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
+# budget: 520 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
 # and the fold into receipts for every kind, which a reader and the writer must not disagree on
 from __future__ import annotations
@@ -186,7 +186,10 @@ def genuine(home: Path, message: dict[str, Any]) -> bool:
     """Whether the message carries the signature `send` made with this run folder's key, for this stream and
     slice. Nobody is taken at their word: a file any session could write is not a message."""
     secret = key(home)
-    return bool(secret) and hmac.compare_digest(str(message.get("sig", "")), signature(secret, message, home))
+    try:
+        return bool(secret) and hmac.compare_digest(str(message.get("sig", "")), signature(secret, message, home))
+    except (TypeError, ValueError, UnicodeError):
+        return False  # a signature or a field no signature could have been made over: a file, not a message
 
 
 def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PERSON, of: str = "",
@@ -405,6 +408,20 @@ def halted(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, 
         elif kind in ("paused", "stopped"):
             last = (str(kind), by, str(one.get("why", "")))
     return last
+
+
+def pending_pause(home: Path, lines: list[dict[str, Any]] | None = None) -> str:
+    """Who asked for a pause that waits for the turn under way to end — a `pausing` line no `paused`,
+    `resumed` or `stopped` has followed — or `''`. Written the moment the pause is heard, so a hold a person
+    asked for is on the thread, and nobody else's word can take its place, before the turn has ended."""
+    asked = ""
+    for one in thread(home) if lines is None else lines:
+        kind = one.get("kind")
+        if kind == "pausing":
+            asked = str(one.get("by", ""))
+        elif kind in ("paused", "resumed", "stopped"):
+            asked = ""
+    return asked
 
 
 def paused(home: Path, lines: list[dict[str, Any]] | None = None) -> bool:

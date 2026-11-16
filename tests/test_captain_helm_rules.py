@@ -171,10 +171,11 @@ class RulesTest(HelmBase):
     def test_only_the_project_s_own_orders_script_may_be_run(self) -> None:
         agent = loaded(self.root, "captain_agent")
         own = self.root / "scripts/agents/orders.py"
-        self.assertTrue(agent.ordering({"rawInput": {"command": f"python3 {own} say --text hi"}}))
+        self.assertTrue(agent.ordering({"rawInput": {"command": f"{sys.executable} {own} say --text hi"}}))
         berth = self.root.parent / "berth/scripts/agents/orders.py"
-        self.assertFalse(agent.ordering({"rawInput": {"command": f"python3 {berth} say --text hi"}}))
-        self.assertFalse(agent.ordering({"rawInput": {"command": f"python3 {own} say --text $SLIPWAI_CAPTAIN_KEY"}}))
+        self.assertFalse(agent.ordering({"rawInput": {"command": f"{sys.executable} {berth} say --text hi"}}))
+        keyed = f"{sys.executable} {own} say --text $SLIPWAI_CAPTAIN_KEY"
+        self.assertFalse(agent.ordering({"rawInput": {"command": keyed}}))
 
     def test_a_slice_s_session_setting_eval_gains_nothing(self) -> None:
         helm = self.helm(None, bound=0.3)

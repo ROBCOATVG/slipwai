@@ -100,6 +100,11 @@ layout and wording, not for code: `Board.dc.html` on the owner's design canvas.
     decision, says so on the board, and tries the agent again at the next event. The captain program's own
     loop never waits on it: an event is put, the loop carries on, and the order or the rule is carried out
     when it comes.
+17a. **A captain's pause is lifted by no rule.** *Noted 2026-11-16:* a slice the captain paused stays paused
+    — shown as *paused by captain:&lt;stream&gt;*, never as a park — until a person resumes it, or the captain
+    does. No timer and no harbour rule lifts it, so the board must show it: the slice's card says so, and
+    *Waiting on you* lists it with the person-paused ones (which amends decision 11's line that a slice its
+    captain paused is not listed; the board's side is stream F's).
 18. **Only over the protocol.** *Amended 2026-11-16, with the owner:* a stream has a captain agent only where
     its session is held over the Agent Client Protocol, whose policy confines it to reading and running the
     project's own `orders.py`. A captain run headless, with a shell of its own, cannot be confined and what

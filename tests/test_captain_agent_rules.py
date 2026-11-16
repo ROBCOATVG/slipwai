@@ -62,12 +62,14 @@ class RulesTest(AgentBase):
         self.budget(minutes=5, attempts=0)  # a ceiling of one run
         self.settings(bound=20)
         old = "2026-11-16T09:00:00Z"
+        said = talk.send(talk.place(logs.run_dir(self.root), "ORD", talk.CAPTAIN), "say", "done")  # what proves it
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t=old),
                   logs.entry("dispatched", fairway="ORD", slice="ORD-01", t=old),
                   logs.entry("claimed", fairway="ORD", slice="ORD-02", t=old),
                   logs.entry("dispatched", fairway="ORD", slice="ORD-02", t=old),
                   logs.entry("parked", fairway="ORD", why="ORD-01: a host change", t="2026-11-16T09:01:00Z"),
-                  logs.entry("told", fairway="ORD", message="done", by="person", t="2026-11-16T09:02:00Z"))
+                  logs.entry("told", fairway="ORD", message="done", by="person", inbox=said["id"],
+                             t="2026-11-16T09:02:00Z"))
         module = self.loaded()
         self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), 0, "the word after its park")
         self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-02"), 1, "a word about another is not its")

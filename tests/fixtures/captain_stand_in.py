@@ -6,7 +6,8 @@ lists — what the fixed rule would do — through `orders.py`, as a real captai
 must leave the same deck log as without it. Every other mode misbehaves, writing its order files itself
 (signed with the key it was handed, so that it is the program's own check that is proved, not the script's):
 
-- `silent` says nothing until its turn is cancelled; `die` exits mid-decision having said nothing;
+- `silent` says nothing until its turn is cancelled; `late` answers as `today` does, `STAND_IN_DELAY`
+  seconds late; `die` exits mid-decision having said nothing;
 - `uncleared` starts a slice the event did not offer; `greedy` starts every slice offered and one more;
 - `retry` retries whatever the event allows; `merge` orders a merge; `malformed` writes a file that is not
   JSON; `unsigned` and `forged` give an order with no signature or one made with another key;
@@ -73,6 +74,9 @@ def decide(event):
     cleared = [one["slice"] for one in (held.get("facts") or {}).get("cleared") or []]
     if MODE == "silent":
         return False
+    if MODE == "late":
+        import time
+        time.sleep(float(os.environ.get("STAND_IN_DELAY") or 4))  # answers, but after the slice it chose for
     if MODE == "die":
         os._exit(3)
     if MODE == "uncleared" and held["kind"] == "choose-next":

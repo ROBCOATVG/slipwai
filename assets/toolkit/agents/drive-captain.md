@@ -59,7 +59,9 @@ order: read the why, and give a different order if one fits, or `none`.
   message to a slice at its merge is held until the merge is answered, as every message is. `captain:<stream>`
   as the target tells another stream's captain.
 - `pause`, `stop`, `resume` — a slice's session; **a hold a person placed is only a person's to lift**, and
-  the program refuses a pause, a stop or a resume over it.
+  the program refuses a pause, a stop or a resume over it, including a pause a person has asked for and the
+  turn has not yet reached. A pause you give is lifted by no rule: the slice stays paused, shown as paused by
+  you, until you or a person resumes it — so give one only with a sentence saying why and what lifts it.
 - `say --text` — one sentence to the person, in your own conversation. `ask --text [--options]` — a question
   that waits on a person; use it only for something only a person can decide.
 - `none --why` — you decline, and the fixed rule decides.

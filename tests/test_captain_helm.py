@@ -219,9 +219,9 @@ class HelmTest(HelmBase):
         self.assertEqual((states.count("done"), states.count("refused")), (flood, 40 - flood))
         self.assertEqual(by, "rule", "saying things is not a decision")
 
-    def message(self, act: Callable[[dict, dict], object]) -> tuple[list[dict], str]:
+    def message(self, act: Callable[[dict, dict], object], inbox: str = "m1") -> tuple[list[dict], str]:
         helm = self.helm(act)
-        return helm.decide("message", "", {"inbox": "m1", "from": "person", "text": "hi"},
+        return helm.decide("message", "", {"inbox": inbox, "from": "person", "text": "hi"},
                            ["message", "pause", "resume", "stop", "say", "ask", "none"],
                            [{"verb": "none", "why": "rule"}])
 
@@ -252,7 +252,7 @@ class HelmTest(HelmBase):
 
     def test_a_routed_message_names_who_said_it_and_what_it_routes(self) -> None:
         asked = talk.send(talk.place(self.run_dir, "ORD", talk.CAPTAIN), "say", "tell ORD-02 to use euros")
-        self.message(lambda held, env: self.order(held, env, "message", slice="ORD-02", of=asked["id"]))
+        self.message(lambda held, env: self.order(held, env, "message", slice="ORD-02", of=asked["id"]), asked["id"])
         sent = talk.pending(talk.place(self.run_dir, "ORD", "ORD-02"))
         self.assertEqual([(one["from"], one["via"], one["of"], one["quote"]) for one in sent],
                          [("captain:ORD", "captain:ORD", asked["id"], "tell ORD-02 to use euros")])

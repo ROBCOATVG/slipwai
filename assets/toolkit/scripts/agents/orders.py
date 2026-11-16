@@ -122,8 +122,12 @@ def sign(secret: bytes, order: dict[str, Any]) -> str:
 
 
 def signed(secret: bytes, order: dict[str, Any]) -> bool:
-    """Whether the order carries the signature this key makes. No key is no order."""
-    return bool(secret) and hmac.compare_digest(str(order.get("sig", "")), sign(secret, order))
+    """Whether the order carries the signature this key makes. No key is no order, and nor is a file whose
+    signature or fields no signature could have been made over: it is refused, never raised on."""
+    try:
+        return bool(secret) and hmac.compare_digest(str(order.get("sig", "")), sign(secret, order))
+    except (TypeError, ValueError, UnicodeError):
+        return False
 
 
 def open_events(folder: Path) -> list[dict[str, Any]]:

@@ -53,7 +53,8 @@ without a failure; the reaper reads `ps` in the C locale and checks its captain 
 **Catch-up:** the captain agent is off in an existing project until you turn it on: add `"captain":
 {"agent": true, "bound": 60}` to `harbour.json` (`"answers": true` to let it answer a slice's questions,
 `"per_hour"` to change its ceiling) and restart the fleet; it runs only where your harness has a proven launch
-over the Agent Client Protocol. A newly generated project has it on. `SLIPWAI_CAPTAIN=off` in the fleet's environment turns it off whatever the file
+over the Agent Client Protocol. A newly generated project has it on. A `harbour.json` written by an earlier
+build of this may carry `headless_bound`; it is read by nothing now and can be removed. `SLIPWAI_CAPTAIN=off` in the fleet's environment turns it off whatever the file
 says, and `SLIPWAI_CAPTAIN=1` on through the project's own harness. Three things change with the agent off as
 well, and need nothing from you: a person's pause or stop now holds a slice through anyone else's stop; what a
 person says to a stream through the board is read by its captain program, which is lit to read it even while

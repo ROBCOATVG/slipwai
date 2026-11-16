@@ -45,8 +45,13 @@ class HeldCaptainTest(Fixture):
         self.addCleanup(captain.kill)
         return captain
 
-    def finished(self, captain: subprocess.Popen) -> str:
-        said, _ = captain.communicate(timeout=150)
+    def finished(self, captain: subprocess.Popen, timeout: float = 150, why: str = "") -> str:
+        try:
+            said, _ = captain.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            captain.kill()
+            said, _ = captain.communicate()
+            self.fail(f"the captain did not end within {timeout:.0f}s{': ' + why if why else ''}\n{said[-3000:]}")
         self.assertEqual(captain.returncode, 0, said)
         return said
 
@@ -78,7 +83,12 @@ class HeldCaptainTest(Fixture):
         until(lambda: (self.root / ".lingering").exists())
         (self.root / "half-done.txt").write_text("uncommitted", encoding="utf-8")
         talk.send(self.home, "stop", "wrong approach")
-        said = self.finished(captain)
+        # A captain that claims a person's stopped slice back goes round for ever: said at once, as that.
+        ends = time.monotonic() + 120
+        while captain.poll() is None and time.monotonic() < ends:
+            self.assertLessEqual(self.kinds().count("claimed"), 1, "the slice was claimed back after a person's stop")
+            time.sleep(0.2)
+        said = self.finished(captain, 5, "it kept the slice going after a person's stop")
         stops = [e for e in self.read("ORD") if e.kind == "stopped"]
         self.assertEqual([(e.fields["slice"], e.fields.get("by"), e.fields.get("why")) for e in stops],
                          [("ORD-01", "person", "wrong approach")], said)
@@ -127,13 +137,25 @@ class HeldCaptainTest(Fixture):
         sent = talk.send(self.home, "say", "dawdle on this")  # the stand-in hangs answering it
         until(lambda: "seen" in self.lines())
         (self.root / ".go").write_text("", encoding="utf-8")
-        said = self.finished(captain)
+        said = self.finished(captain, 60, "a message turn that hangs was not ended at the stage bound")
         self.assertLess(time.monotonic() - started, 90, said)
         receipt = next(one for one in talk.receipts(self.home) if one["id"] == sent["id"])
         self.assertEqual(receipt["state"], "not delivered", said)
         self.assertIn("nothing was written to the deck log", receipt["why"])
         parks = [e for e in self.read("ORD") if e.kind == "parked"]
         self.assertEqual([e.fields.get("cause") for e in parks], ["silence"], said)
+
+
+#: A print-mode session the harness refuses the first time, as a session limit, and runs after; it takes the
+#: `--output-format stream-json` its refusal is read by, and hands the fake below it the slice and stream.
+REFUSING = """import pathlib, sys
+if not pathlib.Path("refused-once").exists():
+    pathlib.Path("refused-once").write_text("x", encoding="utf-8")
+    print('{"type":"result","subtype":"success","is_error":true,"result":"You have hit your session limit, '
+          'resets 9:40pm (Europe/London)"}', flush=True)
+    sys.exit(1)
+sys.argv[1:] = sys.argv[-2:]
+"""
 
 
 class PrintModeTest(Fixture):
@@ -152,6 +174,24 @@ class PrintModeTest(Fixture):
         sent = talk.send(talk.place(self.run_dir, "ORD", "ORD-01"), "say", "mind the rounding", mode="interrupt")
         self.grant("ORD-01")
         done = self.captain("ORD", self.fake)
+        self.assertIn("ORD-01 is through its gate and merged", done.stdout, done.stderr)
+        self.assertIn("from person: mind the rounding", (self.root / "told.txt").read_text(encoding="utf-8"))
+        self.assertEqual(self.receipt("ORD-01", sent["id"])["state"], "delivered")
+
+    def test_a_message_handed_to_a_session_the_harness_refused_is_returned_and_delivered_next_time(self) -> None:
+        path = self.root / "refusing.py"
+        path.write_text(REFUSING + (self.root / "fake-sail.py").read_text(encoding="utf-8"), encoding="utf-8")
+        sail = f"{sys.executable} {path} --output-format stream-json"
+        sent = talk.send(talk.place(self.run_dir, "ORD", "ORD-01"), "say", "mind the rounding")
+        done = self.captain("ORD", sail)
+        self.assertIn("paused at ORD-01 until", done.stdout, done.stderr)
+        home = talk.place(self.run_dir, "ORD", "ORD-01")
+        self.assertEqual([one["kind"] for one in talk.thread(home) if one.get("id") == sent["id"]][-1], "returned")
+        self.assertEqual(self.receipt("ORD-01", sent["id"])["state"], "queued", "back in the queue")
+        park = next(e for e in self.read("ORD") if e.kind == "parked")
+        self.harbour(logs.entry("cleared", harbour=True, fairway="ORD", parked=park.t, what="the limit lifted"))
+        self.grant("ORD-01")
+        done = self.captain("ORD", sail)
         self.assertIn("ORD-01 is through its gate and merged", done.stdout, done.stderr)
         self.assertIn("from person: mind the rounding", (self.root / "told.txt").read_text(encoding="utf-8"))
         self.assertEqual(self.receipt("ORD-01", sent["id"])["state"], "delivered")

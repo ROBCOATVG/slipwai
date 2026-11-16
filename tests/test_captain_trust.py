@@ -27,10 +27,13 @@ class TrustTest(Fixture):
         super().setUp()
         self.home = talk.place(self.root / ".slipwai", "ORD", "ORD-01")
 
-    def run_captain(self, **env: str) -> str:
+    def run_captain(self, timeout: float = 150, why: str = "", **env: str) -> str:
         clean = {key: value for key, value in os.environ.items() if key not in ("SLIPWAI_SAIL", "SLIPWAI_ACP")}
-        done = subprocess.run([sys.executable, str(self.script), "ORD", "--once"], cwd=self.root, text=True,
-                              capture_output=True, timeout=150, env={**clean, **env})
+        try:
+            done = subprocess.run([sys.executable, str(self.script), "ORD", "--once"], cwd=self.root, text=True,
+                                  capture_output=True, timeout=timeout, env={**clean, **env})
+        except subprocess.TimeoutExpired:
+            self.fail(f"the captain did not end within {timeout:.0f}s{': ' + why if why else ''}")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         return done.stdout
 
@@ -59,7 +62,8 @@ class TrustTest(Fixture):
     def test_an_agent_going_round_in_circles_is_still_ended_at_the_bound(self) -> None:
         self.budget(minutes=0.1, attempts=0)
         (self.root / ".busy").write_text("", encoding="utf-8")
-        said = self.run_captain(SLIPWAI_ACP=STAND_IN)
+        said = self.run_captain(60, "an agent calling tools and writing no deck line was not ended at the stage "
+                                    "bound", SLIPWAI_ACP=STAND_IN)
         parks = [e for e in self.read("ORD") if e.kind == "parked"]
         self.assertEqual([e.fields.get("cause") for e in parks], ["silence"], said)
         self.assertIn("nothing was written to the deck log", str(parks[0].fields["why"]))

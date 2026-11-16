@@ -145,7 +145,7 @@ An **event** is what wakes it: `events/<fairway>/<id>.json` with `{"v":1,"id","t
 accept for it; `default` is the orders the fixed rule would give, in the order shape below. An event is closed
 by its orders' results or by the fallback, recorded as `events/<fairway>/<id>.closed.json` (`by`:
 `captain`|`rule`, `why`, `orders`: the order ids read for it, `cost`: `{"seconds", "ready_seconds", "ended":
-"finished"|"bound"|"unavailable", "runner": "protocol"|"headless"|"named"|"none", "tokens": null}`). Beside the
+"finished"|"bound"|"unavailable", "via": "protocol"|"headless"|"named"|"none", "tokens": null}`). Beside the
 events, `events/<fairway>/state.json` is the stream as its log says it at the moment of the event (`in_flight`,
 `unmerged`, `merged`, `parked`, `stream_parked`, `attempts`, `trunk_red`, `recent`: the newest forty deck
 lines without `fairway`), rewritten at every event.

@@ -147,6 +147,18 @@ class HeldTest(unittest.TestCase):
         self.assertEqual([one["loaded"] for one in opened], [False, True])
         until(lambda: not talk.paused(self.home))
 
+    def test_a_captain_s_resume_does_not_lift_a_pause_a_person_gave_mid_turn(self) -> None:
+        held = self.started("dawdle")
+        until(lambda: (self.root / ".dawdling").exists())
+        talk.send(self.home, "pause", "lunch", by="person")
+        until(lambda: self.kinds().count("seen") == 1)
+        resume = talk.send(self.home, "resume", by="captain:ORD")
+        until(lambda: self.kinds().count("seen") == 2)
+        (self.root / ".go").write_text("", encoding="utf-8")
+        until(lambda: held.closed)
+        self.assertEqual(held.halted, ("paused", "person", "lunch"))
+        self.assertEqual(self.state(resume["id"])["why"], "only a person lifts a hold a person placed")
+
     def test_a_stage_that_reviews_opens_a_fresh_session(self) -> None:
         record = self.root / "benchmark.json"
         record.write_text(json.dumps({"stages": [{"stage": "implement-shipwright"}, {"stage": "review-mate"}]}),

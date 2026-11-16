@@ -147,7 +147,7 @@ class Helm:
                 why = "; ".join(f"{one['verb']} {one.get('slice') or one.get('ask') or ''}".strip() for one in done)
             closed = {"v": 1, "id": held["id"], "t": now(), "by": by, "why": why, "orders": seen,
                       "cost": {"seconds": round(time.monotonic() - began, 3), "ready_seconds": ready,
-                               "ended": how, "runner": getattr(turn, "kind", "none"), "tokens": None}}
+                               "ended": how, "via": getattr(turn, "kind", "none"), "tokens": None}}
             write_json(self.events / f"{held['id']}.closed.json", closed)
             self.sweep()
             if by == "rule":

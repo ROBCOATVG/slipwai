@@ -103,5 +103,31 @@ class NativeCommandsTest(unittest.TestCase):
         self.assertEqual(native_commands.steps("just-one"), ["just-one"])
 
 
+class SessionsDefaultTest(unittest.TestCase):
+    """`.specify/cruise.json` with no `sessions` reads as `print`, as before `auto` existed: migrating never
+    switches how a project's sessions run, and `cruise.py` is what a person reads the setting through."""
+
+    def test_a_file_with_no_sessions_key_reads_as_print(self) -> None:
+        import json
+        import subprocess
+        import sys
+        import tempfile
+        from pathlib import Path
+
+        from slipwai.assets import TOOLKIT_ROOT
+        root = Path(tempfile.mkdtemp())
+        (root / "project.json").write_text("{}", encoding="utf-8")
+        (root / "scripts/agents").mkdir(parents=True)
+        (root / "scripts/agents/cruise.py").write_text(
+            (TOOLKIT_ROOT / "scripts/agents/cruise.py").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / ".specify").mkdir()
+        (root / ".specify/cruise.json").write_text(json.dumps({
+            "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
+            "hand": "browser", "unblock": "bosun"}), encoding="utf-8")
+        done = subprocess.run([sys.executable, "scripts/agents/cruise.py"], cwd=root, capture_output=True,
+                              text=True, check=False)
+        self.assertIn('sessions: "print"', done.stdout, done.stderr)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

@@ -42,6 +42,7 @@
 # why: 2026-11-16 5e358df51f892660 Stream E: captain.py asks captain_rules.py (and, only where harbour.json captain.agent is true or SLIPWAI_CAPTAIN names a command, the captain's agent through captain_events, captain_agent and orders.py) for its choices, with today's rules as the answer; stuck.py is the board's warning fold carried in; talk.py keeps a person's hold through others' stops and receipts through a remade key, and skips the mode check only where os.name is nt; drive.py reads ps with LC_ALL=C and takes two optional arguments. With no captain agent a stream on macOS and Linux runs exactly as before.
 # why: 2026-11-16 628add4bbcfb66e1 talk.py's budget comment rewrapped; nothing it does changed
 # why: 2026-11-16 1c0e111670f678d3 A stream hears a person on the program alone: captain.py reads its own conversation each turn into the stream's told line and takes the newest answer before it is carried; abreast.py and fleet.py light a parked stream's captain while a person's signed word waits for it; the harbourmaster lets a person's word to a slice clear its stream's whole park. Nothing else a stream does on macOS or Linux changed.
+# why: 2026-11-16 3ecc4e8ee7ee645f captain_events.py names how a captain decision ran 'via' in its closing record rather than by a retired word; nothing it does changed
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -118,10 +119,6 @@
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  standard-memory-none  scripts/check-slice-scope.py
 3e1f343af7abffa7188de840b4f55d9113b2b4c59ef8377bbcfaafb97a883e7f  standard-postgres-toy-serve  scripts/check-slice-scope.py
-3f0f282acc784bd7562f3ee8fc52bb9bc08984cfe471362cdce321206698c897  event-modelling-memory-none  scripts/agents/captain_events.py
-3f0f282acc784bd7562f3ee8fc52bb9bc08984cfe471362cdce321206698c897  event-modelling-postgres-toy-serve  scripts/agents/captain_events.py
-3f0f282acc784bd7562f3ee8fc52bb9bc08984cfe471362cdce321206698c897  standard-memory-none  scripts/agents/captain_events.py
-3f0f282acc784bd7562f3ee8fc52bb9bc08984cfe471362cdce321206698c897  standard-postgres-toy-serve  scripts/agents/captain_events.py
 40fd1b698705aeaf425fc019d92b3fb7d3f250b5ed84c85da794d67cedad92d3  event-modelling-memory-none  scripts/extensions/project.py
 40fd1b698705aeaf425fc019d92b3fb7d3f250b5ed84c85da794d67cedad92d3  event-modelling-postgres-toy-serve  scripts/extensions/project.py
 40fd1b698705aeaf425fc019d92b3fb7d3f250b5ed84c85da794d67cedad92d3  standard-memory-none  scripts/extensions/project.py
@@ -270,6 +267,10 @@ b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modellin
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modelling-postgres-toy-serve  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-memory-none  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-postgres-toy-serve  scripts/agents/capabilities.py
+b7e0fd294f6c4e9e805a83d1f75604f6c6590199d69f0225f11ec3c04667ee99  event-modelling-memory-none  scripts/agents/captain_events.py
+b7e0fd294f6c4e9e805a83d1f75604f6c6590199d69f0225f11ec3c04667ee99  event-modelling-postgres-toy-serve  scripts/agents/captain_events.py
+b7e0fd294f6c4e9e805a83d1f75604f6c6590199d69f0225f11ec3c04667ee99  standard-memory-none  scripts/agents/captain_events.py
+b7e0fd294f6c4e9e805a83d1f75604f6c6590199d69f0225f11ec3c04667ee99  standard-postgres-toy-serve  scripts/agents/captain_events.py
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-memory-none  scripts/event-model/render-drawio.ts
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-postgres-toy-serve  scripts/event-model/render-drawio.ts
 bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  event-modelling-memory-none  scripts/agents/captain_rules.py

@@ -87,15 +87,18 @@ class GuardTest(unittest.TestCase):
         self.assertNotEqual(mark, self.drive.message_prompt({"text": "x"}).split("`")[1], "a new mark each time")
 
     def test_a_session_saved_under_another_harness_or_unknown_to_the_agent_is_not_loaded(self) -> None:
+        first = self.started("hello")
+        first.wait(20)
+        first.end()  # `s-1`, minted by the agent for this berth: one it can load
         talk.save_session(self.home, "s-1", harness="other")
         self.started("hello").wait(20)
-        self.assertEqual(self.opened()[-1]["loaded"], False)
+        self.assertEqual(self.opened()[-1]["loaded"], False, "loadable, and not loaded: another harness saved it")
         self.assertIn("another harness", self.opened()[-1]["why"])
         talk.save_session(self.home, "s-99")
         self.started("hello").wait(20)
         self.assertEqual(self.opened()[-1]["loaded"], False)
         self.assertIn("would not load", self.opened()[-1]["why"])
-        self.assertEqual(self.opened()[-1]["id"], "s-2", "a new session, with an id of its own")
+        self.assertEqual(self.opened()[-1]["id"], "s-3", "a new session, with an id of its own")
 
     def test_a_stop_ends_the_session_for_good(self) -> None:
         held = self.started("hello")

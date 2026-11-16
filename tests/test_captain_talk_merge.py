@@ -137,6 +137,15 @@ class PlanTest(Fixture):
         talk.note(home, "paused", by="person")
         self.assertEqual(self.plan()["ORD"][0], 0, "a paused one is not, and spends no boiler")
 
+    def test_a_slice_a_person_stopped_wants_no_session_and_one_its_captain_stopped_does(self) -> None:
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"),
+                  logs.entry("stopped", fairway="ORD", slice="ORD-01"))
+        home = talk.place(self.root / ".slipwai", "ORD", "ORD-01")
+        talk.note(home, "stopped", by="captain:ORD", why="stuck")
+        self.assertEqual(self.plan()["ORD"][0], 1, "a captain's stop puts it back in the queue")
+        talk.note(home, "stopped", by="person", why="wrong way")
+        self.assertEqual(self.plan()["ORD"][0], 0, "a person's stop holds it")
+
 
 if __name__ == "__main__":
     import unittest

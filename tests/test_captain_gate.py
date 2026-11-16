@@ -132,6 +132,19 @@ with path.open("a", encoding="utf-8") as handle:
         self.assertEqual([e for e in self.read("ORD") if e.kind == "request"], [], done.stdout)
         self.assertEqual(len([e for e in self.read("ORD") if e.kind == "parked"]), 1)
 
+    def test_a_mark_set_on_an_earlier_turn_stands_and_this_turn_owes_only_its_demo(self) -> None:
+        """TB1: its mark was set, its merge refused on a red trunk, and every run after was parked for a
+        `mark-set` it had already written."""
+        self.deck("ORD", logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        done = self.captain("ORD", self.sail(fake_drive(marks=False)))
+        self.assertEqual(len([e for e in self.read("ORD") if e.kind == "request"]), 1, done.stdout)
+        self.assertNotIn("mark-set", " ".join(str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"))
+
+    def test_a_missed_gate_names_the_command_that_writes_the_line(self) -> None:
+        self.captain("ORD", self.sail(fake_drive(marks=False)))
+        parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
+        self.assertIn("scripts/agents/deck_line.py mark-set --slice ORD-01", parked[0])
+
     def test_an_open_question_parks_with_the_question_and_not_with_a_missing_mark(self) -> None:
         """A stage that stopped to ask is not a stage that wrote nothing."""
         asks = """import sys, json, pathlib, datetime

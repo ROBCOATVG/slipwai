@@ -510,7 +510,8 @@ def before_stop() -> int:
     stage = os.environ.get(STAGE_VARIABLE) or "this stage"
     return hold(given, f"slipwai: {stage} has written no line to the deck log of {fairway}, and a stage "
                        f"that wrote no line made no progress — whatever this turn says it did. Write the "
-                       f"stage's own lines now (`python3 scripts/agents/telegraph.py` is how), or, if the "
+                       f"stage's own lines now (`python3 scripts/agents/deck_line.py` writes `mark-set` and `demo`, "
+                       f"`python3 scripts/agents/try_it.py seed --slice` writes `seeded`), or, if the "
                        f"stage genuinely cannot be done, write the line that says so. The captain reads the "
                        f"log and nothing else.")
 

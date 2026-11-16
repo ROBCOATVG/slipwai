@@ -172,6 +172,9 @@ PUSH_RACES = 3
 #: What a merge refused only because trunk was red carries, so that the park it causes can be told apart
 #: from every other park when trunk comes back: a field and not the refusal's prose, which gets reworded.
 GREEN_TRUNK = "green-trunk"
+#: What the receipt says when a park is lifted because trunk turned: read back to know which refusals
+#: have already lifted one, so the words are the rule's own and kept in one place.
+CLEARED_GREEN = "trunk is no longer red, so the merge it refused is asked for again"
 #: What a gate prints where it ran nothing, and `/verify` has always said is not a pass. Only its own words: a gate
 #: that skipped part of itself still exits 0, and the merge was granted on the exit code alone — every one of
 #: recap's slices with a screen merged over `render gate(s) SKIPPED, not passed`, for fifteen days.
@@ -1363,6 +1366,14 @@ def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.
     after trunk has already turned, and a receipt only on the turn would miss it. A receipt already written
     drops the park from `open_parks`, so a second pass writes nothing, as in `told_after_parks`; `already`
     is this pass's lines, so a park that a `told` has just cleared is not cleared twice.
+
+    **One refusal clears one park.** The park it caused, and no later one. game-club-manager's TB1 was
+    refused once on a red trunk at 12:37 and never got as far as asking again — its gate failed first — so
+    that refusal stayed the fairway's last answer, and every park the captain wrote afterwards, for a mark
+    not set and for a session that would not start, was cleared within seconds as *trunk is no longer red*.
+    Thirty-one parks, each lifted, each followed by another run: a slice that could not get through its
+    gate was dispatched about once a minute for two hours, and `attempts` bounded nothing. A park written
+    after its refusal has already cleared one is standing on something else, and is a person's.
     """
     if trunk_state in ("red", "unasked"):
         return []
@@ -1373,6 +1384,24 @@ def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.
             answers.setdefault(str(entry.fields.get("fairway", "")), []).append(entry)
     done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
             for e in already if e.kind == "cleared"}
+
+    def explains(fairway: str, parked: str) -> logs.Entry | None:
+        """The red-trunk refusal that was this fairway's last answer when it parked, where there is one."""
+        before = [e for e in answers.get(fairway, []) if e.t <= parked]
+        if not before or before[-1].kind != "refused" or before[-1].fields.get("waiting") != GREEN_TRUNK:
+            return None
+        return before[-1]
+
+    # The refusals that have cleared a park already, read back off the receipts this rule wrote: by what
+    # they say, since a receipt names its park and not its reason, and by this pass's own lines.
+    spent: set[tuple[str, str, str]] = set()
+    for receipt in [*harbour, *already]:
+        if receipt.kind != "cleared" or str(receipt.fields.get("what", "")) != CLEARED_GREEN:
+            continue
+        fairway = str(receipt.fields.get("fairway", ""))
+        refusal = explains(fairway, str(receipt.fields.get("parked", "")))
+        if refusal is not None:
+            spent.add((fairway, refusal.t, str(refusal.fields.get("request", ""))))
     found: list[logs.Entry] = []
     for path in deck_logs():
         fairway = path.stem
@@ -1383,12 +1412,14 @@ def cleared_for_green(trunk_state: str, already: list[logs.Entry]) -> list[logs.
         except (logs.Unreadable, OSError, UnicodeDecodeError):
             continue
         for park in logs.open_parks(deck, harbour, fairway):
-            before = [e for e in answers[fairway] if e.t <= park.t]
-            if (not before or before[-1].kind != "refused" or before[-1].fields.get("waiting") != GREEN_TRUNK
-                    or (fairway, park.t) in done or park.fields.get("waiting") == REVIEW):
+            refusal = explains(fairway, park.t)
+            if refusal is None or (fairway, park.t) in done or park.fields.get("waiting") == REVIEW:
                 continue
-            found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
-                                    what="trunk is no longer red, so the merge it refused is asked for again"))
+            used = (fairway, refusal.t, str(refusal.fields.get("request", "")))
+            if used in spent:
+                continue
+            spent.add(used)
+            found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t, what=CLEARED_GREEN))
     return found
 
 

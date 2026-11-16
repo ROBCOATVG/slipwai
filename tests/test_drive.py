@@ -126,7 +126,7 @@ class CaptainTest(Fixture):
         done = self.over("ORD")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("SLIPWAI_ACP", done.stdout)
-        self.assertIn("Drawn: Run the /drive command", done.stdout)
+        self.assertIn("Drawn: Run the /sail command", done.stdout)
         self.assertIn("the agent ended its turn: end_turn", done.stdout)
         kinds = [e.kind for e in self.read("ORD")]
         self.assertIn("claimed", kinds)

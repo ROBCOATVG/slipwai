@@ -46,8 +46,8 @@ believed. Every line carries `fairway`.
 | Kind | What it says | Beyond `fairway` |
 | --- | --- | --- |
 | `claimed` | you have taken this slice | `slice` |
-| `mark-set` | a contract a sibling steers by now exists | `slice`, `mark` |
-| `demo` | the demo was run, and its verdict | `slice`, `verdict` — `accepted`, `behaviour` or `implementation` |
+| `mark-set` | a contract a sibling steers by now exists; `deck_line.py mark-set` writes it, and a mark stands once set | `slice`, `mark` |
+| `demo` | the demo was run, and its verdict; `deck_line.py demo` writes it, and every run owes one | `slice`, `verdict` — `accepted`, `behaviour` or `implementation` |
 | `seeded` | the slice's `try-it.json` ran green against the app its berth runs; `try_it.py seed --slice` writes it, and a slice with a story and no `seeded` line this turn is parked at its gate | `slice`, `records` (steps that answered), `commit`; `given` where the story appended events first |
 | `accepted` | a person accepted a whole capability | `capability` |
 | `demo-due` | a capability is ready for a person to see | `capability` |

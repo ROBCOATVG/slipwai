@@ -46,6 +46,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from datetime import date, timedelta
 from pathlib import Path
 
 
@@ -341,6 +342,18 @@ def settings_file(path: Path) -> dict[str, str]:
         if held and not line.lstrip().startswith("#"):
             found[held.group(1)] = held.group(2).strip().strip("'\"")
     return found
+
+
+def own_settings() -> dict[str, str]:
+    """The settings a berth's own `seed --slice` and `people` run with: the example's, then `.env`'s, then
+    whatever the caller exported — which wins.
+
+    It used to lose. A berth with no `.env` of its own exports its database's address, the example names
+    the default one, and the example was read last: game-club-manager's GN1 seeded its story into whichever
+    berth held port 5433, and two of its events are in AC1's database for good. A caller that says where
+    its database is has said so on purpose.
+    """
+    return {**settings_file(ROOT / ".env.example"), **settings_file(ROOT / ".env"), **os.environ}
 
 
 def environment(where: Path) -> dict[str, str]:
@@ -953,9 +966,40 @@ def token_for(username: str, env: dict[str, str], where: Path) -> str:
                       "password": person["password"], "scope": "openid email profile"})["access_token"]
 
 
-def filled(value: object, kept: dict[str, object]) -> object:
-    """A step's path or body with `{name}` replaced by what an earlier step kept."""
+#: A date a story names relative to the day it is run: `{today}`, `{today+3}`, `{next-thu}`, `{next-thu+7}`.
+#: The weekday is the first one strictly after today; the number is days on from there.
+DATE = re.compile(r"\{(today|next-(mon|tue|wed|thu|fri|sat|sun))(?:\+(\d{1,3}))?\}")
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def dated(value: object, today: date | None = None) -> object:
+    """A story's value with its relative dates written out, as `YYYY-MM-DD`.
+
+    A story that names a day goes stale on its own: game-club-manager's GN1 gave *Thursday 19 and 26
+    November*, the service takes only one of a club's next four nights, and from the 20th the story that
+    had seeded green was refused with nothing changed. A date in a story is nearly always *soon*, so it can
+    say that: `{next-thu}` is the next Thursday whenever the story is run, and `{next-thu+7}` the one after.
+    """
     if isinstance(value, str):
+        def written(found: re.Match[str]) -> str:
+            day = today or date.today()
+            if found.group(2):
+                ahead = (WEEKDAYS.index(found.group(2)) - day.weekday()) % 7 or 7
+                day += timedelta(days=ahead)
+            return (day + timedelta(days=int(found.group(3) or 0))).isoformat()
+        return DATE.sub(written, value)
+    if isinstance(value, list):
+        return [dated(one, today) for one in value]
+    if isinstance(value, dict):
+        return {key: dated(one, today) for key, one in value.items()}
+    return value
+
+
+def filled(value: object, kept: dict[str, object]) -> object:
+    """A step's path or body with `{name}` replaced by what an earlier step kept, and its relative dates
+    (`dated`) written out."""
+    if isinstance(value, str):
+        value = str(dated(value))
         whole = re.fullmatch(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", value)
         if whole and whole.group(1) in kept:
             return kept[whole.group(1)]
@@ -1032,7 +1076,8 @@ def seed(where: Path, env: dict[str, str], state: dict, only_new: bool, api: str
     giving = [(name, story) for name, story in stories if isinstance(story, dict) and story.get("given")]
     refused_given = ""
     if giving:
-        events = [{**one, "slice": name} for name, story in giving for one in story["given"] if isinstance(one, dict)]
+        events = [{**dict(dated(one)), "slice": name}  # type: ignore[call-overload]
+                  for name, story in giving for one in story["given"] if isinstance(one, dict)]
         refused_given = seed_door(where, env, service, events, HOME / "seed-door.log")
         state.setdefault("given", {}).update({name: len(story["given"]) for name, story in giving})
     for name, story in stories:
@@ -1202,7 +1247,7 @@ def main(argv: list[str] | None = None) -> int:
     if asked.verb == "people":
         # Who a story may sign in as, from this checkout; with `--apply`, made in whichever sign-in server
         # the environment names — a berth's, before `seed --slice` — the way Try it makes them in its own.
-        env = {**os.environ, **settings_file(ROOT / ".env.example"), **settings_file(ROOT / ".env")}
+        env = own_settings()
         for person in people(ROOT):
             print(f"  {person['username']}  ({person['name']}, {person.get('source') or 'realm'})")
         if asked.apply:
@@ -1219,7 +1264,7 @@ def main(argv: list[str] | None = None) -> int:
         # recorded is the `seeded` deck line a green run earns, which is the gate the captain holds the
         # slice to: a story that was never run reads exactly like one that was refused.
         held: dict = {}
-        env = {**os.environ, **settings_file(ROOT / ".env.example"), **settings_file(ROOT / ".env")}
+        env = own_settings()
         seed(ROOT, env, held, only_new=False, api=asked.api, only=asked.slice)
         print(json.dumps({"seeded": held["seeded"], "failed": held["seed_failed"], "links": held["links"]},
                          indent=2))

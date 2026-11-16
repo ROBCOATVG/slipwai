@@ -81,6 +81,9 @@ NEVER = ("scripts/", "tools/", ".githooks/", ".slipwai/", ".specify/", "agents/"
          "Makefile", "harbour.json", "project.json", ".github/")
 #: Where a need's change may land: the shared surfaces a slice may not edit and hands back instead.
 SHARED = (".gitignore", ".env.example", "docs/", "packages/", "design-system/")
+#: And under a feature's `specs/`, the mock-ups: the host's as `docs/design.md` is, and handed back the
+#: same way. Not the rest of `specs/` — a slice's own folder is the slice's, and the chart is rendered.
+SHARED_UNDER_SPECS = re.compile(r"^specs/[^/]+/mockups/")
 WORKFLOWS = ".github/workflows/"
 #: A `uses:` line, as a workflow's step names an action: its indent and dash, the action, and its ref.
 USES = re.compile(r"^(\s*-?\s*)uses:\s*['\"]?([^@\s'\"]+)@([^\s'\"#]+)")
@@ -221,7 +224,7 @@ def refusal(job: str, onto: str, branch: str, reverting: list[str], reads: str =
             continue
         if any(path == never.rstrip("/") or path.startswith(never) for never in NEVER):
             return f"{path} is never the mender's to change: a gate passes on its own merits"
-        if job == NEED and not any(path == place or path.startswith(place) for place in SHARED):
+        if job == NEED and not shared(path):
             return f"{path} is not a shared surface, and a need's change lands only on one"
     if job == NEED and reads and reads not in paths:
         return f"the need is checked in {reads}, and the change does not touch it"
@@ -296,7 +299,9 @@ def start(job: str, key: str, onto: str, told: dict) -> tuple[logs.Entry, str]:
     worktree = PLACE / f"{job}-{key}"
     git("worktree", "remove", "--force", str(worktree))
     PLACE.mkdir(parents=True, exist_ok=True)
-    made = git("worktree", "add", "--quiet", "-b", branch, str(worktree), onto)
+    # `-B`, not `-b`: the name carries the need's own park and the attempt, so a branch already there is
+    # this very attempt's from a pass that died, and one nobody can start over is worth nothing kept.
+    made = git("worktree", "add", "--quiet", "-B", branch, str(worktree), onto)
     line = logs.entry("mend", harbour=True, job=job, commit=str(told.get("commit", "")),
                       attempt=int(told.get("attempt", 1)), branch=branch,
                       **{name: told[name] for name in ("fairway", "parked", "need", "slice") if name in told})
@@ -339,7 +344,12 @@ def finish(held: dict, land: Callable[[str], tuple[str, str]], onto: str, revert
             return logs.entry("mend-failed", harbour=True, job=job, why=fault,
                               commit=str(held.get("commit", "")), attempt=int(held.get("attempt", 1)), **named)
         # Its commits are trunk's now, so the branch is only a second name for them. A branch that did not
-        # land is kept, so a person can read what the attempt tried.
+        # land is kept, so a person can read what the attempt tried. The worktree goes first: git will not
+        # delete a branch a worktree still has checked out, and for want of that every landed branch
+        # stayed — game-club-manager kept twenty-nine, and each stood in the way of the next need that
+        # happened to share its name.
+        if str(held.get("worktree", "")):
+            git("worktree", "remove", "--force", str(held["worktree"]))
         git("branch", "-D", branch)
         return logs.entry("mended", harbour=True, job=job, commit=landed, red=str(held.get("commit", "")),
                           attempt=int(held.get("attempt", 1)), **named)
@@ -404,13 +414,23 @@ def trunk_turn(state: str, said: dict, harbour: list[logs.Entry], broke: Callabl
             "before": before, **broke(red)}
 
 
+def stamp(instant: str) -> str:
+    """A park's instant as a branch name can carry it: its digits, month to second."""
+    return re.sub(r"\D", "", instant)[4:14] or "0"
+
+
+def shared(path: str) -> bool:
+    """Whether a path is a shared surface: one no slice may edit, so the one a slice hands back."""
+    return any(path == one or path.startswith(one) for one in SHARED) or SHARED_UNDER_SPECS.match(path) is not None
+
+
 def eligible(need: object, by_person: bool) -> str:
     """The path a need's check reads where the mender may land it, or ""."""
     if not isinstance(need, dict) or not isinstance(need.get("check"), dict):
         return ""
     check = need["check"]
     path = str(check.get("path", ""))
-    if check.get("kind") != "text" or not path or not any(path == p or path.startswith(p) for p in SHARED):
+    if check.get("kind") != "text" or not path or not shared(path):
         return ""
     by = str(need.get("by", ""))
     return path if by == "fleet" or (by_person and by == "person") else ""
@@ -422,16 +442,25 @@ def need_turn(state: str, open_needs: list[tuple[str, logs.Entry, int]], harbour
     if state == "red":
         return None
     tried: dict[tuple[str, str, int], int] = {}
+    landed: set[tuple[str, str, int]] = set()
     for line in harbour:
-        if line.kind == "mend" and line.fields.get("job") == NEED:
-            key = (str(line.fields.get("fairway", "")), str(line.fields.get("parked", "")),
-                   int(line.fields.get("need", -1)))
+        if line.fields.get("job") != NEED or line.kind not in ("mend", "mended"):
+            continue
+        key = (str(line.fields.get("fairway", "")), str(line.fields.get("parked", "")),
+               int(line.fields.get("need", -1)))
+        if line.kind == "mended":
+            # Landed, and so not owed again. Its tick is the need's own check passing on trunk, which is
+            # written a pass later: until then the need still read as open, and every need that landed was
+            # sent a second mender in the same second, which found nothing to do and was recorded as a
+            # failure — ten of game-club-manager's twenty-six, each a session paid for.
+            landed.add(key)
+        else:
             tried[key] = tried.get(key, 0) + 1
     by_person = cruising()
     for fairway, park, index in open_needs:
         need = (park.fields.get("needs") or [])[index]
         reads = eligible(need, by_person)
-        if not reads or tried.get((fairway, park.t, index), 0) >= attempts():
+        if not reads or (fairway, park.t, index) in landed or tried.get((fairway, park.t, index), 0) >= attempts():
             continue
         check = need["check"]
         return {"commit": "", "attempt": tried.get((fairway, park.t, index), 0) + 1, "fairway": fairway,
@@ -465,8 +494,11 @@ def turn(state: str, said: dict, harbour: list[logs.Entry], open_needs: list[tup
         return written
     if "park" in wanted:
         return [*written, wanted["park"]]
-    key = (str(wanted["commit"])[:8] if job == TRUNK else f"{wanted['fairway']}-{int(wanted['need'])}") \
-        + f"-{wanted['attempt']}"
+    # A need is named by its park as well as its place in it: `clubs-0` was three different needs in
+    # game-club-manager, one per hand-back, and the second and third could never start because the first
+    # one's branch was already called that.
+    key = (str(wanted["commit"])[:8] if job == TRUNK
+           else f"{wanted['fairway']}-{stamp(str(wanted['parked']))}-{int(wanted['need'])}") + f"-{wanted['attempt']}"
     line, fault = start(job, key, onto(), wanted)
     written.append(line)
     if fault:

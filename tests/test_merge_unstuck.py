@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import textwrap
+import time
 import unittest
 from datetime import UTC, datetime, timedelta
 
@@ -77,6 +78,24 @@ class RedTrunkTest(MergeFixture):
         self.park("ORD", "ORD-01: the merge was refused: trunk is red")
         self.run_once()
         self.assertEqual(len(self.cleared()), 1)
+
+    def test_one_refusal_clears_one_park_and_the_next_is_a_person_s(self) -> None:
+        """game-club-manager's TB1: refused once on a red trunk, it never asked again — its gate failed
+        first — so the refusal stayed the fairway's last answer and lifted thirty-one parks it did not
+        cause, each followed by another run."""
+        self.forge_says("failure", "redredred")
+        self.slice_branch("ORD-01", "ordering.txt", "ordering\n")
+        self.ask("ORD-01")
+        self.run_once()
+        self.forge_says("success", "greengreen")
+        first = self.park("ORD", "ORD-01: the merge was refused: trunk is red")
+        self.run_once()
+        self.assertEqual([e.fields["parked"] for e in self.cleared()], [first.t])
+        time.sleep(1.1)  # a park is named by its second, and the second one is a different park
+        self.park("ORD", "ORD-01: the chart says ORD-01 sets Placed, and its log holds no `mark-set`")
+        self.run_once()
+        self.run_once()
+        self.assertEqual([e.fields["parked"] for e in self.cleared()], [first.t])
 
     def test_a_park_for_any_other_reason_is_still_a_person_s(self) -> None:
         self.forge_says("success", "greengreen")

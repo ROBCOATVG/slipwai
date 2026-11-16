@@ -215,3 +215,24 @@ def counts(found: Sequence[Stream], config: dict, bound: float = STALL_MINUTES,
             "running": running, "queued": queued, "paused": resting, "parked": parked,
             "merged": sum(len(one.merged) for one in found),
             "questions": sum(len(one.asked) for one in found)}
+
+
+def same_note(entry: Entry) -> tuple[str, tuple[str, ...]]:
+    """What makes two `told` lines one note: the slice, and what is asked — each need's `what`, or the
+    message where it carries none.
+
+    game-club-manager's TB1 could not write a line its gate wanted, and said so at the end of every run: one
+    need, in the same words, sixty-seven times in ninety minutes. The board listed sixty-seven things
+    waiting on a person, and the one that mattered was somewhere among them. Only an identical ask is the
+    same note — a slice's second hand-back about something else is a second thing, and stays one.
+    """
+    needs = entry.fields.get("needs")
+    asked = [str(need.get("what", "")) if isinstance(need, dict) else str(need) for need in needs] \
+        if isinstance(needs, list) and needs else [str(entry.fields.get("message", ""))]
+    return str(entry.fields.get("slice") or ""), tuple(sorted(" ".join(one.split()).lower() for one in asked))
+
+
+def times_said(entries: list[Entry], entry: Entry) -> int:
+    """How many times this note has been said, itself included."""
+    key = same_note(entry)
+    return sum(1 for one in entries if one.kind == "told" and same_note(one) == key)

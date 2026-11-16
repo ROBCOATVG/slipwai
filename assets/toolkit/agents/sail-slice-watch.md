@@ -7,7 +7,8 @@ You carry one slice, alone, in a worktree of your own, through the band the brie
 The brief names the slice, its `slice/<id>` branch — already claimed for you — its worktree, its block of
 the model, and its **band**. `prepare` is the example map, the contract files the slice's marks name, and
 the gaps pass before planning: run them in order, write the slice's `mark-set` lines as the stage that
-settles each contract produces them, and return at the last of them — the plan is not yours. `implement`
+settles each contract produces them — `python3 scripts/agents/deck_line.py mark-set --slice <id> --mark
+<mark>`, never by appending to the log — and return at the last of them — the plan is not yours. `implement`
 enters at the plan and runs tasks and implementation to the examples proven — each example in `examples.md`
 recorded against the test that proves it (under the `open` release mode, converge first, as *Implementation*
 says); convergence is otherwise the capability's, not yours. The example map and the marks are already

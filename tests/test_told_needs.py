@@ -114,3 +114,39 @@ class WithNeedsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SaidAgainTest(unittest.TestCase):
+    """game-club-manager's TB1 handed back one need sixty-seven times in ninety minutes, and the board
+    listed sixty-seven things waiting on a person."""
+
+    LATER = ("2026-10-21T11:02:00Z", "2026-10-21T11:03:00Z")
+
+    def setUp(self) -> None:
+        self.root = with_a_hand_back(copied())
+        self.path = self.root / ".slipwai/logs/001-audiobook-recap/library.jsonl"
+
+    def again(self, t: str, needs: list[dict[str, Any]], message: str = "run again, and still owed") -> None:
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(logs.entry("told", fairway="library", slice="LB3", by="session", t=t, message=message,
+                                    needs=needs).line())
+
+    def hand_backs(self) -> list[dict[str, Any]]:
+        found: Any = fleet.board(self.root, {"boilers": 3}, now=EVENING)
+        return [row for row in found["inbox"] if row["kind"] == "told" and row.get("needs")]
+
+    def test_the_same_ask_said_again_is_one_row_the_newest_and_says_how_often(self) -> None:
+        for t in self.LATER:
+            self.again(t, NEEDS)
+        [row] = self.hand_backs()
+        self.assertEqual((row["t"], row["times"]), (self.LATER[1], "3"))
+
+    def test_a_second_hand_back_about_something_else_is_a_second_row(self) -> None:
+        self.again(self.LATER[0], [{"what": "docs/design.md gains LB3's section", "by": "person"}])
+        self.assertEqual([row["t"] for row in self.hand_backs()], [TOLD_AT, self.LATER[0]])
+
+    def test_answering_the_newest_answers_the_earlier_sayings_too(self) -> None:
+        self.again(self.LATER[0], NEEDS)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(logs.entry("read", fairway="library", told=self.LATER[0]).line())
+        self.assertEqual(self.hand_backs(), [])

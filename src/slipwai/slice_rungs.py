@@ -46,6 +46,21 @@ STAGES = {"example": "Example mapping", "gaps": "Example mapping", "contracts": 
           "demo": "Demo", "review": "Review", "adversary": "Attack review", "mutation": "Mutation testing"}
 #: A task line in `tasks.md`: `- [ ] T001 …` or `- [x] T001 …`.
 TASK = re.compile(r"^\s*[-*] \[( |x|X)\] (?:(T\d+)\b)?", re.M)
+#: The same line with its words, for the one task a card names: the id, then what it says past any `[P]` tag.
+WORDED = re.compile(r"^\s*[-*] \[( |x|X)\] (T\d+)\b[\s:·—-]*((?:\[[^\]]*\]\s*)*)(.*)$", re.M)
+#: The ladder as a card draws it: six steps a person can read, in the order a slice climbs them.
+LADDER = ("Examples", "Plan", "Build", "Demo", "Review", "Merge")
+#: What happens on each step, said under one the slice has still to reach.
+AHEAD = ("Its examples are mapped and its open questions decided", "The plan, its research and the task list",
+         "Each task built test-first, a commit a task", "Every example proven by a test through its outer boundary",
+         "A review of the whole diff, every finding closed", "Onto trunk, behind its flag")
+#: The step each chip word stands on. A word not here stands where the evidence has reached (`REACHED`).
+STEP = {"Starting": 0, "Example mapping": 0, "Deciding": 0, "Planning": 1, "Designing": 1, "Implementing": 2,
+        "Tasks done": 2, "Converging": 2, "Demo": 3, "Review": 4, "Review fixes": 4, "Attack review": 4,
+        "Mutation testing": 4, "Merge requested": 5, "Merging": 5, "Merge refused": 5, "Held · trunk red": 5,
+        "Merged": 5}
+#: The step each of the captain's rungs is on.
+REACHED = {0: 0, 2: 0, 3: 1, 4: 2, 7: 3, 5: 4, 6: 4, 8: 5}
 #: A task, or a run of them, as a commit's subject names it: `T004`, `T001-T006`, `T011–T017`.
 NAMED = re.compile(r"\bT(\d+)(?:\s*[-–]\s*T(\d+))?\b")
 #: The chips that carry the task count.
@@ -82,6 +97,9 @@ def branch_facts(root: Path, feature: str, slice_id: str) -> dict[str, str]:
         ticked = {name for tick, name in ticks if tick.strip() and name}
         done = named_tasks(root, ref, f"{folder}tasks.md", slice_id) & {name for _, name in ticks} - ticked
         facts["tasks"] = f"{sum(1 for tick, _ in ticks if tick.strip()) + len(done)}/{len(ticks)}" if ticks else ""
+        facts["next"] = next((f"{name} · {' '.join(words.split())[:90]}".rstrip(" ·")
+                              for tick, name, _, words in WORDED.findall(git(root, "show", f"{ref}:{folder}tasks.md"))
+                              if not tick.strip() and name not in done), "")
     SEEN[key] = (head, facts)
     return facts
 
@@ -110,6 +128,49 @@ def instant(at: str) -> float:
         return datetime.strptime(at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC).timestamp()
     except ValueError:
         return 0.0
+
+
+def spans(entries: Sequence[Entry], slice_id: str) -> dict[str, str]:
+    """When the slice merged, where it has. Not how long it took, claim to merge: a fleet is stopped
+    overnight and a slice waits days on a person, so that span says nothing about the work."""
+    merged = next((e.t for e in entries if e.kind == "merged" and e.fields.get("slice") == slice_id), "")
+    return {"merged": merged} if merged else {}
+
+
+def stages_of(root: Path, feature: str, slice_id: str) -> list[dict]:
+    """Every stage the slice's berth has bracketed, oldest first, from its `benchmark.json`; none where it
+    has no record. The berth is where the captain moors it, beside the checkout, or the checkout itself."""
+    record = Path(f"specs/{feature}/slices/{slice_id}/benchmark.json")
+    for place in (root.parent / f"{root.name}-{slice_id}", root):
+        try:
+            stages = json.loads((place / record).read_text(encoding="utf-8")).get("stages") or []
+        except (OSError, ValueError, AttributeError):
+            continue
+        found = [one for one in stages if isinstance(one, dict) and one.get("stage")]
+        if found:
+            return found
+    return []
+
+
+def ladder(root: Path, feature: str, slice_id: str, stage: str, rank: int, now: float | None = None) -> list[dict]:
+    """The six steps with where the slice stands on them, and when each began and how long it has taken.
+
+    The step is the chip's word's, so the strip and the chip cannot disagree; the times are the berth's own
+    brackets, summed over a step, because a step is entered more than once — a review's fixes are built.
+    """
+    now = datetime.now(UTC).timestamp() if now is None else now
+    at = STEP.get(stage, REACHED.get(rank, 0))
+    spent: dict[int, list[float]] = {}
+    for one in stages_of(root, feature, slice_id):
+        word = STAGES.get(str(one["stage"]).split("-")[0], "")
+        began, ended = instant(str(one.get("started", ""))), instant(str(one.get("ended", "")))
+        if word not in STEP or not began:
+            continue
+        held = spent.setdefault(STEP[word], [began, 0.0])
+        held[1] += max(0.0, (ended or now) - began)
+    return [{"name": name, "state": "done" if index < at else "now" if index == at else "todo",
+             "began": spent.get(index, [0.0, 0.0])[0], "took": spent.get(index, [0.0, 0.0])[1]}
+            for index, name in enumerate(LADDER)]
 
 
 def stage_now(root: Path, feature: str, slice_id: str) -> tuple[str, str]:
@@ -211,6 +272,9 @@ def rung(root: Path, feature: str, slice_id: str, entries: list[Entry],
     chip = f"{stage} · {tasks}" if stage in COUNTED and tasks else stage
     told = [e for e in mine if e.kind != "heartbeat"]
     last = f"{told[-1].t} {told[-1].kind}" if told else ""
-    return {"stage": stage, "rank": str(max(climbed + asked, default=(0, ""))[0]), "chip": chip, "tasks": tasks,
+    rank = max(climbed + asked, default=(0, ""))[0]
+    _, opened = stage_now(root, feature, slice_id)
+    return {"stage": stage, "rank": str(rank), "chip": chip, "tasks": tasks,
             "artifacts": facts.get("files", ""), "commit": facts.get("commit", ""), "last": last,
-            "refused": refused}
+            "refused": refused, "ladder": json.dumps(ladder(root, feature, slice_id, stage, rank)),
+            "since": opened, "next": facts.get("next", "") if stage == "Implementing" else ""}

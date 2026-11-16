@@ -7,6 +7,7 @@ between would be a status field by another name, and the one action here, tellin
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -18,12 +19,21 @@ from .decision_log import STYLE as DECISIONS_STYLE
 from .drawn import decided_states
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
-from .feedback_card import opener
+from .film import SCRIPT as FILM_SCRIPT
+from .film import STYLE as FILM_STYLE
 from .live_page import STRIP_SCRIPT
 from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
 from .passage import Stage, current, surface_pages
 from .settings_card import project_tabs
+from .slice_card import SCRIPT as WORK_SCRIPT
+from .slice_card import STYLE as SLICE_STYLE
+from .slice_card import (  # noqa: F401 — the card's names, kept importable here
+    answer_html,
+    chip_of,
+    facts_html,
+    slice_html,
+)
 from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, viewer_config
@@ -482,70 +492,6 @@ def model_card(xml: str, note: str, viewer_fault: str) -> str:
     return f'<div class="card"><h2>The model</h2>{warn}<div class="viewer">{bar}{body}</div></div>'
 
 
-def slice_html(row: dict[str, str]) -> str:
-    """One slice: its number and title, and a chip saying how far it has got. The rest behind a click.
-
-    A card that carried its stream, its clearance word, its reason and its park was a wall of text times
-    twenty-three, and the one thing a person scans the columns for — which slice, and how far along — was
-    lost in it. Closed, a card is the slice and its stage; opened in place, it is everything the board knows
-    about it, and for a slice waiting on a person, the box to answer it.
-    """
-    name = f'{row["slice"]} · {row["title"]}' if row.get("title") else row["slice"]
-    chip = chip_of(row)
-    shown = f'<span class="chip">{esc(chip)}</span>' if chip else ""
-    answer = answer_html(row) if row["state"] == "waiting" and row.get("fairway") else ""
-    cap = f'<span class="live-cap">{esc(row["live"])}</span>' if row.get("live") else ""
-    said = opener("Feedback", {"from": "slice", "feature": row.get("feature", ""), "fairway": row.get("fairway", ""),
-                               "slice": row["slice"]}, ask=f"What did {row['slice']} show you?")
-    return (f'<details class="slice {esc(row["state"])}"><summary><b>{esc(name)}</b>{shown}{cap}</summary>'
-            f'{facts_html(row)}{answer}<div class="ask">{said}</div></details>')
-
-
-def chip_of(row: dict[str, str]) -> str:
-    """The word on a closed card: its stage at work, `Queued` and its stage while it waits for a slot, and
-    `Waiting on you` where a person holds it. Nothing on a slice still to do or done — the column says it."""
-    stage = row.get("chip") or row.get("stage") or ""
-    if row["state"] == "waiting":
-        return "Waiting on you"
-    if row.get("paused"):
-        return f"Paused · lifts {row['paused']}"
-    if row["state"] == "queued":
-        return f"Queued · {stage}" if stage else "Queued"
-    return stage if row["state"] == "working" else ""
-
-
-def facts_html(row: dict[str, str]) -> str:
-    """What an opened card says: only the facts there are, each on its own line."""
-    when, _, said = row.get("commit", "").partition(" ")
-    facts = (("Stream", row.get("fairway", "")), ("Stage", row.get("chip", "")),
-             ("Clearance", row.get("clearance", "")), ("On its branch", row.get("artifacts", "").replace(",", ", ")),
-             ("Merge refused", row.get("refused", "")), ("Last line", row.get("last", "")),
-             ("Last commit", f"{when[:16]} {said}".strip() if said else ""),
-             ("Why", "" if row["state"] == "waiting" else row.get("why", "")))
-    lines = "".join(f"<dt>{esc(label)}</dt><dd>{esc(value)}</dd>" for label, value in facts if value)
-    return f'<dl class="facts">{lines}</dl>' if lines else ""
-
-
-def answer_html(row: dict[str, str]) -> str:
-    """What a slice waiting on a person waits for, and a box to answer it, inside its opened card.
-
-    The answer box was a stream's, further down, and a stream with three slices parked on three questions
-    got one box. Opened, the card says the park and each open question, and what is typed goes to that slice
-    — a `told` naming it, which clears its park and no sibling's, and which the captain records as the
-    answer to its questions when it carries the slice on.
-    """
-    asked = "".join(f"<li>{esc(one)}</li>" for one in row.get("asked", "").splitlines() if one.strip())
-    questions = f'<ol class="asked">{asked}</ol>' if asked else ""
-    park = row.get("park") or row.get("why", "")
-    box = f'answer-{row["slice"]}'
-    target = row["slice"] if row.get("aim") else f'the {row["fairway"]} stream'
-    return (f'<p class="park">{esc(park)}</p>{questions}'
-            f'<textarea id="{esc(box)}" rows="4" placeholder="Your answer, or what {esc(row["slice"])} needs to '
-            f'know"></textarea>'
-            f'<button type="button" data-answer="{esc(row["fairway"])}" data-slice="{esc(row.get("aim", ""))}" '
-            f'data-box="{esc(box)}">Send to {esc(target)}</button>')
-
-
 def shot_html(shot: dict[str, str]) -> str:
     """One photograph, linked at its own size. The address is the file, so opening it is the picture."""
     label = shot["title"] or shot["name"]
@@ -720,7 +666,16 @@ def work_card(rows: list[dict[str, str]], fault: str) -> str:
         held = [row for row in rows if row["state"] == state]
         cards = "".join(slice_html(row) for row in held) or '<p class="empty">none</p>'
         columns += f'<div class="col {esc(state)}"><h3>{esc(TITLES[state])} · {len(held)}</h3>{cards}</div>'
-    return f'<div class="card"><h2>The work</h2><div class="columns">{columns}</div></div>'
+    # Its words are its signature: the poll swaps the band when a card says something it did not.
+    said = hashlib.sha1(columns.encode("utf-8")).hexdigest()[:16]
+    return f'<div class="card" id="work" data-said="{said}"><h2>The work</h2><div class="columns">{columns}</div></div>'
+
+
+def work_payload(rows: list[dict[str, str]], fault: str) -> str:
+    """The columns for the poll that keeps them current: the band, and the signature it is compared by."""
+    drawn = work_card(rows, fault)
+    said = drawn.split('data-said="', 1)[1].split('"', 1)[0] if 'data-said="' in drawn else ""
+    return json.dumps({"said": said, "html": drawn if said else ""})
 
 
 def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str, xml: str, note: str,
@@ -759,9 +714,10 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
                           f"{decisions[1]} unread</span>", decisions[0]),
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
-            f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}</style>"
+            f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}</style>"
             f"{where}{landed}{'' if adopting else expect_card(found)}{tabs_html(tabs)}{console_card()}")
-    script = SCRIPT + (TRY_SCRIPT if trying else "") + (FEEDBACK_SCRIPT if feedback else "") \
+    script = SCRIPT + WORK_SCRIPT + FILM_SCRIPT + (TRY_SCRIPT if trying else "") \
+        + (FEEDBACK_SCRIPT if feedback else "") \
         + (STRIP_SCRIPT if strip else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
         + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person

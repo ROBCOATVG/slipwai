@@ -529,7 +529,7 @@ class AnswerCardTest(unittest.TestCase):
                "clearance": "running", "why": "claimed", "park": "stops before the plan on two questions",
                "asked": "L07-Q1: after the agreed date?\nL07-Q2: which days?", "aim": "L07"}
         card = slice_html(row)
-        self.assertTrue(card.startswith('<details class="slice waiting">'))
+        self.assertTrue(card.startswith('<details class="slice waiting" '))
         self.assertIn("stops before the plan on two questions", card)
         self.assertIn("<li>L07-Q2: which days?</li>", card)
         self.assertIn('data-answer="leaver" data-slice="L07"', card)
@@ -553,12 +553,11 @@ class AnswerCardTest(unittest.TestCase):
                "stage": "Implementing", "artifacts": "examples,plan,tasks", "last": "2026-10-20T11:00:00Z mark-set"}
         card = slice_html(row)
         summary = card[card.index("<summary>"):card.index("</summary>")]
-        self.assertTrue(card.startswith('<details class="slice working">'))
+        self.assertTrue(card.startswith('<details class="slice working" '))
         self.assertIn("L03 · Record equipment", summary)
-        self.assertIn('<span class="chip">Implementing · 14/22</span>', summary)
-        self.assertNotIn("its own marks set", summary, "the reason waits behind the click")
-        self.assertIn("its own marks set", card)
-        self.assertIn("examples, plan, tasks", card)
+        self.assertIn('<span class="chip">Implementing · 14/22</span>', summary,
+                      "a row with no ladder read for it still says its stage")
+        self.assertNotIn("its own marks set", card, "at work, what it is doing is the answer to why")
 
 
 class QueuedColumnTest(unittest.TestCase):
@@ -572,7 +571,7 @@ class QueuedColumnTest(unittest.TestCase):
         card = work_card(rows, "")
         self.assertIn("Queued · 1", card)
         self.assertIn("Working · 1", card)
-        self.assertTrue(slice_html(rows[0]).startswith('<details class="slice queued">'))
+        self.assertTrue(slice_html(rows[0]).startswith('<details class="slice queued" '))
         self.assertIn('<span class="chip">Queued</span>', slice_html(rows[0]))
 
 

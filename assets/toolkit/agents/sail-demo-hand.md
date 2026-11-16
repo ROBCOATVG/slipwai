@@ -61,12 +61,21 @@ chosen differently — is a `design:` note in **Feedback** with its screenshot, 
 reason to withhold acceptance. Where you could not drive a browser, say the screens were not read rather than
 letting the verdict imply they were: a screen judged from its API alone has not been looked at.
 
-**Record each example you walk in a browser.** Before its first step, `agent-browser record start
-<walks>/<feature>/<slice>/<example>.webm <url>`, and `agent-browser record stop` after its last, where `<walks>`
-is the folder `python3 scripts/agents/try_it.py walks` prints and `<example>` is the example's id as
-`examples.md` numbers it, lower-cased. One file per example; a later walk replaces it. They are what a person
-watches on the board before they have time to use the thing themselves, and they are not evidence: the
-screenshots are still what the log cites, and a walk that could not be recorded is said, not retried.
+**Film the walk as one recording, not a clip per example.** What you walk is one flow, and a person
+watching thirty two-second clips named `ac1-3` learns nothing from them. Walking a capability in a browser,
+before the first example: `python3 scripts/agents/try_it.py film start <feature> <capability>` prints the
+file to record into; `agent-browser record start <that file> <url>` starts it. Then, at the first step of
+every example, `python3 scripts/agents/try_it.py film chapter <feature> <capability> --slice <id> --example
+<n> --says "<one sentence>"` — the sentence is the caption a person reads while that part plays, in the
+actor's own words: who is signed in and what they are about to do, never an example's id or a test's name.
+Walk at the pace of somebody watching: hold every result on the screen for two seconds before the next step
+(`agent-browser wait 2000`), and where an example needs another person, sign out and in as them inside the
+same recording rather than starting another. After the last example, `agent-browser record stop` and
+`python3 scripts/agents/try_it.py film stop <feature> <capability>`. Walking one slice under `open`, the film
+is the slice's, named by its id where the capability's name would go. One film per capability; a later walk
+replaces it. It is what a person watches on the board before they have time to use the thing themselves,
+and it is not evidence: the screenshots are still what the log cites, and a walk that could not be filmed is
+said, not retried.
 
 Your writes are the demo log — `specs/<feature>/capabilities/<capability>/demo-log.md` walking a capability,
 `{{demo-log}}` walking one slice — one section per demo, in the shape that file shows, and the screenshots and

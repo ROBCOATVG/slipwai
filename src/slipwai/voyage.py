@@ -36,7 +36,7 @@ from .fleet import Fairway, clearance_query, fairways, harbour_log
 from .fleet_record import clock_of
 from .logs import held_slices, paused, run_dir
 from .process_alive import alive
-from .slice_rungs import rung
+from .slice_rungs import rung, spans
 
 #: Where the board shows a slice: the four columns, in the order a person reads them.
 COLUMNS = ("todo", "queued", "working", "waiting", "done")
@@ -171,6 +171,7 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
         owner = next((one for one in found if slice_id in one.claimed or slice_id in one.merged), None)
         if owner is not None:
             row["fairway"] = owner.name
+            row.update(spans(owner.entries, str(slice_id)))
             if slice_id in owner.merged:
                 row["state"] = "done"
             elif slice_id in owner.claimed:  # in flight, one of several: waiting where a park holds it
@@ -546,7 +547,7 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
     verdicts = sorted(f"{page.parent.parent.name}:{int(page.stat().st_mtime)}"
                       for page in specs.glob(f"*/{MOCKUPS}/mock-states.md")) if specs.is_dir() else []
     berths = [str(one.get("state", "")) for one in (fleet.get("berths") or []) if isinstance(one, dict)]
-    return "|".join((feature, "".join(str(row["state"])[:1] for row in rows), ",".join(drawn),
+    return "|".join((feature, "".join(str(row["state"])[:2] for row in rows), ",".join(drawn),
                      ",".join(photographed), ",".join(verdicts),
                      str(int(picture.stat().st_mtime) if picture.is_file() else 0), ",".join(berths),
                      str(len(fleet.get("inbox") or [])), "f" if made else "", ",".join(intake)))

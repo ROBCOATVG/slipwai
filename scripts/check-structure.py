@@ -172,6 +172,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "decision_log",
               # And what each working slice is doing now, read off its activity log and drawn there.
               "activity", "live_page",
+              # And one slice's card there — where it stands on the ladder and how it got there — and a
+              # capability's film: the hand's one recording of the whole walk, a chapter a slice.
+              "film", "slice_card",
               # And the stop above the chart answered without a person, where the project says so.
               "upstream",
               # What a handed-over document stands on, carried in with it.

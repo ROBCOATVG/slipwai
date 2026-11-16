@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
-from .activity import caption, live
+from .activity import live
 from .adopt_page import looked
 from .adopt_page import page as adoption
 from .adopt_page import run as adopt
@@ -69,6 +69,7 @@ from .errors import Busy, GenerationError
 from .feedback_card import act as feedback_act
 from .feedback_card import card as feedback_card
 from .feedback_card import payload as feedback_payload
+from .film import films_card, films_of, ranged
 from .fleet import board
 from .folder_choice import chosen
 from .ground_card import card as ground_card
@@ -116,6 +117,7 @@ from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .settings_page import route_get as settings_get
 from .settings_page import route_post as settings_post
+from .slice_card import lit
 from .spec_page import page as spec
 from .stage_session import kept_stage
 from .stage_session import route_get as stage_get
@@ -151,12 +153,12 @@ from .voyage import (
     states_of,
     viewer_script,
 )
-from .voyage_page import now_said
+from .voyage_page import now_said, work_payload
 from .voyage_page import page as voyage
 from .voyage_page import payload as voyage_payload
 from .wheel import set_stop
 
-# budget: 1000 — the app-version guard (2.1) on every change and page, one server and every route the
+# budget: 1012 — the app-version guard (2.1) on every change and page, one server and every route the
 # board answers, the need tick and the timeline among them, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
@@ -165,6 +167,7 @@ from .wheel import set_stop
 # And Try it's routes, `/try.json`, `/try` and the walks it shows, each handing straight to `try_card.py`.
 # And Feedback's, `/feedback.json` and `/feedback`, handing to `feedback_card.py`, and the triage it starts.
 # And what each slice is doing now: `/now.json`, `/slice` and `/slice.json`, handing to `live_page.py`.
+# And the columns kept current, `/work.json` (`slice_card.py`), and a film served in ranges (`film.py`).
 # Mark read writes the receipts the decision ceiling counts.
 # And the console's three routes — `/console.json`, `/console/ask`, `/console/reset` — each a line or two handing
 # to `console.py`, which holds the conversation.
@@ -283,14 +286,14 @@ class Bridge(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         """Quiet. The run's log is the log; a request line per reload is noise over the top of it."""
 
-    def send(self, code: int, body: str | bytes, kind: str = "text/html; charset=utf-8") -> None:
+    def send(self, code: int, body: str | bytes, kind: str = "text/html; charset=utf-8", more: tuple = ()) -> None:
         if isinstance(body, str) and kind.startswith("text/html"):
             body = with_notice(body, self.root)  # an app and a project out of step say so on every page
         data = body.encode("utf-8") if isinstance(body, str) else body
         self.send_response(code)
         self.send_header("Content-Type", kind)
         self.send_header("Content-Length", str(len(data)))
-        for name, value in board_headers():  # which file this board runs: `board_build.py` says why
+        for name, value in (*board_headers(), *more):  # which file this board runs: `board_build.py` says why
             self.send_header(name, value)
         self.end_headers()
         self.wfile.write(data)
@@ -363,6 +366,9 @@ class Bridge(BaseHTTPRequestHandler):
             rows = self.voyage_parts()[1]
             self.send(200, strip_payload(rows, live(self.root, rows)), "application/json; charset=utf-8")
             return
+        if where == "/work.json" and self.controls:
+            self.send(200, work_payload(*self.work()), "application/json; charset=utf-8")
+            return
         if where in ("/slice", "/slice.json") and self.controls:
             fairway, named = unquote(parameter(query, "fairway")), unquote(parameter(query, "slice"))
             if where == "/slice":
@@ -388,7 +394,8 @@ class Bridge(BaseHTTPRequestHandler):
             if path is None:
                 self.send(404, "<p>No such walk.</p>")
                 return
-            self.send(200, path.read_bytes(), VIDEOS[path.suffix.lower()])
+            code, part, more = ranged(path.read_bytes(), self.headers.get("Range", ""))  # a film is sought in
+            self.send(code, part, VIDEOS[path.suffix.lower()], more)
             return
         # A screen the design review photographed, from the project. Bytes, not text: a picture is not
         # a document, and decoding it would be serving a different file.
@@ -665,9 +672,8 @@ class Bridge(BaseHTTPRequestHandler):
 
     def voyage(self) -> str:
         found, rows, fault, fleet, held = self.voyage_parts()
-        folds = live(self.root, rows)
-        rows = [{**row, "live": caption(folds[key])} if (key := f"{row.get('fairway')}/{row['slice']}") in folds
-                else row for row in rows]
+        folds, films = live(self.root, rows), films_of(self.root, self.named_seat())
+        rows = lit(rows, folds, self.root, films)
         feature, made_of = self.made_of(rows, fleet)
         xml, note = model_xml(self.root, states_of(rows))
         # The frames are the one thing on this page the browser fetches without a script's help, so the
@@ -678,12 +684,18 @@ class Bridge(BaseHTTPRequestHandler):
                       feature, self.drawable(), made_of, intake_ideas(self.root),
                       screens(self.root, rows, self.named_seat()), running_app(self.root), self.modelable(),
                       try_card(self.root, self.named_seat()), strip_html(rows, folds),
-                      feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)),
+                      films_card(films, rows, fleet.get("demo_due_in"))
+                      + feedback_card(self.root, rows, fleet, self.triaging(), trunk_head(self.root)),
                       decision_card(self.root),
                       points=feedback_points(self.root), adopting=(adopting := adoption_card(
                           self.root, bool(self.fitting and not self.fitting.said()["done"]))),
                       dates="" if adopting else remote_card(self.root) + strategy_dates(self.root),
                       draftable=self.draftable())
+
+    def work(self) -> tuple[list[dict[str, str]], str]:
+        """The columns as the poll draws them: the fold and the run's own files, and never the fleet's board."""
+        rows, fault = folded(self.root)
+        return lit(rows, live(self.root, rows), self.root, films_of(self.root, self.named_seat())), fault
 
     def triaging(self) -> bool:
         """Whether this board's child is the triage session, reading what a person said."""

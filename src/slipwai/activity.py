@@ -210,18 +210,37 @@ def minutes(seconds: float) -> str:
     return f"{seconds // 3600}h {seconds % 3600 // 60}m"
 
 
-def caption(found: dict) -> str:
-    """The one line under a working slice's chip: what it is on, and how long ago it last did anything."""
+def caption(found: dict, task: str = "") -> str:
+    """The one line under a working slice's chip: what it is on, and how long ago it last did anything.
+
+    What it is on is what it waits for, then the sub-agent's task, then the task its list says is next, then
+    the newest sentence its session wrote for a person. Never its last command: `Read the berth memories
+    about the database` is what an agent did a second ago, and a card that says so reads as where the slice
+    is. The commands are the window's, a click away; here a slice with nothing better to say is `active`.
+    """
     if not found["last_t"]:
         return ""
     current = found["current"]
     if found["waiting"]:
         head = f"waiting on {found['waiting']}"
-    elif current:
-        head = " ".join(part for part in (current["task"], current["what"]) if part) or current["role"]
+    elif current and (current["task"] or current["what"]):
+        head = " ".join(part for part in (current["task"], current["what"]) if part)
     else:
-        head = found["said"] or found["last"]
-    return f"{head} · {minutes(now_stamp() - found['last_t'])} ago" if head else ""
+        head = task or found["said"] or (current["role"] if current else "") or "active"
+    return f"{head} · {minutes(now_stamp() - found['last_t'])} ago"
+
+
+#: What an opened card repeats from a slice's log: what was said, waited on or failed, a stage, a file — never
+#: a command, which is a path and a pipe to a person and is the window's to show.
+TOLD = ("said", "stage", "wait", "failed", "edit")
+
+
+def newest(root: Path, fairway: str, slice_id: str, count: int = 3) -> list[dict]:
+    """The last few things a slice's log says happened that a person can read, newest first."""
+    told = [one for one in lines_of(root, fairway, slice_id) if one["kind"] in TOLD and one.get("what")]
+    return [{"t": str(one["t"]), "kind": str(one["kind"]),
+             "what": Path(str(one["what"])).name if one["kind"] == "edit" else str(one["what"])[:140]}
+            for one in reversed(told[-count:])]
 
 
 def live(root: Path, rows: list[dict[str, str]]) -> dict[str, dict]:

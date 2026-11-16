@@ -23,14 +23,15 @@ from .page_shell import document, esc
 SPAN = 60 * 60
 
 STYLE = """
-#now .rows{display:grid;grid-template-columns:70px minmax(120px,.8fr) minmax(200px,1.4fr) minmax(180px,1.2fr) 80px;
+#now-strip .rows{display:grid;
+  grid-template-columns:70px minmax(120px,.8fr) minmax(200px,1.4fr) minmax(180px,1.2fr) 80px;
   font-size:.86rem;overflow-x:auto}
-#now .rows>div{padding:8px 10px;border-top:1px solid var(--rule-2);display:flex;flex-direction:column;gap:2px;
+#now-strip .rows>div{padding:8px 10px;border-top:1px solid var(--rule-2);display:flex;flex-direction:column;gap:2px;
   min-width:0}
-#now .rows>.h{font-size:.78rem;font-weight:500;color:var(--ink-3);border-top:0;
+#now-strip .rows>.h{font-size:.78rem;font-weight:500;color:var(--ink-3);border-top:0;
   padding-top:0}
-#now .sid{font-family:var(--mono);font-weight:500}
-#now .sub,.lane-name .sub{color:var(--ink-3);font-size:.78rem}
+#now-strip .sid{font-family:var(--mono);font-weight:500}
+#now-strip .sub,.lane-name .sub{color:var(--ink-3);font-size:.78rem}
 .role{font-family:var(--mono);font-size:.72rem;padding:1px 6px;border-radius:4px;background:var(--brass-soft);
   color:var(--brass);width:fit-content}
 .role.main{background:var(--teal-soft);color:var(--teal)}
@@ -44,8 +45,8 @@ STYLE = """
 @keyframes blink{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.live-dot::before{animation:none}}
 .slice .live-cap{font-size:.78rem;color:var(--ink-2);border-left:2px solid var(--teal);padding-left:7px}
-@media (max-width:760px){#now .rows{grid-template-columns:60px 1fr;}#now .rows>.h:nth-child(n+3),
-  #now .rows>.said,#now .rows>.quiet{display:none}}
+@media (max-width:760px){#now-strip .rows{grid-template-columns:60px 1fr;}#now-strip .rows>.h:nth-child(n+3),
+  #now-strip .rows>.said,#now-strip .rows>.quiet{display:none}}
 """
 
 WINDOW_STYLE = """
@@ -75,11 +76,11 @@ WINDOW_STYLE = """
 STRIP_SCRIPT = """
 // The Now strip: repainted from /now.json every few seconds, swapped whole when what it says has changed.
 (function(){
-  if (!document.getElementById('now')) return;
+  if (!document.getElementById('now-strip')) return;
   const poll = async () => {
     let found;
     try { found = await (await fetch('/now.json')).json(); } catch (fault) { setTimeout(poll, 8000); return; }
-    const card = document.getElementById('now');
+    const card = document.getElementById('now-strip');
     if (card && card.dataset.said !== found.said) card.outerHTML = found.html;
     setTimeout(poll, 4000);
   };
@@ -156,7 +157,7 @@ def strip_html(rows: list[dict[str, str]], folds: dict[str, dict]) -> str:
                           one["current"]["agent"] if one["current"] else ""] for key, one in sorted(folds.items())])
     head = ('<div class="h">Slice</div><div class="h">Stage</div><div class="h">Who is on it</div>'
             '<div class="h">Last thing it said</div><div class="h">Quiet for</div>')
-    return (f'<div class="card" id="now" data-said="{esc(said)}"><h2>Now <span class="live-dot">'
+    return (f'<div class="card" id="now-strip" data-said="{esc(said)}"><h2>Now <span class="live-dot">'
             f'live · {len(working)} working</span></h2><div class="rows">{head}{cells}</div></div>')
 
 

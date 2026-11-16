@@ -24,9 +24,19 @@ deck log that nothing delivered.
   and berth as they were.
 - **What the agent does is on the board**: its tool calls as they finish, its plan, and its last sentence,
   in the slice's activity log; what it asked mid-turn and the answer, on its thread.
-- **The protocol is the default** where the harness print mode would run has a launch the registry marks
-  proven; `sessions: print` in `.specify/cruise.json` keeps print mode. In print mode a slice's messages are
-  handed to it in the prompt of its next run, with no interrupt.
+- **Held for the merge.** From a slice's merge request to its answer nothing is delivered to it, and the
+  receipt says so: a refusal takes the message back to the berth with the slice, a merge that lands answers
+  it not delivered. A message's turn is held to the stage bound like any other.
+- **A person's word is signed.** The board signs what a person sends; a message that says it is a person's
+  and is not signed is never delivered and never answers a park, and a delivered one is fenced off from the
+  rest of the prompt. A stop by a person holds the slice, across restarts, until a person resumes it.
+- **The protocol is the default.** `sessions` in `.specify/cruise.json` gains `auto`, the new default: over the
+  protocol where the registry marks the harness's launch proven and this machine can make it, print mode
+  elsewhere. `print` and `protocol` mean what they did. In print mode a slice's messages are handed to it
+  in the prompt of its next run, with no interrupt.
 
-**Catch-up:** run `slipwai migrate`, which brings the new driver, `talk.py` and the captain. A project whose
-harness has no proven launch, or that says `sessions: print`, runs as it did.
+**Catch-up:** run `slipwai migrate`, which brings the new driver, `talk.py`, the captain and `auto`. A
+project generated before this has `"sessions": "print"` written in its `cruise.json` and stays on print
+mode: migrate switches no project. Set `sessions=auto` on the board's settings card (or
+`python3 scripts/agents/cruise.py --set sessions=auto`) to take the protocol where the harness's launch is
+proven — today two harnesses in the registry are — and print mode for every other.

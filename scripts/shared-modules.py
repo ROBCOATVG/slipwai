@@ -32,6 +32,8 @@ SHARED = {
     "src/slipwai/acp.py": "assets/toolkit/scripts/agents/acp.py",
     # A conversation with a slice: the board drops messages in and reads receipts, the captain's driver delivers.
     "src/slipwai/talk.py": "assets/toolkit/scripts/agents/talk.py",
+    # Whether a slice is stuck: the board's warning on its card, and what wakes the stream's captain.
+    "src/slipwai/stuck.py": "assets/toolkit/scripts/agents/stuck.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

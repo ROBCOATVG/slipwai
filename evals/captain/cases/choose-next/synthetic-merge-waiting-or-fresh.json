@@ -1,0 +1,55 @@
+{
+ "synthetic": true,
+ "situation": "One slot is free. S2 was refused its merge on a conflict and has been cleared to carry on; S5 has not started.",
+ "source": "made up, not recorded: the recorded choices never set a nearly merged slice against a fresh one",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "merged",
+   "S2": "parked, answered and cleared: merge refused on a conflict in decisions.md",
+   "S5": "not started; cleared by the chart"
+  },
+  "slots": 1,
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S2"
+   },
+   {
+    "t": "2026-11-20T10:40:00Z",
+    "kind": "request",
+    "slice": "S2",
+    "what": "merge",
+    "id": "merge-S2"
+   },
+   {
+    "t": "2026-11-20T10:42:00Z",
+    "kind": "parked",
+    "slice": "S2",
+    "why": "S2: merge refused: conflict in decisions.md"
+   }
+  ]
+ },
+ "event": {
+  "v": 1,
+  "id": "merge-waiting-or-fresh",
+  "t": "2026-11-20T11:00:00Z",
+  "kind": "choose-next",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "start",
+    "slice": "S2"
+   }
+  ],
+  "wrong": [],
+  "why": "S2 is one rebase from its merge and frees the slot soonest.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: the deck shows S2 asked to merge and was refused only on a conflict; S5 has nothing."
+ }
+}

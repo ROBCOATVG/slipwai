@@ -14,8 +14,8 @@ from pathlib import Path
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card
 from .console_page import console_card
-from .decision_log import SCRIPT as DECISIONS_SCRIPT
-from .decision_log import STYLE as DECISIONS_STYLE
+from .decision_cards import SCRIPT as DECISIONS_SCRIPT
+from .decision_cards import STYLE as DECISIONS_STYLE
 from .drawn import decided_states
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
@@ -51,7 +51,7 @@ from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 # and the Try it card, placed here and drawn by `try_card.py`
 # and the Now strip and a slice's live caption, drawn by `live_page.py`
 # and the tabs the bands below the strip sit in, and the Feedback card in one of them (`feedback_card.py`)
-# and the decision log's tab, drawn by `decision_log.py`
+# and the decision log's tab, drawn by `decision_cards.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.

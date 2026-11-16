@@ -27,6 +27,12 @@ an unwritten row is a pass that has to be run again, and until now nothing notic
   confirmation` (a stop for a person answered with nobody there), `confirmed by human <date>`, `overridden by D<m>`
   or `overridden by human <date>`;
 - every **Written to** path exists in the repository, and a path still carrying `<placeholders>` is a finding;
+- an entry written since the rule carries **In short**: one sentence a product owner reads without the
+  specification open, saying what the product now does, with no requirement, decision or event id in it and no
+  file name. "Since the rule" is its **When** at or after the instant `.specify/decisions-in-short.json` records,
+  which `slipwai migrate` writes once into a project that already had decisions, less the slices it records as
+  already in flight then; a project with no such file was made under the rule, and every entry is held. Where
+  the file exists, an entry whose **When** cannot be read as an instant is reported as that;
 - a demo entry is `## <instant> — <verdict> · iteration <n> · sail-demo-hand (<model>)`, its verdict one of
   `accepted`, `behaviour`, `implementation`, followed by **Started with**, **Driven through**, **Examples**,
   **Evidence**, **Feedback**; every **Evidence** path exists, beside the log or from the root, or is `none`;
@@ -46,9 +52,10 @@ A project with no record anywhere passes and says so: the gate runs in `make ver
 
 from __future__ import annotations
 
+import json
 import re
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 
@@ -90,6 +97,19 @@ DECIDED_BY = re.compile(r"^(host \(stage recommendation\)|host \(standing decisi
 STATUS = re.compile(r"^(standing|awaiting human confirmation|confirmed by human \S+|overridden by D\d+|"
                     r"overridden by human \S+)$")
 FIELD = re.compile(r"^- \*\*([^*]+):\*\* ?(.*)$")
+# The sentence a person reads first on the board. Not one of DECISION_FIELDS: an entry written before the rule
+# has none, and holding the nine in order is what every existing record is already checked by.
+SENTENCE = "In short"
+SENTENCE_FROM = ".specify/decisions-in-short.json"
+WHEN = re.compile(r"\*\*When:\*\*\s*([^·]*?)\s*(?:·|$)")
+SLICE = re.compile(r"\*\*Slice:\*\*\s*([^·\s]+)")
+# What a sentence for a product owner may not lean on: only what is unmistakably this method's own — a
+# requirement or criterion id as the records write it (FR-012, SC-3), a fairway's decision id (D-ORD-07,
+# D-07), an example id (GN2-1), a backticked span, and a path. Not a bare `D20`, `SC2`, `R2` or `US-1`:
+# this project's own test bed is a game club, where a D20 is a die, and a file-looking word (`Node.js`,
+# `shelf.json`) is how products are named.
+NOT_PLAIN = re.compile(r"\b(?:FR|SC|NFR)-\d+\b|\bD-(?:[A-Z0-9]+-)?\d+\b|\b[A-Z]{2,}\d+-\d+\b|`"
+                       r"|(?<![\w/])[\w.-]+(?:/[\w.-]+)+\.\w+\b|(?<![\w/])[\w.-]+/[\w.-]+/[\w./-]+")
 PLACEHOLDER = re.compile(r"<[^>]*>")
 
 
@@ -133,7 +153,88 @@ def path_findings(where: str, label: str, value: str, base: Path) -> list[str]:
     return findings
 
 
-def check_decisions(path: Path) -> list[str]:
+def instant(value: str, since: datetime | None = None) -> datetime | None:
+    """An entry's `When`, read as UTC where it names no zone. A date with no time — older entries wrote one
+    — is read at the rule's own time of day, so an entry dated the day the rule came in is held to it rather
+    than forgiven for all of that day. An instant with an impossible second — game-club-manager's D13 says
+    `13:10:60Z` — is read to the minute. Anything else that is not an instant is None, and said."""
+    value = value.strip().strip("`")
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        try:
+            day = date.fromisoformat(value)
+        except ValueError:
+            return None
+        clock = since.timetz() if since else datetime.min.replace(tzinfo=timezone.utc).timetz()
+        return datetime.combine(day, clock)
+    try:
+        found = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        near = re.fullmatch(r"(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):60(?:\.\d+)?(Z|[+-]\d{2}:\d{2})?", value)
+        if not near:
+            return None
+        try:
+            found = datetime.fromisoformat(f"{near.group(1)}T{near.group(2)}:{near.group(3)}:59"
+                                           + (near.group(4) or "").replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return found if found.tzinfo else found.replace(tzinfo=timezone.utc)
+
+
+Rule = tuple[datetime, frozenset[str]]
+
+
+def sentence_from() -> Rule | None:
+    """The instant the sentence rule reached this project and the slices already in flight then, or None
+    where the project was made under the rule."""
+    path = ROOT / SENTENCE_FROM
+    if not path.is_file():
+        return None
+    try:
+        held = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        raise OSError(f"{SENTENCE_FROM} is not JSON; it holds {{\"from\": \"<ISO instant>\"}}") from None
+    found = instant(str(held.get("from", ""))) if isinstance(held, dict) else None
+    if found is None:
+        raise OSError(f"{SENTENCE_FROM} names no instant; it holds {{\"from\": \"<ISO instant>\"}}")
+    begun = held.get("in_flight") if isinstance(held.get("in_flight"), list) else []
+    return found, frozenset(str(one) for one in begun)
+
+
+def sentence_findings(where: str, number: int, fields: dict[str, str], rule: Rule | None) -> list[str]:
+    """An entry written since the rule says what was decided in one plain sentence.
+
+    Since the rule means: its `When` is at or after the instant `.specify/decisions-in-short.json` records,
+    and its slice was not already in flight when `migrate` wrote that file — a slice begun before it runs the
+    command pages it began on, which never asked for the sentence, until it takes trunk."""
+    stage = fields.get("Stage", "")
+    if rule is not None:
+        since, begun = rule
+        when = WHEN.search(stage)
+        written = instant(when.group(1), since) if when else None
+        if written is None:
+            return [f"{where}: D{number}'s **When:** {when.group(1).strip() if when else '(none)'!r} is not an "
+                    "instant this can read, so whether it predates the plain-sentence rule in "
+                    f"{SENTENCE_FROM} cannot be told; write it as YYYY-MM-DDTHH:MM:SSZ"]
+        piece = SLICE.search(stage)
+        if written < since or (piece and piece.group(1) in begun):
+            return []
+        why = (f"it was written after the instant in {SENTENCE_FROM}, where `slipwai migrate` recorded when it "
+               "brought this rule in; entries before it are not asked")
+    else:
+        why = (f"this project has no {SENTENCE_FROM}, the file `slipwai migrate` writes when it brings this rule "
+               "into a project that already had decisions, so it was made under the rule and every entry is asked")
+    said = fields.get(SENTENCE, "").strip()
+    if not said or PLACEHOLDER.search(said):
+        return [f"{where}: D{number} has no **In short:** — one sentence a product owner reads without the "
+                f"specification open, saying what the product now does ({why})"]
+    leaned = NOT_PLAIN.search(said)
+    if leaned:
+        return [f"{where}: D{number}'s **In short:** names {leaned.group(0)!r}; say it without requirement, "
+                "decision or example ids, backticks or paths, so a person reads it without the specification"]
+    return []
+
+
+def check_decisions(path: Path, since: Rule | None = None) -> list[str]:
     relative = path.relative_to(ROOT).as_posix()
     findings: list[str] = []
     seen: dict[tuple[str, int], int] = {}
@@ -173,6 +274,7 @@ def check_decisions(path: Path) -> list[str]:
                             "human confirmation, confirmed by human <date>, overridden by D<m> or overridden by "
                             "human <date>")
         findings += path_findings(where, f"D{number} `Written to`", fields["Written to"], ROOT)
+        findings += sentence_findings(where, number, fields, since)
     return findings
 
 
@@ -302,8 +404,9 @@ def main() -> int:
     if not decisions and not logs and not findings:
         print("check-decisions: no decisions.md or demo-log.md under specs/ — nothing recorded yet")
         return 0
+    since = sentence_from()
     for path in decisions:
-        findings += check_decisions(path)
+        findings += check_decisions(path, since)
     for path in logs:
         findings += check_demo_log(path)
     if findings:

@@ -65,8 +65,9 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "talk",
        # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.
        "stuck", "captain_decisions",
-       "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_crossing",
-       "migration_result", "migration_merge", "migration_renames", "catalog_checks", "catalog_options",
+       "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_sentence",
+       "migration_crossing", "migration_result", "migration_merge", "migration_renames", "catalog_checks",
+       "catalog_options",
        "cli_offered", "cli_search",
        "project.briefs", "project.prose", "project.sail_section", "project.write_model_prose",
        "project.ladder", "project.capability_gates", "project.careen", "project.harbour", "project.unit_targets",
@@ -110,7 +111,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # And feedback from using it: version 1 had no built product on a board to say anything about.
        "feedback", "feedback_card",
        # And the decision log: version 1 kept decisions in a file nobody was shown.
-       "decision_log",
+       "decision_entry", "decision_log", "decision_cards",
        # And the live strip: version 1's runner printed to a terminal, and nothing kept what it said.
        "activity", "live_page",
        # A window each. The experiment's board served one directory, so it had no table of who is looking

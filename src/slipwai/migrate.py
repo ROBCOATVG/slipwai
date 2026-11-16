@@ -18,7 +18,8 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
-# budget: 405 — the ignore rewrite staged where it is made, and run state kept out of the projections
+# budget: 410 — the ignore rewrite staged where it is made, and run state kept out of the projections;
+# and the plain-sentence rule's instant written once, on every path a migration ends by
 # commit (2.1); a clean merge also leaves the intake proposal beside the catch-up notes, moves the run's state into
 # `.slipwai/run/` (refusing while a fleet is out), and moves the records
 # a newer keel keeps elsewhere (`relocate`) in the commit after it.
@@ -37,6 +38,7 @@ from .errors import GenerationError
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
 from .migration_result import Migration
+from .migration_sentence import date_sentence_rule
 from .relocate import relocate
 from .replay import Replay, git, replay
 from .run_folder import dirt, move_in, refuse_while_out, unstage_run_state
@@ -82,6 +84,8 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
         done = crossing(root, document, with_claims=with_claims)
         if not done.conflicts:
             done = replace(done, refresh=refresh(root, document["name"], layout_of(document)))
+        else:
+            date_sentence_rule(root)
         return done
     name, generator = document["name"], document.get("generator")
     was = generator.get("updatedWith") if isinstance(generator, dict) else None
@@ -107,6 +111,7 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
         # Nothing is re-derived over a merge still in progress: the command files are half the project's
         # and half the keel's until somebody decides, and projecting a conflicted file would write the
         # markers into every harness. The report asks for it after the resolving commit instead.
+        date_sentence_rule(root)
         return Migration(offered, was, conflicts, stat, fast_forward, unwritten=unwritten)
     from .project.intake_cleanup import write_proposal
     write_proposal(root)
@@ -181,6 +186,7 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     # `reignored` where the merge's own pass rewrote and staged the ignore file already, so this commits it.
     _, stuck, again = move_in(root)
     reignored = reignored or again
+    dated = date_sentence_rule(root)
     if reignored:
         git(root, "add", "--", ".gitignore")
     # Records the project wrote that this keel keeps elsewhere: staged by `git mv`, committed below with the rest.
@@ -229,7 +235,7 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         unstage_run_state(root)  # what `move_in` left at the old place is the run's, never a projection
     elif respelled:
         git(root, "add", "--", *respelled)
-    elif not relocated and not reignored:
+    elif not relocated and not reignored and not dated:
         # Nothing to project, respell or move: nothing of this command's is in the tree to stage.
         return Refresh(skipped=skipped, hooked=hooked.set, hooks=hooked.why)
     staged = tuple(git(root, "diff", "--cached", "--name-only").splitlines())

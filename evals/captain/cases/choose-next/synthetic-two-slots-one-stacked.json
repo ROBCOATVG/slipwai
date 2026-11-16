@@ -1,0 +1,51 @@
+{
+ "synthetic": true,
+ "situation": "Two slots are free. S3 is stacked on S2, which has not merged; S2 and S4 are cleared.",
+ "source": "made up, not recorded: the recorded choices had only one free slot when a stack mattered",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S2": "parked, answered and cleared: S2: `/sail` exited 1.",
+   "S3": "parked: S3 is built and waits on S2 merging first",
+   "S4": "not started; cleared by the chart"
+  },
+  "slots": 2,
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "parked",
+    "slice": "S3",
+    "why": "S3 is built and waits on S2 merging first"
+   }
+  ]
+ },
+ "event": {
+  "v": 1,
+  "id": "two-slots-one-stacked",
+  "t": "2026-11-20T10:05:00Z",
+  "kind": "choose-next",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "start",
+    "within": [
+     "S2",
+     "S4"
+    ]
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "start",
+    "naming": "S3"
+   }
+  ],
+  "why": "S3 cannot merge before S2 and its park is open; S2 and S4 can both run.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: S3's open park in the deck says it waits on S2; S2 and S4 are cleared."
+ }
+}

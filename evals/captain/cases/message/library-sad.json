@@ -1,0 +1,236 @@
+{
+ "situation": "A person tells the library stream: \"That is disappointing.\" (their words paraphrased)",
+ "source": "a recorded run of project-b, the library stream, 2026-11-04",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "library",
+  "slices": {
+   "LB10": "parked: LB10 rebased onto main (a199afd, linear, two doc conflicts and main.ts imports resolved); lint, typecheck and make unit are green, but make verify stops at check-chart, which fails on main itself: cha",
+   "LB12": "not started; cleared by the chart",
+   "LB13": "not started; cleared by the chart",
+   "LB14": "not started; cleared by the chart"
+  },
+  "deck": [
+   {
+    "t": "2026-10-22T12:47:53Z",
+    "kind": "told",
+    "message": "For the captain, from feedback 0001, confirmed by a person: something a person missed while trying the app (paraphrased), already planned in LB13.",
+    "by": "feedback",
+    "slice": "LB13"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T14:08:40Z"
+   },
+   {
+    "t": "2026-10-22T14:35:41Z",
+    "kind": "read",
+    "told": "2026-10-22T13:25:52Z"
+   },
+   {
+    "t": "2026-10-22T19:52:47Z",
+    "kind": "request",
+    "id": "merge-LB10-e96a5aa",
+    "what": "merge",
+    "slice": "LB10",
+    "detail": "LB10 Push progress to the server: examples proven (LB10-1..39, 17a), whole diff reviewed once with every finding closed or accepted, trigger record written, make verify green on slice/LB10 at e96a5aa, linear on main with no merge commit, 0 behind."
+   },
+   {
+    "t": "2026-10-22T20:13:27Z",
+    "kind": "demo",
+    "slice": "LB10",
+    "verdict": "accepted",
+    "outcome": "accepted",
+    "accepted-by": "sail-demo-hand",
+    "what": "Walked over HTTP against the built service, Postgres and the Audiobookshelf stub (no screen, no route): stop pushed in one sweep (ProgressPushed 8049), nothing resent, unreachable recorded once with 1/2/4/8 min backoff, restart settled 9000 and todo row cleared. Rejected-token, race and crash examples left to the suites. See specs/001-project-b/slices/LB10/demo-log.md"
+   },
+   {
+    "t": "2026-10-22T20:14:19Z",
+    "kind": "mark-set",
+    "slice": "LB10",
+    "mark": "ProgressPushed",
+    "contract": "specs/001-project-b/contracts/LB10-progress-push.md",
+    "examples": "specs/001-project-b/slices/LB10/examples.md",
+    "commit": "111ecbd",
+    "note": "re-entry: first set at 52c4edc (rebased since); the slice is built, reviewed, proven and demo-accepted at 111ecbd; shape unchanged: bookId, position (whole seconds), pushedAt."
+   },
+   {
+    "t": "2026-10-22T20:14:19Z",
+    "kind": "mark-set",
+    "slice": "LB10",
+    "mark": "ServerSyncFailed",
+    "contract": "specs/001-project-b/contracts/LB10-progress-push.md",
+    "examples": "specs/001-project-b/slices/LB10/examples.md",
+    "commit": "111ecbd",
+    "note": "re-entry: first set at 52c4edc; built, reviewed, proven and demo-accepted at 111ecbd; reason is unreachable|token-rejected|not-on-server (additive, D105, LB10-Q1), told once per outage; bookId, reason, failedAt."
+   },
+   {
+    "t": "2026-10-22T20:14:27Z",
+    "kind": "parked",
+    "why": "LB10: this turn wrote no `demo` line for LB10, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was the last of 3 run(s), which is what `attempts` allows",
+    "cause": "gate"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T19:19:33Z"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T18:49:49Z"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T18:43:47Z"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T18:41:00Z"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T18:32:45Z"
+   },
+   {
+    "t": "2026-10-23T05:48:01Z",
+    "kind": "told",
+    "message": "Sort out every mark-set problem.",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-23T05:50:15Z",
+    "kind": "claimed",
+    "slice": "LB10"
+   },
+   {
+    "t": "2026-10-23T05:52:48Z",
+    "kind": "parked",
+    "slice": "LB10",
+    "why": "LB10 rebased onto main (a199afd, linear, two doc conflicts and main.ts imports resolved); lint, typecheck and make unit are green, but make verify stops at check-chart, which fails on main itself: chart.yaml lacks the pattern/actor fields the model now derives. Regenerating the chart is outside a slice's scope (check-slice-scope), so it is a fix-trunk. The scope gate also lists the untracked .slipwai/holds.json, which is the host's",
+    "cause": "gate",
+    "needs": [
+     {
+      "what": "land `make chart` output on main (trunk's check-chart fails without LB10)",
+      "by": "fleet",
+      "check": {
+       "kind": "make",
+       "target": "check-chart"
+      }
+     },
+     {
+      "what": "decide what to do with the untracked .slipwai/holds.json",
+      "by": "person"
+     }
+    ],
+    "then": "rebase slice/LB10 onto main, run make verify, and write the merge request"
+   },
+   {
+    "t": "2026-10-26T16:41:39Z",
+    "kind": "told",
+    "message": "For the captain, from feedback 0004, confirmed by a person: something a person missed while trying the app (paraphrased), already planned in LB12.",
+    "by": "feedback",
+    "slice": "LB12"
+   },
+   {
+    "t": "2026-11-04T17:05:37Z",
+    "kind": "told",
+    "message": "LB10: fix the chart so it is unblocked, and get it going.",
+    "by": "person"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:56Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:44:29Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:11:07Z",
+    "what": "sorted, carry on: slice/LB4 is 361 commits behind main (1 ahead, merge-base 4f3463b); sail.md says stop when behind rather than derive from stale artifacts, and rebasing a branc…"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:11:43Z",
+    "what": "sorted, carry on: slice/LB15 is 361 commits behind main (1 ahead: the dispatch ledger line; merge-base 4f3463b); main carries no LB15 work"
+   },
+   {
+    "t": "2026-10-22T18:26:41Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T17:38:21Z",
+    "what": "sorted, carry on: the chart says LB9 sets PositionSyncedFromServer, and this turn wrote no `mark-set` for PositionSyncedFromServer"
+   },
+   {
+    "t": "2026-10-22T19:53:38Z",
+    "kind": "refused",
+    "request": "merge-LB10-e96a5aa",
+    "why": "the full gate failed on slice/LB10 rebased onto main: make[1]: *** [test] Error 1",
+    "resolve": true,
+    "slice": "LB10",
+    "waited_s": 13,
+    "attempt": 1,
+    "lock_s": 0,
+    "gate_s": 31
+   },
+   {
+    "t": "2026-10-22T20:14:36Z",
+    "kind": "park",
+    "why": "LB10: this turn wrote no `demo` line for LB10, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was the last of 3 run(s), which is what `attempts` allows"
+   },
+   {
+    "t": "2026-10-23T05:48:09Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T20:14:27Z",
+    "what": "sort all mark set issues"
+   },
+   {
+    "t": "2026-10-26T19:02:43Z",
+    "kind": "slots",
+    "slots": 3,
+    "running": 0
+   }
+  ],
+  "said": {
+   "id": "m-library-sad",
+   "t": "2026-11-04T17:07:04Z",
+   "from": "person",
+   "text": "That is disappointing."
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "library-sad",
+  "t": "2026-11-04T17:07:04Z",
+  "kind": "message",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": [
+     "say",
+     "ask",
+     "none"
+    ]
+   }
+  ],
+  "wrong": [],
+  "why": "It names no slice and asks for nothing; it is for the captain to acknowledge, not to route.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the message names no slice and asks for nothing; the snapshot has one parked and three cleared slices it could be wrongly sent to.  The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

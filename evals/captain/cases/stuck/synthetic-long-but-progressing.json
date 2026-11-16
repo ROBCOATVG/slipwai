@@ -1,0 +1,134 @@
+{
+ "synthetic": true,
+ "situation": "S1 has spent twenty-five minutes on one task, against four for its others, but writes a line every half minute and its passing-test count keeps rising.",
+ "source": "made up, not recorded: the recorded long warnings were all short; this one is long and plainly moving",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:20:00Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (40 passing)"
+    },
+    {
+     "t": "2026-11-20T10:20:30Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (46 passing)"
+    },
+    {
+     "t": "2026-11-20T10:21:00Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (52 passing)"
+    },
+    {
+     "t": "2026-11-20T10:21:30Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (58 passing)"
+    },
+    {
+     "t": "2026-11-20T10:22:00Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (64 passing)"
+    },
+    {
+     "t": "2026-11-20T10:22:30Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (70 passing)"
+    },
+    {
+     "t": "2026-11-20T10:23:00Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (76 passing)"
+    },
+    {
+     "t": "2026-11-20T10:23:30Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (82 passing)"
+    },
+    {
+     "t": "2026-11-20T10:24:00Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (88 passing)"
+    },
+    {
+     "t": "2026-11-20T10:24:30Z",
+     "stage": "implement",
+     "agent": "a2",
+     "kind": "ran",
+     "what": "Run the booking tests (94 passing)"
+    }
+   ]
+  },
+  "warnings": {
+   "S1": [
+    {
+     "kind": "long",
+     "level": "amber",
+     "said": "25m on T014 · its others took 4m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "long-but-progressing",
+  "t": "2026-11-20T10:25:00Z",
+  "kind": "stuck",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": [
+     "stop",
+     "park",
+     "interrupt"
+    ],
+    "slice": "S1"
+   }
+  ],
+  "why": "Every line shows more tests passing; the task is big, not stuck.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: the activity tail shows a line every thirty seconds with the passing count rising."
+ }
+}

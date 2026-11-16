@@ -1,0 +1,79 @@
+{
+ "synthetic": true,
+ "situation": "S1 has written nothing for thirty-five minutes in the middle of a task; the stage's bound is thirty.",
+ "source": "made up, not recorded: neither run recorded a turn silent past the stage bound",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "stage_minutes": 30,
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:01:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "edit",
+     "what": "edit src/tables/book.ts"
+    },
+    {
+     "t": "2026-11-20T10:02:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Run the integration suite"
+    }
+   ]
+  },
+  "warnings": {
+   "S1": [
+    {
+     "kind": "quiet",
+     "level": "red",
+     "said": "nothing for 35m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "quiet-for-the-whole-bound",
+  "t": "2026-11-20T10:37:00Z",
+  "kind": "stuck",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "interrupt",
+    "slice": "S1"
+   },
+   {
+    "verb": "stop",
+    "slice": "S1"
+   },
+   {
+    "verb": "ask"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "none"
+   }
+  ],
+  "why": "A turn silent past its stage's bound is not working; interrupting or stopping it is what the bound is for.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: `stage_minutes` is 30 and the quiet warning says 35 minutes since the last line, a command with no end."
+ }
+}

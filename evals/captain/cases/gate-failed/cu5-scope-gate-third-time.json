@@ -1,0 +1,182 @@
+{
+ "situation": "CU5's full gate stops at check-slice-scope for the third time this evening: the chart file the slice needs changed is not a slice's to write.",
+ "source": "a recorded run of project-b, the catch-up stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "catch-up",
+  "slices": {
+   "CU5": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:21:44Z"
+   },
+   {
+    "t": "2026-10-22T12:52:32Z",
+    "kind": "told",
+    "message": "Have another go.",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T12:59:38Z",
+    "kind": "read",
+    "told": "2026-10-22T10:35:04Z"
+   },
+   {
+    "t": "2026-10-22T12:59:38Z",
+    "kind": "read",
+    "told": "2026-10-22T10:38:53Z"
+   },
+   {
+    "t": "2026-10-22T12:59:38Z",
+    "kind": "read",
+    "told": "2026-10-22T10:43:59Z"
+   },
+   {
+    "t": "2026-10-22T13:20:12Z",
+    "kind": "read",
+    "told": "2026-10-22T13:03:12Z"
+   },
+   {
+    "t": "2026-10-22T13:20:12Z",
+    "kind": "read",
+    "told": "2026-10-22T13:00:49Z"
+   },
+   {
+    "t": "2026-10-22T14:44:25Z",
+    "kind": "read",
+    "told": "2026-10-22T14:41:28Z"
+   },
+   {
+    "t": "2026-10-22T19:45:00Z",
+    "kind": "question",
+    "slice": "CU5",
+    "id": "CU5-Q10",
+    "what": "Does the writer skip a request whose book was removed? Recommended (a): add BookRemoved to CU5's reads in the model and skip/close such requests. Alternative (b): no model change, draft anyway (PR1's D99 reading), which would repopulate an erased stream."
+   },
+   {
+    "t": "2026-10-22T19:45:00Z",
+    "kind": "question",
+    "slice": "CU5",
+    "id": "CU5-Q11",
+    "what": "Is the voice picker's play-sample button (D25) part of CU5? Recommended (a): no, a task of CU6 and named in the split's Defers column. Alternative (b): yes here, as a route and a task."
+   },
+   {
+    "t": "2026-10-22T19:45:00Z",
+    "kind": "question",
+    "slice": "CU5",
+    "id": "CU5-Q12",
+    "what": "Which drafting/checking/speech providers are bound, and what do adapters do until a person names them (a vendor SDK is a package-manifest change no slice may make)? Recommended (a): ports with a deterministic in-process adapter in the composition root; a real adapter once a person names the provider and supplies credentials. Alternative (b): real adapter in this slice."
+   },
+   {
+    "t": "2026-10-22T19:45:00Z",
+    "kind": "question",
+    "slice": "CU5",
+    "id": "CU5-Q13",
+    "what": "If the second pass strips the ending sentence (FR-004 vs FR-007), what is spoken? Recommended (a): D5's rule, survivors are spoken and ending is the last sentence actually spoken. Alternatives: (b) refuse as nothing-survived; (c) append a deterministic position sentence no model wrote."
+   },
+   {
+    "t": "2026-10-22T20:22:26Z",
+    "kind": "parked",
+    "slice": "CU5",
+    "cause": "gate",
+    "why": "CU5 is built, reviewed, every finding closed and every example proven (CU5-1..56), but make verify stops at check-slice-scope: chart.yaml is 'not a slice's to write', while make check-chart requires the BookRemoved steers_by line that D124 added to CU5's reads (commit 318abc1). The two gates conflict; neither is edited. Needs the chart regeneration landed on main first, then a rebase of slice/CU5, then make verify and the merge."
+   },
+   {
+    "t": "2026-10-22T20:26:39Z",
+    "kind": "claimed",
+    "slice": "CU5"
+   },
+   {
+    "t": "2026-10-22T20:30:18Z",
+    "kind": "parked",
+    "slice": "CU5",
+    "cause": "other",
+    "why": "CU5 is implemented and rebased linear on main (17 commits + 1 fix; make unit/lint/typecheck green), but make verify stops at check-slice-scope: specs/001-project-b/chart.yaml (BookRemoved in CU5 steers_by, commit 87de119) is 'not a slice's to write', while check-chart demands it. No gate edited. Host: land that one line on main, then re-run make verify here; the Postgres integration test also needs a database run."
+   },
+   {
+    "t": "2026-10-22T21:01:15Z",
+    "kind": "claimed",
+    "slice": "CU5"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T10:04:21Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T13:59:01Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T12:52:37Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:49:53Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T17:10:06Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T14:42:33Z",
+    "what": "its time came: 2026-10-22T17:10:00Z"
+   },
+   {
+    "t": "2026-10-22T20:22:36Z",
+    "kind": "park",
+    "why": "CU5 is built, reviewed, every finding closed and every example proven (CU5-1..56), but make verify stops at check-slice-scope: chart.yaml is 'not a slice's to write', while make check-chart requires the BookRemoved steers_by line that D124 added to CU5's reads (commit 318abc1). The two gates conflict; neither is edited. Needs the chart regeneration landed on main first, then a rebase of slice/CU5, then make verify and the merge."
+   },
+   {
+    "t": "2026-10-22T20:22:36Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T20:22:26Z",
+    "what": "answered by decisions CU5-Q1, CU5-Q2, CU5-Q3, CU5-Q4, CU5-Q5, CU5-Q6, CU5-Q7, CU5-Q8, CU5-Q9, CU5-Q10, CU5-Q11, CU5-Q12, CU5-Q13"
+   },
+   {
+    "t": "2026-10-22T20:30:26Z",
+    "kind": "park",
+    "why": "CU5 is implemented and rebased linear on main (17 commits + 1 fix; make unit/lint/typecheck green), but make verify stops at check-slice-scope: specs/001-project-b/chart.yaml (BookRemoved in CU5 steers_by, commit 87de119) is 'not a slice's to write', while check-chart demands it. No gate edited. Host: land that one line on main, then re-run make verify here; the Postgres integration test also needs a database run."
+   },
+   {
+    "t": "2026-10-22T20:30:26Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T20:30:18Z",
+    "what": "answered by decisions CU5-Q1, CU5-Q2, CU5-Q3, CU5-Q4, CU5-Q5, CU5-Q6, CU5-Q7, CU5-Q8, CU5-Q9, CU5-Q10, CU5-Q11, CU5-Q12, CU5-Q13"
+   },
+   {
+    "t": "2026-10-22T21:01:25Z",
+    "kind": "slots",
+    "slots": 3,
+    "running": 3
+   }
+  ],
+  "gate": "CU5 is built and rebased linear on main (aa6b62d); make unit/lint/typecheck/check-imports/check-chart green, but make verify stops at check-slice-scope: chart.yaml (BookRemoved added to CU5 steers_by, D124) is 'not a slice's to write', while check-chart requires that line. No gate edited. Host: land the one chart.yaml line on main, rebase slice/CU5, re-run make verify (and the Postgres integration suite), then merge."
+ },
+ "event": {
+  "v": 1,
+  "id": "cu5-scope-gate-third-time",
+  "t": "2026-10-22T21:06:15Z",
+  "kind": "gate-failed",
+  "slice": "CU5"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "park",
+    "slice": "CU5"
+   },
+   {
+    "verb": "ask"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "retry",
+    "slice": "CU5"
+   }
+  ],
+  "why": "A file only a person may change will not change on another run.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the gate text names check-slice-scope refusing a chart file that is not a slice's to write, and the deck holds two earlier parks for the same reason. What happened: it was parked again later the same evening for the same reason, and landed four days later once a person changed the chart. The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

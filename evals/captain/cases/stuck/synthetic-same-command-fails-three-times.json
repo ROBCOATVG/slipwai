@@ -1,0 +1,98 @@
+{
+ "synthetic": true,
+ "situation": "S1's implementing agent has run the same test three times running, and it failed the same way each time.",
+ "source": "made up, not recorded: neither run recorded a circles warning",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:10:00Z",
+     "stage": "implement",
+     "agent": "a1",
+     "kind": "edit",
+     "what": "edit src/tables/book.ts"
+    },
+    {
+     "t": "2026-11-20T10:11:00Z",
+     "stage": "implement",
+     "agent": "a1",
+     "kind": "ran",
+     "what": "Run the tables tests"
+    },
+    {
+     "t": "2026-11-20T10:11:30Z",
+     "stage": "implement",
+     "agent": "a1",
+     "kind": "failed",
+     "what": "Run the tables tests",
+     "said": "TypeError: seats is undefined"
+    },
+    {
+     "t": "2026-11-20T10:12:00Z",
+     "stage": "implement",
+     "agent": "a1",
+     "kind": "failed",
+     "what": "Run the tables tests",
+     "said": "TypeError: seats is undefined"
+    },
+    {
+     "t": "2026-11-20T10:12:40Z",
+     "stage": "implement",
+     "agent": "a1",
+     "kind": "failed",
+     "what": "Run the tables tests",
+     "said": "TypeError: seats is undefined"
+    }
+   ]
+  },
+  "warnings": {
+   "S1": [
+    {
+     "kind": "circles",
+     "level": "red",
+     "said": "failed 3 times running: Run the tables tests"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "same-command-fails-three-times",
+  "t": "2026-11-20T10:13:00Z",
+  "kind": "stuck",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": [
+     "message",
+     "interrupt"
+    ],
+    "slice": "S1"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "none"
+   }
+  ],
+  "why": "An agent repeating a failing command unchanged is not going to get past it alone; tell it what it is doing.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: the activity tail shows one command failing three times running with the same error, and the circles warning."
+ }
+}

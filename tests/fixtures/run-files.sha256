@@ -45,6 +45,7 @@
 # why: 2026-11-16 ab728d565ecc7c2b talk.py's budget line re-claimed for the quote field; nothing it does changed
 # why: 2026-11-16 a48320ed1d292cb7 2026-11-16, stream E second review: the captain agent runs only over the protocol (captain_guard.py removed, captain_agent.py's process path kept for the evals alone); a slice's runs are bounded at the dispatch by its dispatched deck lines; a routed message is only of a genuine one and names whose words it quotes; captain.answers is off by default. With no captain agent a stream on macOS and Linux runs as before except that a slice parks for a person after 2 x attempts + 1 runs since a person last spoke to it.
 # why: 2026-11-16 80a492f1150cfe11 2026-11-16: whose park a word answers is one rule, logs.about, shared by the captain, the harbourmaster and the lighting check: a park names a slice by its field or by its whole id at the head of its why. Otherwise unchanged on macOS and Linux.
+# why: 2026-11-16 681e847b44ed1dae the captain's turn is not over while a choice it put to its agent is still open; nothing changes without an agent
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -171,10 +172,6 @@
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.ts
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-memory-none  scripts/event-model/check.py
 65a025d41b1b105492b1b28fa450efddf4b320a4dcefc89a8233bc428b4326b9  event-modelling-postgres-toy-serve  scripts/event-model/check.py
-68fefc55ade237cfdcb8403a431f267c449f5c05bb7fd0a6c96bff6ecf6ee8ef  event-modelling-memory-none  scripts/agents/captain.py
-68fefc55ade237cfdcb8403a431f267c449f5c05bb7fd0a6c96bff6ecf6ee8ef  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-68fefc55ade237cfdcb8403a431f267c449f5c05bb7fd0a6c96bff6ecf6ee8ef  standard-memory-none  scripts/agents/captain.py
-68fefc55ade237cfdcb8403a431f267c449f5c05bb7fd0a6c96bff6ecf6ee8ef  standard-postgres-toy-serve  scripts/agents/captain.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-memory-none  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-postgres-toy-serve  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-memory-none  scripts/test_benchmark.py
@@ -269,6 +266,10 @@
 9b21d9961571e6bb948d1cacad9b0e2972f92cccae2f178bf95019ab956bfdca  standard-postgres-toy-serve  scripts/render-fairways.py
 9d85a3f4bb66e76e12aaa443ee3f2e47c1ab104ade852b128dfb74e208462dfa  event-modelling-memory-none  scripts/event-model/workspace.ts
 9d85a3f4bb66e76e12aaa443ee3f2e47c1ab104ade852b128dfb74e208462dfa  event-modelling-postgres-toy-serve  scripts/event-model/workspace.ts
+9f789c4b33798e2eee8317c31eeaac8fcbf972ff402cfa1210637f5721e440f7  event-modelling-memory-none  scripts/agents/captain.py
+9f789c4b33798e2eee8317c31eeaac8fcbf972ff402cfa1210637f5721e440f7  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+9f789c4b33798e2eee8317c31eeaac8fcbf972ff402cfa1210637f5721e440f7  standard-memory-none  scripts/agents/captain.py
+9f789c4b33798e2eee8317c31eeaac8fcbf972ff402cfa1210637f5721e440f7  standard-postgres-toy-serve  scripts/agents/captain.py
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-memory-none  scripts/event-model/readme.ts
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-postgres-toy-serve  scripts/event-model/readme.ts
 a68155a17300e6a1a8021939a91e3ce86eb725d77c7bf6304849236040f8f800  event-modelling-memory-none  scripts/event-model/seams.py

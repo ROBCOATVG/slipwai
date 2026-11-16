@@ -2487,8 +2487,8 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
             STUCK.pop(slice_id, None)
             print(line, flush=True)
             said.append(line)
-        if not threads:
-            # The last one has ended: the turn is over, as a single slice's turn always was. Nothing more
+        if not threads and not pending:
+            # The last one has ended, and no choice is waiting on the captain: the turn is over, as a single slice's turn always was. Nothing more
             # is started from here — the next turn reads the log afresh, and with one slice allowed that is
             # exactly the captain this was.
             ON["drained"] = "yes"

@@ -64,10 +64,11 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
     ("upstream", ("park", "advance"), "park",
      "the steps above the chart — the drafted specification, the storyboard and the event model: stop at "
      "each for a person, or have the board start the next one, and approve the storyboard, as each ends well"),
-    ("sessions", ("print", "protocol"), "print",
-     "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
-     "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
-     "launch row this machine can make, proven on Claude Code and OpenCode"),
+    ("sessions", ("auto", "print", "protocol"), "auto",
+     "how a captain starts a session: `auto`, over the Agent Client Protocol — which shows its work as it "
+     "goes, holds the session open and takes messages and a stop — where the harness's launch is marked "
+     "proven in the registry and this machine can make it, and the harness's print mode elsewhere; `print` "
+     "always; or `protocol` on any launch row this machine can make"),
     # Who accepts a whole capability. The hand by default: its verdict at the walk is the acceptance, the
     # capability's slices are done, and the film is an opportunity for a person to say what it showed.
     ("demos", ("hand", "person"), "hand",

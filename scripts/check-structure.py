@@ -66,7 +66,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                     "app_version",
                     # What every catch-up page shares — its opening section and where a finished one is
                     # archived — here so the command page in `parts` and the writers in `assembly` both reach it.
-                    "catch_up_page")),
+                    "catch_up_page",
+                    # A conversation's inbox, thread and receipts, carried into every project as the captain's.
+                    "talk")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.

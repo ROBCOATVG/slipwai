@@ -66,7 +66,7 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "hand": ("browser", "http", "cli"),
     "unblock": ("bosun", "park"),
     "upstream": ("park", "advance"),
-    "sessions": ("print", "protocol"),
+    "sessions": ("auto", "print", "protocol"),
     "demos": ("hand", "person"),
 }
 # Free text, or null: the model the ladder itself runs on, passed through the harness row's own `modelFlag`.
@@ -79,7 +79,7 @@ TEXTS = ("model",)
 # takes them out, because a setting nothing reads is worse than one that was never there.
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
-    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "print", "demos": "hand",
+    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "auto", "demos": "hand",
     "model": None,
 }
 # Settings that arrived after projects already had this file. Absent is the default rather than a finding, so
@@ -101,9 +101,10 @@ CONTROLS = {
                 "as each ends well",
     "model": "the model the iteration itself runs on — the driver, and every stage `.specify/models.json` maps to "
              "`host`; null is the harness's default, which nobody at the wheel chooses",
-    "sessions": "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
-                "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
-                "launch row this machine can make, proven on Claude Code and OpenCode",
+    "sessions": "how a captain starts a session: `auto`, over the Agent Client Protocol — which shows its work "
+                "as it goes, holds the session open and takes messages and a stop — where the harness's launch "
+                "is marked proven in the registry and this machine can make it, and the harness's print mode "
+                "elsewhere; `print` always; or `protocol` on any launch row this machine can make",
     "demos": "who accepts a whole capability: the hand, whose verdict at its walk is the acceptance and whose "
              "film is there for a person to comment on; or a person, who is asked to accept or say not yet",
 }

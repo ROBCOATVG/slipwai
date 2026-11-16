@@ -50,6 +50,7 @@ sys.path.insert(0, str(HERE))
 
 import clearance  # noqa: E402
 import logs  # noqa: E402
+import talk  # noqa: E402
 
 #: Slices one fairway runs at once where `harbour.json` names no `abreast`. Three, because that is
 #: `half-ahead`'s `boilers` — a fresh harbour with one fairway then uses every session it was given, and
@@ -256,6 +257,10 @@ def harbour_plan(lit: set[str], config: Path) -> dict[str, tuple[int, int, str]]
             continue
         stopped = [one for one in logs.unmerged(deck) if one not in on and one not in logs.held_slices(parks)]
         offered = ready(charted, folded_logs, done, fairway, on + stopped)
+        # A slice paused, or stopped by a person, wants no session until a person resumes it: counted, it
+        # would light a captain every pass that finds nothing it may start and exits.
+        kept = held_by_person(fairway, stopped + offered)
+        stopped, offered = [one for one in stopped if one not in kept], [one for one in offered if one not in kept]
         owed = 1 if fix_owed(fairway, deck, harbour) is not None and not on else 0
         wants[fairway] = len(stopped) + len(offered) + owed
         weight[fairway] = max([critical(charted, one) for one in offered + stopped] or [0])
@@ -265,6 +270,19 @@ def harbour_plan(lit: set[str], config: Path) -> dict[str, tuple[int, int, str]]
     planned = allocate(order, preferred, wants, running, backed, weight,
                        boilers if boilers is not None and boilers > 0 else None, width(held))
     return {fairway: (count, running[fairway], to) for fairway, (count, to) in planned.items()}
+
+
+def held_by_person(fairway: str, slices: list[str]) -> list[str]:
+    """The slices whose conversation says they are paused, or stopped by a person."""
+    run = logs.run_dir(clearance.ROOT)
+    held = []
+    for one in slices:
+        try:
+            if talk.halted(talk.place(run, fairway, one))[0]:
+                held.append(one)
+        except ValueError:
+            continue
+    return held
 
 
 def granted(harbour: list[logs.Entry], fairway: str) -> logs.Entry | None:

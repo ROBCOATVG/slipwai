@@ -91,7 +91,7 @@ class FleetRefusesTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.root, True)
         (self.root / "scripts/agents").mkdir(parents=True)
         for name in ("fleet.py", "clearance.py", "logs.py", "berths.py", "abreast.py", "telegraph.py",
-                     "inbox.py", "ids.py"):
+                     "inbox.py", "ids.py", "talk.py"):
             shutil.copy(TOOLKIT_ROOT / "scripts/agents" / name, self.root / "scripts/agents" / name)
         stamp(self.root, "2.2.0")
 

@@ -32,7 +32,8 @@ QUIET = 8 * 60
 LONG_FLOOR = 10 * 60
 #: The same command failing this many times running is an agent going round in circles.
 CIRCLE = 3
-KINDS = ("start", "done", "ran", "failed", "edit", "said", "wait", "link", "stage")
+#: `plan` is a session's plan as its driver last heard it, over the Agent Client Protocol: one line a change.
+KINDS = ("start", "done", "ran", "failed", "edit", "said", "wait", "link", "stage", "plan")
 
 
 def stamp(text: str) -> float:

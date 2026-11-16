@@ -1,0 +1,90 @@
+{
+ "situation": "LB7's session exited 1 within seconds of starting. LB3 and LB8 in the same stream did the same in the same minute.",
+ "source": "a recorded run of an audiobook-recap project, the library stream, 2026-10-21",
+ "snapshot": {
+  "feature": "001-audiobook-recap",
+  "fairway": "library",
+  "slices": {
+   "LB3": "parked: LB3: `/sail` exited 1.",
+   "LB7": "claimed, in flight",
+   "LB8": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T13:35:15Z",
+    "kind": "claimed",
+    "slice": "LB3"
+   },
+   {
+    "t": "2026-10-21T13:49:15Z",
+    "kind": "mark-set",
+    "slice": "LB3",
+    "mark": "BookImported"
+   },
+   {
+    "t": "2026-10-21T13:50:23Z",
+    "kind": "told",
+    "slice": "LB3",
+    "message": "Tooling gap, host's to fix on main: .gitignore does not cover __pycache__/, and check-slice-scope counts untracked files, so running make check-model (scripts/event-model/check.py imports rung) or the captain's own imports leaves scripts/**/__pycache__/*.pyc that fail the scope gate on every slice branch. This berth deletes them and runs make under PYTHONDONTWRITEBYTECODE=1 meanwhile.",
+    "by": "session"
+   },
+   {
+    "t": "2026-10-21T13:58:56Z",
+    "kind": "parked",
+    "why": "LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB3"
+   },
+   {
+    "t": "2026-10-21T13:59:06Z",
+    "kind": "claimed",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-21T13:59:06Z",
+    "kind": "claimed",
+    "slice": "LB8"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-21T13:59:05Z",
+    "kind": "park",
+    "why": "LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"
+   },
+   {
+    "t": "2026-10-21T13:59:05Z",
+    "kind": "slots",
+    "slots": 3,
+    "running": 1
+   }
+  ],
+  "gate": "LB8: `/sail` exited 1."
+ },
+ "event": {
+  "v": 1,
+  "id": "lb7-library-exits-together",
+  "t": "2026-10-21T13:59:20Z",
+  "kind": "gate-failed",
+  "slice": "LB7"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "park",
+    "slice": "LB7"
+   },
+   {
+    "verb": "ask"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "retry",
+    "slice": "LB7"
+   }
+  ],
+  "why": "Three slices failing identically in a minute is not LB7's work; retrying spends its attempts.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: every slice of the stream was retried and exited 1 again, twice, until a person cleared them all the next morning."
+ }
+}

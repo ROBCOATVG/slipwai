@@ -1,0 +1,356 @@
+{
+ "situation": "LB6 has merged and freed the library stream's one slot. Eight slices are cleared.",
+ "source": "a recorded run of an audiobook-recap project, the library stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-audiobook-recap",
+  "fairway": "library",
+  "slices": {
+   "LB1": "parked, answered and cleared: LB1: the harness would not run LB1 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent",
+   "LB11": "parked, answered and cleared: LB11: `/sail` exited 1.",
+   "LB15": "parked, answered and cleared: LB15: `/sail` exited 1.",
+   "LB2": "parked, answered and cleared: LB2: `/sail` exited 1.",
+   "LB3": "merged",
+   "LB4": "parked, answered and cleared: LB4: `/sail` exited 1.",
+   "LB6": "merged",
+   "LB7": "parked, answered and cleared: LB7: the harness would not run LB7 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent",
+   "LB8": "parked, answered and cleared: LB8: the harness would not run LB8 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent",
+   "LB9": "parked, answered and cleared: LB9: the harness would not run LB9 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent"
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T13:32:41Z",
+    "kind": "question",
+    "slice": "chart",
+    "id": "D8",
+    "what": "Recaps, answers, ratings and reports are per book and never served across accounts; only the transcription and index are shared by hash (keeps Principle IX exact). Confirm or overturn D8 in specs/001-audiobook-recap/decisions.md."
+   },
+   {
+    "t": "2026-10-21T13:32:41Z",
+    "kind": "question",
+    "slice": "chart",
+    "id": "D15",
+    "what": "v1 prepares English only; a book whose first transcribed chapter is in another language fails preparation with that reason. Scope the PRD did not state. Confirm or overturn D15."
+   },
+   {
+    "t": "2026-10-21T13:32:41Z",
+    "kind": "question",
+    "slice": "chart",
+    "id": "D19",
+    "what": "Split order: walking skeleton first (LB3 import heads the library, CU4-CU6 request/generate/hear head catch-up after CU1), companion mode after position tracking. Confirm or overturn D19; reasons per row in story-split.md."
+   },
+   {
+    "t": "2026-10-21T16:40:27Z",
+    "kind": "claimed",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-21T16:40:41Z",
+    "kind": "parked",
+    "why": "LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-21T16:40:44Z",
+    "kind": "claimed",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-21T16:40:44Z",
+    "kind": "claimed",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-21T16:40:58Z",
+    "kind": "parked",
+    "why": "LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-21T16:40:58Z",
+    "kind": "parked",
+    "why": "LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-21T16:41:13Z",
+    "kind": "claimed",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-21T16:41:26Z",
+    "kind": "parked",
+    "why": "LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-22T10:04:44Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and…",
+    "by": "person",
+    "slice": "LB8"
+   },
+   {
+    "t": "2026-10-22T10:04:59Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-22T10:05:01Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-22T10:05:02Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-22T10:05:04Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-22T10:05:05Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-22T10:05:15Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:22:15Z"
+   },
+   {
+    "t": "2026-10-22T11:05:46Z",
+    "kind": "mark-set",
+    "slice": "LB3",
+    "mark": "BookImported",
+    "contract": "docs/event-model/model.yaml#BookImported",
+    "examples": "specs/001-audiobook-recap/slices/LB3/examples.md",
+    "commit": "85d38c4",
+    "note": "re-asserted at the merge rung after the branch was rebased linearly onto main; first set 2026-10-21T13:49:15Z, implemented at e92df4d (4e40fb2 before the rebase)"
+   },
+   {
+    "t": "2026-10-22T11:05:46Z",
+    "kind": "request",
+    "slice": "LB3",
+    "id": "merge-LB3-85d38c4",
+    "what": "merge",
+    "detail": "Merge slice/LB3 at 85d38c4 into main, first in the library's split order (LB6 asked to follow it). The earlier ask (merge-LB3, 11:01Z) was refused because the branch carried a merge commit from main (dee6151) and the harbourmaster's plain rebase replays a non-linear history; the branch is now 56 linear commits on main 66ca1e3 - the 55 slice commits replayed, then one commit re-applying the eight both-sides resolutions - and git rebase main answers up to date. The tree is byte-identical to the one the full gate passed on before (tree aeef926), and make verify passed again on the rebased branch  …"
+   },
+   {
+    "t": "2026-10-22T11:06:19Z",
+    "kind": "merged",
+    "slice": "LB3",
+    "commit": "85d38c443aa210e1b9b26e05d3488addff592321"
+   },
+   {
+    "t": "2026-10-22T11:15:11Z",
+    "kind": "read",
+    "slice": "LB7",
+    "told": "2026-10-22T10:55:28Z"
+   },
+   {
+    "t": "2026-10-22T11:15:11Z",
+    "kind": "read",
+    "slice": "LB7",
+    "told": "2026-10-22T11:01:14Z"
+   },
+   {
+    "t": "2026-10-22T11:16:30Z",
+    "kind": "read",
+    "told": "2026-10-22T11:15:11Z"
+   },
+   {
+    "t": "2026-10-22T11:50:07Z",
+    "kind": "claimed",
+    "slice": "LB8"
+   },
+   {
+    "t": "2026-10-22T11:50:12Z",
+    "kind": "parked",
+    "why": "LB8: the harness would not run LB8 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent",
+    "slice": "LB8",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:50:40Z",
+    "kind": "parked",
+    "why": "LB7: the harness would not run LB7 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent",
+    "slice": "LB7",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:50:53Z",
+    "kind": "claimed",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T11:50:53Z",
+    "kind": "claimed",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-22T11:50:58Z",
+    "kind": "parked",
+    "why": "LB9: the harness would not run LB9 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent",
+    "slice": "LB9",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:51:00Z",
+    "kind": "parked",
+    "why": "LB1: the harness would not run LB1 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent",
+    "slice": "LB1",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T12:47:53Z",
+    "kind": "told",
+    "message": "For the captain, from feedback 0001 (docs/feedback/0001-i-dont-seem-to-see-the-catch.md), confirmed by a person: something a person missed while trying the app, which is already planned in LB13. I dont seem to see the catch up part, only upload Read it when LB13 is planned; it changes nothing that has been decided.",
+    "by": "feedback",
+    "slice": "LB13"
+   },
+   {
+    "t": "2026-10-22T12:52:37Z",
+    "kind": "told",
+    "message": "try again",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T13:07:47Z",
+    "kind": "told",
+    "slice": "LB6",
+    "by": "session",
+    "message": "LB7 (abreast): slice/LB6 was rebased linearly onto main (LB3, CU4, CU7 landed) and its head moved from f95b437 to 5b59265 - every LB6 commit has a new hash (ae2841d is 7917590, 6dd2fc8 is 5b1434e). D53 rebased slice/LB7 onto f95b437; once LB6 is merged, rebase slice/LB7 onto main instead (git rebase --onto main f95b437 slice/LB7), where LB6's files are the same content at new hashes. The composition root now binds import and resumptions in one library registrar beside catchUp, and openapi.ts documents every route set together. Host: the pre-rebase head is kept as the local tag LB6-before-rebas …"
+   },
+   {
+    "t": "2026-10-22T13:07:47Z",
+    "kind": "request",
+    "slice": "LB6",
+    "id": "merge-LB6-5b59265",
+    "what": "merge",
+    "detail": "Merge slice/LB6 at 5b59265 into main, next in the library's split order after LB3 (merged 85d38c4). The earlier ask (merge-LB6-6dd2fc8, 10:55Z) was refused on a decisions.md conflict; the branch is now 24 linear commits on main 62c3103 - the 21 slice commits replayed, one commit re-applying the eight both-sides resolutions (composition root, API document and its writer, the library public module, the web shell and its test, decisions D20-D57 in number order, LB6's trigger record after LB3's), one naming the rebased hashes in the review, tasks and trigger records, one closing the benchmark - an …"
+   },
+   {
+    "t": "2026-10-22T13:08:17Z",
+    "kind": "merged",
+    "slice": "LB6",
+    "commit": "5b5926546b730cb50fb4d834aa965b94c786c62f"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T11:51:07Z",
+    "kind": "park",
+    "why": "LB1: the harness would not run LB1 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T12:12:19Z",
+    "kind": "park",
+    "why": "LB6: the harness would not run LB6 (You've hit your session limit · resets 3:40pm (local time)). Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:50:12Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:50:40Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:50:58Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:51:00Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T12:12:08Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T13:01:57Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   },
+   {
+    "t": "2026-10-22T13:08:15Z",
+    "kind": "granted",
+    "request": "merge-LB6-5b59265",
+    "what": "merge",
+    "slice": "LB6",
+    "commit": "5b5926546b730cb50fb4d834aa965b94c786c62f",
+    "ci": "unverified",
+    "waited_s": 5,
+    "attempt": 2,
+    "lock_s": 0,
+    "gate_s": 20
+   }
+  ],
+  "slots": 1
+ },
+ "event": {
+  "v": 1,
+  "id": "library-after-lb6",
+  "t": "2026-10-22T13:08:30Z",
+  "kind": "choose-next",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "start",
+    "within": [
+     "LB7",
+     "LB8"
+    ]
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "start",
+    "naming": "LB4"
+   },
+   {
+    "verb": "start",
+    "naming": "LB15"
+   }
+  ],
+  "why": "LB7 and LB8 were prepared, planned and tasked, and merged in fourteen and forty minutes; LB4 and LB15 stopped at once on a branch hundreds of commits behind.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: LB7 was started and merged in fourteen minutes, then LB8."
+ }
+}

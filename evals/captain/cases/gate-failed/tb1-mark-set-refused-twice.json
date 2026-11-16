@@ -1,0 +1,142 @@
+{
+ "situation": "TB1's gate has just failed for the second time with the same words: no `mark-set` for ClubWeekSet this turn, although the mark was set that morning and the slice was seeded green. The session cannot write the line; nothing in the tree is owed.",
+ "source": "a recorded run of a game-club manager project, the tables stream, 2026-11-13",
+ "snapshot": {
+  "feature": "001-game-club-manager",
+  "fairway": "tables",
+  "slices": {
+   "TB1": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-11-13T08:59:28Z",
+    "kind": "mark-set",
+    "slice": "TB1",
+    "mark": "ClubWeekSet",
+    "where": "apps/game-club-manager-service/src/domain/tables/events.ts at 2a3356c"
+   },
+   {
+    "t": "2026-11-13T09:16:23Z",
+    "kind": "stopped",
+    "slice": "TB1"
+   },
+   {
+    "t": "2026-11-13T12:19:15Z",
+    "kind": "claimed",
+    "slice": "TB1"
+   },
+   {
+    "t": "2026-11-13T12:21:50Z",
+    "kind": "told",
+    "slice": "TB1",
+    "by": "session",
+    "message": "TB1 needs DEV_SIGN_IN=on and DEV_CLUB_ORGANISERS=c-tt=p-organiser in .env.example (shared configuration, the host's) so Try it can seed the club's week; the text is in specs/001-game-club-manager/slices/TB1/env-example-additions.txt on slice/TB1.",
+    "needs": [
+     {
+      "what": "Land specs/001-game-club-manager/slices/TB1/env-example-additions.txt in .env.example on main",
+      "by": "fleet",
+      "check": {
+       "kind": "text",
+       "path": ".env.example",
+       "has": "DEV_CLUB_ORGANISERS=c-tt=p-organiser"
+      }
+     }
+    ]
+   },
+   {
+    "t": "2026-11-13T12:37:08Z",
+    "kind": "request",
+    "slice": "TB1",
+    "id": "TB1-merge-1",
+    "what": "merge",
+    "detail": "Merge slice/TB1 at 638b743 to main (33 commits on origin/main e1a2d30, 0 behind). R1–R9, all 29 examples proven (tasks.md Examples proven); composition T026/T027 (DEV_SIGN_IN on|off, DEV_CLUB_ORGANISERS, week check before the clubs install, PUT /api/clubs/{clubId}/week beside LB1/LB2 routes); review by sail-review-mate closed: should-fix 1 (quickstart browser walk sets x-dev-person, as LB1) and 2 (an empty time sends nothing), notes 3-5 fixed, 6 (shared install retry) and 7 (dropped answer field) left for the careen; trigger record in adversary-log.md (flagged: book-the-weeks-tables pass owed  …"
+   },
+   {
+    "t": "2026-11-13T12:49:01Z",
+    "kind": "parked",
+    "why": "TB1: the chart says TB1 sets ClubWeekSet, and this turn wrote no `mark-set` for ClubWeekSet. A stage that wrote no line made no progress, so nothing here is evidence the slice was built. That was the last of 3 run(s), which is what `attempts` allows",
+    "cause": "gate"
+   },
+   {
+    "t": "2026-11-13T15:11:15Z",
+    "kind": "claimed",
+    "slice": "TB1"
+   },
+   {
+    "t": "2026-11-13T15:12:54Z",
+    "kind": "read",
+    "told": "2026-11-13T08:50:01Z"
+   },
+   {
+    "t": "2026-11-13T15:12:54Z",
+    "kind": "read",
+    "told": "2026-11-13T08:48:09Z"
+   },
+   {
+    "t": "2026-11-13T15:24:24Z",
+    "kind": "seeded",
+    "slice": "TB1",
+    "records": 2,
+    "commit": "a3e00969abf2460192acd8c2e65b2011abbcb728",
+    "story": "specs/001-game-club-manager/slices/TB1/try-it.json",
+    "api": "http://localhost:4142"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-11-13T12:37:31Z",
+    "kind": "refused",
+    "request": "TB1-merge-1",
+    "why": "trunk is red, and nothing merges onto a red trunk. The harbour log says which commit and which job; no fairway is granted a merge until it is green, and the queue drains the moment it is",
+    "resolve": false,
+    "waiting": "green-trunk",
+    "waited_s": 20
+   },
+   {
+    "t": "2026-11-13T12:49:26Z",
+    "kind": "park",
+    "why": "TB1: the chart says TB1 sets ClubWeekSet, and this turn wrote no `mark-set` for ClubWeekSet. A stage that wrote no line made no progress, so nothing here is evidence the slice was built. That was the last of 3 run(s), which is what `attempts` allows"
+   },
+   {
+    "t": "2026-11-13T15:09:37Z",
+    "kind": "cleared",
+    "parked": "2026-11-13T12:49:01Z",
+    "what": "trunk is no longer red, so the merge it refused is asked for again"
+   },
+   {
+    "t": "2026-11-13T15:11:40Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   }
+  ],
+  "gate": "TB1: the chart says TB1 sets ClubWeekSet, and this turn wrote no `mark-set` for ClubWeekSet. A stage that wrote no line made no progress, so nothing here is evidence the slice was built."
+ },
+ "event": {
+  "v": 1,
+  "id": "tb1-mark-set-refused-twice",
+  "t": "2026-11-13T15:46:30Z",
+  "kind": "gate-failed",
+  "slice": "TB1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "park",
+    "slice": "TB1"
+   },
+   {
+    "verb": "ask"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "retry",
+    "slice": "TB1"
+   }
+  ],
+  "why": "The same refusal twice, on a slice whose work is done, is not a thing another run fixes: park it for a person with the reason, or ask one.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: the slice was re-dispatched 24 more times over two hours for the same reason, each session saying a person had to act, until a person did on another day; it then merged in eight minutes."
+ }
+}

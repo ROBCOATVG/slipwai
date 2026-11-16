@@ -1,0 +1,319 @@
+{
+ "situation": "CL4's card says one task has run for sixty-six hours. The slice was started again a minute ago after a weekend's park; the task is a sub-agent from Friday's session.",
+ "source": "a recorded run of a game-club manager project, the clubs stream, 2026-11-16",
+ "snapshot": {
+  "feature": "001-game-club-manager",
+  "fairway": "clubs",
+  "slices": {
+   "CL4": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-11-13T15:12:54Z",
+    "kind": "read",
+    "told": "2026-11-12T14:13:43Z"
+   },
+   {
+    "t": "2026-11-13T15:12:54Z",
+    "kind": "read",
+    "told": "2026-11-12T13:15:05Z"
+   },
+   {
+    "t": "2026-11-13T15:12:54Z",
+    "kind": "read",
+    "told": "2026-11-12T13:14:39Z"
+   },
+   {
+    "t": "2026-11-13T15:37:46Z",
+    "kind": "read",
+    "told": "2026-11-13T15:21:24Z"
+   },
+   {
+    "t": "2026-11-13T15:37:46Z",
+    "kind": "read",
+    "told": "2026-11-13T15:20:08Z"
+   },
+   {
+    "t": "2026-11-13T16:08:51Z",
+    "kind": "claimed",
+    "slice": "CL4"
+   },
+   {
+    "t": "2026-11-13T16:25:15Z",
+    "kind": "parked",
+    "why": "CL4: `/sail` exited 1. That was the last of 4 run(s), which is what `attempts` allows",
+    "cause": "exit"
+   },
+   {
+    "t": "2026-11-16T11:04:48Z",
+    "kind": "told",
+    "message": "go: this park was Friday's usage limit read as a crash, which slipwai 2.1.0.dev56 fixes. Run the slice again",
+    "by": "person"
+   },
+   {
+    "t": "2026-11-16T11:04:54Z",
+    "kind": "claimed",
+    "slice": "CL4"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-11-13T12:16:39Z",
+    "kind": "refused",
+    "request": "CL1-merge-2",
+    "why": "trunk is red, and nothing merges onto a red trunk. The harbour log says which commit and which job; no fairway is granted a merge until it is green, and the queue drains the moment it is",
+    "resolve": false,
+    "waiting": "green-trunk",
+    "waited_s": 79800
+   },
+   {
+    "t": "2026-11-13T12:16:39Z",
+    "kind": "refused",
+    "request": "CL2-merge-1",
+    "why": "trunk is red, and nothing merges onto a red trunk. The harbour log says which commit and which job; no fairway is granted a merge until it is green, and the queue drains the moment it is",
+    "resolve": false,
+    "waiting": "green-trunk",
+    "waited_s": 77659
+   },
+   {
+    "t": "2026-11-13T12:16:39Z",
+    "kind": "refused",
+    "request": "CL2-merge-2",
+    "why": "trunk is red, and nothing merges onto a red trunk. The harbour log says which commit and which job; no fairway is granted a merge until it is green, and the queue drains the moment it is",
+    "resolve": false,
+    "waiting": "green-trunk",
+    "waited_s": 77229
+   },
+   {
+    "t": "2026-11-13T12:16:39Z",
+    "kind": "refused",
+    "request": "CL2-merge-3",
+    "why": "trunk is red, and nothing merges onto a red trunk. The harbour log says which commit and which job; no fairway is granted a merge until it is green, and the queue drains the moment it is",
+    "resolve": false,
+    "waiting": "green-trunk",
+    "waited_s": 76917
+   },
+   {
+    "t": "2026-11-13T12:19:09Z",
+    "kind": "cleared",
+    "parked": "2026-11-12T14:54:48Z",
+    "what": "trunk is no longer red, so the merge it refused is asked for again"
+   },
+   {
+    "t": "2026-11-13T12:57:49Z",
+    "kind": "refused",
+    "request": "CL2-merge-5",
+    "why": "trunk is red, and nothing merges onto a red trunk. The harbour log says which commit and which job; no fairway is granted a merge until it is green, and the queue drains the moment it is",
+    "resolve": false,
+    "waiting": "green-trunk",
+    "waited_s": 7
+   },
+   {
+    "t": "2026-11-13T16:25:30Z",
+    "kind": "park",
+    "why": "CL4: `/sail` exited 1. That was the last of 4 run(s), which is what `attempts` allows"
+   },
+   {
+    "t": "2026-11-16T11:04:49Z",
+    "kind": "cleared",
+    "parked": "2026-11-13T16:25:15Z",
+    "what": "go: this park was Friday's usage limit read as a crash, which slipwai 2.1.0.dev56 fixes. Run the slice again"
+   },
+   {
+    "t": "2026-11-16T11:04:50Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 0
+   }
+  ],
+  "activity": {
+   "CL4": [
+    {
+     "t": "2026-11-13T16:22:11Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "edit",
+     "what": "design.md"
+    },
+    {
+     "t": "2026-11-13T16:22:15Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Check the Ask for a game field-message precedent, CL3's model block and the render targets"
+    },
+    {
+     "t": "2026-11-13T16:22:32Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Update the design record wording, CL4's model block and the connection contract"
+    },
+    {
+     "t": "2026-11-13T16:23:32Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "edit",
+     "what": "plan.md"
+    },
+    {
+     "t": "2026-11-13T16:23:34Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Re-render the chart from the model"
+    },
+    {
+     "t": "2026-11-13T16:23:35Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Regenerate the draw.io canvas from the model"
+    },
+    {
+     "t": "2026-11-13T16:23:38Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Show what changed"
+    },
+    {
+     "t": "2026-11-13T16:23:40Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Commit the plan artifacts"
+    },
+    {
+     "t": "2026-11-13T16:23:41Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Close the plan benchmark entry"
+    },
+    {
+     "t": "2026-11-13T16:23:41Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "stage",
+     "what": "plan ended"
+    },
+    {
+     "t": "2026-11-13T16:23:41Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Read the implementation delegation settings"
+    },
+    {
+     "t": "2026-11-13T16:23:43Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Open the tasks benchmark entry"
+    },
+    {
+     "t": "2026-11-13T16:23:43Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "stage",
+     "what": "tasks-quartermaster started"
+    },
+    {
+     "t": "2026-11-13T16:23:58Z",
+     "stage": "drive",
+     "agent": "call-V2H7x5",
+     "kind": "start",
+     "what": "Write CL4 tasks.md",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-11-13T16:23:58Z",
+     "stage": "drive",
+     "agent": "a53338241454adb5f",
+     "kind": "link",
+     "what": "sail-tasks-quartermaster",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-11-13T16:24:03Z",
+     "stage": "drive",
+     "agent": "a53338241454adb5f",
+     "kind": "ran",
+     "what": "cd ../game-club-manager-CL4/specs/001-game-club-manager; cat slices/CL3/tasks.md; ls slices/CL4;",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-11-13T16:24:05Z",
+     "stage": "drive",
+     "agent": "a53338241454adb5f",
+     "kind": "ran",
+     "what": "cd ../game-club-manager-CL4/specs/001-game-club-manager/slices/CL4; wc -l *; cat",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-11-13T16:24:07Z",
+     "stage": "drive",
+     "agent": "a53338241454adb5f",
+     "kind": "ran",
+     "what": "cd ../game-club-manager-CL4/specs/001-game-club-manager/slices/CL4; cat examples.md data-model.md design.md",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-11-13T16:24:17Z",
+     "stage": "drive",
+     "agent": "a53338241454adb5f",
+     "kind": "ran",
+     "what": "cd ../game-club-manager-CL4/specs/001-game-club-manager; for n in plan.md",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-11-16T11:05:00Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Fetch, compare branch with trunk, land deck logs"
+    }
+   ]
+  },
+  "warnings": {
+   "CL4": [
+    {
+     "kind": "long",
+     "level": "amber",
+     "said": "66h 41m on one task · its others took 2m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "cl4-stale-sub-agent",
+  "t": "2026-11-16T11:05:00Z",
+  "kind": "stuck",
+  "slice": "CL4"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "stop",
+    "slice": "CL4"
+   },
+   {
+    "verb": "park",
+    "slice": "CL4"
+   }
+  ],
+  "why": "The warning is about a sub-agent of a session that ended on Friday; the slice is working now.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: CL4 merged half an hour later."
+ }
+}

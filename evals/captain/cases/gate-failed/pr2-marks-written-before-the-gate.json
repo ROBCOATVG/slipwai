@@ -1,0 +1,144 @@
+{
+ "situation": "PR2's gate says the turn wrote no `mark-set` for its three marks, but the deck log holds all three, written two minutes earlier by this slice.",
+ "source": "a recorded run of an audiobook-recap project, the preparation stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-audiobook-recap",
+  "fairway": "preparation",
+  "slices": {
+   "PR1": "merged",
+   "PR2": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-10-22T18:51:49Z",
+    "kind": "claimed",
+    "slice": "PR1"
+   },
+   {
+    "t": "2026-10-22T18:55:42Z",
+    "kind": "mark-set",
+    "slice": "PR1",
+    "mark": "PreparationStarted",
+    "contract": "specs/001-audiobook-recap/contracts/PR1-start-preparation.md",
+    "examples": "specs/001-audiobook-recap/slices/PR1/examples.md",
+    "commit": "fa941a9"
+   },
+   {
+    "t": "2026-10-22T18:56:55Z",
+    "kind": "told",
+    "slice": "PR1",
+    "by": "session",
+    "message": "PR1 re-entered after a run with no demo line. Preparation band stands (mark-set at fa941a9). A sail-slice-watch delegate is carrying plan, tasks, implementation, examples proven and the slice review in this berth. No demo is claimed: the line follows only once every example is proven by a test through the outer boundary."
+   },
+   {
+    "t": "2026-10-22T19:12:25Z",
+    "kind": "claimed",
+    "slice": "PR2"
+   },
+   {
+    "t": "2026-10-22T19:16:18Z",
+    "kind": "mark-set",
+    "slice": "PR1",
+    "mark": "PreparationStarted",
+    "contract": "specs/001-audiobook-recap/contracts/PR1-start-preparation.md",
+    "examples": "specs/001-audiobook-recap/slices/PR1/examples.md",
+    "commit": "6da4b24",
+    "note": "re-entry after the rebase onto main (5ad66b9): first set at fa941a9 (90abfd2 after the rebase); shape unchanged: audioHash, chapters, startedAt on preparation-{audioHash}, nothing personal"
+   },
+   {
+    "t": "2026-10-22T19:16:18Z",
+    "kind": "demo",
+    "slice": "PR1",
+    "verdict": "accepted",
+    "outcome": "accepted",
+    "accepted-by": "examples proven by tests (tasks.md ## Examples proven); no hand walked it",
+    "what": "No screen and no route: every example PR1-1..PR1-23 is proven by a test through the sweep or the worker (api 1737 tests green at 6da4b24); the built service was also run over a disposable Postgres and started one PreparationStarted, logged the heartbeat and reported a poison event. The capability's hand walks it at prepare-a-book's gates. See specs/001-audiobook-recap/slices/PR1/tasks.md"
+   },
+   {
+    "t": "2026-10-22T19:16:18Z",
+    "kind": "request",
+    "id": "merge-PR1-6da4b24",
+    "what": "merge",
+    "slice": "PR1",
+    "detail": "PR1 Start preparation: examples proven, whole diff reviewed once with every finding closed, trigger record written, model implemented, linear on main with no merge commit, 0 behind (main 5ad66b9). make verify: every gate green except check-slice-scope, whose one finding is the untracked, empty .slipwai/holds.json that a harness wrote into this berth during the run (not the slice's; it is not in any commit). Host: remove it or land it, then the gate is clean. Also host-owned: the split's PR1 surface cell, if any."
+   },
+   {
+    "t": "2026-10-22T19:17:01Z",
+    "kind": "merged",
+    "slice": "PR1",
+    "commit": "6da4b24ab7512da6f2b10a009bf6caa9122d68f6"
+   },
+   {
+    "t": "2026-10-22T19:19:01Z",
+    "slice": "PR2",
+    "kind": "mark-set",
+    "mark": "ChapterTranscribed",
+    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "commit": "a89a840",
+    "note": "words inline, book seconds, covers the whole chapter (D101, ADR 0013)"
+   },
+   {
+    "t": "2026-10-22T19:19:01Z",
+    "slice": "PR2",
+    "kind": "mark-set",
+    "mark": "ChapterTranscriptionFailed",
+    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "commit": "a89a840",
+    "note": "reason codes provider-rejected|not-english|audio-missing, attempts (D103)"
+   },
+   {
+    "t": "2026-10-22T19:19:01Z",
+    "slice": "PR2",
+    "kind": "mark-set",
+    "mark": "PreparationCompleted",
+    "contract": "specs/001-audiobook-recap/contracts/PR2-transcribe-chapter.md",
+    "examples": "specs/001-audiobook-recap/slices/PR2/examples.md",
+    "commit": "a89a840",
+    "note": "appended with the last chapter in one append (D101)"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T19:17:00Z",
+    "kind": "granted",
+    "request": "merge-PR1-6da4b24",
+    "what": "merge",
+    "slice": "PR1",
+    "commit": "6da4b24ab7512da6f2b10a009bf6caa9122d68f6",
+    "ci": "unverified",
+    "waited_s": 13,
+    "attempt": 1,
+    "lock_s": 0,
+    "gate_s": 26
+   },
+   {
+    "t": "2026-10-22T19:17:15Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   }
+  ],
+  "gate": "PR2: the chart says PR2 sets ChapterTranscribed, ChapterTranscriptionFailed, PreparationCompleted, and this turn wrote no `mark-set` for ChapterTranscribed, ChapterTranscriptionFailed, PreparationCompleted. A stage that wrote no line made no progress, so nothing here is evidence the slice was built."
+ },
+ "event": {
+  "v": 1,
+  "id": "pr2-marks-written-before-the-gate",
+  "t": "2026-10-22T19:21:06Z",
+  "kind": "gate-failed",
+  "slice": "PR2"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "retry",
+    "slice": "PR2"
+   }
+  ],
+  "wrong": [],
+  "why": "The work is there and the gate missed it; another run that writes the lines again closes it.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: a person answered `sorted, carry on`, and the slice went on to merge."
+ }
+}

@@ -1,0 +1,287 @@
+{
+ "situation": "CU10 has been fourteen minutes on one task; its others took two.",
+ "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-audiobook-recap",
+  "fairway": "catch-up",
+  "slices": {
+   "CU10": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-10-22T10:04:13Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:21:44Z"
+   },
+   {
+    "t": "2026-10-22T12:52:32Z",
+    "kind": "told",
+    "message": "try again",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T12:59:38Z",
+    "kind": "read",
+    "told": "2026-10-22T10:35:04Z"
+   },
+   {
+    "t": "2026-10-22T12:59:38Z",
+    "kind": "read",
+    "told": "2026-10-22T10:38:53Z"
+   },
+   {
+    "t": "2026-10-22T12:59:38Z",
+    "kind": "read",
+    "told": "2026-10-22T10:43:59Z"
+   },
+   {
+    "t": "2026-10-22T13:20:12Z",
+    "kind": "read",
+    "told": "2026-10-22T13:03:12Z"
+   },
+   {
+    "t": "2026-10-22T13:20:12Z",
+    "kind": "read",
+    "told": "2026-10-22T13:00:49Z"
+   },
+   {
+    "t": "2026-10-22T14:00:35Z",
+    "kind": "claimed",
+    "slice": "CU10"
+   },
+   {
+    "t": "2026-10-22T14:09:19Z",
+    "kind": "mark-set",
+    "slice": "CU10",
+    "mark": "QuestionAsked",
+    "contract": "docs/event-model/model.yaml#QuestionAsked",
+    "examples": "specs/001-audiobook-recap/slices/CU10/examples.md",
+    "commit": "94c3388",
+    "note": "fields settled at the gaps rung: questionId, bookId, position, question sealed as { keyId, iv, ciphertext }, via voice | typing, askedAt; CU11 and CU12 open the words through the service's sealing port"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T10:04:21Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T13:59:01Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T12:52:37Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:49:53Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T14:00:48Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   }
+  ],
+  "activity": {
+   "CU10": [
+    {
+     "t": "2026-10-22T14:12:48Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Check web tests layout and ADR shape",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:13:03Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "edit",
+     "what": "0011-question-asked-with-sealed-words.md",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:01Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "edit",
+     "what": "plan.md",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:02Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Mark CU10 planned and regenerate canvas",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:08Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Commit plan, close plan bracket",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:11Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Commit plan artifacts",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:12Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Close plan bracket",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:12Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "stage",
+     "what": "plan ended"
+    },
+    {
+     "t": "2026-10-22T14:14:18Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Open tasks bracket",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:18Z",
+     "stage": "drive",
+     "agent": "session",
+     "kind": "stage",
+     "what": "tasks-quartermaster started"
+    },
+    {
+     "t": "2026-10-22T14:14:19Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Look at CU3 tasks shape for brief",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:24Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Check UX kits and gate targets",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:28Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "ran",
+     "what": "Check UX kits installed",
+     "role": "sail-slice-watch"
+    },
+    {
+     "t": "2026-10-22T14:14:28Z",
+     "stage": "drive",
+     "agent": "a4d7459bd565a408d",
+     "kind": "failed",
+     "what": "Check UX kits installed",
+     "role": "sail-slice-watch",
+     "said": "Exit code 1"
+    },
+    {
+     "t": "2026-10-22T14:14:53Z",
+     "stage": "drive",
+     "agent": "call-XsgNHu",
+     "kind": "start",
+     "what": "CU10 tasks.md from plan",
+     "role": "sail-tasks-quartermaster",
+     "model": "sonnet"
+    },
+    {
+     "t": "2026-10-22T14:14:53Z",
+     "stage": "drive",
+     "agent": "afc76259080b67494",
+     "kind": "link",
+     "what": "sail-tasks-quartermaster",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-10-22T14:14:57Z",
+     "stage": "drive",
+     "agent": "afc76259080b67494",
+     "kind": "ran",
+     "what": "cat docs/delegated-agent-safety.md | head -60; wc",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-10-22T14:15:25Z",
+     "stage": "drive",
+     "agent": "afc76259080b67494",
+     "kind": "ran",
+     "what": "cd ../recap-CU10/apps && ls recap-api/src/application recap-api/src/application/ports",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-10-22T14:15:30Z",
+     "stage": "drive",
+     "agent": "afc76259080b67494",
+     "kind": "ran",
+     "what": "cd ../recap-CU10/apps && ls recap-api/src/application recap-api/src/application/ports",
+     "role": "sail-tasks-quartermaster"
+    },
+    {
+     "t": "2026-10-22T14:17:04Z",
+     "stage": "drive",
+     "agent": "afc76259080b67494",
+     "kind": "edit",
+     "what": "tasks.md",
+     "role": "sail-tasks-quartermaster"
+    }
+   ]
+  },
+  "warnings": {
+   "CU10": []
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "cu10-long-tasks-bracket",
+  "t": "2026-10-22T14:17:10Z",
+  "kind": "stuck",
+  "slice": "CU10"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "stop",
+    "slice": "CU10"
+   },
+   {
+    "verb": "park",
+    "slice": "CU10"
+   }
+  ],
+  "why": "Writing the task list for a slice takes longer than one of its tasks.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: the task closed and the next stage began."
+ }
+}

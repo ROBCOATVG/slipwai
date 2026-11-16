@@ -1,0 +1,87 @@
+{
+ "situation": "A person answers a park from the board without naming the slice: \"sorted, carry on: `/sail` exited 1\".",
+ "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-audiobook-recap",
+  "fairway": "catch-up",
+  "slices": {
+   "CU1": "parked: CU1: `/sail` exited 1."
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T13:35:15Z",
+    "kind": "claimed",
+    "slice": "CU1"
+   },
+   {
+    "t": "2026-10-21T13:46:37Z",
+    "kind": "told",
+    "slice": "CU1",
+    "by": "session",
+    "message": "CU1 (and every slice that takes a signed-in listener, LB3 and LB6 among them) needs bearer-token validation in apps/recap-api, which is a placeholder (adapters/driving/http/users/oidc-keycloak.ts) and needs a maintained JWT/JWKS library the lockfile does not hold. A dependency is not a slice's to add: it has to land on main. Until it does, CU1 ships its route behind a token-validator port whose only production implementation refuses, recorded as a deliberate stub under Not working yet."
+   },
+   {
+    "t": "2026-10-21T13:53:04Z",
+    "kind": "mark-set",
+    "slice": "CU1",
+    "mark": "VoiceChosen",
+    "contract": "docs/event-model/model.yaml#VoiceChosen",
+    "examples": "specs/001-audiobook-recap/slices/CU1/examples.md"
+   },
+   {
+    "t": "2026-10-21T13:59:01Z",
+    "kind": "parked",
+    "why": "CU1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"
+   },
+   {
+    "t": "2026-10-21T14:48:59Z",
+    "kind": "read",
+    "told": "2026-10-21T13:53:04Z"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-21T13:59:05Z",
+    "kind": "park",
+    "why": "CU1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"
+   },
+   {
+    "t": "2026-10-21T13:59:05Z",
+    "kind": "slots",
+    "slots": 0,
+    "running": 0
+   }
+  ],
+  "said": {
+   "id": "m-cu1-sorted-without-a-slice",
+   "t": "2026-10-22T10:04:13Z",
+   "from": "person",
+   "text": "sorted, carry on: `/sail` exited 1"
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "cu1-sorted-without-a-slice",
+  "t": "2026-10-22T10:04:13Z",
+  "kind": "message",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": [
+     "message",
+     "resume",
+     "retry"
+    ],
+    "slices": [
+     "CU1"
+    ]
+   }
+  ],
+  "wrong": [],
+  "why": "CU1 is the only slice of the stream parked on that exit.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: CU1 was run again at once."
+ }
+}

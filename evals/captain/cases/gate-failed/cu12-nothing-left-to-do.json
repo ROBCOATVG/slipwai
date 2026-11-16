@@ -1,0 +1,325 @@
+{
+ "situation": "CU12's session parked itself for the second time in two minutes: every stage is closed, it is stacked on CU5 and CU11, neither of which is on trunk, and only a person can change that.",
+ "source": "a recorded run of an audiobook-recap project, the catch-up stream, 2026-10-26",
+ "snapshot": {
+  "feature": "001-audiobook-recap",
+  "fairway": "catch-up",
+  "slices": {
+   "CU11": "parked, answered and cleared: CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one th",
+   "CU12": "claimed, in flight",
+   "CU5": "parked, answered and cleared: CU5 is built and linear on main (aa6b62d); marks re-written this turn. make verify still stops at check-slice-scope: chart.yaml (BookRemoved in CU5 steers_by, D"
+  },
+  "deck": [
+   {
+    "t": "2026-10-22T20:15:20Z",
+    "kind": "mark-set",
+    "slice": "CU11",
+    "mark": "AnswerFailed",
+    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
+    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "commit": "pending"
+   },
+   {
+    "t": "2026-10-22T20:53:05Z",
+    "kind": "told",
+    "slice": "CU11",
+    "to": "host",
+    "message": "CU11 is implemented and reviewed on slice/CU11 (HEAD 9f78891), stacked on slice/CU5. Merge is blocked on CU5 landing first: make verify fails only check-slice-scope and check-decisions (no CU5 adversary row) because CU5's content is in this branch's diff against main. After CU5 merges, replay with the stacked recipe (rebase -X theirs --onto main on CU5's old head), re-run verify, then request the merge. No demo line: the demo is the ask-about-the-book capability's, after CU12. The ask-about-the-book flag is hard-false in main.ts; config.ts has no source for it (host's file). One web test (LB9- …"
+   },
+   {
+    "t": "2026-10-22T20:54:35Z",
+    "kind": "mark-set",
+    "slice": "CU11",
+    "mark": "QuestionAnswered",
+    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
+    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "commit": "9f78891",
+    "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
+   },
+   {
+    "t": "2026-10-22T20:54:35Z",
+    "kind": "mark-set",
+    "slice": "CU11",
+    "mark": "QuestionRefused",
+    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
+    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "commit": "9f78891",
+    "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
+   },
+   {
+    "t": "2026-10-22T20:54:35Z",
+    "kind": "mark-set",
+    "slice": "CU11",
+    "mark": "AnswerFailed",
+    "contract": "specs/001-audiobook-recap/contracts/cu11-answer-question.md",
+    "examples": "specs/001-audiobook-recap/slices/CU11/examples.md",
+    "commit": "9f78891",
+    "note": "re-entry: first set with commit pending; the slice is implemented and reviewed at 9f78891, contract unchanged; merge waits on CU5 (stacked)"
+   },
+   {
+    "t": "2026-10-22T20:54:43Z",
+    "kind": "parked",
+    "why": "CU11: this turn wrote no `demo` line for CU11, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "CU11",
+    "cause": "gate"
+   },
+   {
+    "t": "2026-10-22T21:06:15Z",
+    "kind": "mark-set",
+    "slice": "CU5",
+    "mark": "RecapFailed",
+    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "commit": "aa6b62d",
+    "note": "re-entry: first set at 318abc1 (rebased since); the slice is built, reviewed and its examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133."
+   },
+   {
+    "t": "2026-10-22T21:06:15Z",
+    "kind": "parked",
+    "slice": "CU5",
+    "cause": "gate",
+    "why": "CU5 is built and rebased linear on main (aa6b62d); make unit/lint/typecheck/check-imports/check-chart green, but make verify stops at check-slice-scope: chart.yaml (BookRemoved added to CU5 steers_by, D124) is 'not a slice's to write', while check-chart requires that line. No gate edited. Host: land the one chart.yaml line on main, rebase slice/CU5, re-run make verify (and the Postgres integration suite), then merge."
+   },
+   {
+    "t": "2026-10-22T21:06:23Z",
+    "kind": "claimed",
+    "slice": "CU5"
+   },
+   {
+    "t": "2026-10-22T21:51:28Z",
+    "kind": "claimed",
+    "slice": "CU5"
+   },
+   {
+    "t": "2026-10-22T21:54:09Z",
+    "kind": "mark-set",
+    "slice": "CU5",
+    "mark": "RecapGenerated",
+    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "commit": "aa6b62d",
+    "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
+   },
+   {
+    "t": "2026-10-22T21:54:09Z",
+    "kind": "mark-set",
+    "slice": "CU5",
+    "mark": "RecapRefused",
+    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "commit": "aa6b62d",
+    "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
+   },
+   {
+    "t": "2026-10-22T21:54:09Z",
+    "kind": "mark-set",
+    "slice": "CU5",
+    "mark": "RecapFailed",
+    "contract": "specs/001-audiobook-recap/contracts/cu5-generate-recap.md",
+    "examples": "specs/001-audiobook-recap/slices/CU5/examples.md",
+    "commit": "aa6b62d",
+    "note": "re-entry: first set at 318abc1 (rebased since); built, reviewed, examples CU5-1..56 proven at aa6b62d, linear on main; contract unchanged, ending sealed per D133. unit/lint/typecheck/check-chart re-run green this turn."
+   },
+   {
+    "t": "2026-10-22T21:54:09Z",
+    "kind": "parked",
+    "slice": "CU5",
+    "cause": "gate",
+    "why": "CU5 is built and linear on main (aa6b62d); marks re-written this turn. make verify still stops at check-slice-scope: chart.yaml (BookRemoved in CU5 steers_by, D124) is 'not a slice's to write' while check-chart requires that line. No gate edited. Host: land that one chart.yaml line on main, rebase slice/CU5, re-run make verify and the Postgres integration suite, then merge."
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T20:26:03Z"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T20:21:30Z"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T20:19:51Z"
+   },
+   {
+    "t": "2026-10-23T05:47:28Z",
+    "kind": "read",
+    "told": "2026-10-22T20:15:20Z"
+   },
+   {
+    "t": "2026-10-23T05:47:58Z",
+    "kind": "told",
+    "message": "sort all mark set issues",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-23T12:24:58Z",
+    "kind": "told",
+    "message": "sorted, carry on: this turn wrote no `demo` line for CU12, so nothing says a person watched it work",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-23T12:54:33Z",
+    "kind": "seeded",
+    "slice": "CU12",
+    "records": 4,
+    "commit": "629aab3313f5c752a637d12efd81e8212e379955",
+    "story": "specs/001-audiobook-recap/slices/CU12/try-it.json",
+    "api": "http://127.0.0.1:3112"
+   },
+   {
+    "t": "2026-10-23T13:01:36Z",
+    "kind": "read",
+    "told": "2026-10-23T12:40:47Z"
+   },
+   {
+    "t": "2026-10-23T13:01:36Z",
+    "kind": "read",
+    "told": "2026-10-23T12:52:35Z"
+   },
+   {
+    "t": "2026-10-23T13:04:40Z",
+    "kind": "stopped",
+    "slice": "CU12"
+   },
+   {
+    "t": "2026-10-26T15:05:20Z",
+    "kind": "claimed",
+    "slice": "CU12"
+   },
+   {
+    "t": "2026-10-26T15:25:35Z",
+    "kind": "demo",
+    "slice": "CU12",
+    "verdict": "accepted",
+    "outcome": "accepted",
+    "accepted-by": "sail-demo-hand",
+    "commit": "49525aaa",
+    "what": "Fifth walk, the first signed-in one (D164/D165, FLAG_ASK_ABOUT_THE_BOOK=on), at 33f41ea: try-it story seeded green; over HTTP CU12-1, -2, -3, -15, -16, -18, -19, -22 and three cases of -17 passed; in the browser signed in through the app's own login, CU12-25 awaiting, CU12-37 reads at 1/2/4/8s stopping at 120s with Check again, CU12-33 404 branch (book removed mid-wait), CU12-36 flag on/off. Unreachable while CU11's answerer is off: every example needing an answer, refusal or failure (proven by tests per tasks.md; drawing read from previews). Evidence demo/walk5-*, demo-log iteration 5."
+   },
+   {
+    "t": "2026-10-26T15:25:35Z",
+    "kind": "told",
+    "slice": "CU12",
+    "to": "host",
+    "by": "session",
+    "message": "CU12 is built, reviewed, examples proven and now walked signed-in (fifth walk accepted, 49525aaa). It still cannot merge: slice/CU12 is stacked on slice/CU11, which is stacked on slice/CU5, and neither is on main; main has also moved 98 commits (the slipwai 2.0.0rc2 migration). Order to land: CU5, CU11, then CU12, each rebased linear on main and re-verified. Host note from the walk: seeding the try-it story works only because this berth's running Keycloak allows the password grant on the web client; the realm file has it off, so a fresh realm refuses it."
+   },
+   {
+    "t": "2026-10-26T15:27:51Z",
+    "kind": "seeded",
+    "slice": "CU12",
+    "records": 4,
+    "commit": "49525aaa44713da2f32d450d09d04d70483cb51e",
+    "story": "specs/001-audiobook-recap/slices/CU12/try-it.json",
+    "api": "http://127.0.0.1:3112"
+   },
+   {
+    "t": "2026-10-26T15:28:12Z",
+    "kind": "parked",
+    "slice": "CU12",
+    "cause": "host",
+    "why": "CU12 has closed every per-slice stage: built, reviewed, examples proven, fifth walk accepted (49525aa), and its try-it story re-seeded green against the berth's service in this turn. It cannot be rebased onto main or merged, because slice/CU12 is stacked on slice/CU11, which is stacked on slice/CU5, and neither of those is on main. CU5 is waiting on a host change to chart.yaml, and CU11 owes its own demo line. No gate was edited.",
+    "needs": [
+     {
+      "what": "Land slice/CU5 on main: add the one chart.yaml line (BookRemoved in CU5 steers_by, D124) on main, then rebase slice/CU5, re-verify and merge",
+      "by": "person"
+     },
+     {
+      "what": "Land slice/CU11 on main after CU5, rebased linear and re-verified",
+      "by": "person"
+     }
+    ],
+    "then": "re-dispatch CU12 in catch-up: rebase slice/CU12 linear on main, run make verify, re-seed try-it, and request the merge"
+   },
+   {
+    "t": "2026-10-26T15:29:06Z",
+    "kind": "claimed",
+    "slice": "CU12"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-23T05:47:38Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T21:55:56Z",
+    "what": "the decisions it waited on have been read, or the ceiling was raised"
+   },
+   {
+    "t": "2026-10-23T05:48:09Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T20:26:27Z",
+    "what": "sort all mark set issues"
+   },
+   {
+    "t": "2026-10-23T05:48:09Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T20:55:00Z",
+    "what": "sort all mark set issues"
+   },
+   {
+    "t": "2026-10-23T05:48:09Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T20:54:43Z",
+    "what": "sort all mark set issues"
+   },
+   {
+    "t": "2026-10-23T05:48:09Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T21:54:09Z",
+    "what": "sort all mark set issues"
+   },
+   {
+    "t": "2026-10-23T06:07:08Z",
+    "kind": "park",
+    "why": "CU12: this turn wrote no `demo` line for CU12, so nothing says a person watched it work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not read. That was the last of 3 run(s), which is what `attempts` allows"
+   },
+   {
+    "t": "2026-10-23T12:25:10Z",
+    "kind": "cleared",
+    "parked": "2026-10-23T05:57:17Z",
+    "what": "sorted, carry on: this turn wrote no `demo` line for CU12, so nothing says a person watched it work"
+   },
+   {
+    "t": "2026-10-26T15:28:29Z",
+    "kind": "park",
+    "why": "CU12 has closed every per-slice stage: built, reviewed, examples proven, fifth walk accepted (49525aa), and its try-it story re-seeded green against the berth's service in this turn. It cannot be rebased onto main or merged, because slice/CU12 is stacked on slice/CU11, which is stacked on slice/CU5, and neither of those is on main. CU5 is waiting on a host change to chart.yaml, and CU11 owes its own demo line. No gate was edited."
+   },
+   {
+    "t": "2026-10-26T15:29:24Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   }
+  ],
+  "gate": "Re-entry found nothing CU12 can do. CU12-Q1 to Q8 were decided on 2026-10-22 (D150-D156, D162), and every per-slice stage is closed: built, reviewed, examples proven, fifth walk accepted at 49525aa. The only stage left is the merge rung. It is still blocked by the host park of 2026-10-26T15:28:12Z, which has no cleared line: slice/CU5 (aa6b62d) and slice/CU11 (9f78891) are not on main (main is 27282083), and main's chart still has no BookRemoved in CU5 steers_by. Rebasing CU12 now would carry CU5 and CU11 into its diff and fail check-slice-scope. No gate was edited and no commit was made."
+ },
+ "event": {
+  "v": 1,
+  "id": "cu12-nothing-left-to-do",
+  "t": "2026-10-26T15:30:23Z",
+  "kind": "gate-failed",
+  "slice": "CU12"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "park",
+    "slice": "CU12"
+   },
+   {
+    "verb": "ask"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "retry",
+    "slice": "CU12"
+   }
+  ],
+  "why": "Nothing CU12 can do moves it; it waits on two other slices and a person.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what happened next, for a person to confirm or correct. What happened: it was re-dispatched seventeen times in thirty minutes, each saying the same, until a person told the stream to land the blocked slices."
+ }
+}

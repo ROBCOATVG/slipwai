@@ -135,8 +135,12 @@ check-structure: ## Fail when a module imports against the declared direction, c
 	python3 scripts/check-structure.py
 	python3 scripts/bring-back.py --check
 
+.PHONY: parity
+parity: ## A stand-in captain agent making today's choices leaves the six captain suites' deck logs as they were
+	SLIPWAI_PARITY=1 PYTHONPATH=$(TEST_PATH):tests python3 -m unittest test_captain_agent_parity
+
 .PHONY: verify
-verify: lint typecheck check-structure check-shared check-release test ## Full local gate — the same one CI runs
+verify: lint typecheck check-structure check-shared check-release test parity ## Full local gate — the same one CI runs
 	@echo
 	@echo 'verify: all gates passed'
 

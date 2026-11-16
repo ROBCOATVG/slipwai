@@ -29,9 +29,11 @@ import argparse
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -48,6 +50,8 @@ import talk  # noqa: E402
 COMMAND = "SLIPWAI_CAPTAIN"
 #: Seconds a decision may take from when the session is ready, and from launch where that cannot be told.
 BOUND, HEADLESS_BOUND = 60.0, 180.0
+#: Events a stream's captain may be woken for in an hour before the stream runs on its rules alone.
+PER_HOUR = 30
 BRIEF = "agents/drive-captain.md"
 
 
@@ -59,75 +63,97 @@ def project_root() -> Path:
 
 
 ROOT = project_root()
+#: The one script a captain runs: this project's own, beside this file, never a copy in a berth.
+ORDERS = HERE / "orders.py"
 
 
 def settings(held: dict[str, Any]) -> dict[str, Any]:
-    """`harbour.json`'s `captain`: whether the stream's captain is an agent, and its two bounds. Absent or
-    anything but `agent: true` is the program alone, exactly as before there was an agent. `SLIPWAI_CAPTAIN`
-    says first, as `SLIPWAI_ACP` does for a slice's session: `off` is the program alone whatever the file
-    says, and any other value is the command to run as the captain."""
+    """`harbour.json`'s `captain`: whether the stream's captain is an agent, its two bounds, whether it may answer
+    a slice's mid-turn question (`answers`, on unless false), and how many times an hour it may be woken
+    (`per_hour`). Absent, or anything but `agent: true`, is the program alone, exactly as before there was an
+    agent. `SLIPWAI_CAPTAIN` says first, as `SLIPWAI_ACP` does for a slice's session: `off` is the program alone
+    whatever the file says; `1` (or `true`, `yes`, `on`) turns the agent on through the project's own harness;
+    any other value is the command to run as the captain."""
     said = held.get("captain") if isinstance(held.get("captain"), dict) else {}
 
-    def seconds(name: str, fallback: float) -> float:
+    def number(name: str, fallback: float) -> float:
         value = said.get(name)
         return float(value) if isinstance(value, int | float) and not isinstance(value, bool) and value > 0 else fallback
     named = os.environ.get(COMMAND, "").strip()
-    agent = named != "off" and (said.get("agent") is True or bool(named))
-    return {"agent": agent, "bound": seconds("bound", BOUND),
-            "headless_bound": seconds("headless_bound", HEADLESS_BOUND)}
+    agent = named.lower() != "off" and (said.get("agent") is True or bool(named))
+    return {"agent": agent, "bound": number("bound", BOUND), "headless_bound": number("headless_bound", HEADLESS_BOUND),
+            "answers": said.get("answers") is not False, "per_hour": int(number("per_hour", PER_HOUR))}
 
 
-def prompt(fairway: str, event: Path, state: Path, held: dict[str, Any]) -> str:
-    """What the captain's session is asked at each wake-up: the brief, the event, the state, the one door."""
-    def where(path: Path) -> str:
-        return path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path)
-    return (f"You are the captain of the `{fairway}` stream in this project. Read {BRIEF} for what you are asked "
-            f"and what you may do. Event {held['id']} ({held['kind']}) needs you: read {where(event)}. The "
-            f"stream's state, as its log says it now, is {where(state)} — believe it over anything you remember. "
-            f"Act only by running `python3 scripts/agents/orders.py <verb> … --event {held['id']}`; this event "
-            f"takes {', '.join(held.get('may') or [])}. Say what you did in one sentence a person can read, with "
-            f"`say`, where it is worth saying, and end your turn.")
+def command() -> str:
+    """The command named in `SLIPWAI_CAPTAIN` to run as the captain, or `''` where it names none."""
+    named = os.environ.get(COMMAND, "").strip()
+    return "" if named.lower() in (*drive.ON, "off") else named
+
+
+def prompt(fairway: str, event: Path, state: Path, held: dict[str, Any], brief: str = BRIEF) -> str:
+    """What the captain's session is asked at each wake-up: the brief, the event, the state, the one door, named
+    by absolute paths, since a headless captain is not started in the project."""
+    return (f"You are the captain of the `{fairway}` stream of the project at {ROOT}. Read {brief} for what you are "
+            f"asked and what you may do. Event {held['id']} ({held['kind']}) needs you: read {event}. The stream's "
+            f"state, as its log says it now, is {state} — believe it over anything you remember. Act only by "
+            f"running `python3 {ORDERS} <verb> … --event {held['id']}`, and change nothing else anywhere; this "
+            f"event takes {', '.join(held.get('may') or [])}. Say what you did in one sentence a person can read, "
+            f"with `say`, where it is worth saying, and end your turn.")
 
 
 # -- a turn, however it runs ------------------------------------------------------------------------------------
 
 
 class Process:
-    """A captain run once per event as a process: the named command, or a headless session. What it prints
-    goes to a file beside the stream's events, never a pipe a talkative agent could fill and stall on."""
+    """A captain run once per event as a process — the named command, or a headless session — in a folder of
+    its own that holds the event, the state and the brief and nothing of the project. Its orders are done only
+    once it has ended and the project is found as it was (`captain_guard`), so `orders.py` is told not to wait
+    for their results. What it prints goes to a file beside the stream's events, never a pipe."""
 
-    def __init__(self, argv: list[str], env: dict[str, str], kind: str, out: Path) -> None:
-        self.kind = kind
-        self.started = time.monotonic()
+    deferred = True
+
+    def __init__(self, argv: list[str], env: dict[str, str], kind: str, out: Path, home: Path) -> None:
+        self.kind, self.home = kind, home
+        self.began = time.monotonic()
         out.parent.mkdir(parents=True, exist_ok=True)
         with out.open("ab") as said:
-            self.child = subprocess.Popen(argv, cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=said,
-                                          stderr=subprocess.STDOUT, start_new_session=os.name != "nt")
+            self.child = subprocess.Popen(argv, cwd=home, env={**env, "SLIPWAI_CAPTAIN_WAIT": "0"},
+                                          stdin=subprocess.DEVNULL, stdout=said, stderr=subprocess.STDOUT,
+                                          start_new_session=os.name != "nt")
 
     def finished(self) -> bool:
-        return self.child.poll() is not None
+        if self.child.poll() is None:
+            return False
+        shutil.rmtree(self.home, ignore_errors=True)
+        return True
+
+    def started(self) -> float:
+        return self.began
 
     def ready(self) -> float | None:
-        return self.started  # a process cannot say when it is ready: the bound runs from its launch
+        return self.began  # a process cannot say when it is ready: the bound runs from its launch
 
     def end(self) -> None:
-        if self.child.poll() is not None:
-            return
-        try:
-            if os.name != "nt":
-                os.killpg(self.child.pid, signal.SIGTERM)
-            else:  # pragma: no cover - the other platform's branch
-                self.child.terminate()
-            self.child.wait(timeout=10)
-        except (ProcessLookupError, subprocess.TimeoutExpired):
-            self.child.kill()
-            self.child.wait()
+        if self.child.poll() is None:
+            try:
+                if os.name != "nt":
+                    os.killpg(self.child.pid, signal.SIGTERM)
+                else:  # pragma: no cover - the other platform's branch
+                    self.child.terminate()
+                self.child.wait(timeout=10)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                self.child.kill()
+                self.child.wait()
+        shutil.rmtree(self.home, ignore_errors=True)
 
 
 class Held:
-    """One event put to the captain's held session over the protocol."""
+    """One event put to the captain's held session over the protocol, whose policy (`permit`) is what holds
+    it to reading and `orders.py`: its orders are done as they come."""
 
     kind = "protocol"
+    deferred = False
 
     def __init__(self, driver: drive.Drive) -> None:
         self.driver = driver
@@ -137,31 +163,27 @@ class Held:
     def finished(self) -> bool:
         return self.driver.poll() is not None
 
+    def started(self) -> float:
+        return self.launched
+
     def ready(self) -> float | None:
-        # Ready once its turn has begun: the agent is up, its session open, and the prompt with it. Before
-        # that the bound would be measuring a package fetch, not a decision.
+        # Ready once its turn has begun: the agent is up, its session open, and the prompt with it. A session
+        # that is not ready within the bound has its event closed by the rule (`captain_events.Helm.watch`).
         if self.began is None and (self.driver.turning or self.driver.poll() is not None):
             self.began = time.monotonic()
-        if self.began is None and time.monotonic() - self.launched > drive_start_ceiling():
-            self.began = self.launched  # it never became ready: the bound runs from launch after all
         return self.began
 
     def end(self) -> None:
         self.driver.terminate()  # the turn is cancelled; the session stays for the next event
 
 
-def drive_start_ceiling() -> float:
-    """How long the protocol session may take to start before its start is counted against the decision."""
-    return 300.0
-
-
 # -- the runner ----------------------------------------------------------------------------------------------------
 
 
 def permit(tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | None:
-    """The captain session's policy: reading is allowed, and running `orders.py` alone; nothing else, wherever
-    it is. Its hands are the orders, which the program checks; a captain that edits a file is a slice's
-    session with no gate."""
+    """The captain session's policy: reading is allowed, and running this project's own `orders.py` alone;
+    nothing else, wherever it is. Its hands are the orders, which the program checks; a captain that edits a
+    file is a slice's session with no gate."""
     allowed = next((str(one["optionId"]) for one in options if one.get("kind") == "allow_once" and "optionId" in one), None)
     refused = next((str(one["optionId"]) for one in options if one.get("kind") == "reject_once" and "optionId" in one), None)
     kind = str(tool_call.get("kind") or "")
@@ -173,18 +195,25 @@ def permit(tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | No
 
 
 def ordering(tool_call: dict[str, Any]) -> bool:
-    """Whether a command is one run of `orders.py` and nothing beside it."""
+    """Whether a command is one run of this project's own `orders.py`, by its resolved path, and nothing beside
+    it: no shell, and no copy of the script in a berth a slice could have edited."""
     raw = tool_call.get("rawInput") or {}
     command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
     command = command or str(tool_call.get("title") or "")
-    if any(mark in command for mark in (";", "&", "|", ">", "<", "`", "$(", "\n")):
+    if any(mark in command for mark in (";", "&", "|", ">", "<", "`", "$", "\n")):
         return False
     try:
         words = shlex.split(command)
     except ValueError:
         return False
-    return len(words) >= 2 and Path(words[0]).name.startswith("python") and \
-        words[1].replace("\\", "/").endswith("scripts/agents/orders.py")
+    if len(words) < 2 or not Path(words[0]).name.startswith("python"):
+        return False
+    script = Path(words[1]).expanduser()
+    script = script if script.is_absolute() else ROOT / script
+    try:
+        return script.resolve() == ORDERS.resolve()
+    except OSError:
+        return False
 
 
 class Runner:
@@ -199,32 +228,53 @@ class Runner:
     def bound(self, turn: Any) -> float:
         return float(self.bounds["headless_bound"] if getattr(turn, "kind", "") == "headless" else self.bounds["bound"])
 
+    def holds_session(self) -> bool:
+        return self.driver is not None and self.driver.alive
+
+    def reset(self) -> None:
+        """Close the held session, so the next wake-up starts one with the key as it now is."""
+        self.close()
+        self.driver = None
+
+    def scratch(self, event: Path, state: Path) -> tuple[Path, Path, Path, Path]:
+        """A folder of the captain's own for one wake-up: the event, the state and the brief, nothing else."""
+        home = Path(tempfile.mkdtemp(prefix=f"captain-{self.fairway}-"))
+        copied = []
+        for source in (event, state, ROOT / BRIEF):
+            target = home / source.name
+            if source.is_file():
+                shutil.copyfile(source, target)
+            copied.append(target)
+        return home, copied[0], copied[1], copied[2]
+
     def wake(self, event: Path, state: Path, held: dict[str, Any], env: dict[str, str]) -> Any:
-        named = os.environ.get(COMMAND, "").strip()
+        named = command()
         clean = {key: value for key, value in os.environ.items() if not key.startswith("SLIPWAI_SLICE")}
         if named:
+            home, copied, _, _ = self.scratch(event, state)
             try:
-                return Process([*shlex.split(named), str(event)], {**clean, **env, "SLIPWAI_CAPTAIN_EVENT": held["id"]},
-                               "named", event.parent / "agent.out")
+                return Process([*shlex.split(named), str(copied)], {**clean, **env, "SLIPWAI_CAPTAIN_EVENT": held["id"]},
+                               "named", event.parent / "agent.out", home)
             except OSError as fault:
+                shutil.rmtree(home, ignore_errors=True)
                 return f"`{named}` could not be started ({fault})"
-        text = prompt(self.fairway, event, state, held)
         try:
             over = None if self.no_protocol else drive.protocol()
         except harness.NoHarness:
             over = None
         if over is not None:
-            return self.held(over, text, env)
+            return self.held(over, prompt(self.fairway, event, state, held, str(ROOT / BRIEF)), env)
         try:
             row, _said = harness.choose()
         except harness.NoHarness as none:
             return str(none)
-        template, _ = harness.template(row)
-        line = template.replace("{prompt}", shlex.quote(text))
+        home, copied, kept, brief = self.scratch(event, state)
+        line = restricted(row).replace("{prompt}", shlex.quote(prompt(self.fairway, copied, kept, held, str(brief))))
         try:
             return Process(shlex.split(line), {**harness.child_environment(row), **env}, "headless",
-                           event.parent / "agent.out")
+                           event.parent / "agent.out", home)
         except OSError as fault:
+            shutil.rmtree(home, ignore_errors=True)
             return f"the harness could not be started ({fault})"
 
     def held(self, over: tuple[list[str], dict[str, Any] | None, str], text: str, env: dict[str, str]) -> Any:
@@ -247,6 +297,16 @@ class Runner:
             self.driver.end()
 
 
+def restricted(row: dict[str, Any]) -> str:
+    """The harness's headless command with the most restrictive permissions its registry row offers a captain:
+    the row's `captainPermissions` where it records one, and otherwise none at all — the harness's own default,
+    which an unattended session cannot be asked to widen. Never the accept-edits a slice runs under, and no
+    worktree or project flags: a captain reads three files and runs one script."""
+    headless = harness.headless_row(row) or {}
+    granted = str(headless.get("captainPermissions") or "").replace("{orders}", shlex.quote(str(ORDERS)))
+    return str(headless.get("command") or "").replace("{permissions}", granted)
+
+
 # -- the evals' door -------------------------------------------------------------------------------------------------
 
 
@@ -254,7 +314,9 @@ def evaluate(event: Path, bound: float | None = None) -> dict[str, Any]:
     """Wake this project's captain once with a recorded event, and say how it ended. The orders are files."""
     import secrets
     fairway = event.parent.name
-    run = logs.run_dir(ROOT)
+    # The run folder the event is in, as the contract lays it out (`<run>/events/<fairway>/<id>.json`): the
+    # orders go beside it, wherever this project's own run folder would be.
+    run = event.parents[2] if event.parent.parent.name == "events" else logs.run_dir(ROOT)
     held = json.loads(event.read_text(encoding="utf-8"))
     state = event.parent / "state.json"
     if not state.is_file():
@@ -266,14 +328,14 @@ def evaluate(event: Path, bound: float | None = None) -> dict[str, Any]:
            order_door.ORDERS: str(run / "orders" / fairway), "SLIPWAI_STAGE": "captain", "SLIPWAI_EVAL": "1"}
     began = time.monotonic()
     before = {path.name for path in (run / "orders" / fairway).glob("*.json")} if (run / "orders" / fairway).is_dir() else set()
-    turn = runner.wake(event, state, held, env)
+    turn = runner.wake(event, state, held, {**env, "SLIPWAI_CAPTAIN_ORDERS_PY": str(ORDERS)})
     if isinstance(turn, str):
         return {"exit": None, "timed_out": False, "tokens": None, "seconds": 0.0, "orders": [], "why": turn}
     limit = bound if bound is not None else runner.bound(turn)
     timed_out = False
     while not turn.finished():
         ready = turn.ready()
-        if ready is not None and time.monotonic() - ready > limit:
+        if (ready is not None and time.monotonic() - ready > limit) or time.monotonic() - turn.started() > 2 * limit:
             turn.end()
             timed_out = True
             break

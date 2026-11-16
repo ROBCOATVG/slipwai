@@ -148,7 +148,7 @@ An **event** is what wakes it: `events/<fairway>/<id>.json` with `{"v":1,"id","t
 accept for it; `default` is the orders the fixed rule would give, in the order shape below. An event is closed
 by its orders' results or by the fallback, recorded as `events/<fairway>/<id>.closed.json` (`by`:
 `captain`|`rule`, `why`, `orders`: the order ids read for it, `cost`: `{"seconds", "ready_seconds", "ended":
-"finished"|"bound"|"unavailable", "via": "protocol"|"headless"|"named"|"none", "tokens": null}`). Beside the
+"finished"|"bound"|"unavailable"|"changed", "via": "protocol"|"headless"|"named"|"none", "tokens": null}`). Beside the
 events, `events/<fairway>/state.json` is the stream as its log says it at the moment of the event (`in_flight`,
 `unmerged`, `merged`, `parked`, `stream_parked`, `attempts`, `trunk_red`, `recent`: the newest forty deck
 lines without `fairway`), rewritten at every event.
@@ -165,13 +165,13 @@ six, by verb (every value a string unless said):
 | verb | keys |
 | --- | --- |
 | `start` | `slice` |
-| `message` | `slice` (a slice of this stream, or `captain:<fairway>`), `text`, `interrupt` (bool, optional), `of` (optional: the inbox id it routes; `text` may then be left out and the original's is sent) |
+| `message` | `slice` (a slice of this stream, or `captain:<fairway>`), `text`, `interrupt` (bool, optional), `of` (optional: the inbox id it routes; `text` may then be left out). What lands in the inbox is always the captain's — `from: captain:<fairway>`, its own `text`, and where it routes, `via`, `of` and the person's words unaltered in `quote` — so it never answers a park or a question, and its interrupt costs an attempt. A message from a captain may be routed to a slice, never on to another captain |
 | `retry` | `slice`, `note` |
 | `park` | `slice`, `why`, `needs` (optional) |
 | `pause`, `resume`, `stop` | `slice`, `why` |
 | `say` | `text`, `of` (optional: the message it answers) |
 | `ask` | `text`, `options` (optional, list of strings) |
-| `allow`, `refuse` | `ask` (the ask's id), `why` (for an allowed question, `why` is the answer) |
+| `allow`, `refuse` | `ask` (the ask's id), `why` (for an allowed question, `why` is the answer, which the program writes as a deck `decision`, `decided_by: captain:<fairway>`, counted toward `decision_ceiling`) |
 | `none` | `why` |
 
 **`facts` by kind**, as small as the decision needs and kept stable:
@@ -197,8 +197,11 @@ headless session started some other way with `SLIPWAI_EVAL=1` and no key may sti
 are written unsigned, for the eval to read; the program never acts on one.
 
 ### 2.3 Settings
-`harbour.json`: `captain: {"agent": true, "bound": 60, "headless_bound": 180}` (a new project's; absent is the
-program alone, and `SLIPWAI_CAPTAIN` in the environment says first: a command to run as the captain, or `off`).
+`harbour.json`: `captain: {"agent": true, "bound": 60, "headless_bound": 180}` (a new project's; `"answers": false`
+keeps it from answering a slice's mid-turn question; `"per_hour"`, 30 by default, is the most it is woken in an
+hour; `events/<fairway>/agent-off.json` turns it off for a stream until a person removes it; absent is the
+program alone, and `SLIPWAI_CAPTAIN` in the environment says first: `off`, `1` for the project's own harness,
+or a command to run as the captain).
 `.specify/cruise.json`: `sessions` defaults to
 `protocol` where the harness's registry row has a launch; `demos` is `hand` (default) or `person`.
 

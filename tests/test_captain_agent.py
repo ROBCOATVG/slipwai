@@ -38,7 +38,7 @@ if not pathlib.Path("no-demo").exists():
 """
 
 
-class AgentTest(Fixture):
+class AgentBase(Fixture):
     def setUp(self) -> None:
         super().setUp()
         (self.root / "specs/ordering/chart.yaml").write_text(CHART, encoding="utf-8")
@@ -74,6 +74,8 @@ class AgentTest(Fixture):
         folder = logs.run_dir(self.root) / "events" / "ORD"
         return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(folder.glob("*.closed.json"))]
 
+
+class AgentTest(AgentBase):
     def test_the_stand_in_s_choice_is_the_one_that_starts(self) -> None:
         self.granted("ORD-01")
         said = self.turn("today")
@@ -149,7 +151,7 @@ class AgentTest(Fixture):
                          {"inbox": sent["id"], "from": "person", "text": "start with ORD-01, please"})
         self.assertIsNone(message["slice"])
         receipt = next(one for one in talk.receipts(home) if one["id"] == sent["id"])
-        self.assertEqual(receipt["state"], "queued", "the rule routes nothing; it waits for the next wake-up")
+        self.assertEqual(receipt["state"], "unaddressed", "the rule routes nothing, and it is not put again")
 
     def test_over_the_protocol_the_captain_s_session_is_held_open_across_events(self) -> None:
         self.granted("ORD-01", "ORD-02")

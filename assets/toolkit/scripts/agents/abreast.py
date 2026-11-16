@@ -292,7 +292,8 @@ def word_waiting(fairway: str, deck: list[logs.Entry], harbour: list[logs.Entry]
                 continue
             if slice_id == talk.CAPTAIN or message.get("kind") == "resume":
                 return True
-            mine = [park for park in parks if str(park.fields.get("slice", "")) == slice_id] + whole
+            mine = [park for park in parks if str(park.fields.get("slice", "")) == slice_id]
+            mine += [park for park in whole if str(park.fields.get("why", "")).startswith(f"{slice_id}:")]
             if message.get("kind") == "say" and any(str(message.get("t", "")) > park.t for park in mine):
                 return True
     return False

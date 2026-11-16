@@ -10,7 +10,8 @@ must leave the same deck log as without it. Every other mode misbehaves, writing
 - `retry` retries whatever the event allows; `merge` orders a merge; `malformed` writes a file that is not
   JSON; `unsigned` and `forged` give an order with no signature or one made with another key;
 - `flood` gives forty orders at once; `lift` resumes the slice named in `STAND_IN_TARGET`;
-- `message` sends `STAND_IN_TARGET` a message and then does as `today`.
+- `message` sends `STAND_IN_TARGET` a message and then does as `today`; `tamper` writes a file into the
+  project and then does as `today`.
 """
 import hashlib
 import hmac
@@ -37,7 +38,7 @@ def order(verb, secret=KEY, **said):
     t = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     COUNT.append(1)  # ids that sort in the order they were given, so the program reads them in that order
     body = {"v": 1, "id": f"{t.replace('-', '').replace(':', '')}-{PREFIX}{len(COUNT):02x}", "t": t,
-            "event": HELD["id"], "fairway": HELD["fairway"], "verb": verb, **said}
+            "event": HELD["id"], "fairway": HELD.get("fairway") or os.environ.get("SLIPWAI_CAPTAIN_FAIRWAY", ""), "verb": verb, **said}
     signed = json.dumps({name: body.get(name) for name in FIELDS}, sort_keys=True, ensure_ascii=False)
     if secret:
         body["sig"] = hmac.new(secret, signed.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -50,7 +51,7 @@ def order(verb, secret=KEY, **said):
 
 def through_the_door(one):
     """One order through `orders.py`, as the real captain gives it."""
-    argv = [sys.executable, "scripts/agents/orders.py", one["verb"]]
+    argv = [sys.executable, os.environ["SLIPWAI_CAPTAIN_ORDERS_PY"], one["verb"]]
     target = one.get("slice") or one.get("ask")
     if target:
         argv.append(str(target))
@@ -97,6 +98,11 @@ elif MODE == "flood":
         order("say", text=f"order {count}")
 elif MODE == "lift":
     order("resume", slice=target, why="carry on")
+elif MODE == "tamper":
+    # A captain with a shell that reaches the project and changes it, then orders as the rule would.
+    project = Path(os.environ["SLIPWAI_CAPTAIN_ORDERS_PY"]).resolve().parents[2]
+    (project / "tampered.txt").write_text("a captain was here\n", encoding="utf-8")
+    today()
 elif MODE == "message":
     through_the_door({"verb": "message", "slice": target, "text": "the captain says: mind the rounding"})
     today()

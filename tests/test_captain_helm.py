@@ -23,7 +23,7 @@ from typing import Any
 import checkout_packages  # noqa: F401
 from captain_fixture import AGENTS, CARRIED
 
-from slipwai import talk
+from slipwai import logs, talk
 
 
 def loaded(root: Path, name: str) -> Any:
@@ -36,11 +36,16 @@ def loaded(root: Path, name: str) -> Any:
 
 
 class Turn:
+    deferred = False
+
     def __init__(self, done: bool, kind: str = "named") -> None:
         self.done, self.kind, self.began, self.ended = done, kind, time.monotonic(), False
 
     def finished(self) -> bool:
         return self.done
+
+    def started(self) -> float:
+        return self.began
 
     def ready(self) -> float:
         return self.began
@@ -67,11 +72,29 @@ class Runner:
     def bound(self, turn: Any) -> float:
         return self.limit
 
+    def holds_session(self) -> bool:
+        return False
+
+    def reset(self) -> None:
+        self.resets = getattr(self, "resets", 0) + 1
+
 
 class Stream:
-    def __init__(self) -> None:
+    def __init__(self, root: Path | None = None) -> None:
         self.held: list[tuple[str, str]] = []
         self.at_merge: set[str] = set()
+        self.home = root or Path(tempfile.mkdtemp())
+        self.answers: list[tuple[str, str, str]] = []
+
+    def root(self) -> Path:
+        return self.home
+
+    def checkout_busy(self) -> bool:
+        return False
+
+    def decided(self, slice_id: str, question: str, answer: str) -> str:
+        self.answers.append((slice_id, question, answer))
+        return f"captain-{slice_id}-{len(self.answers)}"
 
     def slices(self) -> set[str]:
         return {"ORD-01", "ORD-02"}
@@ -92,7 +115,7 @@ class Stream:
         return {"in_flight": []}
 
 
-class HelmTest(unittest.TestCase):
+class HelmBase(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
         (self.root / "project.json").write_text("{}", encoding="utf-8")
@@ -102,8 +125,8 @@ class HelmTest(unittest.TestCase):
                                                              encoding="utf-8")
         self.events = loaded(self.root, "captain_events")
         self.orders = self.events.order_door
-        self.run_dir = self.root / ".slipwai/run"
-        self.stream = Stream()
+        self.run_dir = logs.run_dir(self.root)
+        self.stream = Stream(self.root)
         self.said: list[str] = []
 
     def helm(self, act: Callable[[dict, dict], object] | None, bound: float = 0.5) -> Any:
@@ -136,6 +159,8 @@ class HelmTest(unittest.TestCase):
             return "" if order.get("slice") in ("ORD-01", "ORD-02") else f"{order.get('slice')} is not cleared"
         return helm.decide("choose-next", "", {"free": 1, "cleared": []}, ["start", "say", "none"], default, check)
 
+
+class HelmTest(HelmBase):
     def test_an_order_not_in_may_is_refused_and_the_rule_decides(self) -> None:
         chosen, by = self.choose(self.helm(lambda held, env: self.order(held, env, "retry", slice="ORD-01", note="x")))
         self.assertEqual((chosen, by), ([{"verb": "start", "slice": "ORD-01"}], "rule"))
@@ -184,6 +209,7 @@ class HelmTest(unittest.TestCase):
 
     def test_an_order_given_after_its_event_closed_is_refused(self) -> None:
         helm = self.helm(None, bound=0.2)
+        helm.runner.holds_session = lambda: True  # one held session: one key for both events
         self.choose(helm)
         late = {"id": self.closed()[0]["id"]}
         self.order(late, helm.environment(), "start", slice="ORD-02")
@@ -197,7 +223,8 @@ class HelmTest(unittest.TestCase):
                 self.order(held, env, "say", text=f"order {count}")
         _, by = self.choose(self.helm(act))
         states = [state for state, _ in self.results()]
-        self.assertEqual((states.count("done"), states.count("refused")), (self.events.FLOOD, 40 - self.events.FLOOD))
+        flood = self.events.captain_orders.FLOOD
+        self.assertEqual((states.count("done"), states.count("refused")), (flood, 40 - flood))
         self.assertEqual(by, "rule", "saying things is not a decision")
 
     def message(self, act: Callable[[dict, dict], object]) -> tuple[list[dict], str]:
@@ -235,8 +262,9 @@ class HelmTest(unittest.TestCase):
         asked = talk.send(talk.place(self.run_dir, "ORD", talk.CAPTAIN), "say", "tell ORD-02 to use euros")
         self.message(lambda held, env: self.order(held, env, "message", slice="ORD-02", of=asked["id"]))
         sent = talk.pending(talk.place(self.run_dir, "ORD", "ORD-02"))
-        self.assertEqual([(one["from"], one["via"], one["of"], one["text"]) for one in sent],
-                         [("person", "captain:ORD", asked["id"], "tell ORD-02 to use euros")])
+        self.assertEqual([(one["from"], one["via"], one["of"], one["quote"]) for one in sent],
+                         [("captain:ORD", "captain:ORD", asked["id"], "tell ORD-02 to use euros")])
+        self.assertNotEqual(sent[0]["text"], "tell ORD-02 to use euros", "the captain's words are its own")
 
     def test_a_nudge_to_a_stuck_slice_is_the_captain_s_answer(self) -> None:
         helm = self.helm(lambda held, env: self.order(held, env, "message", slice="ORD-01", text="try the seed again",
@@ -248,16 +276,14 @@ class HelmTest(unittest.TestCase):
         sent = talk.pending(talk.place(self.run_dir, "ORD", "ORD-01"))
         self.assertEqual([(one["mode"], one["text"]) for one in sent], [("interrupt", "try the seed again")])
 
-    def test_a_product_question_is_never_the_captain_s(self) -> None:
-        helm = self.helm(lambda held, env: self.order(held, env, "allow", ask="ask-1", why="euros"))
-        ask = {"id": "ask-1", "what": "question", "text": "Product question: which currency?", "slice": "ORD-01"}
-        answer = helm.ruling(ask, {"verb": "refuse", "ask": "ask-1", "why": "a `question` line, as always"})
-        self.assertEqual((answer["action"], answer["by"]), ("decline", "rule"))
-        self.assertEqual(helm.runner.turns, [], "the captain was never asked")
-        operational = dict(ask, id="ask-2", text="Which port is the test database on?")
-        helm.runner.act = lambda held, env: self.order(held, env, "allow", ask="ask-2", why="5433")
-        answer = helm.ruling(operational, {"verb": "refuse", "ask": "ask-2", "why": "declined"})
-        self.assertEqual((answer["action"], answer["content"], answer["by"]), ("accept", {"answer": "5433"}, "captain"))
+    def test_every_answer_the_captain_gives_is_a_decision_for_a_person_to_review(self) -> None:
+        helm = self.helm(lambda held, env: self.order(held, env, "allow", ask="ask-2", why="5433"))
+        ask = {"id": "ask-2", "what": "question", "text": "Which port is the test database on?", "slice": "ORD-01"}
+        answer = helm.ruling(ask, {"verb": "refuse", "ask": "ask-2", "why": "declined"})
+        self.assertEqual((answer["action"], answer["by"]), ("accept", "captain"))
+        self.assertTrue(answer["content"]["answer"].startswith("5433"))
+        self.assertEqual(self.stream.answers, [("ORD-01", "Which port is the test database on?", "5433")])
+        self.assertIn("recorded as decision captain-ORD-01-1", answer["why"])
 
     def test_a_write_outside_the_berth_is_not_the_captain_s_to_allow(self) -> None:
         helm = self.helm(lambda held, env: self.order(held, env, "allow", ask="ask-1", why="fine"))

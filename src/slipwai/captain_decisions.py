@@ -56,7 +56,7 @@ def decided(root: Path, fairway: str, since: str = "") -> list[dict[str, Any]]:
     given = orders_of(root, fairway)
     rows = []
     for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
-        if path.name.endswith(".closed.json") or path.name == "state.json":
+        if path.name.endswith(".closed.json") or path.name in ("state.json", "agent-off.json"):
             continue
         event = held(path)
         if event is None or str(event.get("t", "")) < since:
@@ -69,6 +69,12 @@ def decided(root: Path, fairway: str, since: str = "") -> list[dict[str, Any]]:
                      "seconds": cost.get("seconds"), "ended": str(cost.get("ended") or ""),
                      "tokens": cost.get("tokens")})
     return sorted(rows, key=lambda row: (row["t"], row["id"]), reverse=True)
+
+
+def off(root: Path, fairway: str) -> dict[str, Any] | None:
+    """Why this stream's captain agent is turned off, said loudly where it is: it changed the project while
+    deciding, and only a person turns it on again (`agent-off.json` beside its events). None where it is not."""
+    return held(run_dir(root) / EVENTS / fairway / "agent-off.json")
 
 
 def today() -> str:

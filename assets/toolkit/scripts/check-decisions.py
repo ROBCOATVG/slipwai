@@ -149,11 +149,20 @@ def path_findings(where: str, label: str, value: str, base: Path) -> list[str]:
 
 
 def instant(value: str) -> datetime | None:
-    """An entry's `When`, read as UTC where it names no zone: older entries wrote a date alone."""
+    """An entry's `When`, read as UTC where it names no zone: older entries wrote a date alone. An instant
+    written by hand with an impossible second — game-club-manager's D13 says `13:10:60Z` — is read to the
+    minute, so a real entry from before the rule is not held to it for a typo in its clock."""
+    value = value.strip().strip("`")
     try:
-        found = datetime.fromisoformat(value.strip().strip("`").replace("Z", "+00:00"))
+        found = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
-        return None
+        near = re.match(r"(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2}))?", value)
+        if not near:
+            return None
+        try:
+            found = datetime.fromisoformat(f"{near.group(1)}T{near.group(2) or '00'}:{near.group(3) or '00'}")
+        except ValueError:
+            return None
     return found if found.tzinfo else found.replace(tzinfo=timezone.utc)
 
 

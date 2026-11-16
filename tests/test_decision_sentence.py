@@ -97,6 +97,10 @@ class GateTest(unittest.TestCase):
         found = self.check(entry(1, "2026-01-01T00:00:00Z"))
         self.assertEqual(len(found), 1, found)
 
+    def test_an_old_entry_with_an_impossible_second_is_read_to_the_minute_and_passes(self) -> None:
+        """game-club-manager's D13 was written at `13:10:60Z`."""
+        self.assertEqual(self.check(entry(13, "2026-11-12T13:10:60Z"), since="2026-11-16T09:00:00Z"), [])
+
     def test_a_new_entry_whose_when_cannot_be_read_is_held(self) -> None:
         self.assertEqual(len(self.check(entry(2, "later"), since="2026-11-16T09:00:00Z")), 1)
 

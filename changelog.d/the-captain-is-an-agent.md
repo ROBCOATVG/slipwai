@@ -15,6 +15,15 @@ Protocol where the project's sessions are, and run headless once per event other
 is its brief, rewritten for the role. `slipwai.captain_decisions` reads back what each captain decided, for the
 board. Whether a slice is stuck is now one fold, `stuck.py`, shared by the board's card and the captain.
 
+**A stream hears a person with or without an agent.** What is said to a stream itself, in its captain's
+conversation, is read by the captain program every turn and written into the deck log as the stream's
+`told`, carrying the message's id, so the harbourmaster clears a park on it exactly as it did on the line the
+board used to write; a resume sent to the stream ("try now") lifts a pause the same way. A person's word to
+a slice clears its stream's park as well as the slice's own. A person's word waiting is a reason to light a
+captain: the harbourmaster's plan gives such a stream a session even while it is parked, and the captain's
+first act is to read it. A second answer to a question, before the captain has carried the first, replaces
+it; after, it reaches the slice as an ordinary message.
+
 Also: a person's pause or stop now stands through anyone else's stop until a person resumes it; a message
 already handled keeps its receipt after the conversation key is made again, and a queued one says the key
 changed, with its text; the key's file mode is not asked on Windows; a resume with nothing held is done

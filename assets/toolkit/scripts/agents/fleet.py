@@ -236,6 +236,8 @@ def relight(limit: int | None, say: bool = False, wanted: list[str] | None = Non
                 print(f"{fairway}: captain already running, pid {standing[name]}")
             continue
         why = parked(fairway)
+        if why and word_waiting(fairway):
+            why = ""  # a person has answered, or said something: the captain is lit to read it, and exits parked
         if why:
             if say:
                 lifting = paused_until(fairway)
@@ -251,6 +253,18 @@ def relight(limit: int | None, say: bool = False, wanted: list[str] | None = Non
             print(f"{fairway}: captain started, pid {pid}")
         started, lit = started + 1, lit + 1
     return started
+
+
+def word_waiting(fairway: str) -> bool:
+    """Whether a person's word waits for this fairway's captain (`abreast.word_waiting`). False where the
+    rule's module is not carried or the log cannot be read: lighting is then as it was."""
+    where = deck_of(fairway)
+    try:
+        import abreast  # noqa: PLC0415 — carried beside this in a project; a fixture may leave it out
+        deck = logs.fold(where.read_text(encoding="utf-8").splitlines()) if where is not None else []
+        return abreast.word_waiting(fairway, deck, logs.harbour_fold(ROOT))
+    except (ImportError, logs.Unreadable, OSError, UnicodeDecodeError, ValueError):
+        return False
 
 
 def parked(fairway: str) -> str:

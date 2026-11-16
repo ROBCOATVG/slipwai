@@ -1086,7 +1086,11 @@ def park_answer(found: list[logs.Entry], fairway: str, slice_id: str = "") -> st
     for receipt in reversed(harbour_entries()):
         if (receipt.kind == "cleared" and str(receipt.fields.get("fairway", "")) == fairway
                 and str(receipt.fields.get("parked", "")) == parks[-1].t):
-            return str(receipt.fields.get("what", ""))
+            # The newest word a person gave after the park, aimed at this slice or the stream: a second
+            # answer before the first was carried replaces it, rather than the receipt's first one standing.
+            later = [e for e in found if e.kind == "told" and e.fields.get("by") == talk.PERSON
+                     and e.t > parks[-1].t and str(e.fields.get("slice", "")) in ("", slice_id)]
+            return str(later[-1].fields.get("message", "")) if later else str(receipt.fields.get("what", ""))
     return ""
 
 
@@ -1606,23 +1610,11 @@ def look_stuck(feature: str, fairway: str, flying: list[str]) -> None:
 
 def heard_captain(fairway: str, again: bool = False) -> None:
     """Put what was said to this stream's captain to its agent, one event a message: where it goes is the
-    captain's to decide. With no agent nothing reads this conversation, as before. `again` puts the ones a
+    captain's to decide. With no agent `heard_stream` is the whole of it. `again` puts the ones a
     silent agent left queued once more, which a turn's start does."""
     if HELM is None:
         return
     home = talk.place(logs.run_dir(ROOT), fairway, talk.CAPTAIN)
-    for path, refusal in talk.refused(home):
-        talk.reject(home, path, refusal)
-    for message in talk.unseen(home):
-        talk.note(home, "seen", id=str(message["id"]))
-        if message.get("kind") == "withdraw":
-            talk.note(home, "withdrawn", id=str(message.get("of") or ""))
-            talk.settle(home, str(message.get("of") or ""))
-        elif message.get("kind") != "say":
-            talk.note(home, "failed", id=str(message["id"]),
-                      why="a captain's conversation takes words: pause, resume or stop a slice in its own")
-        if message.get("kind") != "say":
-            talk.settle(home, str(message["id"]))
     for message in talk.queued(home) if again else [one for one in talk.queued(home)
                                                       if str(one["id"]) not in handed_to_captain(home)]:
         ident = str(message["id"])
@@ -2169,8 +2161,9 @@ def heard_closed(feature: str, fairway: str, found: list[logs.Entry]) -> None:
     run = logs.run_dir(ROOT) / talk.TALK / fairway
     if not run.is_dir():
         return
-    parks = logs.open_parks(found, harbour_entries(), fairway)
     told = {str(e.fields.get("inbox", "")) for e in found if e.kind == "told"}
+    heard_stream(feature, fairway, told)
+    parks = logs.open_parks(found, harbour_entries(), fairway)
     landed = {str(e.fields.get("slice", "")) for e in found if e.kind == "merged"}
     for slice_id in talk.conversations(logs.run_dir(ROOT), fairway):
         if slice_id == talk.CAPTAIN or slice_id in FLIGHT:
@@ -2182,21 +2175,76 @@ def heard_closed(feature: str, fairway: str, found: list[logs.Entry]) -> None:
                 talk.note(home, "failed", id=str(message["id"]), why="this slice has merged")
                 talk.settle(home, str(message["id"]))
             continue
-        own = [park for park in parks if str(park.fields.get("slice", "")) == slice_id
-               or (not park.fields.get("slice") and str(park.fields.get("why", "")).startswith(f"{slice_id}:"))]
-        if not own:
+        park = uncarried(found, parks, slice_id)
+        if park is None:
             continue
         for message in talk.queued(home):
             # Only what was said after the park can be the answer to it: a message sent before the question
             # was asked is delivered as what it was, an ordinary message, when the driver opens again.
-            if message.get("from") != talk.PERSON or str(message["id"]) in told \
-                    or str(message.get("t", "")) <= own[-1].t:
+            if message.get("from") != talk.PERSON or str(message["id"]) in told or str(message.get("t", "")) <= park.t:
                 continue
             talk.note(home, "seen", id=str(message["id"]))
-            aimed = {"slice": slice_id} if own[-1].fields.get("slice") else {}
             write(feature, fairway, logs.entry("told", fairway=fairway, message=str(message.get("text", "")),
-                                               by="person", inbox=str(message["id"]), **aimed))
+                                               by="person", inbox=str(message["id"]), slice=slice_id))
             print(f"captain: {slice_id} was told something while parked; it is the answer to the park", flush=True)
+
+
+def uncarried(found: list[logs.Entry], parks: list[logs.Entry], slice_id: str) -> logs.Entry | None:
+    """The park a person's word to this slice answers, or None: the slice's own park or the stream's,
+    open — or cleared, and not yet carried on, since nothing has claimed the slice after it. Until the
+    captain carries the answer a later one replaces it (`park_answer` takes the newest); once it has, a
+    word to the slice is an ordinary message, delivered at its next run, never a second decision."""
+    mine = [park for park in parks if str(park.fields.get("slice", "")) == slice_id or not park.fields.get("slice")]
+    if mine:
+        return mine[-1]
+    last = next((e for e in reversed(found) if e.kind == "parked"
+                 and (str(e.fields.get("slice", "")) == slice_id
+                      or (not e.fields.get("slice") and str(e.fields.get("why", "")).startswith(f"{slice_id}:")))),
+                None)
+    if last is None:
+        return None
+    carried = any(e.kind == "claimed" and str(e.fields.get("slice", "")) == slice_id and e.t >= last.t for e in found)
+    answered = any(e.kind == "told" and e.fields.get("by") == talk.PERSON and e.t > last.t
+                   and str(e.fields.get("slice", "")) in ("", slice_id) for e in found)
+    return last if answered and not carried else None
+
+
+#: What the captain program says of a word to the stream it has read and has no agent to act on.
+NO_AGENT = ("read by the captain program; this stream has no captain agent, so nothing acts on it beyond what a "
+            "`told` does: it answers the stream's park, if it has one, and is in its log for whoever reads it")
+
+
+def heard_stream(feature: str, fairway: str, told: set[str]) -> None:
+    """Read what was said to the stream itself — `talk/<fairway>/_captain/` — with or without an agent. A
+    person's words become the stream's `told` line, carrying the inbox id, which is what the harbourmaster
+    clears a park on, as the board's line always was; a resume ("try now") is a `told` saying so, which lifts
+    a pause the same way. With an agent the same words are then its `message` event (`heard_captain`);
+    without one the receipt says the captain program read it."""
+    home = talk.place(logs.run_dir(ROOT), fairway, talk.CAPTAIN)
+    if not (home / "inbox").is_dir():
+        return
+    for path, refusal in talk.refused(home):
+        talk.reject(home, path, refusal)
+    for message in talk.unseen(home):
+        ident, kind, by = str(message["id"]), str(message.get("kind")), str(message.get("from") or talk.PERSON)
+        talk.note(home, "seen", id=ident)
+        if kind == "withdraw":
+            of = str(message.get("of") or "")
+            if of not in talk.handed(talk.thread(home)) and of not in told:
+                talk.note(home, "withdrawn", id=of)
+                talk.settle(home, of)
+        elif kind in ("say", "resume") and ident not in told:
+            text = str(message.get("text") or "") or ("try the paused slices now" if kind == "resume" else "")
+            write(feature, fairway, logs.entry("told", fairway=fairway, message=text, by=by, inbox=ident))
+            print(f"captain: {fairway} was told something by {by}", flush=True)
+        if kind in ("pause", "stop"):
+            talk.note(home, "failed", id=ident, why="a stream is paused or stopped one slice at a time, in its own")
+        if kind != "say":
+            talk.settle(home, ident)
+        elif HELM is None:
+            talk.note(home, "delivered", id=ident, mode=str(message.get("mode") or "wait"), by="captain program",
+                      why=NO_AGENT)
+            talk.settle(home, ident)
 
 
 def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[str]:
@@ -2322,7 +2370,6 @@ def turn(fairway: str) -> str:
     global HELM
     if HELM is None:
         HELM = helm(feature, fairway)
-    heard_captain(fairway, again=True)
     if taken.why:
         # Taken, with something to say about it — a harbour that is not a git repository, where nothing can
         # hold a fairway and a second captain cannot be refused; or a stream taken over past its lease.
@@ -2337,6 +2384,7 @@ def turn(fairway: str) -> str:
     found = entries(feature, fairway)
     LET_GO.clear()
     heard_closed(feature, fairway, found)
+    heard_captain(fairway, again=True)
     found = entries(feature, fairway)
     parked, held = state(found, fairway)
     if parked:

@@ -1297,8 +1297,8 @@ def told_after_parks() -> list[logs.Entry]:
     The answer waits and clears the park once the backlog is read. A park the captain wrote at the ceiling
     itself is `cleared_for_review`'s, whatever anybody says.
 
-    **Aimed, where it says a slice.** A `told` naming a `slice` clears only that slice's park; one naming
-    none is for the stream, and clears every park open in it, as before.
+    **Aimed, where it says a slice.** A `told` naming a `slice` clears that slice's park and a park of the
+    whole stream, never a sibling's; one naming none is for the stream, and clears every park open in it.
 
     Every deck log whole, not the lines new this pass: a park can be older than the cursor, and a receipt
     already written drops that park from `open_parks`, so a second pass writes nothing.
@@ -1319,8 +1319,11 @@ def told_after_parks() -> list[logs.Entry]:
         for park in parks:
             # A message aimed at one slice — the box on its red card — answers that slice's park and no
             # other: three slices parked on three different questions are three answers, not one.
+            # A park of the whole stream is answered by a person's word to any of its slices, as it was by one
+            # to the stream: the stream is what waits, and the person said something to it.
             after = [e for e in told if e.t > park.t
-                     and (not e.fields.get("slice") or e.fields.get("slice") == park.fields.get("slice"))]
+                     and (not e.fields.get("slice") or not park.fields.get("slice")
+                          or e.fields.get("slice") == park.fields.get("slice"))]
             if after:
                 found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                         what=str(after[-1].fields.get("message", "")).strip() or "told"))

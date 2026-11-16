@@ -5,13 +5,23 @@ and `session/load`; on a prompt it streams a message chunk, asks permission to w
 directory and writes it, and does more by the words in the prompt: `outside` asks permission for a path
 beyond the directory, `ask` puts a question, `slow` waits on a permission until it is answered or cancelled,
 `die` exits mid-turn. Nothing here is clever; it is the other end of the wire, held still.
+
+For a driver held open (`tests/test_drive_held.py`): `count` says how many prompts its session has had,
+`linger` waits for a cancel, `dawdle` waits for a `.go` file before it goes on, and a delivered message is
+answered `Reply: <text>` — or not at all where it says `quiet`. A captain's drive does the same where a
+`.linger` or `.dawdle` file is in the berth, once each.
 """
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 HOME = Path.cwd()
+#: How many prompts each session has had, for `count`: the proof a second prompt reached the same one.
+PROMPTS: dict = {}
+#: The head of a message a driver delivers (`drive.message_prompt`).
+MESSAGE = "A message for this slice from "
 #: How this agent says it can be signed in to: through itself, or by a command run in a terminal.
 METHODS = [{"id": "login", "name": "Sign in", "description": "Opens the browser", "type": "agent"},
            {"id": "setup", "name": "Set up", "description": "Interactive setup", "type": "terminal",
@@ -66,7 +76,43 @@ def permission(number, session, path):
     return allowed, cancelled or outcome.get("outcome") == "cancelled"
 
 
+def linger(session):
+    """Wait, saying so, until the client cancels the turn: the turn an interrupt or a stop lands in."""
+    text(session, "Lingering.")
+    (HOME / ".lingering").write_text("", encoding="utf-8")
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            os._exit(0)
+        if json.loads(line).get("method") == "session/cancel":
+            return "cancelled"
+
+
+def dawdle():
+    """Wait for a `.go` file in the working directory, saying where with a `.dawdling` one."""
+    (HOME / ".dawdling").write_text("", encoding="utf-8")
+    while not (HOME / ".go").exists():
+        time.sleep(0.05)
+    (HOME / ".go").unlink()
+    (HOME / ".dawdling").unlink()
+
+
+def answer(session, words):
+    """A delivered message: its text is the paragraph after the head, and the reply repeats it."""
+    said = words.split("\n\n")[1] if "\n\n" in words else words
+    if "dawdle" in said:
+        dawdle()
+    if "die" in said:
+        os._exit(3)
+    if "quiet" not in said:
+        text(session, f"Reply: {said}")
+    return "end_turn"
+
+
 def turn(number, session, words):
+    PROMPTS[session] = PROMPTS.get(session, 0) + 1
+    if words.startswith(MESSAGE):
+        return answer(session, words)
     # A role at the head of the prompt, set off by a rule, is acknowledged and not echoed: the words the
     # stand-in acts on are the person's own, after it.
     if "\n---\nThe board" in words:  # a console's fold of the board rides after the question: not the words
@@ -80,9 +126,25 @@ def turn(number, session, words):
     # What the stand-in does is keyed on the first line only: a stage's prompt carries a rule about asking
     # under its first line, and a word in that rule is not an instruction to this script.
     words = words.split("\n", 1)[0]
+    if "plan" in words:
+        update(session, sessionUpdate="plan", entries=[{"content": "Write the page", "status": "completed"},
+                                                       {"content": "Check it", "status": "in_progress"}])
+    if "dawdle" in words:
+        dawdle()
     if "die" in words:
         os._exit(3)
+    if words == "count":
+        text(session, f" prompt {PROMPTS[session]} in {session}")
+        return "end_turn"
+    if "linger" in words:
+        return linger(session)
     if " fairway=" in words:  # a captain's drive: the lines the chart says this slice publishes, and a demo
+        for marker in (".linger", ".dawdle"):
+            if (HOME / marker).exists():
+                (HOME / marker).unlink()
+                if marker == ".linger":
+                    return linger(session)
+                dawdle()
         drove(words)
         return "end_turn"
     allowed, cancelled = permission(number * 10 + 1, session, HOME / "prototype" / "index.html")

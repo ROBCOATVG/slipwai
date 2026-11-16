@@ -5,13 +5,15 @@ without the specification open — and an entry written before that rule leads w
 Under it, the options with the one taken marked, who decided, how sure they were, what would change it and
 its status; the entry as the agent wrote it is one click away. A card that awaits a person has Confirm.
 
-**The tab opens on what awaits a person.** Every entry a stop meant for a person wrote with nobody there
-stands as `awaiting human confirmation`; those come first, then the rest, each part grouped by capability
-and then by slice. The count on the tab is that first part. The filters — stream, slice, who decided — are
+**The tab opens on what nobody has read**, least sure first, then the rest, each part grouped by capability
+and then by slice; the count on the tab is the unread, which is what the decision ceiling counts. Awaiting
+confirmation is a status on a card and a filter, not the headline: agents stamp nearly every entry with it.
+The filters — stream, slice, who decided, status — are
 kept in the address, and sit outside the band the page's one poll swaps, so a decision landing appears
 without a reload, and a card a person has open stays open.
 
-*Change this* opens the Feedback box with the decision quoted and its slice as the context. The conversation
+*Change this* opens the Feedback box with the decision quoted and its slice as the context; from a slice's
+window, which has no box, it opens the Voyage window's with that context in the address. The conversation
 windows a person will later say this to the slice in — its captain's once it has merged — are another
 stream's (F, `docs/captain-agent-plan.md`); when they land, this button hands to them instead.
 """
@@ -24,7 +26,7 @@ from pathlib import Path
 
 from .decision_entry import Option, chosen, options, plain
 from .decision_log import Decision, decisions
-from .feedback_card import opener
+from .feedback_card import box_address, opener
 from .page_shell import esc
 
 #: The parts of the entry shown as the agent wrote them, behind "Why, in full".
@@ -78,7 +80,7 @@ SCRIPT = """
 (function(){
   const box = () => document.querySelector('.decs');
   if (!box()) return;
-  const FILTERS = ['stream', 'slice', 'by'];
+  const FILTERS = ['stream', 'slice', 'by', 'status'];
   const where = () => new URLSearchParams(location.search);
   const options = () => {
     const bar = document.querySelector('.decs .bar');
@@ -136,16 +138,12 @@ SCRIPT = """
       sure.disabled = true;
       if (await post('/decisions/confirm', {key: sure.dataset.decisionConfirm})) {
         card.classList.remove('awaiting'); card.classList.add('read'); sure.remove();
+        card.dataset.status = 'confirmed';
         const said = card.querySelector('.status'); if (said) said.textContent = 'Confirmed by you';
         const mark = card.querySelector('[data-decision-read]'); if (mark) mark.remove();
       } else sure.disabled = false;
     }
   });
-  // A link from a slice's window to Change this here: the tab is opened by the page, and this presses it.
-  if (location.hash.startsWith('#change-')) {
-    const button = document.getElementById(location.hash.slice(1));
-    if (button) setTimeout(() => button.click(), 0);
-  }
   // Watched where the swap lands — the band's own children, or the slice panel's place — and nowhere the
   // filters are, since rebuilding their options is itself a change to the page.
   const panel = document.getElementById('slice-decisions');
@@ -188,6 +186,8 @@ def who(by: str) -> str:
 
 def status_said(one: Decision) -> str:
     said = plain(one.status)
+    if one.confirmed:
+        return f"Confirmed by you on {one.confirmed[:10]}"
     if one.awaiting:
         return "Awaiting your confirmation"
     if said.startswith("confirmed by human"):
@@ -214,20 +214,25 @@ def option_html(option: Option, taken: bool) -> str:
             f"</span><span>{esc(option.text)}</span>{rec}</li>")
 
 
-def card_id(one: Decision) -> str:
-    return re.sub(r"[^A-Za-z0-9_-]", "-", one.key)
+def status_of(one: Decision) -> str:
+    """The status a card is filtered by: the kind of status, not its date."""
+    said = status_said(one).lower()
+    return next((kind for kind in ("awaiting your confirmation", "confirmed", "overridden", "standing")
+                 if said.startswith(kind)), said)
 
 
 def change_button(one: Decision, here: bool) -> str:
-    """Change this: the Feedback box with the decision quoted, on the Voyage window; a link to that from a
-    slice's window, which has no box of its own."""
-    if not here:
-        return f'<a href="/voyage#change-{esc(card_id(one))}" target="_blank" rel="noopener">Change this</a>'
+    """Change this: the Feedback box with the decision quoted and its slice as the context. On the Voyage
+    window it opens the box there; a slice's window has no box, so it links to the Voyage window's with the
+    same context in the address, which the Feedback script reads once as the page loads."""
     lead = plain(one.sentence or one.title)
     context = {"from": f"decision {one.number}: {lead}", "fairway": one.stream,
                "slice": one.slice if _SLICE.fullmatch(one.slice) else ""}
-    button = opener("Change this", context, ask=f"Change {one.number}: “{lead}” — what should it be instead?")
-    return button.replace("<button ", f'<button id="change-{esc(card_id(one))}" ', 1)
+    ask = f"Change {one.number}: “{lead}” — what should it be instead?"
+    if here:
+        return opener("Change this", context, ask=ask)
+    return (f'<a href="{esc(box_address(context, ask))}" target="_blank" rel="noopener" data-decision-change>'
+            "Change this</a>")
 
 
 def card_html(one: Decision, here: bool = True) -> str:
@@ -247,9 +252,9 @@ def card_html(one: Decision, here: bool = True) -> str:
             if one.awaiting else "") + change_button(one, here) + (
         "" if one.read else f'<button type="button" class="install" data-decision-read="{esc(one.key)}">Mark read'
                             "</button>")
-    return (f'<article class="{kind}" id="decision-{esc(card_id(one))}" data-key="{esc(one.key)}" '
+    return (f'<article class="{kind}" data-key="{esc(one.key)}" '
             f'data-stream="{esc(one.stream)}" data-slice="{esc(one.slice)}" '
-            f'data-by="{esc(who(one.decided_by).split(",")[0])}">'
+            f'data-by="{esc(who(one.decided_by).split(",")[0])}" data-status="{esc(status_of(one))}">'
             f'<div class="meta">{"".join(part for part in meta if part)}</div>'
             f'<h3 class="lead">{esc(plain(lead))}</h3>{asked}{options_html(one)}'
             + (f'<p class="rev"><b>Would change if:</b> {esc(plain(reverse))}</p>' if reverse else "")
@@ -271,15 +276,34 @@ def grouped(found: list[Decision]) -> str:
     return html
 
 
+#: Least sure first: of the decisions nobody has read, the ones most worth a person's eye.
+SURE = {"low": 0, "medium": 1, "high": 2}
+
+
+def confidence(one: Decision) -> int:
+    said = plain(one.parts.get("Confidence", "")).lower().split()
+    return SURE.get(said[0].strip(".,;") if said else "", 1)
+
+
+def unread(found: list[Decision]) -> int:
+    """The count on the tab: decisions nobody has read, which is what the decision ceiling counts.
+
+    Not what awaits confirmation: agents stamp nearly every entry `awaiting human confirmation` — 64 of 69 on
+    game-club-manager's trunk — and a number that is always most of the log is one a person learns to ignore."""
+    return sum(1 for one in found if not one.read)
+
+
 def listing(found: list[Decision]) -> str:
-    """The band the poll swaps: what awaits a person first, then the rest."""
-    first = [one for one in found if one.awaiting]
-    rest = [one for one in found if not one.awaiting]
-    says = (f"{len(found)} decision{'s' if len(found) != 1 else ''} · {len(first)} awaiting your confirmation · "
-            "grouped by capability, then slice")
+    """The band the poll swaps: what nobody has read first, least sure first, then the rest."""
+    first = sorted((one for one in found if not one.read), key=confidence)
+    rest = [one for one in found if one.read]
+    waiting = sum(1 for one in found if one.awaiting)
+    says = (f"{len(found)} decision{'s' if len(found) != 1 else ''} · {len(first)} unread · {waiting} awaiting "
+            "your confirmation · grouped by capability, then slice")
     html = f'<p class="says">{says}</p>'
     if first:
-        html += f'<h3 class="part">Awaiting your confirmation · {len(first)}</h3><div>{grouped(first)}</div>'
+        html += (f'<h3 class="part">Not read yet, least sure first · {len(first)}</h3>'
+                 f"<div>{grouped(first)}</div>")
     if rest:
         html += f'<h3 class="part">Everything else · {len(rest)}</h3><div>{grouped(rest)}</div>'
     return f'<div class="dec-list">{html}</div>'
@@ -287,33 +311,32 @@ def listing(found: list[Decision]) -> str:
 
 def bar_html() -> str:
     names = (("stream", "Stream", "every stream"), ("slice", "Slice", "every slice"),
-             ("by", "Decided by", "anyone"))
+             ("by", "Decided by", "anyone"), ("status", "Status", "any status"))
     picks = "".join(f'<label>{face} <select name="d-{name}" data-every="{every}"><option value="">{every}</option>'
                     f"</select></label>" for name, face, every in names)
     return f'<div class="bar">{picks}</div>'
 
 
 def tab(root: Path, band: Callable[[str, str], str]) -> tuple[str, int]:
-    """The Decisions tab, and how many decisions in it await a person. `band` wraps the cards as the page's
+    """The Decisions tab, and how many decisions in it nobody has read. `band` wraps the cards as the page's
     poll keeps them current."""
     found = decisions(root)
     if not found:
         return "", 0
     return (f'<div class="card decs" id="decisions"><div class="head"><h2>Decisions</h2></div>{bar_html()}'
-            f'{band("decisions", listing(found))}<p class="empty shown"></p></div>',
-            sum(1 for one in found if one.awaiting))
+            f'{band("decisions", listing(found))}<p class="empty shown"></p></div>', unread(found))
 
 
 def polled(root: Path) -> tuple[str, int]:
     """What the poll carries: the cards, and the count on the tab."""
     found = decisions(root)
-    return (listing(found) if found else ""), sum(1 for one in found if one.awaiting)
+    return (listing(found) if found else ""), unread(found)
 
 
 def slice_panel(root: Path, slice_id: str) -> tuple[str, int]:
     """One slice's decisions, for the tab in its window, and how many there are."""
     found = [one for one in decisions(root) if one.slice == slice_id]
-    first = sorted(found, key=lambda one: not one.awaiting)
+    first = sorted(found, key=lambda one: (one.read, confidence(one)))
     inner = "".join(card_html(one, here=False) for one in first) or (
         '<p class="empty">No decision names this slice yet.</p>')
     said = hashlib.sha1(inner.encode("utf-8")).hexdigest()[:16]

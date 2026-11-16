@@ -19,7 +19,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-_HEAD = re.compile(r"^## (D(?:-[A-Za-z0-9_-]+-)?\d+)\s*[—-]\s*(.*)$", re.MULTILINE)
+#: A decision's id, in every shape the record's heading may carry and `check-decisions` accepts: version 1's
+#: `D7`, and version 2's `D-07` and `D-ORD-07`. The one definition the reader, the receipts and the routes use.
+ID = r"D(?:-(?:[A-Za-z0-9][A-Za-z0-9_-]*-)?)?\d+"
+_HEAD = re.compile(rf"^## ({ID})\s*[—-]\s*(.*)$", re.MULTILINE)
+_RECOMMENDED = re.compile(r"\s*\(recommended\b[^)]*\)", re.IGNORECASE)
 #: One `**Label:** value`, several to a line where ` · ` joins them; across the lines a field continues on.
 _FIELD = re.compile(r"\*\*([^*:\n]+):\*\*\s*(.*?)(?=\s+·\s+\*\*[^*:\n]+:\*\*|\Z)", re.DOTALL)
 #: The status the gate allows for a stop meant for a person and answered with nobody there.
@@ -80,8 +84,9 @@ def _option(letter: str, words: str, last: bool) -> Option:
     words = (_cut_last(words) if last else words).strip().rstrip(";·,").strip()
     if not last:
         words = re.sub(r"\s+(?:or|and)$", "", words)
-    recommended = bool(re.search(r"\(recommended\)", words, re.IGNORECASE))
-    words = re.sub(r"\s*\((?:recommended)\)", "", words, flags=re.IGNORECASE)
+    # "(recommended)", and "(recommended by the review as the smallest fix)" too.
+    recommended = bool(_RECOMMENDED.search(words))
+    words = _RECOMMENDED.sub("", words)
     words = " ".join(plain(words).split()).rstrip(".;").strip()
     return Option(letter, words, recommended)
 
@@ -124,7 +129,14 @@ def chosen(decision: str, listed: list[Option] | None) -> tuple[str, str]:
     if not took or took.group(1) not in letters:
         return "", said
     rest = said[took.end():].lstrip(" .,;:—–-").strip()
+    # "(a), made exact. (1) …" — the card heads this "Made exact:" already, and saying it twice reads as a stutter.
+    rest = re.sub(r"^(?:with\s[^.]{0,40}?)?made exact[.:,]?\s*", "", rest, flags=re.IGNORECASE)
     return took.group(1), rest
+
+
+def is_id(value: str) -> bool:
+    """Whether `value` is a decision id in any shape the record writes one."""
+    return re.fullmatch(ID, value) is not None
 
 
 def awaiting(status: str) -> bool:
@@ -132,6 +144,3 @@ def awaiting(status: str) -> bool:
     return plain(status).lower().startswith(AWAITING)
 
 
-def confirmed_status(status: str, day: str) -> str | None:
-    """The `Status` a person's confirmation leaves, or None where the decision is not awaiting one."""
-    return f"confirmed by human {day}" if awaiting(status) else None

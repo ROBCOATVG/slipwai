@@ -86,12 +86,12 @@ def machinery(kept: Read, rows: list[dict[str, str]], stoppable: bool) -> str:
 
 def live_json(board: Any) -> str:
     """Every band, each with its signature: the passage strip's state, the list of what waits on a person,
-    the decisions awaiting confirmation, and the drawn bands the page swaps where their signature has moved."""
+    the unread decisions, and the drawn bands the page swaps where their signature has moved."""
     found, _, fault, fleet, _, kept = parts(board)
     rows = lit_rows(board, kept)
     flags = able(board, kept.rows, fleet)
     listed = waiting(board, fleet, flags, kept.rows)
-    cards, awaiting = decisions_polled(board.root)
+    cards, unread = decisions_polled(board.root)
     drawn = {"look": look_html(rows, kept.folds, kept.trunk),
              "points": feedback_points_card(kept.points),
              "work": work_card(rows, fault, set(listed["slices"])),
@@ -101,7 +101,7 @@ def live_json(board: Any) -> str:
     if cards:  # the tab exists only once there is a decision; the first one is a change of the page's shape
         drawn["decisions"] = cards
     return json.dumps({"passage": json.loads(passage(board, found, kept.rows, fleet, flags, listed)),
-                       "waiting": listed, "decisions": awaiting, "model": model_said(kept.rows),
+                       "waiting": listed, "decisions": unread, "model": model_said(kept.rows),
                        "bands": {name: {"said": signature(html), "html": html} for name, html in drawn.items()}})
 
 

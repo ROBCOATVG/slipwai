@@ -264,7 +264,7 @@ class OnePollTest(BoardTest):
         assert held is not None
         self.assertEqual(held.group(1), found["bands"]["decisions"]["said"])
         self.assertEqual(found["decisions"], 1)
-        self.assertIn("1 to confirm", page)
+        self.assertIn("1 unread", page)
         book.write_text(entry.format(n=1) + entry.format(n=2), encoding="utf-8")
         after = json.loads(self.get("/live.json")[1])
         self.assertEqual(after["decisions"], 2)

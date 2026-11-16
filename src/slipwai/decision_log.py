@@ -17,10 +17,9 @@ here is what lets a stream parked at its decision ceiling go on. A decision take
 in clarify, in the chart — has no deck line and holds nothing up; its receipt is kept beside the logs in
 `decisions-read.json`, so the log can still say which of those a person has read.
 
-**Confirm is the edit the record already asks a person for.** `decisions.md` says "a person overrides one by
-editing its `Status`", and `/cruise` writes `confirmed by human <date>` when a person's word confirms one. So
-Confirm does exactly that to an entry `awaiting human confirmation`, in the checkout whose copy the board read
-it from, and writes the read receipt with it — see `confirm`. The cards are drawn by `decision_cards.py`.
+**Confirm is a record, as a read is.** A person confirming an entry `awaiting human confirmation` is kept
+beside the logs in `decisions-confirmed.json`, with the read receipt; the board edits and commits nothing in
+the project — see `confirm`. The cards are drawn by `decision_cards.py`.
 """
 from __future__ import annotations
 
@@ -28,20 +27,22 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 
-from .decision_entry import SENTENCE, awaiting, confirmed_status, parse
+from .decision_entry import ID, SENTENCE, awaiting, is_id, parse
 from .deck import entries, mark_read, streams
 from .logs import logs_dir
 
 #: Where a decision with no deck line is marked read: beside the logs, which Git already ignores.
 UPSTREAM_READ = "decisions-read.json"
-_NUMBER = re.compile(r"^\s*(D\d+)\b")
+#: Where a person's Confirm is kept, beside the read receipts and for the same reason.
+CONFIRMED = "decisions-confirmed.json"
+_NUMBER = re.compile(rf"^\s*({ID})\b")
 #: The parts of an entry shown under its decision, in this order.
 SHOWN = ("Question", "Options", "Why", "Read against", "Confidence", "Would reverse if", "Written to", "Status")
-#: Where the entry was read from: the file, kept beside its parts so Confirm edits the copy the board showed.
-FROM = "_file"
+#: Which feature's record the entry was read from: a confirmation is kept against it.
+FROM = "_feature"
 
 
 @dataclass
@@ -62,11 +63,13 @@ class Decision:
     sentence: str = ""
     status: str = ""
     capability: str = ""
-    source: str = ""
+    feature: str = ""
+    confirmed: str = ""
 
     @property
     def awaiting(self) -> bool:
-        return awaiting(self.status)
+        """Awaiting a person: the entry says so and nobody has confirmed it on the board since."""
+        return awaiting(self.status) and not self.confirmed
 
 
 def checkouts(root: Path) -> list[Path]:
@@ -88,7 +91,7 @@ def written(root: Path) -> dict[str, dict[str, str]]:
             except (OSError, UnicodeDecodeError):
                 continue
             for number, parts in parse(text).items():
-                found.setdefault(number, {**parts, FROM: str(path)})
+                found.setdefault(number, {**parts, FROM: path.parent.name})
     return found
 
 
@@ -125,6 +128,7 @@ def decisions(root: Path) -> list[Decision]:
     """Every decision, newest first."""
     book = written(root)
     charted = capabilities(root)
+    sure = confirmations(root)
     used: set[str] = set()
     found: list[Decision] = []
     for feature, fairway in streams(root):
@@ -136,7 +140,7 @@ def decisions(root: Path) -> list[Decision]:
             named = _NUMBER.match(what)
             # The line's own `id` where its words do not open with the number: a launch's decisions carry
             # `id: D9` and a sentence, and read as "D9 (not in decisions.md)" beside the entry they were.
-            number = named.group(1) if named else (ident if re.fullmatch(r"D\d+", ident) else "")
+            number = named.group(1) if named else (ident if is_id(ident) else "")
             entry = book.get(number, {})
             used.add(number)
             by = str(line.fields.get("decided_by", "")) or entry.get("Decided by", "")
@@ -146,11 +150,12 @@ def decisions(root: Path) -> list[Decision]:
                 parts["Question"] = asked[ident]
             title = entry.get("title") or asked.get(ident) or (f"{ident} (not in decisions.md)" if ident else what)
             piece = str(line.fields.get("slice", "")) or _slice(entry.get("Slice", ""))
+            home = entry.get(FROM) or feature
             found.append(Decision(f"deck:{fairway}:{line.t}", number or ident, title,
                                   entry.get("Decision") or what, line.t, piece, fairway,
                                   "you" if yours else by, parts, yours or line.t in receipts, yours,
                                   entry.get(SENTENCE, ""), entry.get("Status", ""), charted.get(piece, ""),
-                                  entry.get(FROM, "")))
+                                  home, sure.get(f"{home}/{number or ident}", "")))
     marked = upstream_read(root)
     for number, entry in book.items():
         if number in used:
@@ -164,7 +169,8 @@ def decisions(root: Path) -> list[Decision]:
                               entry.get("When", ""), piece, entry.get("Stream", ""),
                               "you" if yours else entry.get("Decided by", ""), _shown(entry),
                               yours or number in marked, yours, entry.get(SENTENCE, ""), entry.get("Status", ""),
-                              charted.get(piece, ""), entry.get(FROM, "")))
+                              charted.get(piece, ""), entry.get(FROM, ""),
+                              sure.get(f"{entry.get(FROM, '')}/{number}", "")))
     return sorted(found, key=lambda one: (one.when, one.number), reverse=True)
 
 
@@ -177,7 +183,7 @@ def mark(root: Path, keys: list[str]) -> str:
         if kind == "deck" and ":" in rest:
             fairway, _, stamp = rest.partition(":")
             by_stream.setdefault(fairway, []).append(stamp)
-        elif kind == "md" and re.fullmatch(r"D\d+", rest):
+        elif kind == "md" and is_id(rest):
             upstream.append(rest)
         else:
             raise ValueError(f"{key!r} names no decision")
@@ -192,77 +198,37 @@ def mark(root: Path, keys: list[str]) -> str:
     return "; ".join(said) or "nothing to mark"
 
 
-def _copies(checkout: Path, number: str) -> list[Path]:
-    """Every file in one checkout holding this entry: the feature's record, and a fairway's own copy it is
-    rendered from, so `render-fairways --check` still finds the two agreeing."""
-    heading = re.compile(rf"^## {re.escape(number)}\s*[—-]", re.MULTILINE)
-    found = [*sorted(checkout.glob("specs/*/decisions.md")), *sorted(checkout.glob("fairways/**/decisions.md"))]
-    return [path for path in found if heading.search(path.read_text(encoding="utf-8"))]
+def confirmations(root: Path) -> dict[str, str]:
+    """Every decision a person confirmed on the board, as `<feature>/<id>` → the instant they did."""
+    try:
+        held = json.loads((logs_dir(root) / CONFIRMED).read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return {}
+    return {str(key): str(value) for key, value in held.items()} if isinstance(held, dict) else {}
 
 
-def _restatus(path: Path, number: str, day: str) -> bool:
-    """Set this entry's `Status` line, and only this entry's, to confirmed. False where it does not await."""
-    text = path.read_text(encoding="utf-8")
-    head = re.search(rf"^## {re.escape(number)}\s*[—-].*$", text, re.MULTILINE)
-    if not head:
-        return False
-    after = re.search(r"^## ", text[head.end():], re.MULTILINE)
-    end = head.end() + after.start() if after else len(text)
-    block = text[head.end():end]
-    line = re.search(r"^(- \*\*Status:\*\*[ \t]*)(.*)$", block, re.MULTILINE)
-    status = confirmed_status(line.group(2), day) if line else None
-    if not line or status is None:
-        return False
-    block = block[:line.start(2)] + status + block[line.end(2):]
-    path.write_text(text[:head.end()] + block + text[end:], encoding="utf-8")
-    return True
+def confirm(root: Path, key: str, now: datetime | None = None) -> str:
+    """A person confirms a decision that awaits them: a record beside the logs, and the read receipt.
 
-
-def _clean(checkout: Path, paths: list[Path]) -> bool:
-    shown = subprocess.run(["git", "-C", str(checkout), "status", "--porcelain", "--", *map(str, paths)],
-                           capture_output=True, text=True, check=False)
-    return shown.returncode == 0 and not shown.stdout.strip()
-
-
-def confirm(root: Path, key: str, today: date | None = None) -> str:
-    """A person confirms a decision that awaits them: what Confirm on its card does, and all it does.
-
-    1. The entry's `Status` goes from `awaiting human confirmation` to `confirmed by human <date>` — the
-       status `/cruise` writes when a person's word confirms one — in the checkout the board read the entry
-       from (trunk's copy where trunk has it, else the berth whose slice wrote it), in its feature record and
-       in any fairway copy that record is rendered from. Nothing else in the entry or the file changes.
-    2. Where those files had no other uncommitted change, the edit is committed there on its own, so a merge
-       the harbour makes into that checkout next is not refused over a file somebody left edited. Where they
-       had one, the edit is left beside it uncommitted, and the answer says so, because committing would
-       carry somebody else's half-written words with it.
-    3. The decision's read receipt is written, as Mark read writes it, where it was not read already.
+    The record is `decisions-confirmed.json`, keyed `<feature>/<id>` with the instant, kept where
+    `decisions-read.json` is — which Git ignores — and read back by `decisions` so the card says the decision
+    is confirmed. Nothing in any checkout's working tree is touched and nothing is committed: the board does
+    not know whose name a commit would carry, a berth's `decisions.md` is its agent's while it works, and an
+    entry is the owning stream's to rewrite. `/cruise` already writes `confirmed by human <date>` into the
+    entry when its stream is told a person confirmed it; this does not tell it (a later stream carries the
+    board's messages to streams), so the record is what the board shows until the entry itself says so.
     """
     one = next((each for each in decisions(root) if each.key == key), None)
     if one is None:
         raise ValueError(f"{key!r} names no decision on this board")
     if not one.awaiting:
         raise ValueError(f"{one.number} is not awaiting confirmation; its status is {one.status or 'not written'}")
-    if not one.source:
-        raise ValueError(f"{one.number} has no entry in any decisions.md to confirm")
-    source = Path(one.source)
-    checkout = next((place for place in checkouts(root) if source.resolve().is_relative_to(place.resolve())),
-                    root)
-    paths = _copies(checkout, one.number)
-    clean = _clean(checkout, paths)
-    day = (today or date.today()).isoformat()
-    changed = [path for path in paths if _restatus(path, one.number, day)]
-    if not changed:
-        raise ValueError(f"{one.number}'s `Status` line could not be found to change; edit it by hand")
-    where = "trunk" if checkout.resolve() == root.resolve() else f"the berth at {checkout.name}"
-    said = f"{one.number} confirmed in {where}"
-    if clean:
-        committed = subprocess.run(
-            ["git", "-C", str(checkout), "commit", "--quiet", "-m",
-             f"A person confirmed {one.number} on the board", "--", *map(str, changed)],
-            capture_output=True, text=True, check=False)
-        said += "" if committed.returncode == 0 else "; not committed, the commit was refused there"
-    else:
-        said += "; left uncommitted beside the change already in that file"
+    held = confirmations(root)
+    held[f"{one.feature}/{one.number}"] = (now or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    path = logs_dir(root) / CONFIRMED
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(held, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    said = f"{one.number} confirmed"
     if not one.read:
         said += "; " + mark(root, [key])
     return said

@@ -6,18 +6,21 @@ the shape this repository's own older tests write (`A — … · B — …`).
 """
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 import unittest
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import checkout_packages  # noqa: F401
 
 from slipwai import logs
 from slipwai.decision_cards import card_html, listing, slice_panel, tab, who
-from slipwai.decision_entry import chosen, options, parse
-from slipwai.decision_log import confirm, decisions
+from slipwai.decision_entry import chosen, is_id, options, parse
+from slipwai.decision_log import confirm, decisions, mark
+from slipwai.feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from slipwai.live_page import window, window_payload
 
 REAL = """# Decisions: 001-game-club-manager
@@ -123,6 +126,24 @@ class OptionsTest(unittest.TestCase):
         self.assertEqual(chosen("A — no connector write in this phase.", found)[0], "A")
         self.assertEqual(chosen("A person decides later.", found)[0], "", "a sentence opening with A is no letter")
 
+    def test_a_recommendation_that_says_by_whom_is_still_the_recommended_one(self) -> None:
+        """game-club-manager's D33: "(recommended by the review as the smallest fix)"."""
+        found = options("(a) **keep it (recommended by the review as the smallest fix)**; (b) drop it")
+        assert found is not None
+        self.assertEqual((found[0].text, found[0].recommended), ("keep it", True))
+
+    def test_made_exact_is_not_said_twice(self) -> None:
+        """game-club-manager's D43: "(a), made exact. (1) …" read "Made exact: made exact. (1) …"."""
+        listed = options("(a) one port; (b) two")
+        self.assertEqual(chosen("(a), made exact. (1) One port.", listed), ("a", "(1) One port."))
+        self.assertEqual(chosen("(a), with three things made exact. (1) T.", listed), ("a", "(1) T."))
+
+    def test_one_definition_of_a_decision_id_takes_both_shapes(self) -> None:
+        for ident in ("D7", "D-07", "D-ORD-07"):
+            self.assertTrue(is_id(ident), ident)
+        self.assertFalse(is_id("D-"))
+        self.assertIn("D-ORD-07", parse("## D-ORD-07 — which store\n- **Decision:** (a).\n"))
+
     def test_options_in_no_shape_are_shown_as_written(self) -> None:
         self.assertIsNone(options(self.book["D60"]["Options"]))
 
@@ -131,6 +152,7 @@ class BoardTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
         git(self.root, "init", "-q")
+        (self.root / ".gitignore").write_text(".slipwai/\n", encoding="utf-8")
         (self.root / "specs/001-game-club-manager").mkdir(parents=True)
         (self.root / "specs/001-game-club-manager/decisions.md").write_text(REAL, encoding="utf-8")
         (self.root / "specs/001-game-club-manager/chart.yaml").write_text(CHART, encoding="utf-8")
@@ -169,30 +191,48 @@ class BoardTest(unittest.TestCase):
         self.assertIn("&lt;script&gt;", html)
         self.assertNotIn("/join/<code>", card_html(self.found()["D45"]))
 
-    def test_the_tab_opens_on_what_awaits_grouped_by_capability_then_slice_and_counts_it(self) -> None:
+    def test_the_tab_opens_on_what_nobody_has_read_least_sure_first_and_counts_it(self) -> None:
         html, count = tab(self.root, lambda name, drawn: f'<div data-band="{name}">{drawn}</div>')
-        self.assertEqual(count, 2)
-        self.assertLess(html.index("Awaiting your confirmation · 2"), html.index("Everything else · 2"))
-        awaiting = html[html.index("Awaiting your confirmation · 2"):html.index("Everything else")]
-        self.assertIn("<h4>sign-in-and-join</h4>", awaiting)
-        self.assertLess(awaiting.index("<h5>Slice CL1</h5>"), awaiting.index("D45"))
+        self.assertEqual(count, 3, "D1, D45 and D55 are unread; D60 is a person's own answer")
+        self.assertIn("4 decisions · 3 unread · 2 awaiting your confirmation", html)
+        first = html[html.index("Not read yet, least sure first · 3"):html.index("Everything else · 1")]
+        self.assertLess(first.index("D55"), first.index("D45"), "low confidence before high")
+        self.assertLess(first.index("D45"), first.index("D1<"), "a capability's group gathers its slices")
+        self.assertIn("<h4>sign-in-and-join</h4>", first)
         self.assertIn('<div data-band="decisions">', html)
-        self.assertIn("Before the slices", html[html.index("Everything else"):])
+        mark(self.root, ["md:D55"])
+        self.assertEqual(tab(self.root, lambda name, drawn: drawn)[1], 2, "reading a card takes it off the count")
 
     def test_the_filters_sit_outside_the_band_and_each_card_carries_what_they_filter_by(self) -> None:
         html, _ = tab(self.root, lambda name, drawn: f'<div data-band="{name}">{drawn}</div>')
         self.assertLess(html.index('name="d-stream"'), html.index("data-band"))
         for name in ("d-stream", "d-slice", "d-by"):
             self.assertIn(f'<select name="{name}"', html)
-        self.assertIn('data-stream="clubs" data-slice="CL2" data-by="the skipper"', html)
+        self.assertIn('data-stream="clubs" data-slice="CL2" data-by="the skipper" '
+                      'data-status="awaiting your confirmation"', html)
+        self.assertIn('<select name="d-status"', html)
         self.assertIn('data-by="the session"', listing(decisions(self.root)))
 
     def test_change_this_opens_the_feedback_box_with_the_decision_quoted_and_its_slice(self) -> None:
         html = card_html(self.found()["D45"])
-        self.assertIn('id="change-md-D45"', html)
         self.assertIn("data-feedback=", html)
         self.assertIn("&quot;slice&quot;: &quot;CL2&quot;", html)
         self.assertIn("decision D45: A pasted invite link", html)
+
+    def test_change_this_from_a_slices_window_opens_the_voyage_box_with_that_context_in_the_address(self) -> None:
+        panel, _ = slice_panel(self.root, "CL2")
+        link = panel.split("data-decision-change", 1)[0].rsplit('href="', 1)[1].split('"', 1)[0]
+        address = urlsplit(link.replace("&amp;", "&"))
+        asked = parse_qs(address.query)
+        self.assertEqual((address.path, address.fragment), ("/voyage", "tab-try"))
+        self.assertEqual(asked["feedback-slice"], ["CL2"])
+        self.assertEqual(asked["feedback-fairway"], ["clubs"])
+        self.assertTrue(asked["feedback-from"][0].startswith("decision D"))
+        self.assertIn("feedback-ask", asked)
+        # The Feedback script reads it once, as the page loads, and takes it out of the address.
+        self.assertIn("key.startsWith('feedback-')", FEEDBACK_SCRIPT)
+        self.assertIn("history.replaceState", FEEDBACK_SCRIPT)
+        self.assertNotIn("#change-", panel + card_html(self.found()["D45"]))
 
     def test_the_slice_window_has_a_decisions_tab_of_that_slices_decisions(self) -> None:
         page = window(self.root, "clubs", "CL2")
@@ -201,46 +241,63 @@ class BoardTest(unittest.TestCase):
         self.assertIn('<section data-panel="decisions" hidden>', page)
         panel, count = slice_panel(self.root, "CL2")
         self.assertEqual(count, 2)
-        self.assertIn('href="/voyage#change-md-D45"', panel, "the window has no box: it links to the one there is")
         self.assertIn('"decisions_said"', window_payload(self.root, "clubs", "CL2"))
 
-    def test_confirm_edits_that_entrys_status_and_nothing_else_and_commits_it(self) -> None:
-        before = (self.root / "specs/001-game-club-manager/decisions.md").read_text(encoding="utf-8")
-        said = confirm(self.root, "md:D45", date(2026, 11, 16))
-        self.assertIn("D45 confirmed in trunk", said)
-        after = (self.root / "specs/001-game-club-manager/decisions.md").read_text(encoding="utf-8")
-        self.assertEqual(after, before.replace(
-            "- **Status:** awaiting human confirmation\n\n## D55",
-            "- **Status:** confirmed by human 2026-11-16\n\n## D55"))
-        self.assertEqual(git(self.root, "status", "--porcelain", "--", "specs").strip(), "")
-        self.assertIn("A person confirmed D45", git(self.root, "log", "-1", "--format=%s"))
-        self.assertTrue(self.found()["D45"].read)
+    def statuses(self, *places: Path) -> list[str]:
+        return [git(place, "status", "--porcelain").strip() for place in places]
+
+    def test_confirm_is_a_record_beside_the_logs_and_touches_no_checkout(self) -> None:
+        berth = self.root.parent / f"{self.root.name}-CL2"
+        git(self.root, "worktree", "add", "-q", "-b", "slice/CL2", str(berth))
+        before = git(self.root, "rev-parse", "HEAD")
+        said = confirm(self.root, "md:D45", datetime(2026, 11, 16, 9, tzinfo=UTC))
+        self.assertIn("D45 confirmed", said)
+        self.assertEqual(self.statuses(self.root, berth), ["", ""])
+        self.assertEqual(git(self.root, "rev-parse", "HEAD"), before, "nothing is committed")
+        self.assertIn("awaiting human confirmation",
+                      (self.root / "specs/001-game-club-manager/decisions.md").read_text(encoding="utf-8")
+                      .split("## D55")[0], "the entry is the owning stream's to rewrite")
+        held = json.loads((logs.logs_dir(self.root) / "decisions-confirmed.json").read_text(encoding="utf-8"))
+        self.assertEqual(held, {"001-game-club-manager/D45": "2026-11-16T09:00:00Z"})
+        one = self.found()["D45"]
+        self.assertFalse(one.awaiting)
+        self.assertTrue(one.read)
+        self.assertIn("Confirmed by you on 2026-11-16", card_html(one))
         with self.assertRaises(ValueError):
             confirm(self.root, "md:D45")
 
-    def test_confirm_edits_the_berth_that_holds_an_entry_trunk_has_not_got(self) -> None:
+    def test_a_decision_only_a_berth_holds_is_confirmed_without_touching_the_berth(self) -> None:
         berth = self.root.parent / f"{self.root.name}-CL2"
         git(self.root, "worktree", "add", "-q", "-b", "slice/CL2", str(berth))
         book = berth / "specs/001-game-club-manager/decisions.md"
         d55 = REAL[REAL.index("## D55"):REAL.index("## D60")]
         book.write_text(book.read_text(encoding="utf-8") + "\n" + d55.replace("D55", "D70"), encoding="utf-8")
-        trunk = (self.root / "specs/001-game-club-manager/decisions.md").read_text(encoding="utf-8")
-        said = confirm(self.root, "md:D70", date(2026, 11, 16))
-        self.assertIn(f"the berth at {berth.name}", said)
-        self.assertIn("left uncommitted", said, "the berth's file had the slice's own new entry in it")
-        self.assertIn("confirmed by human 2026-11-16", book.read_text(encoding="utf-8").split("## D70")[1])
-        self.assertEqual((self.root / "specs/001-game-club-manager/decisions.md").read_text(encoding="utf-8"), trunk)
+        written = book.read_text(encoding="utf-8")
+        confirm(self.root, "md:D70")
+        self.assertEqual(book.read_text(encoding="utf-8"), written)
+        self.assertEqual(self.statuses(self.root), [""])
+        self.assertFalse(self.found()["D70"].awaiting)
 
-    def test_a_deck_decision_is_confirmed_through_its_entry_and_read_with_the_receipt_the_ceiling_counts(self) -> None:
+    def test_a_deck_decision_is_confirmed_and_read_with_the_receipt_the_ceiling_counts(self) -> None:
         deck = logs.deck_path(self.root, "001-game-club-manager", "clubs")
         deck.parent.mkdir(parents=True)
         deck.write_text(logs.entry("decision", fairway="clubs", slice="CL2", id="D45", what="D45 (a): code only",
                                    decided_by="sail-decide-skipper").line(), encoding="utf-8")
         key = next(one.key for one in decisions(self.root) if one.number == "D45")
         self.assertTrue(key.startswith("deck:clubs:"))
-        confirm(self.root, key, date(2026, 11, 16))
+        confirm(self.root, key)
         self.assertIn('"kind": "read"', deck.read_text(encoding="utf-8"))
         self.assertFalse(self.found()["D45"].awaiting)
+        self.assertEqual(self.statuses(self.root), [""])
+
+    def test_a_fairways_prefixed_decision_is_marked_read_and_confirmed(self) -> None:
+        book = self.root / "specs/001-game-club-manager/decisions.md"
+        d55 = REAL[REAL.index("## D55"):REAL.index("## D60")]
+        book.write_text(book.read_text(encoding="utf-8") + "\n" + d55.replace("D55", "D-CLB-07"), encoding="utf-8")
+        self.assertIn("1 earlier decision(s) read", mark(self.root, ["md:D-CLB-07"]))
+        self.assertTrue(self.found()["D-CLB-07"].read)
+        confirm(self.root, "md:D-CLB-07")
+        self.assertFalse(self.found()["D-CLB-07"].awaiting)
 
 
 if __name__ == "__main__":  # pragma: no cover

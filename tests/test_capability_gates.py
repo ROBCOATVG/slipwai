@@ -60,9 +60,9 @@ class CapabilityGatesTest(unittest.TestCase):
         self.assertIn(capability_gates.GATES_FILE, rung)
         self.assertIn("`Cleared: <date> · <commit>`", rung)
 
-    def test_findings_above_the_bar_close_before_the_person_s_demo(self) -> None:
+    def test_findings_above_the_bar_close_before_the_capability_is_accepted(self) -> None:
         rung = self.rungs()["Capability gates"]
-        self.assertIn("fixed **before the person's demo**, in a follow-up slice in the same fairway", rung)
+        self.assertIn("fixed **before the capability is accepted**, in a follow-up slice in the same fairway", rung)
         self.assertIn("stowed to the careen", rung)
         self.assertIn("an open `CRITICAL` is the next slice", rung)
 

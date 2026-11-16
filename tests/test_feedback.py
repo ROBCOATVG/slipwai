@@ -15,6 +15,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -194,7 +195,11 @@ class CardTest(Project):
         self.assertIn("Triage now", list_html(self.root, [], {}, False))
 
     def test_accept_is_a_persons_verdict_told_to_the_capabilitys_stream(self) -> None:
-        act(self.root, {"verb": "accept", "capability": "basket", "fairway": "ORD"}, [], self.fleet, lambda: True)
+        """The line itself is `demos.accept`'s, held to whole-and-cleared, and tested in `test_demos`."""
+        with mock.patch("slipwai.feedback_card.accept", return_value="basket accepted") as wrote:
+            act(self.root, {"verb": "accept", "capability": "basket", "fairway": "ORD"}, [], self.fleet,
+                lambda: True)
+        wrote.assert_called_once_with(self.root, "basket")
         [told] = self.told()
         self.assertEqual(told.fields["by"], "person")
         self.assertIn("basket capability: accepted", told.fields["message"])

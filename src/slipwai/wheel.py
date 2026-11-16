@@ -55,9 +55,22 @@ STOPS: tuple[tuple[str, str, dict[str, str]], ...] = (
     ("sessions", "A captain's session",
      {"print": "the agent's print mode, as before",
       "protocol": "over the Agent Client Protocol: its work shown as it goes, a stop that stops"}),
+    # Who accepts a whole capability. Not implied by any row above: `hand` in the file is how the walk is
+    # driven, and none of the others is about a demo. The hand's verdict is the acceptance unless this says
+    # a person's is.
+    ("demos", "A capability's demo",
+     {"hand": "the hand's verdict accepts it; the film is there when I have time",
+      "person": "wait for me to accept it"}),
 )
 #: The value that means a person is asked. A stop sitting on this is `/sail`'s answer to it.
 ASKS = "park"
+#: The stops whose asking value is a word of their own rather than `park`.
+ASKING = {"demos": "person"}
+
+
+def asks(name: str) -> str:
+    """The value of this stop that means a person is asked."""
+    return ASKING.get(name, ASKS)
 
 
 def known(name: str) -> tuple[str, ...]:
@@ -91,7 +104,7 @@ def orders(root: Path) -> dict[str, str]:
 def asking(root: Path) -> list[str]:
     """Which stops this run will stop for a person at, in the order they are met."""
     held = orders(root)
-    return [title for name, title, _ in STOPS if held.get(name) == ASKS]
+    return [title for name, title, _ in STOPS if held.get(name) == asks(name)]
 
 
 def set_stop(root: Path, name: str, value: str) -> str:

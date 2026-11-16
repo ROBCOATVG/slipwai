@@ -23,7 +23,7 @@ from .dials import dials as dials_of
 from .fleet import NOTHING
 from .page_shell import PLAIN, esc
 from .telegraph import MEANS, POSITIONS, SETTINGS
-from .wheel import ASKS, STOPS, known, orders
+from .wheel import STOPS, asks, known, orders
 
 #: The dial's positions as a person reads them, and the plain names of the numbers under them. `PLAIN` is
 #: the board's, because the same names label the fine tune and the fold; this holds only the dial.
@@ -137,8 +137,8 @@ def stops_tab(answers: dict[str, str], controls: bool) -> tuple[str, str, str] |
     if not answers:
         return None
     rows = "".join(row("cruise", Dial(name, title, says), known(name), answers.get(name, ""), controls,
-                       ASKS) for name, title, says in STOPS)
-    asked = [title.lower() for name, title, _ in STOPS if answers.get(name) == ASKS]
+                       asks(name)) for name, title, says in STOPS)
+    asked = [title.lower() for name, title, _ in STOPS if answers.get(name) == asks(name)]
     note = (WHEEL + " " + (f"This run stops for you at: {', '.join(asked)}."
                            if asked else "Nothing here stops for you: this run answers every one itself."))
     return ("answers", "Who answers",

@@ -1,10 +1,11 @@
 """The Feedback card on the Voyage tab: what using the app showed a person, where it goes, and what it became.
 
-Three things in one card, because they are one loop. A capability waiting for its demo is accepted here, or
-not yet, with the reason. Anything a person says — from this card, from Try it, from a slice's card — is
-written under `docs/feedback/` (`feedback.py`), and the board starts the triage session that proposes a
-route for it. Each proposal then waits here for Confirm, a different route, or Drop, and below them the list
-of every item and what it turned into.
+Three things in one card, because they are one loop. Where the project says a person accepts demos, a
+capability waiting for its demo is accepted here, or not yet, with the reason; by default the hand's verdict
+was the acceptance and nothing here asks for one — its film offers the same box instead. Anything a person
+says — from this card, from Try it, from a slice's card — is written under `docs/feedback/` (`feedback.py`),
+and the board starts the triage session that proposes a route for it. Each proposal then waits here for
+Confirm, a different route, or Drop, and below them the list of every item and what it turned into.
 
 **The box is not repainted.** The card polls `/feedback.json` and swaps its list when what it shows has
 changed; the box a person is typing in sits outside that list, so a poll never takes their words away.
@@ -15,7 +16,9 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
+from .demos import HAND, accept, opened
 from .feedback import HOLDS, ROUTES, Item, capture, confirm, drop, items
+from .film import films_of
 from .page_shell import esc
 
 #: What the card's buttons and the box ask for.
@@ -157,6 +160,21 @@ def capabilities_html(fleet: dict) -> str:
     return f"<h3>Ready for your demo</h3>{rows}"
 
 
+def to_look_at(root: Path, fleet: dict) -> list[dict[str, str]]:
+    """Each capability with a film nobody has said anything about or opened: *when you have time*.
+
+    For the Waiting-on-you list to read. Never holding anything up — under `hand` the capability is accepted
+    already, and under `person` a capability owed a verdict is listed by the Feedback card as well; `accept`
+    says which, so the list can word it. Said about is any feedback item naming the capability.
+    """
+    named = {one.fields.get("capability", "") for one in items(root)}
+    due = fleet.get("demo_due_in") or {}
+    return [{"feature": one["feature"], "capability": one["capability"], "title": one["title"],
+             "accept": "yes" if one["capability"] in due else ""}
+            for one in films_of(root)
+            if one["capability"] not in named and not opened(root, one["feature"], one["capability"])]
+
+
 def proposal_html(item: Item, rows: list[dict[str, str]]) -> str:
     route = item.fields.get("route", "")
     on = item.fields.get("slice", "")
@@ -238,9 +256,18 @@ def act(root: Path, held: dict, rows: list[dict[str, str]], fleet: dict, start: 
     if verb == "accept":
         capability, fairway = str(held.get("capability", "")), str(held.get("fairway", ""))
         if capability not in (fleet.get("demo_due_in") or {}):
+            if fleet.get("demos", HAND) == HAND:
+                raise ValueError("nothing here waits on a person to accept a demo: this project takes the hand's "
+                                 "verdict as the acceptance. Say what the film showed instead")
             raise ValueError(f"{capability or 'that capability'} is not waiting for a demo")
-        tell(root, fairway, f"Demo verdict for the {capability} capability: accepted.")
-        return f"told {fairway}: {capability} accepted"
+        # The line itself, held to whole-and-cleared: a message alone was read by nobody once every slice
+        # had merged. The captain is still told, where its stream has a log to tell.
+        said = accept(root, capability)
+        try:
+            tell(root, fairway, f"Demo verdict for the {capability} capability: accepted.")
+        except ValueError:
+            return said
+        return f"{said}; told {fairway}"
     if verb == "send":
         given = held.get("context")
         context: dict = given if isinstance(given, dict) else {}

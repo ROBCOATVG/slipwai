@@ -32,6 +32,11 @@ example that shows it, `implementation` is a task. Record `outcome=` on the demo
 write `accepted-by: {HAND}` beside the register row or status flip, so a person can tell which demos a person
 has seen.
 
+**A whole capability's acceptance is `{CONFIG}`'s `demos`.** Under `hand`, the default, the hand's
+`accepted` at the capability's walk is the capability accepted, and nothing waits on a person or parks;
+under `person` it is the last reading before a person's. `commands/sail.md`'s *What the demo stop has to
+contain* says which line to write and the command that writes it.
+
 **Then stop what the demo started.** The ladder leaves the app running past the end of the turn because the
 actor's first action is opening it; here the actor was the hand, and it has finished. Try it is not what the
 demo started and is never stopped here — a person has it open. Once the verdict is recorded, end what was — `{make} demo-down` or `{make} services-down` where the demo used them, otherwise the process

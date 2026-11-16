@@ -89,6 +89,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # to do.
     ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
                  "fleet_record", "timeline", "deck",
+                 # Who accepts a whole capability — the hand or a person — read once for the board's fold.
+                 "demos",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
                  "uncommitted", "wrappers", "strategy_record", "strategy", "survey", "structure", "big_picture",
                  "deployment_shapes",

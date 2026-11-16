@@ -153,9 +153,9 @@ exit at once. The fairway waits until a person clears the park.
 1. **Mock-up approval.** Before the work is given types, every surface state is approved, parked with the
    question that it waits on, or marked `n/a` with a reason. A surface that nobody has seen becomes a read
    model, a route and a set of tests. All three cost more to change than a drawing.
-2. **The demo.** This is a run of the slice that an actor can see, in front of somebody. Acceptance is
-   recorded against a **capability**, not a slice, because a person accepts a piece of working product, not
-   a branch.
+2. **The demo, if you ask for it.** Acceptance is recorded against a **capability**, not a slice. By
+   default the hand's verdict is the acceptance, and its film is on the board for you to comment on. Set
+   `demos` to `person` in `.specify/cruise.json`, and a person accepts each capability instead.
 3. **Anything that the ceiling catches.** When `decision_ceiling` decisions have been taken without a person
    reading them, the fairway parks itself. This is not a warning: the fairway stops. A run that takes a
    hundred unread decisions has quietly become somebody else's product.

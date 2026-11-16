@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from .deck import recent, said
+from .demos import on_board
 from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name through this module
     FEED,
     GROUPED,
@@ -617,8 +618,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         if fault:
             clearance_faults.add(feature)
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
-    accepted = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "accepted"]
-    due = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "demo-due"]
+    demos, accepted, due_in = on_board(root, [(one.name, one.entries) for one in found])
     waiting = inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
@@ -629,12 +629,13 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         "processes": processes(root, found, now),
         "timeline": spans(found, now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if now else ""),
         # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
-        # accepted, and accepted is the only line a capability ends on.
-        "accepted": sorted(set(accepted)),
+        # accepted, and accepted is the only line a capability ends on. Who accepts is `demos` (`demos.py`):
+        # under `hand`, the default, nothing is ever owed a person.
+        "demos": demos,
+        "accepted": accepted,
         "gates_owed": gates_owed(root),
-        "demo_due": sorted(set(due) - set(accepted)),
-        "demo_due_in": {str(e.fields["capability"]): one.name for one in found for e in one.entries  # whose
-                        if e.kind == "demo-due" and str(e.fields["capability"]) not in accepted},
+        "demo_due": sorted(due_in),
+        "demo_due_in": due_in,  # each against the fairway whose log said it
         # Each stream's own lines, said rather than printed. The board answers "is anything stuck"; the
         # next question is always "what has this one been doing", and that is forty lines of one file.
         "streams": {one.name: recent(root, one.name)[0] for one in found},

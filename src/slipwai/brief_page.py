@@ -92,7 +92,10 @@ SCRIPT = """
     const check = page.querySelector('.check'), none = page.querySelector('.none');
     const frame = page.querySelector('iframe'), undrawn = page.querySelector('.undrawn');
     const steps = page.querySelectorAll('nav.steps span');
-    let at = 0, busy = false, timer = null, drawn = 0;
+    let at = 0, busy = false, timer = null, drawn = 0, follow = false;
+    // What a person just said is what they want to see: the log is taken to its end, and the page with it.
+    const bottom = () => { log.scrollTop = log.scrollHeight;
+                           if (log.lastElementChild) log.lastElementChild.scrollIntoView({block: 'nearest'}); };
     const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
                                                  body: JSON.stringify({sketch: slug, ...body})});
     const reply = (id, body) => post('/brief/answer', {id, ...body});
@@ -134,7 +137,8 @@ SCRIPT = """
       said.turns.forEach(draw);
       at = said.at; busy = said.busy;
       drawWaiting(log, busy, said.thinking, said.doing, said.for);
-      if (said.turns.length || busy) { empty.hidden = true; if (stuck) log.scrollTop = log.scrollHeight; }
+      if (said.turns.length || busy) { empty.hidden = true; if (stuck || follow) bottom(); }
+      if (said.turns.length) follow = false;
       paint(said);
       if (frame && drawn !== before) {
         frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now();
@@ -149,7 +153,8 @@ SCRIPT = """
       const answer = await post('/brief/ask', {message: text});
       if (answer.status === 409) { busy = true; paint({step: 0, check: []}); poll(); return; }  // another window's turn
       if (!answer.ok) { draw({role: 'sketch', kind: 'error', text: await answer.text()}); return; }
-      input.value = ''; busy = true; drawWaiting(log, true, false); paint({step: 0, check: []}); poll();
+      input.value = ''; busy = true; follow = true; drawWaiting(log, true, false); bottom();
+      paint({step: 0, check: []}); poll();
     };
     page.querySelector('form.ask').addEventListener('submit', event => { event.preventDefault(); ask(input.value); });
     stop.addEventListener('click', () => post('/brief/cancel', {}));

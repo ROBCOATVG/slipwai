@@ -234,5 +234,44 @@ class OwnedPatternTest(unittest.TestCase):
         self.assertFalse(self.module.owned_by("apps/orders/src/x.ts", ["apps/*/openapi.yaml"]))
 
 
+class FlagDeclarationTest(unittest.TestCase):
+    """A slice declares its own flag in the same change as the code that reads it — `check-flags` will pass
+    it no other way — so the flags file is open to a slice for a key seeded `off`, and for nothing else."""
+
+    DECLARED = 'club = {\n  existing = "off"\n}\n'
+
+    def setUp(self) -> None:
+        self.tree = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tree, True)
+        (self.tree / "scripts").mkdir()
+        shutil.copy(GATE, self.tree / "scripts/check-slice-scope.py")
+        (self.tree / "project.json").write_text('{"deployables": {}}', encoding="utf-8")
+        (self.tree / "infra/service").mkdir(parents=True)
+        self.flags = self.tree / "infra/service/flags.auto.tfvars"
+        self.flags.write_text(self.DECLARED, encoding="utf-8")
+        for argument in ("init -q -b main", "config user.email g@example.com", "config user.name g",
+                         "add -A", "commit -qm base"):
+            subprocess.run(["git", *argument.split()], cwd=self.tree, capture_output=True, check=True)
+        self.module = gate_module(self.tree)
+
+    def verdict(self, text: str) -> str | None:
+        self.flags.write_text(text, encoding="utf-8")
+        return self.module.Scope("MT1", "main").violation("infra/service/flags.auto.tfvars", "M")
+
+    def test_a_new_key_seeded_off_with_its_comment_is_the_slice_s_to_add(self) -> None:
+        self.assertIsNone(self.verdict('club = {\n  existing = "off"\n  # owner: club, remove by 2027-01\n'
+                                       '  lean-coffee-meeting = "off"  # kind: release\n}\n'))
+
+    def test_a_new_key_seeded_on_is_refused(self) -> None:
+        found = self.verdict('club = {\n  existing = "off"\n  lean-coffee-meeting = "on"\n}\n')
+        self.assertIsNotNone(found)
+        self.assertIn("seeded `off`", found or "")
+
+    def test_another_key_turned_on_is_refused(self) -> None:
+        found = self.verdict('club = {\n  existing = "on"\n}\n')
+        self.assertIsNotNone(found)
+        self.assertIn("removed or changed", found or "")
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

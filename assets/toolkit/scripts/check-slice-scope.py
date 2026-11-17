@@ -29,6 +29,12 @@ What a slice's change may contain — everything since the branch left `main`, c
   model names none — and, where the block names a `context`, nothing under another context's directory in
   `domain/` or `application/`. A browser app is open to every slice: a white box is one screen;
 - **the context's events module additively**: a line may be added, none removed. It is the contract;
+- **its own flag's declaration**, `infra/service/flags.auto.tfvars`, additively and seeded `off`: a key, a
+  comment, a blank line may be added, nothing removed or changed. The method asks for the declaration in the
+  same change as the code that reads it, and `check-flags` holds a branch to that — declared and never read is
+  red on `main`, read and never declared is red on the branch — so a slice refused the file could pass on
+  neither. lean-coffee-club's MT1 handed the line back, nothing could land it alone, and it parked for a
+  person; SI1 before it stubbed sign-in round the flag it could not declare;
 - **new migration files only**, timestamped so two slices never mint the same name: `YYYYMMDDHHMM_<name>`,
   or `V<YYYYMMDDHHMM>__<name>` under Flyway. The shipped numbered ones keep working — the order is lexical
   either way, and every stamp sorts after every number;
@@ -101,6 +107,10 @@ LAYERS_BY_CONTEXT = ("domain", "application")
 #: linked — so in hr-test-2 every slice run abreast went red here on files the run itself had put there, and
 #: in game-club-manager every berth did on the ACP session files a name-by-name list had not caught up with.
 RUN_STATE = re.compile(r"^\.slipwai/run/.*$")
+#: Where the release flags are declared (`check-flags.py`), and the one shape a slice may add there: a key
+#: seeded `off`, with or without its comment. Blank lines and comments ride with it.
+FLAGS = "infra/service/flags.auto.tfvars"
+FLAG_SEEDED_OFF = re.compile(r'^\s*[A-Za-z_][A-Za-z0-9_-]*\s*=\s*"off"\s*(#.*)?$')
 
 
 def git(*arguments: str) -> str | None:
@@ -379,7 +389,27 @@ class Scope:
             f"`.slipwai/dispatch/<feature>/{self.slice_id}.jsonl` and no other; the rest are the host's."
         )
 
+    def flags_violation(self, path: str, status: str) -> str | None:
+        """The flags file grows by a declaration seeded `off`, and by nothing else, on a slice branch."""
+        if status == "D" or deletions(self.base, path):
+            return (
+                f"{path}: a line was removed or changed. A slice declares its own flag here, seeded `off`, and "
+                f"touches no other key; turning one on or striking one is the host's."
+            )
+        diff = git("diff", "--unified=0", self.base, "--", path) or ""
+        added = [line[1:] for line in diff.splitlines() if line.startswith("+") and not line.startswith("+++")]
+        wrong = [line for line in added
+                 if line.strip() and not line.lstrip().startswith("#") and not FLAG_SEEDED_OFF.match(line)]
+        if wrong:
+            return (
+                f"{path}: `{wrong[0].strip()}` is not a declaration seeded `off`. A flag a slice introduces is "
+                f"seeded `off`, as `key = \"off\"`, in the same change as the code that reads it."
+            )
+        return None
+
     def violation(self, path: str, status: str) -> str | None:
+        if path == FLAGS:
+            return self.flags_violation(path, status)
         if path.startswith(".slipwai/dispatch/"):
             return self.ledger_violation(path)
         if path.startswith("specs/"):

@@ -17,10 +17,52 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "implicitFlowEnabled": false,
-      "redirectUris": ["http://localhost:3000/*"],
-      "webOrigins": ["http://localhost:3000"],
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
       "attributes": {
         "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "web",
+      "name": "The browser app",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:3000/*"
       },
       "protocolMappers": [
         {
@@ -40,9 +82,18 @@
     }
   ],
   "groups": [
-    { "name": "app-admin", "path": "/app-admin" },
-    { "name": "app-operator", "path": "/app-operator" },
-    { "name": "app-viewer", "path": "/app-viewer" }
+    {
+      "name": "app-admin",
+      "path": "/app-admin"
+    },
+    {
+      "name": "app-operator",
+      "path": "/app-operator"
+    },
+    {
+      "name": "app-viewer",
+      "path": "/app-viewer"
+    }
   ],
   "users": [
     {
@@ -52,8 +103,16 @@
       "email": "staff@example.invalid",
       "firstName": "Local",
       "lastName": "Staff",
-      "credentials": [{ "type": "password", "value": "staff", "temporary": false }],
-      "groups": ["/app-admin"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "staff",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/app-admin"
+      ]
     }
   ]
 }

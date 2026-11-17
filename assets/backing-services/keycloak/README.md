@@ -22,6 +22,7 @@ editing either. `KEYCLOAK_PORT` is the container's host port; each issuer is `/r
 | client `app-local` | `OIDC_CLIENT_ID` | confidential, standard flow |
 | secret `local-only-not-a-real-secret` | `OIDC_CLIENT_SECRET` | published here on purpose — see below |
 | groups `app-admin`, `app-operator`, `app-viewer` | `OIDC_GROUP_ADMIN` and the other two | what the adapter maps to roles |
+| client `web` | `VITE_OIDC_CLIENT_ID` | public, PKCE, no secret: the browser app's client, and the one `try_it.py` asks for a story's token with the password grant |
 
 The `groups` protocol mapper is the part that is easy to omit and hard to diagnose. Without it the group
 memberships exist in Keycloak and never appear in the token, so the adapter's group-to-role mapping silently
@@ -47,6 +48,8 @@ secret, and nothing like it belongs in a real environment.
 | client `web` | `VITE_USERS_CLIENT_ID` | public, authorization code with PKCE (`S256`) required, no secret |
 | client `api` | `USERS_OIDC_AUDIENCE` | bearer-only: the service, which never logs anyone in and only validates tokens |
 | redirect `http://localhost:5173/*`, origin `http://localhost:5173` | the first browser app's dev server | a second browser app needs its own redirect URI added here |
+
+Both `web` clients allow the password grant (`directAccessGrantsEnabled`), which a browser never uses: it is how `try_it.py` signs a story's person in without a browser, so a story that signs in can seed. Without it every such story was dark with `401 invalid_client` or `unauthorized_client`, and lean-coffee-club's MT1 parked for a person over it. It is a local fixture; a real realm turns it off.
 
 What differs from the internal realm is what makes it an external one: **self-registration is on**, an
 account's username is its email address, **password reset is on**, and there are no groups — an external user is

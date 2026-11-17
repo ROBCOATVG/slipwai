@@ -45,10 +45,21 @@ word waiting is a reason to light a captain: the harbourmaster's plan gives such
 it is parked, and the captain's first act is to read it. A second answer to a question, before the captain has
 carried the first, replaces it; after, it reaches the slice as an ordinary message.
 
+**When the agent fails, the stream says so and carries on.** Where the captain's own machinery fails, the
+stream runs on the program alone for the rest of that run: every event still open is closed by the rule, a
+message the captain had not answered is marked unaddressed, `captain.json` beside its events says
+`"agent": false` with why and when, and the deck log gets one `noted` line. `noted` is a new deck kind: what
+the program says about its captain — that it failed, or that its session was refused commands (one line an
+event, counted) — for a person to read; nothing waits on it, so it never parks a stream. The agent is tried
+again when the captain is next started. A message over 1 MB is refused when it is sent, saying so.
+
 Also: a person's pause or stop now stands through anyone else's stop until a person resumes it; a message
 already handled keeps its receipt after the conversation key is made again, and a queued one says the key
 changed, with its text; the key's file mode is not asked on Windows; a resume with nothing held is done
-without a failure; the reaper reads `ps` in the C locale and checks its captain by identity.
+without a failure; the reaper reads `ps` in the C locale and checks its captain by identity; a stop of the
+fleet is never taken for a fault and carried on past; a file in the run folder — nested past any parser, of
+the wrong types, a link, or a pipe — is never what stops or hangs a captain; and a slice that merges while a
+person's pause stands is no longer left paused.
 
 **Catch-up:** the captain agent is off in an existing project until you turn it on: add `"captain":
 {"agent": true, "bound": 60}` to `harbour.json` (`"answers": true` to let it answer a slice's questions,

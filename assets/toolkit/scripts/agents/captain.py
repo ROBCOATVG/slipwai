@@ -184,8 +184,10 @@ LET_GO: set[str] = set()
 #: The stream's captain agent, where `harbour.json` says it has one (`captain.agent`); None is the program
 #: alone, deciding every choice by `captain_rules` exactly as it did before there was an agent.
 HELM: captain_events.Helm | None = None
-#: What the captain program has said in the deck log about its agent, each once.
+#: What the captain program has said in the deck log about its agent, each once: its failure, once a process.
 NOTED: set[str] = set()
+#: Held while the agent is let go: the main thread and one of the agent's own can find it failed at once.
+FAILING = threading.Lock()
 #: The driver's own ruling on what a slice's session asks, put back wherever the agent is let go.
 RULING = drive.ruling
 #: The warnings each slice in flight has already woken the captain for, so one warning wakes it once.
@@ -203,10 +205,12 @@ class Halted(Exception):
         self.how, self.by, self.why = how, by, why
 
 
-class Stopped(Exception):
+class Stopped(BaseException):
     """The captain was asked to stop. Raised by the SIGTERM handler wherever the captain is, so that every
     `finally` between there and `main` runs — the one in `dispatch` that ends the stage, and the one in
-    `main` that gives the claim back."""
+    `main` that gives the claim back. Not an `Exception`, as `KeyboardInterrupt` is not: no `except Exception`
+    anywhere — the boundary around the captain agent, a reader of the run folder, one yet to be written — can
+    take a stop for a fault and carry on past it. What must run on the way out is in a `finally`."""
 
 
 def on_term(signum: int, _frame: object) -> None:
@@ -558,7 +562,7 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
                    f"incomplete stage and close what it left.")
     if told:
         prompt += "\n\n" + said_to(told)
-    if HELM is not None and HELM.settings.get("answers") is True:
+    if (helm := HELM) is not None and helm.settings.get("answers") is True:
         prompt += ("\n\nA question you ask mid-turn may be answered by this stream's captain, and every answer it "
                    "gives is recorded as a decision a person reviews. A product question the artifacts do not "
                    "settle is a `question` line in the deck log, as the ladder says, never a mid-turn question.")
@@ -969,6 +973,9 @@ def landed_talk(fairway: str, slice_id: str) -> None:
             late = late or str(message["id"])
     if late:
         talk.note(home, "failed", id=late, why="the slice merged before this took effect")
+    if late or talk.halted(home)[0]:
+        # Whatever held it — the driver's pause, a pause heard and not yet in force, a person's `pausing` line
+        # standing with no driver at all — a merged slice is held by nothing, and the thread says so.
         talk.note(home, "resumed", by="merge", why="the slice merged")
     talk.note(home, "merged")
 
@@ -1497,8 +1504,8 @@ def decide_parked(feature: str, fairway: str, held: dict[str, str]) -> list[str]
     found = entries(feature, fairway)
     rounds: dict[str, list[logs.Entry]] = {}
     for slice_id in held:
-        mark = put_already(fairway, slice_id)
-        done = set(mark.read_text(encoding="utf-8").split()) if mark.is_file() else set()
+        got = talk.read_bytes(put_already(fairway, slice_id))
+        done = set(got[0].decode("utf-8", errors="replace").split()) if got else set()
         asked = [e for e in open_questions(found, slice_id) if str(e.fields.get("id", "")) not in done]
         if asked:
             rounds[slice_id] = asked
@@ -1638,47 +1645,62 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
 
 
 def agent_failed(fault: BaseException, during: str) -> None:
-    """The one boundary between the captain program and its agent's machinery: whatever that raises, the stream
-    carries on as the program alone. Said once, in the deck log, with why; the agent is let go for the rest of
-    this process, and the slices' sessions are ruled on by the fixed rule again."""
+    """The one path by which the captain program lets its agent go — from the main thread, and from a thread of
+    the agent's own (`Helm.later`) alike: whatever its machinery raised, the stream carries on as the program
+    alone. `HELM` is dropped first, so nothing new is put to it while it is let go; then every event still
+    open is closed by the rule with its closing record, every ask put in the background is answered — a
+    message to the stream marked unaddressed — and the captain's session ended (`Helm.fail`); `captain.json`
+    says `agent: false`, why and when; the slices' sessions are ruled on by the fixed rule again; and it is said
+    once, as a `noted` line nothing waits on. The next start of the program tries the agent again, which the
+    status and that line say."""
     global HELM
-    if "agent-failed" in NOTED:
-        return
-    NOTED.add("agent-failed")
-    feature, fairway = ON.get("feature", ""), ON.get("fairway", "")
-    print(f"captain: the captain agent failed while {during} ({type(fault).__name__}: {fault}); {fairway} runs on "
-          f"the program alone", flush=True)
-    if feature and fairway:
-        try:
-            said_once(feature, fairway, f"The captain agent failed while {during} ({type(fault).__name__}: "
-                                        f"{str(fault)[:300]}); the stream runs on the program alone until the "
-                                        f"captain is started again")
-        except Exception:  # noqa: BLE001 — saying so must not be what fails
-            pass
-    held, HELM = HELM, None
+    with FAILING:
+        if "agent-failed" in NOTED:
+            return
+        NOTED.add("agent-failed")
+        held, HELM = HELM, None
     drive.ruling = RULING
+    feature, fairway = ON.get("feature", ""), ON.get("fairway", "")
+    why = f"the captain agent failed while {during} ({type(fault).__name__}: {str(fault)[:200]})"
+    print(f"captain: {why}; {fairway} runs on the program alone", flush=True)
     try:
         if held is not None:
-            held.runner.close()  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001
-        pass
-
-
-def said_once(feature: str, fairway: str, why: str) -> None:
-    """A `told` from the captain program about its agent, with its own `read` receipt beside it: news for a
-    person, never a note the stream waits on — a stream does not park on the program saying its agent failed."""
-    told = logs.entry("told", fairway=fairway, by="captain program", message=why)
-    write(feature, fairway, told)
-    write(feature, fairway, logs.entry("read", fairway=fairway, told=told.t))
+            held.fail(why)
+    except Exception as failing:  # noqa: BLE001 — letting it go must not be what fails
+        print(f"captain: letting the captain agent go met {type(failing).__name__}: {failing}", flush=True)
+    if fairway:
+        try:
+            captain_agent.say_status(logs.run_dir(ROOT) / "events" / fairway, False, why)
+        except OSError:
+            pass  # the folder is what failed, as often as not: the deck line below says it
+    if feature and fairway:
+        try:
+            write(feature, fairway, logs.entry("noted", fairway=fairway, by="captain program",
+                                               what=f"{why[0].upper()}{why[1:]}; the stream runs on the program "
+                                                    f"alone until the captain is started again"))
+        except (OSError, logs.Unreadable):
+            pass
 
 
 def guarded(during: str, call: Callable[[], Any], fallback: Any = None) -> Any:
-    """`call` with the agent's failure turned into the rule: `fallback` where it raised."""
+    """`call` with the agent's failure turned into the rule: `fallback` where it raised. A stop is not a failure
+    (`Stopped` is no `Exception`) and goes through."""
     try:
         return call()
     except Exception as fault:  # noqa: BLE001 — the boundary itself
         agent_failed(fault, during)
         return fallback
+
+
+def facts_or_rule(kind: str, facts: Callable[[], dict]) -> dict | None:
+    """The facts a choice is put with, gathered by the program outside the boundary: a fault here is the
+    program's, said as its own, and that one choice is the rule's — the agent is not let go for it."""
+    try:
+        return facts()
+    except Exception as fault:  # noqa: BLE001 — the program alone never gathers these, so they never stop it
+        print(f"captain: {kind} decided by the rule — the captain program could not gather its facts "
+              f"({type(fault).__name__}: {fault})", flush=True)
+        return None
 
 
 def decided(kind: str, slice_id: str, facts: Callable[[], dict], may: list[str],
@@ -1690,7 +1712,10 @@ def decided(kind: str, slice_id: str, facts: Callable[[], dict], may: list[str],
     helm = HELM
     if helm is None:
         return default
-    return guarded(f"deciding {kind}", lambda: helm.decide(kind, slice_id, facts(), may, default, check)[0], default)
+    known = facts_or_rule(kind, facts)
+    if known is None:
+        return default
+    return guarded(f"deciding {kind}", lambda: helm.decide(kind, slice_id, known, may, default, check)[0], default)
 
 
 def gate_failed(slice_id: str, feature: str, fairway: str, why: str, tried: int, bound: int) -> dict:
@@ -1741,9 +1766,10 @@ def choose(feature: str, fairway: str, candidates: list[str], free: int, flying:
     default, facts, check = choice(feature, candidates, free, flying)
     if free <= 0 or len(candidates) <= free:
         return [str(one["slice"]) for one in default]
+    asked = HELM is not None
     chosen = [str(one["slice"]) for one in decided("choose-next", "", facts, ["start", "say", "none"], default, check)
               if one.get("verb") == "start"]
-    if HELM is None or now is None:
+    if not asked or now is None:
         return chosen
     still, room = now()
     return [one for one in chosen if one in still][:max(0, room)]
@@ -1752,16 +1778,16 @@ def choose(feature: str, fairway: str, candidates: list[str], free: int, flying:
 def ask_choice(feature: str, candidates: list[str], free: int, flying: list[str], pending: dict) -> None:
     """Put the choice of the next slices to the agent without waiting for it: `pending` is filled with what it
     chose, or the rule's order at the bound, for the loop to start once it is there."""
-    assert HELM is not None
+    helm = HELM
     default, facts, check = choice(feature, candidates, free, flying)
 
     def then(orders: list[dict], _by: str) -> None:
         pending.update(chosen=[str(one["slice"]) for one in orders if one.get("verb") == "start"], done=True)
     pending["asked"] = True
-    helm = HELM
-    if guarded("putting choose-next", lambda: helm.later("choose-next", "", facts(), ["start", "say", "none"],
-                                                          default, then, check)) is None:
-        then(default, "rule")  # the agent failed before it was asked: the rule's choice, at once
+    known = facts_or_rule("choose-next", facts) if helm is not None else None
+    if known is None or guarded("putting choose-next", lambda: helm.later(  # type: ignore[union-attr]
+            "choose-next", "", known, ["start", "say", "none"], default, then, check)) is None:
+        then(default, "rule")  # let go meanwhile, its facts not gathered, or failed before it was asked: the rule's choice, at once
 
 
 def still_startable(feature: str, fairway: str, queued: list[str], flying: list[str]) -> tuple[list[str], int]:
@@ -1795,14 +1821,15 @@ def look_stuck(feature: str, fairway: str, flying: list[str]) -> None:
     quiet — read off its activity log by `stuck`, the fold the board's card shows. The rule does nothing
     here, as the program did before: the stage bound still ends a slice that writes nothing."""
     for slice_id in flying:
-        lines = stuck.tail_lines(logs.run_dir(ROOT) / "activity" / fairway / f"{slice_id}.jsonl")
-        found = stuck.stuck(lines, slice_id)
+        got = talk.read_bytes(logs.run_dir(ROOT) / "activity" / fairway / f"{slice_id}.jsonl", stuck.TAIL, -stuck.TAIL)
+        found = stuck.stuck(stuck.parsed(got[0], got[1] > stuck.TAIL) if got else [], slice_id)
         kinds = {one["kind"] for one in found}
         seen = STUCK.setdefault(slice_id, {})
         moment = time.monotonic()
         fresh = {kind for kind in kinds if moment - seen.get(kind, -CLEAR) >= CLEAR}
         seen.update({kind: moment for kind in kinds})
-        if not fresh or HELM is None:
+        helm = HELM
+        if not fresh or helm is None:
             continue
 
         check = stuck_check(fairway, slice_id)
@@ -1816,7 +1843,6 @@ def look_stuck(feature: str, fairway: str, flying: list[str]) -> None:
                     FLIGHT[slice_id]["parking"] = str(one.get("why") or "its captain parked it")
                     talk.send(conversation(fairway, slice_id), "stop", str(one.get("why") or ""),
                               by=f"captain:{fairway}")
-        helm = HELM
         guarded("putting stuck", lambda: helm.later("stuck", slice_id, {"slice": slice_id, "warnings": found},
                                                     ["message", "pause", "stop", "park", "say", "ask", "none"],
                                                     [captain_rules.none("stuck")], then, check))
@@ -1826,7 +1852,8 @@ def heard_captain(fairway: str) -> None:
     """Put what was said to this stream's captain to its agent, one event a message: where it goes is the
     captain's to decide. With no agent `heard_stream` is the whole of it. Each is put once: one a silent agent
     left is closed by the rule — its `told` has already done what a `told` does — and not put again."""
-    if HELM is None:
+    helm = HELM
+    if helm is None:
         return
     home = talk.place(logs.run_dir(ROOT), fairway, talk.CAPTAIN)
     for message in [one for one in talk.queued(home) if str(one["id"]) not in handed_to_captain(home)]:
@@ -1840,7 +1867,6 @@ def heard_captain(fairway: str) -> None:
                 talk.note(home, "unaddressed", id=ident, why="its captain did not answer it; the stream's log has it "
                                                             "as a `told`, which answers a park it has")
             talk.settle(home, ident)
-        helm = HELM
         guarded("putting a message", lambda: helm.later("message", "", facts,
                                                         ["message", "pause", "resume", "stop", "say", "ask", "none"],
                                                         [captain_rules.none("message")], then))
@@ -1853,15 +1879,15 @@ def handed_to_captain(home: Path) -> set[str]:
 
 def trunk_red(fairway: str, red: logs.Entry) -> None:
     """Tell the captain once per red commit that trunk is red: the hold is the program's, whatever it says."""
-    if HELM is None:
+    helm = HELM
+    if helm is None:
         return
     commit = str(red.fields.get("commit", ""))
-    told = HELM.events / f"trunk-red-{commit[:12] or 'unknown'}"
+    told = helm.events / f"trunk-red-{commit[:12] or 'unknown'}"
     if told.exists():
         return
     told.parent.mkdir(parents=True, exist_ok=True)
     told.write_text(red.t + "\n", encoding="utf-8")
-    helm = HELM
     guarded("deciding trunk-red", lambda: helm.decide(
         "trunk-red", "", {"commit": commit, "job": str(red.fields.get("job", "")), "t": red.t},
         ["say", "ask", "message", "pause", "none"], [captain_rules.none("trunk-red")]))
@@ -1894,12 +1920,11 @@ class Stream:
         hold_talk(self.fairway, slice_id, why)
 
     def noted(self, why: str) -> None:
-        """Say, once in the deck log, something about the captain agent a person should know — a command its
-        session was refused, and so every order it meant to give."""
-        if why in NOTED:
-            return
-        NOTED.add(why)
-        said_once(self.feature, self.fairway, why)
+        """Say in the deck log something about the captain agent a person should know — the commands its session
+        was refused while it answered one event, counted, the first named — as a `noted` line nothing waits on.
+        At most one an event, which `captain.per_hour` bounds."""
+        write(self.feature, self.fairway, logs.entry("noted", fairway=self.fairway, by="captain program",
+                                                     what=why[:400]))
 
     def decided(self, slice_id: str, question: str, answer: str) -> str:
         """Write the captain's answer to a slice's mid-turn question as a `decision`: in the log for a person to
@@ -1939,7 +1964,8 @@ def helm(feature: str, fairway: str) -> captain_events.Helm | None:
         return None
     captain_agent.say_status(events, True)
     found = captain_events.Helm(run, fairway, captain_agent.Runner(fairway, run, held, started),
-                                Stream(feature, fairway), say=lambda line: print(line, flush=True), settings=held)
+                                Stream(feature, fairway), say=lambda line: print(line, flush=True), settings=held,
+                                failed=agent_failed)
     drive.ruling = lambda ask: guarded("ruling on an ask", lambda: found.ruling(ask, captain_rules.on_ask(ask)),
                                        RULING(ask))
     return found
@@ -2040,9 +2066,12 @@ def worked_here(fairway: str, slice_id: str) -> int | None:
     for path in (working(fairway, slice_id), fleet.RUNNING / f"captain-{fairway}.working"):
         # The second is the one file per fairway a captain from before kept, for its one slice: honoured
         # while such a captain is still alive here, so an upgrade mid-run does not resume what it is on.
+        got = talk.read_bytes(path, 64)
         try:
-            pid = int(path.read_text(encoding="utf-8").strip())
-        except (OSError, ValueError):
+            pid = int(got[0].decode("ascii").strip()) if got else 0
+        except (ValueError, UnicodeDecodeError):
+            continue
+        if pid <= 0:
             continue
         if pid != os.getpid() and fleet.alive(pid):
             return pid
@@ -2107,8 +2136,13 @@ def ledgered(feature: str, slice_id: str, berth: Path) -> str:
 def work(slice_id: str, feature: str, fairway: str) -> tuple[bool, str]:
     """One slice, start to finish. (did it finish, why it did not). Run in a thread of its own."""
     # Recorded before the `claimed` line, so a captain that reads the line also finds whose it is.
-    working(fairway, slice_id).parent.mkdir(parents=True, exist_ok=True)
-    working(fairway, slice_id).write_text(f"{os.getpid()}\n", encoding="utf-8")
+    # Written aside and renamed into place: whatever stood at the path — a pipe a session planted among them —
+    # is replaced, never opened, so the write cannot wait on it.
+    mark = working(fairway, slice_id)
+    mark.parent.mkdir(parents=True, exist_ok=True)
+    aside = mark.with_name(f".{mark.name}.{os.getpid()}.part")
+    aside.write_text(f"{os.getpid()}\n", encoding="utf-8")
+    os.replace(aside, mark)
     try:
         berth, why = moored(slice_id)
         if berth is None:
@@ -2574,7 +2608,7 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
             done, fault, alone = results.pop(slice_id, (False, "the slice's thread ended without a word", True))
             held = FLIGHT.pop(slice_id, None) or {}
             waiting = str(held.get("waiting") or "")
-            how = ended(held, done)
+            how = ended(held, done, talk.halted(conversation(fairway, slice_id)))
             line = (let_go(feature, fairway, slice_id, *held["halted"]) if how == "held" else
                     finished(feature, fairway, slice_id, False, str(held["parking"]), since, alone and not threads,
                              carried={"cause": "captain"}) if how == "parked" else
@@ -2591,10 +2625,15 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
             ON["drained"] = "yes"
 
 
-def ended(held: dict, done: bool) -> str:
+def ended(held: dict, done: bool, hold: tuple[str, str, str] = ("", "", "")) -> str:
     """How a slice's thread ended, for the line it ends on: `held` where a person paused or stopped it — which
-    wins over a park its captain ordered meanwhile — `parked` where its captain parked it, otherwise `''`."""
+    wins over a park its captain ordered meanwhile — `parked` where its captain parked it, otherwise `''`.
+    `hold` is the thread's word as the thread ends (`talk.halted`): a person's pause that landed after the
+    captain's park was checked, and before it took effect, is still theirs, and wins the same way."""
     if held.get("halted") and held["halted"][1] == talk.PERSON:
+        return "held"
+    if held.get("parking") and not done and hold[0] and hold[1] == talk.PERSON:
+        held["halted"] = hold
         return "held"
     return "parked" if held.get("parking") and not done else ""
 
@@ -2822,8 +2861,9 @@ def main(argv: list[str]) -> int:
         last = f"captain: {parsed.fairway} was asked to stop"
         return 0
     finally:
-        if HELM is not None:
-            guarded("closing", lambda: (HELM.drain(), HELM.runner.close()))  # type: ignore[union-attr,attr-defined]
+        helm = HELM
+        if helm is not None:
+            guarded("closing", lambda: (helm.drain(), helm.runner.close()))  # type: ignore[attr-defined]
         left(parsed.fairway, last)
         # The final line must travel while this captain still holds the pen. A captain killed outright
         # still leaves its claim behind, which is what 11.2's lease is for.

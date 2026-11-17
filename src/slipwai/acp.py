@@ -269,7 +269,7 @@ class Session:
     def gone(self) -> str:
         tail = ""
         with contextlib.suppress(OSError):
-            tail = "".join(self.log.read_text(encoding="utf-8").splitlines(keepends=True)[-5:]).strip()
+            tail = "".join(self.log.read_text(encoding="utf-8", errors="replace").splitlines(True)[-5:]).strip()
         status = f"exited {self.exited}" if self.exited is not None else "is not running"
         return f"the agent {status}" + (f"; the last it said: {tail}" if tail else "")
 

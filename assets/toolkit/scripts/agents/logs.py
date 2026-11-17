@@ -166,6 +166,11 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # What bounds the runs a slice has between a person's words, whoever asked for them: the captain counts
     # these before every run and parks the slice for a person past the ceiling.
     "dispatched": ("fairway", "slice"),
+    # What the captain program says about its own captain agent — that it failed and the stream runs on the
+    # program alone, or that its session was refused commands — for a person to read. News, never something
+    # owed an answer: not a `told`, which a `read` answers, which clears a park, and which the wait bound and
+    # *Waiting on you* count until somebody does. Nothing counts a `noted`, so it can never hold a stream.
+    "noted": ("fairway", "what"),
 }
 
 #: Why a park stands, as one word a reader and a board can act on without parsing `why`. `limit`: the
@@ -422,7 +427,7 @@ def read(line: str, harbour: bool = False) -> Entry:
         raise Unreadable("an empty line")
     try:
         body = json.loads(text)
-    except ValueError as fault:
+    except (ValueError, RecursionError) as fault:
         raise Unreadable(f"not JSON: {fault}") from fault
     if not isinstance(body, dict):
         raise Unreadable("a line is one JSON object")

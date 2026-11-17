@@ -100,7 +100,7 @@ def lines(fairway: str) -> list[dict]:
                 continue
             try:
                 line = json.loads(text)
-            except ValueError:
+            except (ValueError, RecursionError):
                 raise SystemExit(f"inbox: {path.name}:{number} is not JSON. Reading past it would report an "
                                  f"empty inbox that is not empty.") from None
             if isinstance(line, dict) and line.get("v") != V:

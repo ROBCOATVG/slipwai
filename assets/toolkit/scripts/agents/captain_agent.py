@@ -123,19 +123,22 @@ def launch() -> tuple[list[str], dict[str, Any] | None] | str:
 
 def order_command() -> str:
     """The command the captain runs to give an order: this program's own interpreter and this project's own
-    `orders.py`, both by their paths. Handed to it in its prompt and in `SLIPWAI_CAPTAIN_ORDERS_CMD`, so a shim
-    on its PATH (pyenv, asdf, mise) is never what it runs."""
-    return f"{shlex.quote(sys.executable)} {shlex.quote(str(ORDERS))}"
+    `orders.py`, both by their paths, each quoted as one word. Handed to it in its prompt, and only there, so a
+    shim on its PATH (pyenv, asdf, mise) is never what it runs and a project path with a space is still one."""
+    return shlex.join([sys.executable, str(ORDERS)])
 
 
-#: Why the captain session was refused a command, kept until the captain program says so in the deck log.
-REFUSED: list[str] = []
+#: The commands the captain session was refused since the captain program last asked: how many, and the first —
+#: kept to that, so what the deck log says of them is bounded however many it tries.
+REFUSED: dict[str, Any] = {"count": 0, "first": ""}
+#: How much of a refused command is said: enough to recognise it, never the agent's words at length.
+SAID = 80
 
 
 def say_status(events: Path, agent: bool, why: str = "") -> None:
-    """Write whether this stream's captain is an agent, and why not, for the board's reader."""
+    """Write whether this stream's captain is an agent, why not, and since when, for the board's reader."""
     events.mkdir(parents=True, exist_ok=True)
-    held = {"v": 1, "agent": agent, **({"why": why} if why else {})}
+    held = {"v": 1, "agent": agent, "t": logs.now(), **({"why": why} if why else {})}
     (events / STATUS).write_text(json.dumps(held) + "\n", encoding="utf-8")
 
 
@@ -193,8 +196,8 @@ def permit(tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | No
     if kind == "execute":
         raw = tool_call.get("rawInput") or {}
         command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
-        REFUSED.append(f"the captain session was refused `{command[:200] or tool_call.get('title') or 'a command'}`:"
-                       f" it may run only `{order_command()} …`")
+        REFUSED["count"] += 1
+        REFUSED["first"] = REFUSED["first"] or " ".join((command or str(tool_call.get("title") or "a command")).split())[:SAID]
     return refused
 
 
@@ -241,11 +244,15 @@ class Runner:
     def bound(self, turn: Any) -> float:
         return float(self.bounds["bound"])
 
-    def refusals(self) -> list[str]:
-        """Why the session was refused a command since this was last asked: for the deck log, once each."""
-        said = list(dict.fromkeys(REFUSED))
-        REFUSED.clear()
-        return said
+    def refusals(self) -> str:
+        """What the session was refused since this was last asked — once an event — as one sentence for the deck
+        log: how many commands, and the first, cut short. `''` where it was refused nothing."""
+        count, first = int(REFUSED["count"]), str(REFUSED["first"])
+        REFUSED.update(count=0, first="")
+        if not count:
+            return ""
+        return (f"the captain session was refused {count} command{'s' if count > 1 else ''} while it answered one "
+                f"event, the first `{first}`: it may run only `{order_command()} …`")
 
     def holds_session(self) -> bool:
         return self.driver is not None and self.driver.alive

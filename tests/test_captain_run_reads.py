@@ -27,7 +27,9 @@ READER = "the one reader for the run folder itself, or the flags it opens with"
 ALLOWED = {
     "abreast.py:deck_of": LOGS,
     "abreast.py:harbour_plan": PROJECT,
-    "acp.py:Session.start": WRITES,
+    "acp.py:Session.shaken": WRITES,
+    "acp.py:one_at_a_time": "the machine's launch lock, in the temp directory and not the run folder: opened to "
+                            "append and held, never read",
     "acp.py:Session.read": "a protocol line on the agent's stdout, not a file",
     "acp.py:Session.gone": "the agent's own stderr log, which this session opened to append; its tail, decoded "
                            "with replacement, is only said",

@@ -56,6 +56,7 @@
 # why: 2026-11-17 c96ab4d578f6f95e whole-branch review, round 2: what a captain reads and lets a slice read is decided on the resolved path, its session's policy judges the whole request (a client keeps each tool call's updates for the permission asked of it), only words answer a person's words, a held slice not yet started is said with its holder, and an environment override is said off the deck; a project with no captain agent runs on macOS and Linux exactly as before
 # why: 2026-11-17 74d6c3e01c3eb587 scripts/agents/surfaces.py refuses, with exit 1 and a sentence, a drawing whose research.md does not declare Blockers open: N and Questions open: N (changelog.d/stage-talk.md); a drawing that declares them, one ended at its budget, and every other path behave as before on macOS and Linux
 # why: 2026-11-17 d5d4c898e53a1c51 scripts/agents/surfaces.py no longer fails a drawing whose research.md lacks the two counts: it reads them forgivingly (CRLF, bold, list markers, case) and prints a note, exiting as it did before the counts existed; every other path behaves as before on macOS and Linux
+# why: 2026-11-17 7195a540f5479f1b a stage that had already ended when its captain ended it is ended, not a PermissionError the slice parks on
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -77,6 +78,10 @@
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-postgres-toy-serve  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-memory-none  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-postgres-toy-serve  scripts/agents/triage.py
+159c7da8eb01e292fb962a6a0d13de8632189f0087fadf7b5bf107812b5b2eec  event-modelling-memory-none  scripts/agents/captain.py
+159c7da8eb01e292fb962a6a0d13de8632189f0087fadf7b5bf107812b5b2eec  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+159c7da8eb01e292fb962a6a0d13de8632189f0087fadf7b5bf107812b5b2eec  standard-memory-none  scripts/agents/captain.py
+159c7da8eb01e292fb962a6a0d13de8632189f0087fadf7b5bf107812b5b2eec  standard-postgres-toy-serve  scripts/agents/captain.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  event-modelling-memory-none  scripts/extensions/menu.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  event-modelling-postgres-toy-serve  scripts/extensions/menu.py
 1b49c9b9a1e60c42301ae985268e77ba20e3de9f33beff9d587c054b5a927359  standard-memory-none  scripts/extensions/menu.py
@@ -91,10 +96,6 @@
 20c9c6122c00a864b34223148c39be72a982ba05bd2bdbe1be2e3d669791835b  event-modelling-postgres-toy-serve  scripts/agents/feedback.py
 20c9c6122c00a864b34223148c39be72a982ba05bd2bdbe1be2e3d669791835b  standard-memory-none  scripts/agents/feedback.py
 20c9c6122c00a864b34223148c39be72a982ba05bd2bdbe1be2e3d669791835b  standard-postgres-toy-serve  scripts/agents/feedback.py
-22264f1c5995feb7a83b5aa22b2ceb9bc9cfb2a2a8e9b52cd1bb7433f66d0afa  event-modelling-memory-none  scripts/agents/captain.py
-22264f1c5995feb7a83b5aa22b2ceb9bc9cfb2a2a8e9b52cd1bb7433f66d0afa  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-22264f1c5995feb7a83b5aa22b2ceb9bc9cfb2a2a8e9b52cd1bb7433f66d0afa  standard-memory-none  scripts/agents/captain.py
-22264f1c5995feb7a83b5aa22b2ceb9bc9cfb2a2a8e9b52cd1bb7433f66d0afa  standard-postgres-toy-serve  scripts/agents/captain.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-memory-none  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-postgres-toy-serve  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-memory-none  scripts/check-crossing.py

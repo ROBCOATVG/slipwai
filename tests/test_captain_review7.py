@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -138,3 +139,19 @@ class LatePauseTest(AgentBase):
 if __name__ == "__main__":
     import unittest
     unittest.main()
+
+
+class EndedAlreadyTest(AgentBase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.program = loaded(self.root, "captain")
+
+    def test_a_stage_that_ended_a_moment_before_it_was_ended_is_ended_and_parks_nothing(self) -> None:
+        """macOS refuses a signal to a group whose only member has exited and not been collected. The full
+        suite met it twice as a slice parked on "the captain met PermissionError"."""
+        stage = mock.Mock(spec=subprocess.Popen)
+        stage.pid, stage.poll.return_value = 4242, None
+        for refusal in (PermissionError(1, "Operation not permitted"), ProcessLookupError()):
+            with mock.patch.object(self.program.os, "killpg", side_effect=refusal, create=True):
+                self.program.end(stage)  # no raise
+        self.assertEqual(stage.wait.call_count, 2, "and it is collected, each time")

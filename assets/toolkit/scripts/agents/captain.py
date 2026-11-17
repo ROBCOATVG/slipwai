@@ -70,6 +70,7 @@ Standalone and dependency-free: this runs inside a generated project, which has 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fnmatch
 import json
 import os
@@ -785,8 +786,12 @@ def end(process: subprocess.Popen | drive.Drive) -> None:
         else:  # pragma: no cover - the other platform's branch
             process.kill()
         process.wait()
-    except ProcessLookupError:
-        pass
+    except (ProcessLookupError, PermissionError):
+        # Gone already. `PermissionError` is the same answer said another way: signalling a group whose only
+        # member has exited and not been collected yet is refused on macOS, and a stage that ended a moment
+        # before its captain ended it was parking its slice on "the captain met PermissionError".
+        with contextlib.suppress(Exception):
+            process.wait(timeout=5)
 
 
 def mine(found: list[logs.Entry], slice_id: str) -> list[logs.Entry]:

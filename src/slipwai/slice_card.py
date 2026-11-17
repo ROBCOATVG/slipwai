@@ -84,7 +84,12 @@ STYLE = """
 #work .compact .doing{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #work .compact .state{font-size:.78rem;color:var(--ink-3);text-align:right;white-space:nowrap}
 #work .compact a.waiting .state{color:var(--critical)}
+.slice .held-trunk{font-size:.78rem;line-height:1.4;padding:4px 8px;border-radius:6px;border:1px solid var(--critical);
+  background:var(--critical-soft);color:var(--ink);overflow-wrap:anywhere}
 """
+#: The word `slice_rungs.merge_word` gives a slice whose merge a red trunk refused, while trunk is still red.
+HELD_RED = "Held · trunk red"
+
 
 def lit(rows: list[dict[str, str]], folds: dict[str, dict], root: Path | None = None,
         films: list[dict] | None = None) -> list[dict[str, str]]:
@@ -215,7 +220,10 @@ def summary_html(row: dict[str, str]) -> str:
     spent = in_stage(row) if row["state"] == "working" else ""
     spent = f'<span class="for">{esc(spent)}</span>' if spent else ""
     cap = f'<span class="live-cap">{esc(row["live"])}</span>' if row.get("live") else ""
-    return f"<summary><b>{esc(name)}</b>{shown}{spent}{strip}{cap}{held_html(row)}{marker_html(row)}</summary>"
+    # Held at the harbour by a red trunk is not stuck, and the closed card says which it is.
+    red = ('<span class="held-trunk">Waiting for trunk to be green: merges are held until it is, so this slice '
+           'is not stuck</span>' if row.get("stage") == HELD_RED else "")
+    return f"<summary><b>{esc(name)}</b>{shown}{spent}{strip}{cap}{red}{held_html(row)}{marker_html(row)}</summary>"
 
 
 def now_html(row: dict[str, str]) -> str:

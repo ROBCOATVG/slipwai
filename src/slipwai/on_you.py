@@ -5,7 +5,9 @@ questions no park holds; the Fleet tab's badge counted every inbox row that was 
 unread decisions among them; the column counted slices the fold had in `waiting`. On one run the three
 said 4, 9 and 2 at once, and none of them was wrong by its own lights.
 
-So this is the one reading, in two groups. *Holding work up*: a slice parked on a person, a card a running
+So this is the one reading, in two groups. *Holding work up*: a red trunk the harbour parked for a person
+(nothing clears that park but trunk going green, so it links to the band that says so), a slice parked on a
+person, a card a running
 stage has put up, the one button the run cannot pass without, and a stream's log nobody can read (its
 captain stops at every start until a person repairs the line), and a slice's product question where the
 project says a person answers them. *When you have time*: a capability with something to look at, a feedback
@@ -28,6 +30,7 @@ from .stage_session import running
 from .storyboard_card import waiting_said
 from .talk_waits import captain_window
 from .talk_waits import items as talk_items
+from .trunk_card import held_item
 from .upstream import NAMED, held_by, unjudged
 
 NOTHING_WAITS: dict[str, Any] = {"count": 0, "text": "", "href": "", "holding": [], "later": [], "slices": []}
@@ -106,11 +109,14 @@ def parked(fleet: dict[str, Any], rows: list[dict[str, str]]) -> list[dict[str, 
 
 
 def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
-            rows: list[dict[str, str]] | None = None, root: Path | None = None) -> dict[str, Any]:
+            rows: list[dict[str, str]] | None = None, root: Path | None = None,
+            trunk: dict[str, Any] | None = None) -> dict[str, Any]:
     """The list: how many things, the first of them in its own words with the way to it, both groups, and
     the slices the column draws. `able` is the flags that show the strip's buttons, so the words here and
-    the button there agree; a stage still running offers no button, and is not a wait."""
-    holding: list[dict[str, Any]] = []
+    the button there agree; a stage still running offers no button, and is not a wait. `trunk` is the
+    board's (`trunk_story`): a park the harbour wrote with no fairway — the trunk mender's attempts spent, or
+    no mender at all — holds every merge, and is first."""
+    holding: list[dict[str, Any]] = held_item(trunk or {})
     asked = open_asks(board)
     if asked:
         holding.append({"n": asked, "href": "#stage-asks", "text": "The agent asks you something" if asked == 1

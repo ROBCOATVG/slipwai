@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
@@ -184,6 +185,21 @@ class AdvanceTest(Fixture):
         self.assertEqual(stage_talk.release(self.root), ["mockups"])
         advance(board)
         self.assertEqual(board.verdicts, ["approved"], "Carry on is the person's word to go on")
+
+    def test_the_board_never_writes_its_approval_over_a_verdict_file_whatever_else_lets_it_through(self) -> None:
+        """The last guard, held on its own: were every stop to say nothing, a `mock-states.md` already there — a
+        person's, part-way or withdrawn — is never overwritten with the board's approval."""
+        self.answer(upstream="advance")
+        self.draw()
+        self.declare(0, 0)
+        record_verdict(self.root, "001-orders", "approved")
+        (self.root / "specs/001-orders/mockups/basket.html").write_text(
+            "<title>Basket</title><article><h2>Full</h2></article>", encoding="utf-8")
+        before = (self.root / "specs/001-orders/mockups/mock-states.md").read_text(encoding="utf-8")
+        with mock.patch("slipwai.upstream.stopped", return_value=("", "")):
+            advance(board := Board(self.root))
+        self.assertEqual(board.verdicts, [])
+        self.assertEqual((self.root / "specs/001-orders/mockups/mock-states.md").read_text(encoding="utf-8"), before)
 
     def test_a_withdrawn_verdict_is_a_stop_and_never_approved_over(self) -> None:
         self.answer(upstream="advance")

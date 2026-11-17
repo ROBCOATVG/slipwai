@@ -60,12 +60,19 @@ question or the finding marked `— answered (D<n>)` where it was written, and t
 Saying it is not recording it. A verdict is still not yours: `approved`, `parked` and `n/a` are given on the
 board.
 
-**What is left to discuss, declared.** `research.md` carries two lines of its own, each by itself, near its
-top: `Blockers open: N`, the Blocker findings nobody has settled, and `Questions open: N`, the questions under
-`## Questions` nobody has answered — `0` where there are none. Keep them true: rewrite the numbers whenever a
-finding or a question is settled, in a conversation turn as much as in the drawing. The board reads these two
-lines and nothing else to decide whether a storyboard has anything left to discuss, and a drawing that ends
-without them is refused as unfinished.
+**What is left to discuss, declared.** Begin `research.md` with these two lines, as plain text — no bold, no
+list marker — the numbers in figures:
+
+```
+Blockers open: 0
+Questions open: 0
+```
+
+`Blockers open` counts the Blocker findings nobody has settled; `Questions open`, the questions under
+`## Questions` nobody has answered. Keep them true: rewrite the numbers whenever a finding or a question is
+settled, in a conversation turn as much as in the drawing. A board set to advance by itself reads these two
+lines to tell whether a storyboard has anything left to discuss, and waits for the person where it cannot
+read them; a person judging the storyboard needs nothing from them.
 
 ## 1. The researcher
 

@@ -16,7 +16,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
-from slipwai.review_reading import gate, reading, surfaces_check
+from slipwai.review_reading import declared, gate, reading
 
 DRAWINGS = Path(__file__).resolve().parent / "fixtures" / "drawings"
 
@@ -45,17 +45,39 @@ class GateTest(Fixture):
         self.assertEqual(gate(self.root, "001-boats"), "the drawing says 2 Blockers are open; 1 question only you "
                                                        "can answer is open")
 
-    def test_a_drawing_without_the_lines_is_stopped_and_told_which_line_is_missing(self) -> None:
+    def test_a_drawing_without_the_lines_is_stopped_and_told_which_line_to_add_and_how(self) -> None:
         self.copy("per-surface")
-        self.assertIn("does not say `Blockers open: N` and `Questions open: N`", gate(self.root, "001-boats"))
-        self.write("research.md", "Questions open: 0\n**Blockers open:** 0\n")
-        self.assertIn("does not say `Blockers open: N` on a line", gate(self.root, "001-boats"),
-                      "the fixed form only: a bolded line is not the declaration")
-        self.write("research.md", "Blockers open: 0\nBlockers open: 4\nQuestions open: 0\n")
-        self.assertIn("`Blockers open: N`", gate(self.root, "001-boats"), "said twice is not said")
-        self.assertIn("does not declare", surfaces_check(self.root, "001-boats"))
-        self.write("research.md", "Blockers open: 0\nQuestions open: 0\n")
-        self.assertEqual(surfaces_check(self.root, "001-boats"), "")
+        said = gate(self.root, "001-boats")
+        self.assertIn("does not say `Blockers open: N` and `Questions open: N` with a number", said)
+        self.assertIn("`slipwai migrate`", said, "and an older project is told where the instruction comes from")
+
+    def test_the_counts_are_read_in_every_honest_form_and_unknown_where_they_are_not_numbers(self) -> None:
+        """The twelve forms a drawing wrote that the exact-line reading refused, and what stays unknown."""
+        honest = {"bold label": "**Blockers open:** 2\n**Questions open:** 1\n",
+                  "list items": "- Blockers open: 2\n- Questions open: 1\n",
+                  "backticked": "`Blockers open: 2`\n`Questions open: 1`\n",
+                  "trailing full stop": "Blockers open: 2.\nQuestions open: 1.\n",
+                  "trailing comment": "Blockers open: 2 (two on the basket)\nQuestions open: 1 (see below)\n",
+                  "lowercase": "blockers open: 2\nquestions open: 1\n",
+                  "indented": "  Blockers open: 2\n  Questions open: 1\n",
+                  "blockquote": "> Blockers open: 2\n> Questions open: 1\n",
+                  "one line": "Blockers open: 2, Questions open: 1\n",
+                  "table": "| Blockers open | 2 |\n| Questions open | 1 |\n",
+                  "said twice, agreeing": "Blockers open: 2\nQuestions open: 1\n\n## Summary\nBlockers open: 2\n"
+                                          "Questions open: 1\n",
+                  "CRLF, quoted instruction above": "The board reads `Blockers open: N`.\r\nBlockers open: 2\r\n"
+                                                    "Questions open: 1\r\n"}
+        for name, text in honest.items():
+            with self.subTest(name):
+                self.assertEqual(declared(text), (2, 1))
+        unknown = {"in words": "Blockers open: two\nQuestions open: none\n",
+                   "disagreeing": "Blockers open: 0\nQuestions open: 0\nBlockers open: 3\n",
+                   "the instruction only": "Blockers open: N\nQuestions open: N\n"}
+        for name, text in unknown.items():
+            with self.subTest(name):
+                self.assertIsNone(declared(text)[0])
+        self.assertEqual(declared("We had 3 Blockers open at the start.\nBlockers open: 0\nQuestions open: 0\n"),
+                         (0, 0), "prose that happens to say the words is not a declaration")
 
 
 class PanelTest(Fixture):

@@ -155,19 +155,26 @@ def retire(feature: str, said: str) -> None:
     (home / "mock-states.md").unlink(missing_ok=True)
 
 
-#: The two lines `/mockups` has the drawing declare in its research note, each on a line by itself: what the
-#: board reads to tell whether a storyboard has anything left to discuss.
-DECLARED = (re.compile(r"^Blockers open: \d{1,5}[ \t]*$", re.MULTILINE),
-            re.compile(r"^Questions open: \d{1,5}[ \t]*$", re.MULTILINE))
+#: The two counts `/mockups` has the drawing declare in its research note, read as the board reads them: what is
+#: around them — a list marker, bold, backticks, a quote, a table's bar, case, a full stop — is forgiven.
+DECLARED = re.compile(r"\b(blockers|questions)[ \t]+open\b([ \t:|=*_`>-]{0,12})([0-9]{1,5}|[a-z]+)\b",
+                      re.IGNORECASE)
 
 
 def declared(feature: str) -> bool:
-    """Whether the drawing said, once each, how many Blockers and questions are left open."""
+    """Whether the drawing said, in numbers that agree wherever it said them, how many Blockers and questions
+    are left open — the board's own reading (`slipwai.review_reading.declared`), carried here to say a note."""
     try:
         text = (SPECS / feature / MOCKUPS / "research.md").read_text(encoding="utf-8", errors="replace")[:524288]
     except OSError:
         return False
-    return all(len(line.findall(text)) == 1 for line in DECLARED)
+    found: dict[str, set[str]] = {"blockers": set(), "questions": set()}
+    for key, between, value in DECLARED.findall(text.replace("\r", "")):
+        if value.isdigit():
+            found[key.lower()].add(value)
+        elif value.lower() != "n" and re.search(r"[:|=]", between):
+            return False
+    return all(len(values) == 1 for values in found.values())
 
 
 def main(argv: list[str]) -> int:
@@ -240,12 +247,12 @@ def main(argv: list[str]) -> int:
                   f"above", file=sys.stderr)
             return 1
         retire(feature, redraw)
-    if not declared(feature) and not expired:
-        print(f"surfaces: the drawing is kept, but specs/{feature}/{MOCKUPS}/research.md does not declare "
-              f"`Blockers open: N` and `Questions open: N`, each on a line of its own, as /mockups asks; the "
-              f"board cannot tell whether anything is left to discuss. Judge it yourself, or draw it again",
-              file=sys.stderr)
-        return 1
+    if not declared(feature):
+        # A note, never a failure: the drawing is there to look at and approve whatever its note says. Only a
+        # board set to advance by itself waits on the two lines, and says so there.
+        print(f"surfaces: note — specs/{feature}/{MOCKUPS}/research.md does not say `Blockers open: N` and "
+              f"`Questions open: N` with numbers, so a board set to advance by itself will wait for you on this "
+              f"storyboard", flush=True)
     print(f"drawn: {len(drawn(feature))} surface(s) under specs/{feature}/{MOCKUPS}/ — open the storyboard, "
           f"then /mockups {feature} in the agent walks you through approving each state")
     return 0

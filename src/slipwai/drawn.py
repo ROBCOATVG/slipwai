@@ -163,11 +163,18 @@ def where_in(root: Path, page: Path) -> str:
         return page.as_posix()
 
 
-def digest(page: Path) -> str:
+def digest(page: Path, raw: bool = False) -> str:
+    """What a page says, as a short digest — of its lines with their endings and trailing spaces let go of, so a
+    page saved with CRLF or a newline more says what it said. `raw` is the bytes as they are, which a verdict
+    recorded before this reading carries."""
     try:
-        return hashlib.sha1(page.read_bytes()).hexdigest()[:16]
+        data = page.read_bytes()
     except OSError:
         return "0" * 16
+    if not raw:
+        lines = data.decode("utf-8", "replace").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        data = "\n".join(line.rstrip() for line in lines).strip("\n").encode("utf-8")
+    return hashlib.sha1(data).hexdigest()[:16]
 
 
 def fingerprints(root: Path) -> dict[str, str]:
@@ -198,7 +205,8 @@ def blocks(text: str) -> list[dict]:
 
 def stale(root: Path, block: dict) -> bool:
     """Whether a block's page no longer says what it said when the verdict was given — or is gone."""
-    return bool(block["path"]) and digest(root / block["path"]) != block["digest"]
+    page = root / block["path"]
+    return bool(block["path"]) and block["digest"] not in (digest(page), digest(page, raw=True))
 
 
 def withdraw(root: Path, before: dict[str, str]) -> list[str]:
@@ -225,9 +233,11 @@ def withdraw(root: Path, before: dict[str, str]) -> list[str]:
         lines, gone = text.splitlines(), {at for one in dropping for at in range(one["start"], one["end"])}
         had = {(found.group("surface"), found.group("path") or "") for found in WITHDRAWN.finditer(text)}
         when = time.strftime("%Y-%m-%d %H:%M")
+        # "In a conversation" only where the board saw the turn change the page; a change it did not see is not one.
         marks = [f"<!-- withdrawn: {one['name']} — {', '.join(one['states'])} ("
-                 + (f"page {one['path']}; " if one["path"] else "") + f"changed at {when}, after this verdict: "
-                 "approve or disapprove the storyboard again) -->"
+                 + (f"page {one['path']}; " if one["path"] else "") + "changed "
+                 + ("in a conversation " if one["path"] in changed or not one["path"] else "")
+                 + f"at {when}, after this verdict: approve or disapprove the storyboard again) -->"
                  for one in dropping if (one["name"], one["path"]) not in had]
         kept = [line for at, line in enumerate(lines) if at not in gone]
         verdicts.write_text("\n".join([*marks, *kept]) + "\n", encoding="utf-8")
@@ -235,14 +245,25 @@ def withdraw(root: Path, before: dict[str, str]) -> list[str]:
     return said
 
 
-def withdrawn(root: Path, feature: str) -> list[str]:
-    """The surfaces whose verdict no longer stands, `<surface> — <states>`: withdrawn by a conversation, or on a
-    page that says something else since, or is gone. Empty until something has been judged."""
+def withdrawn_parts(root: Path, feature: str) -> tuple[list[str], list[str]]:
+    """The surfaces whose verdict no longer stands, `<surface> — <states>`, in two lists: those a conversation the
+    board saw changed, and those changed any other way — by hand, renamed, gone. Empty until something is judged."""
     try:
         text = (root / "specs" / feature / "mockups" / "mock-states.md").read_text(encoding="utf-8")
     except OSError:
-        return []
-    said = [f"{found.group('surface')} — {found.group('states')}" for found in WITHDRAWN.finditer(text)]
-    said += [f"{one['name']} — {', '.join(one['states'])}" for one in blocks(text) if stale(root, one)]
-    return list(dict.fromkeys(said))
+        return [], []
+    seen: list[str] = []
+    since: list[str] = []
+    for found in WITHDRAWN.finditer(text):
+        line = text[found.start():text.find("\n", found.start())]
+        (seen if "changed in a conversation" in line else since).append(
+            f"{found.group('surface')} — {found.group('states')}")
+    since += [f"{one['name']} — {', '.join(one['states'])}" for one in blocks(text) if stale(root, one)]
+    return list(dict.fromkeys(seen)), [one for one in dict.fromkeys(since) if one not in seen]
+
+
+def withdrawn(root: Path, feature: str) -> list[str]:
+    """Every surface whose verdict no longer stands, however it changed (`withdrawn_parts`)."""
+    seen, since = withdrawn_parts(root, feature)
+    return [*seen, *since]
 

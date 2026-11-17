@@ -56,7 +56,8 @@ class HoldsTest(Talking):
         fitting = self.drawing("dawdle")
         until(lambda: (self.root / ".dawdling").exists())
         self.post("/stage/say", {"command": "mockups", "message": "what is on it?"})
-        self.post("/stage/carry-on", {})
+        self.assertEqual(self.post("/stage/carry-on", {})[0], 409, "Carry on waits on it, as Approve does")
+        stage_talk.release(self.root)  # however the hold was let go of before the message was said
         self.assertEqual(stage_talk.held(self.root), [])
         (self.root / ".go").write_text("", encoding="utf-8")
         until(lambda: "Drawn: what is on it?" in fitting.said()["lines"])

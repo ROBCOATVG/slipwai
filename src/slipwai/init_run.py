@@ -30,10 +30,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import harness_cli, stage_talk
+from . import harness_cli
 from .logs import run_dir
 from .process_alive import alive
-from .review_reading import surfaces_check
 from .session_log import Folder
 from .shell_environment import login_environment
 
@@ -445,6 +444,7 @@ class Fitting:
             if self.stage is None or not self.stage.queue or self.code is None:
                 return
             if self.stage.cancelled and not asked:
+                self.stage.queue = []  # kept in the file as not delivered, and said only by Say it now
                 return
             message = self.stage.waiting()
             self.code, self.stopped, self.began, self.talking = None, None, time.monotonic(), True
@@ -648,10 +648,8 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     draws the first specification, and the storyboard turned down may not be that one.
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
-    named = feature or first_feature(where)
-    step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP, drew,
+    step = stage_step(where, "mockups", feature or first_feature(where), argv, DRAWING, DRAWING_ACP, drew,
                       "surfaces", limit=900.0, pid="surfaces.pid", stage="",
-                      after=lambda: surfaces_check(where, named) if named else "",  # what is left to discuss, declared
                       done="The surfaces are drawn. The storyboard is below: open it, then Approve or "
                            "Disapprove it on this page. That verdict is what the model and the chart read.",
                       undone="The drawing stopped short; nothing was approved. Its lines above say where.")
@@ -674,19 +672,16 @@ def resumed(where: Path, command: str, said: list[str] | None = None,
     """A stage's kept session, after the board that ran it was restarted or another stage has run since: an
     ended run with that stage in it, which is what a reply carries on. Its line is the one the card showed
     before there was a run, after whatever the receipt already said. `earlier` is a failure of the run this
-    replaces, kept as that stage's own; the stage's after-check comes with it, so a reply is judged as the
-    stage was; and what was said to it and never delivered is queued again, for the next turn to carry."""
+    replaces, kept as that stage's own; the draft's after-check comes with it, so a reply is judged as the
+    draft was. What was said and never delivered stays so, shown with Say it now: it is never said unasked."""
     from .stage_session import StageSession  # noqa: PLC0415 — the edge tier, reached from here only
 
     fitting = Fitting(where, [])
     fitting.lines = [*(said or []), kept_line(command)]
     fitting.earlier = earlier
-    checks = {"mockups": lambda: surfaces_check(where, first_feature(where)) if first_feature(where) else "",
-              "draft": lambda: "" if any((where / "specs").glob("*/spec.md")) else
+    checks = {"draft": lambda: "" if any((where / "specs").glob("*/spec.md")) else
               "The session ended without a specification under specs/."}
     fitting.stage = StageSession(where, command, after=checks.get(command), **RESUMED.get(command, {}))
-    fitting.stage.queue = [{"id": one["id"], "text": one["text"]} for one in stage_talk.undelivered(where, command)
-                           if one.get("id")]
     fitting.stage.done = True
     fitting.stop(0)
     return fitting

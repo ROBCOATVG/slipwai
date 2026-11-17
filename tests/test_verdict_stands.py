@@ -20,7 +20,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai.drawn import fingerprints, record_verdict, withdraw, withdrawn
+from slipwai.drawn import fingerprints, record_verdict, withdraw, withdrawn, withdrawn_parts
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,6 +59,21 @@ class StandsTest(unittest.TestCase):
         self.assertEqual(self.verdicts().count("<!-- withdrawn: Basket"), 1)
         self.assertIn("- Shown — approved", self.verdicts(), "the page nobody changed keeps its verdict")
 
+    def test_line_endings_and_trailing_space_change_nothing_a_person_saw(self) -> None:
+        text = (self.home / "basket.html").read_text(encoding="utf-8")
+        (self.home / "basket.html").write_bytes((text.replace("><", ">\r\n<") + "  \r\n\r\n").encode())
+        before = (self.home / "basket.html").read_bytes()
+        record_verdict(self.root, "001-boats", "approved")
+        (self.home / "basket.html").write_bytes(before.replace(b"\r\n", b"\n").rstrip() + b"\n")
+        self.assertEqual(withdrawn(self.root, "001-boats"), [])
+
+    def test_a_change_the_board_did_not_see_is_not_said_to_be_the_conversation_s(self) -> None:
+        self.page("total.html", "Total", "Hidden")  # by hand, before the turn
+        before = fingerprints(self.root)
+        self.page("basket.html", "Basket", "Full")  # in the turn
+        withdraw(self.root, before)
+        self.assertEqual(withdrawn_parts(self.root, "001-boats"), (["Basket — Empty"], ["Total — Shown"]))
+
     def test_two_pages_with_one_title_are_two_verdicts(self) -> None:
         self.page("total.html", "Basket", "Shown")
         record_verdict(self.root, "001-boats", "approved")
@@ -77,7 +92,7 @@ class StandsTest(unittest.TestCase):
 
 
 class HeadlessDrawingTest(unittest.TestCase):
-    def test_make_surfaces_refuses_a_drawing_that_does_not_declare_what_is_left(self) -> None:
+    def test_make_surfaces_notes_a_drawing_that_does_not_declare_what_is_left_and_never_fails_it(self) -> None:
         tree = Path(tempfile.mkdtemp())
         sys.path.insert(0, str(ROOT / "assets/toolkit/scripts/agents"))
         self.addCleanup(sys.path.remove, str(ROOT / "assets/toolkit/scripts/agents"))
@@ -91,18 +106,18 @@ class HeadlessDrawingTest(unittest.TestCase):
         (tree / "specs/001-orders").mkdir(parents=True)
         (tree / "specs/001-orders/spec.md").write_text("# Orders\n", encoding="utf-8")
         home = tree / "specs/001-orders/mockups"
-        for research, wanted in (("## Questions\n- None\n", 1), ("Blockers open: 0\nQuestions open: 0\n", 0)):
+        for research, noted in (("## Questions\n- None\n", True), ("**Blockers open:** 0\r\n- Questions open: 0\r\n",
+                                                                    False)):
             draws = ("import pathlib, sys; p = pathlib.Path(sys.argv[1]); p.mkdir(parents=True, exist_ok=True); "
                      "(p / 'basket.html').write_text('<title>Basket</title>'); "
-                     f"(p / 'research.md').write_text({research!r})")
+                     f"(p / 'research.md').write_bytes({research.encode()!r})")
             command = f"{shlex.quote(sys.executable)} -c {shlex.quote(draws)} {shlex.quote(str(home))} {{prompt}}"
-            err = io.StringIO()
+            out = io.StringIO()
             with mock.patch.object(module.harness, "choose", return_value=({}, "a stand-in")), \
                     mock.patch.object(module.harness, "template", return_value=(command, "a test")), \
-                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
-                self.assertEqual(module.main(["001-orders"]), wanted, err.getvalue())
-            if wanted:
-                self.assertIn("does not declare `Blockers open: N` and `Questions open: N`", err.getvalue())
+                    contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(module.main(["001-orders"]), 0, "a drawing is a drawing to look at either way")
+            self.assertEqual("surfaces: note — " in out.getvalue(), noted, out.getvalue())
 
 
 if __name__ == "__main__":

@@ -14,6 +14,8 @@ through it from the board as well.
 """
 from __future__ import annotations
 
+# budget: 365 — a stage run, a turn of conversation and a message queued for one, and the routes that answer them
+# — the card, the stop, what is said, Carry on and Discard — beside the session they act on.
 import contextlib
 import os
 import re
@@ -29,6 +31,7 @@ from .board_settings import Launch, chosen, read
 from .drawn import fingerprints, withdraw
 from .harness import acp_environment
 from .logs import run_dir
+from .review_reading import DECLARE
 from .shell_environment import login_environment
 from .stage_talk import KEPT
 
@@ -257,7 +260,11 @@ class StageSession:
         return 0 if stop == "end_turn" else 1
 
     def words(self) -> str:
-        return f"{self.prompt}\n\n{ASKING}\n\n{SET_UP}" if self.prompt else prompt_for(self.command, self.argument)
+        if self.prompt:
+            return f"{self.prompt}\n\n{ASKING}\n\n{SET_UP}"
+        # The drawing is told the two lines here as well as in `/mockups`, so a project whose command page is
+        # older than this board's still writes them.
+        return prompt_for(self.command, self.argument) + (f"\n\n{DECLARE}" if self.command == "mockups" else "")
 
     def answer(self, number: str, answer: str | None) -> bool:
         return self.agent is not None and self.agent.answer(number, answer)
@@ -310,8 +317,22 @@ def route_post(bridge: Any, where: str, held: dict) -> bool:
     """A card's answer, a stop for the running stage, something said to a stage — while it runs, queued for the
     end of its turn — or the person's word to carry on, from the board."""
     if where == "/stage/carry-on":
+        if stage_talk.waiting_anywhere(bridge.root):  # the same rule as Approve: not past a word not yet said
+            bridge.send(409, "something you said has not been said to the stage yet: say it now, or discard it, "
+                             "before you carry on", "text/plain; charset=utf-8")
+            return True
         let = stage_talk.release(bridge.root)
         bridge.send(200, "carrying on" if let else "nothing was held", "text/plain; charset=utf-8")
+        return True
+    if where == "/stage/discard":
+        command, ident = str(held.get("command") or ""), str(held.get("id") or "")
+        if not stage_talk.known(command) or not stage_talk.discard(bridge.root, command, ident):
+            bridge.send(400, "nothing waiting to be said goes by that id", "text/plain; charset=utf-8")
+            return True
+        stage = running(bridge)
+        if stage is not None and stage.command == command:
+            stage.queue = [one for one in stage.queue if one["id"] != ident]
+        bridge.send(200, "discarded", "text/plain; charset=utf-8")
         return True
     if where not in ("/stage/answer", "/stage/cancel", "/stage/say"):
         return False

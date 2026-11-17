@@ -28,9 +28,16 @@ from pathlib import Path
 from .talk import read_bytes
 
 RESEARCH = "research.md"
-#: The two lines the stage declares, each on a line by itself; the only thing the gate reads.
-BLOCKERS_LINE = re.compile(r"^Blockers open: (\d{1,5})[ \t]*$", re.MULTILINE)
-QUESTIONS_LINE = re.compile(r"^Questions open: (\d{1,5})[ \t]*$", re.MULTILINE)
+#: The two counts the stage declares — the only thing the gate reads — and what between the words and the number
+#: is forgiven: a colon, a table's bar, bold, italic, backticks, spaces.
+DECLARED = re.compile(r"\b(blockers|questions)[ \t]+open\b([ \t:|=*_`>-]{0,12})([0-9]{1,5}|[a-z]+)\b",
+                      re.IGNORECASE)
+#: What the drawing is told, in `/mockups` and in the board's own prompt to the drawing, word for word.
+DECLARE = ("Begin research.md with these two lines, as plain text — no bold, no list marker — with the numbers "
+           "kept true as findings and questions are settled:\n\nBlockers open: 0\nQuestions open: 0\n\n"
+           "`Blockers open` counts the Blocker findings nobody has settled; `Questions open`, the questions under "
+           "`## Questions` nobody has answered. The board reads these two lines to tell whether anything is left "
+           "to discuss.")
 #: How much of a file is read, and how much of one line: a review is pages, not megabytes.
 READ = 512 * 1024
 LINE = 2000
@@ -184,9 +191,22 @@ def questions_of(text: str) -> list[str]:
 
 
 def declared(text: str) -> tuple[int | None, int | None]:
-    """The stage's own two lines, read only where each is said exactly once."""
-    blockers, questions = BLOCKERS_LINE.findall(text), QUESTIONS_LINE.findall(text)
-    return (int(blockers[0]) if len(blockers) == 1 else None, int(questions[0]) if len(questions) == 1 else None)
+    """The stage's own two counts, read forgivingly: whatever is around them — a list marker, bold, italic,
+    backticks, a blockquote, a table's bars, indentation, case, a trailing full stop or a remark in brackets —
+    and both on one line or the pair said twice where they agree. A count is `None`, unknown, where it is not
+    said, is said in words, or is said twice and disagrees. `N` alone is the instruction quoted, not a count."""
+    found: dict[str, set[int]] = {"blockers": set(), "questions": set()}
+    unknown: set[str] = set()
+    for key, between, value in DECLARED.findall(text.replace("\r", "")):
+        key, value = key.lower(), value.lower()
+        if value.isdigit():
+            found[key].add(int(value))
+        elif value != "n" and re.search(r"[:|=]", between):  # `Blockers open: two` is a count in words
+            unknown.add(key)
+
+    def one(key: str) -> int | None:
+        return None if key in unknown or len(found[key]) != 1 else next(iter(found[key]))
+    return one("blockers"), one("questions")
 
 
 def review_files(home: Path) -> list[Path]:
@@ -215,16 +235,18 @@ def reading(root: Path, feature: str) -> Reading:
 
 def gate(root: Path, feature: str) -> str:
     """Why the board, advancing by itself, must not approve this storyboard — a sentence, or nothing where the
-    stage has declared nought Blockers and nought questions open. Reads the declaration and nothing else."""
+    stage has declared nought Blockers and nought questions open. Reads the declaration and nothing else, and
+    only `advance` reads this: a drawing without the lines is a drawing like any other to a person."""
     research = root / "specs" / feature / "mockups" / RESEARCH
-    text = text_of(research) if research.is_file() else None
+    text = text_of(research) if research.is_file() and not research.is_symlink() else None
     blockers, questions = declared(text) if text is not None else (None, None)
     missing = [line for line, value in (("Blockers open: N", blockers), ("Questions open: N", questions))
                if value is None]
     if missing:
         return (f"specs/{feature}/mockups/{RESEARCH} does not say {' and '.join(f'`{one}`' for one in missing)} "
-                "on a line of its own, so the board cannot tell whether anything is left to discuss — draw the "
-                "storyboard again, or add the line, or judge it yourself")
+                "with a number, so the board cannot tell whether anything is left to discuss — add the line, or "
+                "judge the storyboard yourself; a project made before the drawing was asked for it gets the "
+                "instruction with `slipwai migrate`")
     why = []
     if blockers:
         why.append(f"the drawing says {blockers} Blocker{' is' if blockers == 1 else 's are'} open")
@@ -232,14 +254,3 @@ def gate(root: Path, feature: str) -> str:
         why.append(f"{questions} question{'' if questions == 1 else 's'} only you can answer "
                    f"{'is' if questions == 1 else 'are'} open")
     return "; ".join(why)
-
-
-def surfaces_check(root: Path, feature: str) -> str:
-    """What the drawing's own after-check says where the declaration is missing; nothing where it is there."""
-    research = root / "specs" / feature / "mockups" / RESEARCH
-    text = text_of(research) if research.is_file() else None
-    if text is not None and None not in declared(text):
-        return ""
-    return (f"The drawing is kept, but specs/{feature}/mockups/{RESEARCH} does not declare `Blockers open: N` and "
-            "`Questions open: N`, each on a line of its own, as /mockups asks; the board cannot tell whether "
-            "anything is left to discuss. Judge it yourself, or draw it again.")

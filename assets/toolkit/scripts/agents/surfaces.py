@@ -155,6 +155,21 @@ def retire(feature: str, said: str) -> None:
     (home / "mock-states.md").unlink(missing_ok=True)
 
 
+#: The two lines `/mockups` has the drawing declare in its research note, each on a line by itself: what the
+#: board reads to tell whether a storyboard has anything left to discuss.
+DECLARED = (re.compile(r"^Blockers open: \d{1,5}[ \t]*$", re.MULTILINE),
+            re.compile(r"^Questions open: \d{1,5}[ \t]*$", re.MULTILINE))
+
+
+def declared(feature: str) -> bool:
+    """Whether the drawing said, once each, how many Blockers and questions are left open."""
+    try:
+        text = (SPECS / feature / MOCKUPS / "research.md").read_text(encoding="utf-8", errors="replace")[:524288]
+    except OSError:
+        return False
+    return all(len(line.findall(text)) == 1 for line in DECLARED)
+
+
 def main(argv: list[str]) -> int:
     specs = specifications()
     if not specs:
@@ -225,6 +240,12 @@ def main(argv: list[str]) -> int:
                   f"above", file=sys.stderr)
             return 1
         retire(feature, redraw)
+    if not declared(feature) and not expired:
+        print(f"surfaces: the drawing is kept, but specs/{feature}/{MOCKUPS}/research.md does not declare "
+              f"`Blockers open: N` and `Questions open: N`, each on a line of its own, as /mockups asks; the "
+              f"board cannot tell whether anything is left to discuss. Judge it yourself, or draw it again",
+              file=sys.stderr)
+        return 1
     print(f"drawn: {len(drawn(feature))} surface(s) under specs/{feature}/{MOCKUPS}/ — open the storyboard, "
           f"then /mockups {feature} in the agent walks you through approving each state")
     return 0

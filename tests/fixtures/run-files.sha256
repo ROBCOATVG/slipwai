@@ -54,6 +54,7 @@
 # why: 2026-11-17 047fda413f134276 captain.py: a noted line is no slice's progress in mine(), and a captain's park is written with cause other, which the deck log's closed set has; talk.py: the thread is read to the end its first read found, and hold() says since when a slice is held. Behaviour on macOS and Linux is otherwise unchanged
 # why: 2026-11-17 7bde268ef766aca8 whole-branch review of the captain agent: the captain session's policy parses an order command as a shell would, a captain's ask, pause, park needs and results do what they say, the evals' door in orders.py needs their marker, and words the captain acted on are read; a project with no captain agent behaves on macOS and Linux as before, apart from one line said where SLIPWAI_CAPTAIN in the environment overrides harbour.json
 # why: 2026-11-17 c96ab4d578f6f95e whole-branch review, round 2: what a captain reads and lets a slice read is decided on the resolved path, its session's policy judges the whole request (a client keeps each tool call's updates for the permission asked of it), only words answer a person's words, a held slice not yet started is said with its holder, and an environment override is said off the deck; a project with no captain agent runs on macOS and Linux exactly as before
+# why: 2026-11-17 74d6c3e01c3eb587 scripts/agents/surfaces.py refuses, with exit 1 and a sentence, a drawing whose research.md does not declare Blockers open: N and Questions open: N (changelog.d/stage-talk.md); a drawing that declares them, one ended at its budget, and every other path behave as before on macOS and Linux
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -93,10 +94,6 @@
 22264f1c5995feb7a83b5aa22b2ceb9bc9cfb2a2a8e9b52cd1bb7433f66d0afa  event-modelling-postgres-toy-serve  scripts/agents/captain.py
 22264f1c5995feb7a83b5aa22b2ceb9bc9cfb2a2a8e9b52cd1bb7433f66d0afa  standard-memory-none  scripts/agents/captain.py
 22264f1c5995feb7a83b5aa22b2ceb9bc9cfb2a2a8e9b52cd1bb7433f66d0afa  standard-postgres-toy-serve  scripts/agents/captain.py
-23f454becf5501dd9089a5a3b237543e11f6a5d72e8871b8be42149972a3eee0  event-modelling-memory-none  scripts/agents/surfaces.py
-23f454becf5501dd9089a5a3b237543e11f6a5d72e8871b8be42149972a3eee0  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
-23f454becf5501dd9089a5a3b237543e11f6a5d72e8871b8be42149972a3eee0  standard-memory-none  scripts/agents/surfaces.py
-23f454becf5501dd9089a5a3b237543e11f6a5d72e8871b8be42149972a3eee0  standard-postgres-toy-serve  scripts/agents/surfaces.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-memory-none  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-postgres-toy-serve  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-memory-none  scripts/check-crossing.py
@@ -266,6 +263,10 @@
 9b21d9961571e6bb948d1cacad9b0e2972f92cccae2f178bf95019ab956bfdca  standard-postgres-toy-serve  scripts/render-fairways.py
 9d85a3f4bb66e76e12aaa443ee3f2e47c1ab104ade852b128dfb74e208462dfa  event-modelling-memory-none  scripts/event-model/workspace.ts
 9d85a3f4bb66e76e12aaa443ee3f2e47c1ab104ade852b128dfb74e208462dfa  event-modelling-postgres-toy-serve  scripts/event-model/workspace.ts
+9e1a1b7b97ea3f4ab6c4e701e00bcc7b77d84e74481cbac2f284bd53d99aee90  event-modelling-memory-none  scripts/agents/surfaces.py
+9e1a1b7b97ea3f4ab6c4e701e00bcc7b77d84e74481cbac2f284bd53d99aee90  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
+9e1a1b7b97ea3f4ab6c4e701e00bcc7b77d84e74481cbac2f284bd53d99aee90  standard-memory-none  scripts/agents/surfaces.py
+9e1a1b7b97ea3f4ab6c4e701e00bcc7b77d84e74481cbac2f284bd53d99aee90  standard-postgres-toy-serve  scripts/agents/surfaces.py
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-memory-none  scripts/event-model/readme.ts
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-postgres-toy-serve  scripts/event-model/readme.ts
 a68155a17300e6a1a8021939a91e3ce86eb725d77c7bf6304849236040f8f800  event-modelling-memory-none  scripts/event-model/seams.py

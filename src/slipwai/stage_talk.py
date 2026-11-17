@@ -16,12 +16,16 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
+import re
+import subprocess
 import time
 import uuid
 from pathlib import Path
 from typing import Any
 
 from .logs import run_dir
+from .talk import read_bytes
 
 #: Where the project keeps a stage's session, its conversation and its hold: one folder per command.
 KEPT = "stages"
@@ -34,21 +38,72 @@ SHOWN = 400
 KINDS = frozenset({"text", "error", "tool", "tool_update", "plan", "permission", "question", "answered"})
 
 
+#: What a stage's command looks like — `mockups`, `model`, `draft` — and so the only names a folder here is made
+#: from: a name off an address is never joined into a path.
+STAGE = re.compile(r"[a-z][a-z-]{0,31}")
+#: How much of a conversation is read back: the tail, which is what a page shows.
+TAIL = 2 * 1024 * 1024
+
+
+def known(command: str) -> bool:
+    return bool(STAGE.fullmatch(command))
+
+
 def home(root: Path, command: str) -> Path:
+    if not known(command):
+        raise ValueError(f"{command!r} is not a stage of this board")
     return run_dir(root) / KEPT / command
 
 
+#: Per project: whether git ignores the run folder, asked of git once.
+_IGNORED: dict[Path, bool] = {}
+
+
+def ignored(root: Path) -> bool:
+    """Whether what is written under the run folder stays out of the project's commits. A project still on
+    the 2.0 layout keeps its run state in `.slipwai/`, which nothing may say is ignored; a person's words
+    written there would go out with the next commit. Not a repository is nothing to commit into."""
+    key = Path(root).resolve()
+    if key not in _IGNORED:
+        probe = run_dir(root) / KEPT / "talk.jsonl"
+        try:
+            asked = subprocess.run(["git", "check-ignore", "-q", "--no-index", str(probe)], cwd=root,
+                                   capture_output=True, timeout=10, check=False)
+            inside = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=root, capture_output=True,
+                                    timeout=10, check=False).returncode == 0
+            _IGNORED[key] = asked.returncode == 0 or not inside
+        except (OSError, subprocess.TimeoutExpired):
+            _IGNORED[key] = True
+    return _IGNORED[key]
+
+
+def unignored(root: Path) -> str:
+    """The refusal a conversation gets where what it says would be committed; empty where it would not."""
+    return "" if ignored(root) else (
+        f"this project keeps its run state in {run_dir(root).name}/, which git does not ignore yet, so what you "
+        "say to a stage would go out with the next commit: run `slipwai migrate` in the project, then say it")
+
+
 def add(root: Path, command: str, turn: dict[str, Any]) -> None:
-    """One turn, at the end of the stage's conversation file. A turn that cannot be written is let go of
-    rather than raised: it was said on the page already, and a stage that stopped for a full disk would be
-    the conversation lost twice."""
+    """One turn, at the end of the stage's conversation file, as a whole line: a file whose last line was
+    torn is given the newline it lacks first, so the torn line is lost and this one is not. A turn that cannot
+    be written is let go of rather than raised: it was said on the page already, and a stage that stopped for
+    a full disk would be the conversation lost twice."""
     if turn.get("kind") not in KINDS and turn.get("kind") != "delivered":
+        return
+    if not ignored(root):
         return
     with contextlib.suppress(OSError):
         folder = home(root, command)
         folder.mkdir(parents=True, exist_ok=True)
-        with (folder / TALK).open("a", encoding="utf-8") as out:
-            out.write(json.dumps({**turn, "t": round(time.time(), 1)}) + "\n")
+        path = folder / TALK
+        torn = False
+        if path.is_file() and path.stat().st_size:
+            with path.open("rb") as last:
+                last.seek(-1, os.SEEK_END)
+                torn = last.read(1) != b"\n"
+        with path.open("a", encoding="utf-8") as out:
+            out.write(("\n" if torn else "") + json.dumps({**turn, "t": round(time.time(), 1)}) + "\n")
 
 
 def said(root: Path, command: str, words: str, queued: bool = False) -> dict[str, Any]:
@@ -64,10 +119,12 @@ def said(root: Path, command: str, words: str, queued: bool = False) -> dict[str
 def turns(root: Path, command: str) -> list[dict[str, Any]]:
     """The whole conversation, oldest first — a page asks for the turns after the count it has, so the count
     never stops growing — with a queued message shown queued until the turn that delivered it."""
-    try:
-        lines = (home(root, command) / TALK).read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
+    read = read_bytes(home(root, command) / TALK, TAIL, -TAIL)  # the tail, once, a plain file only
+    if read is None:
         return []
+    lines = read[0].decode("utf-8", "replace").splitlines()
+    if read[1] > TAIL:
+        lines = lines[1:]  # the first line of a tail is part of one
     found: list[dict[str, Any]] = []
     for line in lines:
         try:
@@ -113,7 +170,8 @@ def release(root: Path, command: str = "") -> list[str]:
 def held(root: Path) -> list[str]:
     """The stages a person has said something to and not yet said to carry on from, by command."""
     try:
-        return sorted(one.name for one in (run_dir(root) / KEPT).iterdir() if (one / HELD).is_file())
+        return sorted(one.name for one in (run_dir(root) / KEPT).iterdir()
+                      if known(one.name) and (one / HELD).is_file())
     except OSError:
         return []
 

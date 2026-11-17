@@ -27,7 +27,7 @@ from .page_shell import esc
 from .stage_session import running
 from .talk_waits import captain_window
 from .talk_waits import items as talk_items
-from .upstream import stopped, unjudged
+from .upstream import held_by, unjudged
 
 NOTHING_WAITS: dict[str, Any] = {"count": 0, "text": "", "href": "", "holding": [], "later": [], "slices": []}
 
@@ -118,7 +118,7 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     holding += [{"n": 1, "text": f"The {row['fairway']} log cannot be read: its captain cannot start",
                  "href": "#from-streams"} for row in fleet.get("inbox") or [] if row.get("kind") == "unreadable"]
     # Where the board was set to advance by itself and will not, why — in place of the line it would repeat.
-    why, there = stopped(board.root)
+    why, there = held_by(board)
     if why:
         holding.append({"n": 1, "text": why, "href": there})
     said, where = button_waiting(board, able)

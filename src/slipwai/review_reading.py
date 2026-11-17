@@ -1,16 +1,23 @@
-"""What the drawing stage found, read for a person to work through: the review's findings and the open questions.
+"""What the drawing stage found: the counts it declares, which decide, and its findings, which are only shown.
 
-The surfaces stage writes `specs/<feature>/mockups/research.md` — a `## Questions` list the specification
-does not answer — and, where a person handed mock-ups over, a review of each in the `/gaps` shape:
-findings triaged Blocker, Should-address, Nice-to-have. On the first real run it wrote 84 findings, 14 of
-them Blockers, and the board's only two moves were to approve all of it or to redraw all of it.
+The surfaces stage writes `specs/<feature>/mockups/research.md` — the questions the specification leaves
+open — and, where it reviewed anything, findings in the `/gaps` triage: Blocker, Should-address,
+Nice-to-have. On the first real run it wrote 84 findings, 14 of them Blockers, and a board set to advance
+approved straight past them. The files on this machine's projects are every shape an agent cares to write:
+`review.md`, a `review-<surface>.md` per page, `gaps.md`, a `review/` folder; findings as list items, table
+rows, a heading each, bold paragraphs; counts in a summary sentence or a table, or not at all.
 
-**Read defensively, because an agent wrote it.** No line here is a format the method fixes: a finding may be
-a list item tagged `[Blocker]`, a row of a table, or a line under a `### Blockers` heading; the counts may be
-a summary sentence. What is read is what can be read with confidence, and where the shape is not found the
-answer is *unreadable* — the page shows a link to the file and nothing else, and the board that advances
-by itself stops, because unknown is not clean. A file that is not there is a different answer: nothing was
-reviewed, or nothing was asked.
+**So the gate does not read prose.** `/mockups` has the stage declare what is left in two lines of its own,
+`Blockers open: N` and `Questions open: N`, each on a line by itself in `research.md`, kept current by the
+stage and by every turn of conversation that settles one. The board advancing by itself reads those two
+lines and nothing else (`declared`, `gate`): both there and both nought is clean; anything else stops it,
+saying the numbers or saying which line is missing — a drawing from before the lines is stopped, not waved
+through.
+
+**The panel reads the findings leniently, for a person** (`reading`): across every review-like file, as far
+as each can be read, and said beside the stage's own count where the two differ. Nothing it reads decides
+anything. Every file is read once, as a plain file, capped (`talk.read_bytes`): a pipe, a link or a file of
+one endless line put where a review goes is not what holds a request up.
 """
 from __future__ import annotations
 
@@ -18,196 +25,221 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-REVIEW, RESEARCH = "review.md", "research.md"
-#: The three severities of the `find-gaps` triage, each with the spellings an agent has been seen to use.
-SEVERITY = re.compile(r"\b(blockers?|should[- ]address(?:es)?|should[- ]haves?|nice[- ]to[- ]haves?)\b",
-                      re.IGNORECASE)
-#: A severity said as a number of them — `14 Blockers`, `| Blocker | 14 |` — which is a count, not a finding.
-COUNTED = re.compile(r"(\d+)\s*(?:\*\*)?\s*(blockers?|should[- ]address(?:es)?|nice[- ]to[- ]haves?)\b"
-                     r"|\|\s*(blockers?|should[- ]address(?:es)?|nice[- ]to[- ]haves?)\s*\|\s*(\d+)\s*\|",
-                     re.IGNORECASE)
+from .talk import read_bytes
+
+RESEARCH = "research.md"
+#: The two lines the stage declares, each on a line by itself; the only thing the gate reads.
+BLOCKERS_LINE = re.compile(r"^Blockers open: (\d{1,5})[ \t]*$", re.MULTILINE)
+QUESTIONS_LINE = re.compile(r"^Questions open: (\d{1,5})[ \t]*$", re.MULTILINE)
+#: How much of a file is read, and how much of one line: a review is pages, not megabytes.
+READ = 512 * 1024
+LINE = 2000
+#: The severities of the `find-gaps` triage, with the spellings an agent has been seen to use.
+WORDS = r"blockers?|critical|should[- ]address(?:es)?|should[- ]haves?|nice[- ]to[- ]haves?"
+SEVERITY = re.compile(rf"\b({WORDS})\b", re.IGNORECASE)
+COUNTED = re.compile(rf"\b(\d{{1,4}})\s{{0,3}}(?:\*\*)?\s{{0,3}}({WORDS})\b"
+                     rf"|\|\s{{0,3}}({WORDS})\s{{0,3}}\|\s{{0,3}}(\d{{1,4}})\s{{0,3}}\|", re.IGNORECASE)
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
-ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?(.*)$")
+BOLD_HEADING = re.compile(r"^\s*\*\*([^*]{1,80})\*\*:?\s*$")
+ITEM = re.compile(r"^\s*(?:[-*+]|\d{1,4}[.)])\s+(?:\[[ xX]\]\s+)?(.*)$")
 ROW = re.compile(r"^\s*\|(.*)\|\s*$")
-QUESTIONS = re.compile(r"^(?:open\s+)?questions?\b", re.IGNORECASE)
-#: How a question somebody has answered is marked: the word, a ticked box, or struck through.
-ANSWERED = re.compile(r"\banswered\b|\bresolved\b|^\s*(?:[-*+]|\d+[.)])\s+\[[xX]\]|~~.+~~", re.IGNORECASE)
-NONE = re.compile(r"^\s*(?:none|nothing|no (?:open )?questions)\b", re.IGNORECASE)
+QUESTIONS = re.compile(r"^(?:open\s+|unresolved\s+|unanswered\s+)?questions?\b", re.IGNORECASE)
+#: How a settled finding or an answered question is marked: as `/mockups` says to, or ticked, or struck.
+SETTLED = re.compile(r"—\s*answered\b|\banswered\s*\(D\d+\)|^\s*(?:[-*+]|\d+[.)])\s+\[[xX]\]|~~.+~~", re.IGNORECASE)
+NONE = re.compile(r"^\s*(?:[-*+]\s+)?_?(?:none|nothing|no\s+(?:open\s+)?(?:blockers?|questions?|findings?))\b",
+                  re.IGNORECASE)
 
 
 @dataclass
 class Finding:
     severity: str  # `blocker`, `should` or `nice`
     text: str
-    where: str = ""  # the heading it was under: the mock-up it is about, where the review says
+    where: str = ""  # the heading it was under, or the file
 
 
 @dataclass
 class Reading:
-    """One feature's review and research, as far as each could be read."""
+    """One feature's findings and questions, read leniently for the panel; and the stage's own count."""
 
     feature: str
-    review: bool = False  # whether there is a review at all
+    files: list[str] = field(default_factory=list)  # every review-like file, by its name under mockups/
     research: bool = False
-    review_read: bool = True  # False where the file is there and its shape is not
-    research_read: bool = True
-    counts: dict[str, int] = field(default_factory=dict)
     findings: list[Finding] = field(default_factory=list)
-    questions: list[str] = field(default_factory=list)  # the open ones
-    answered: int = 0
+    questions: list[str] = field(default_factory=list)  # the open ones the panel could find
+    blockers_open: int | None = None  # the stage's own `Blockers open:` line
+    questions_open: int | None = None
 
     @property
     def blockers(self) -> list[Finding]:
         return [one for one in self.findings if one.severity == "blocker"]
 
-    @property
-    def readable(self) -> bool:
-        return self.review_read and self.research_read
+
+def text_of(path: Path) -> str | None:
+    """A file as text — once, a plain file, capped, each line cut short — or None where it is not one."""
+    read = read_bytes(path, READ)
+    if read is None:
+        return None
+    return "\n".join(line[:LINE] for line in read[0].decode("utf-8", "replace").splitlines())
 
 
 def severity_of(word: str) -> str:
     word = word.lower()
-    return "blocker" if word.startswith("blocker") else "should" if word.startswith("should") else "nice"
+    return "blocker" if word.startswith(("blocker", "critical")) else "should" if word.startswith("should") \
+        else "nice"
 
 
 def plain(text: str) -> str:
-    """A line without its markdown: emphasis, code ticks, links and the severity tag said beside it."""
-    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
-    text = re.sub(r"\[\s*(?:blockers?|should[- ]address(?:es)?|nice[- ]to[- ]haves?)[^\]]*\]", "", text,
-                  flags=re.IGNORECASE)
-    text = re.sub(r"\*\*\s*(?:blockers?|should[- ]address(?:es)?|nice[- ]to[- ]haves?)\s*:?\s*\*\*:?", "", text,
-                  flags=re.IGNORECASE)
-    text = re.sub(r"^\s*(?:blockers?|should[- ]address(?:es)?|nice[- ]to[- ]haves?)\s*[:—–-]\s*", "", text,
-                  flags=re.IGNORECASE)
+    """A line without its markdown and its severity tag."""
+    text = re.sub(r"\[([^\]]{0,300})\]\([^)]{0,300}\)", r"\1", text)
+    text = re.sub(rf"\[\s*(?:{WORDS})[^\]]{{0,40}}\]", "", text, flags=re.IGNORECASE)
+    text = re.sub(rf"\*\*\s*(?:{WORDS})\s*:?\s*\*\*:?", "", text, flags=re.IGNORECASE)
+    text = re.sub(rf"^\s*(?:{WORDS})\s*[:—–-]\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(rf"\s[—–-]\s(?:{WORDS})\s[—–-]\s", " — ", text, flags=re.IGNORECASE)
     text = text.replace("**", "").replace("`", "").replace("__", "")
     return re.sub(r"\s+", " ", text).strip(" -—–:|")[:300]
 
 
-def read_text(path: Path) -> str | None:
-    try:
-        return path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
+def section_title(title: str) -> str:
+    """The severity a heading puts what is under it in — `Blockers`, `**Should-address**` — or nothing where the
+    heading is a finding of its own (`G1 — Blocker — no held state`) or about something else."""
+    words = SEVERITY.sub("", plain(title)).strip(" ()0123456789:—–-")
+    found = SEVERITY.search(title)
+    return severity_of(found.group(1)) if found and not words else ""
 
 
-def review_of(text: str) -> tuple[dict[str, int], list[Finding], bool]:
-    """The counts, the findings, and whether the file's shape was found at all."""
-    findings: list[Finding] = []
-    stated: dict[str, int] = {}
-    where, under, level = "", "", 0  # the last plain heading; the severity a heading put every item under
+def findings_of(text: str, name: str) -> list[Finding]:
+    """Every finding a person could be shown, from one review-like file. Lenient on purpose: it decides nothing."""
+    found: list[Finding] = []
+    where, under, level = name, "", 7
+    detail = False  # inside a finding that is a heading of its own: its bullets are its detail, not findings
     for line in text.splitlines():
-        for found in COUNTED.finditer(line):
-            number, word = (found.group(1), found.group(2)) if found.group(1) else (found.group(4), found.group(3))
-            key = severity_of(word)
-            stated[key] = max(stated.get(key, 0), int(number))
-        heading = HEADING.match(line)
-        if heading:
-            depth, title = len(heading.group(1)), heading.group(2)
+        heading, bold = HEADING.match(line), BOLD_HEADING.match(line)
+        if heading or bold:
+            depth = len(heading.group(1)) if heading else 6
+            title = heading.group(2) if heading else bold.group(1) if bold else ""
+            detail = False
+            if (severity := section_title(title)):
+                under, level = severity, depth
+                continue
+            if under and depth <= level:
+                under = ""
             tagged = SEVERITY.search(title)
-            if tagged and not COUNTED.search(title):
-                under, level = severity_of(tagged.group(1)), depth
-            else:
-                if under and depth <= level:
-                    under = ""
-                where = plain(title)
+            if heading and under and depth > level:  # `## Blockers` over `### G1 — …`: a finding a heading
+                if not SETTLED.search(title):
+                    found.append(Finding(under, plain(title), where))
+                detail = True
+            elif heading and tagged and not COUNTED.search(title):  # `### G1 — Blocker — …`
+                if not SETTLED.search(title):
+                    found.append(Finding(severity_of(tagged.group(1)), plain(title), where))
+                detail = True
+            elif heading:
+                where = plain(title) or where
+            continue
+        if detail:
             continue
         item, row = ITEM.match(line), ROW.match(line)
-        body = item.group(1) if item else row.group(1) if row else ""
-        if not body.strip() or (row and re.fullmatch(r"[\s|:-]*", row.group(1))):
+        body = item.group(1) if item else row.group(1) if row else line if line.lstrip().startswith("**") else ""
+        if not body.strip() or (row and re.fullmatch(r"[\s|:-]*", row.group(1))) or NONE.match(body):
             continue
+        if SETTLED.search(line) or COUNTED.search(body):
+            continue  # settled, or a count said in a list or a table
         tagged = SEVERITY.search(body)
-        if tagged and COUNTED.search(body):
-            continue  # a count said in a list or a table, not a finding
-        if row and tagged:  # a table: the severity is a cell of its own, and the rest is the finding
+        # Led by its severity — `[Blocker] …`, `**Blocker:** …`, `Nice-to-have — …` — or tagged `[Critical]`.
+        lead = (re.match(rf"\s*(?:\[|\*\*)?\s*({WORDS})\b", body, re.IGNORECASE)
+                or re.search(rf"\[\s*({WORDS})\b", body, re.IGNORECASE))
+        if row and len(SEVERITY.findall(body)) > 1:
+            continue  # a table's head, naming the severities as its columns
+        if row and tagged:
             cells = [cell.strip() for cell in body.split("|")]
             words = [cell for cell in cells if cell and not SEVERITY.fullmatch(cell.strip("*[]_ "))]
-            findings.append(Finding(severity_of(tagged.group(1)), plain(" — ".join(words)), where))
-        elif tagged:
-            findings.append(Finding(severity_of(tagged.group(1)), plain(body), where))
+            found.append(Finding(severity_of(tagged.group(1)), plain(" — ".join(words)), where))
+        elif lead and plain(body):
+            found.append(Finding(severity_of(lead.group(1)), plain(body), where))
         elif item and under:
-            findings.append(Finding(under, plain(body), where))
-    counted: dict[str, int] = {}
-    for one in findings:
-        counted[one.severity] = counted.get(one.severity, 0) + 1
-    # The larger of what the file says and what was read off it: a summary over findings this cannot parse
-    # still counts, and a summary that undercounts is not believed over the findings themselves.
-    counts = {key: max(stated.get(key, 0), counted.get(key, 0)) for key in {*stated, *counted}}
-    return counts, findings, bool(findings or stated)
+            found.append(Finding(under, plain(body), where))
+    return found
 
 
-def questions_of(text: str) -> tuple[list[str], int, bool]:
-    """The open questions under every `Questions` heading, how many are marked answered, and whether the shape
-    was found. A file with no such heading asks nothing."""
-    open_, answered, shaped = [], 0, True
-    level = 0
-    held: list[str] = []  # the section's lines, read at its end
-    sections: list[list[str]] = []
-    for line in [*text.splitlines(), "# end"]:
-        heading = HEADING.match(line)
-        if heading and level and len(heading.group(1)) <= level:
-            sections.append(held)
-            held, level = [], 0
-        if heading and QUESTIONS.match(heading.group(2).strip("*: ")):
-            level = len(heading.group(1))
+def questions_of(text: str) -> list[str]:
+    """The open questions under every `Questions` heading, bold or not, items or `### Q1` sub-headings."""
+    open_: list[str] = []
+    level, inside = 0, False
+    for line in text.splitlines():
+        heading, bold = HEADING.match(line), BOLD_HEADING.match(line)
+        if heading or bold:
+            depth = len(heading.group(1)) if heading else 6
+            title = (heading.group(2) if heading else bold.group(1) if bold else "").strip("*: ")
+            if QUESTIONS.match(title):
+                level, inside = depth, True
+                continue
+            if inside and depth <= level:
+                inside = False
+            elif inside and heading and not SETTLED.search(line):  # `### Q1 — Who cancels?`
+                open_.append(plain(title))
             continue
-        if level:
-            held.append(line)
-    for section in sections:
-        items: list[str] = []
-        for line in section:
-            item = ITEM.match(line)
-            if item:
-                items.append(line)
-            elif items and line.startswith((" ", "\t")) and line.strip():
-                items[-1] += " " + line.strip()
-        words = [line for line in section if line.strip() and not HEADING.match(line)]
-        if not items:
-            if words and not NONE.match(words[0]):
-                shaped = False
-            continue
-        for line in items:
-            if ANSWERED.search(line):
-                answered += 1
-            else:
-                body = ITEM.match(line)
-                open_.append(plain(body.group(1) if body else line))
-    return open_, answered, shaped
+        item = ITEM.match(line)
+        if inside and item and not NONE.match(item.group(1)) and not SETTLED.search(line):
+            open_.append(plain(item.group(1)))
+    return open_
+
+
+def declared(text: str) -> tuple[int | None, int | None]:
+    """The stage's own two lines, read only where each is said exactly once."""
+    blockers, questions = BLOCKERS_LINE.findall(text), QUESTIONS_LINE.findall(text)
+    return (int(blockers[0]) if len(blockers) == 1 else None, int(questions[0]) if len(questions) == 1 else None)
+
+
+def review_files(home: Path) -> list[Path]:
+    """Every file a drawing has written its findings in, by the names agents have used."""
+    named = [home / "review.md", home / "gaps.md", *sorted(home.glob("review-*.md")),
+             *sorted((home / "review").glob("*.md"))]
+    return [path for path in named if path.is_file() and not path.is_symlink()]
 
 
 def reading(root: Path, feature: str) -> Reading:
-    """The feature's review and research, read; an empty reading where neither was written."""
+    """The feature's findings and questions for the panel, and the stage's own count."""
     home = root / "specs" / feature / "mockups"
     found = Reading(feature)
-    review = home / REVIEW
-    if review.exists():
-        found.review = True
-        text = read_text(review)
-        counts, findings, shaped = review_of(text) if text is not None else ({}, [], False)
-        found.counts, found.findings, found.review_read = counts, findings, shaped
-    research = home / RESEARCH
-    if research.exists():
+    for path in review_files(home):
+        text = text_of(path)
+        if text is not None:
+            found.files.append(path.relative_to(home).as_posix())
+            found.findings += findings_of(text, path.stem)
+    research = text_of(home / RESEARCH) if (home / RESEARCH).is_file() else None
+    if research is not None:
         found.research = True
-        text = read_text(research)
-        questions, answered, shaped = questions_of(text) if text is not None else ([], 0, False)
-        found.questions, found.answered, found.research_read = questions, answered, shaped
+        found.questions = questions_of(research)
+        found.blockers_open, found.questions_open = declared(research)
     return found
 
 
 def gate(root: Path, feature: str) -> str:
-    """Why the board, advancing by itself, must not approve this storyboard: a sentence, or nothing where the
-    review is clean and nothing is asked. A review it cannot read stops it as surely as a Blocker does."""
-    found = reading(root, feature)
+    """Why the board, advancing by itself, must not approve this storyboard — a sentence, or nothing where the
+    stage has declared nought Blockers and nought questions open. Reads the declaration and nothing else."""
+    research = root / "specs" / feature / "mockups" / RESEARCH
+    text = text_of(research) if research.is_file() else None
+    blockers, questions = declared(text) if text is not None else (None, None)
+    missing = [line for line, value in (("Blockers open: N", blockers), ("Questions open: N", questions))
+               if value is None]
+    if missing:
+        return (f"specs/{feature}/mockups/{RESEARCH} does not say {' and '.join(f'`{one}`' for one in missing)} "
+                "on a line of its own, so the board cannot tell whether anything is left to discuss — draw the "
+                "storyboard again, or add the line, or judge it yourself")
     why = []
-    if not found.review_read:
-        why.append(f"specs/{feature}/mockups/{REVIEW} could not be read, and a review nobody can read is not a "
-                   "clean one")
-    elif found.counts.get("blocker"):
-        number = found.counts["blocker"]
-        why.append(f"the review has {number} Blocker finding{'' if number == 1 else 's'}")
-    if not found.research_read:
-        why.append(f"the questions in specs/{feature}/mockups/{RESEARCH} could not be read")
-    elif found.questions:
-        number = len(found.questions)
-        why.append(f"{number} question{'' if number == 1 else 's'} in the research only you can answer "
-                   f"{'is' if number == 1 else 'are'} open")
+    if blockers:
+        why.append(f"the drawing says {blockers} Blocker{' is' if blockers == 1 else 's are'} open")
+    if questions:
+        why.append(f"{questions} question{'' if questions == 1 else 's'} only you can answer "
+                   f"{'is' if questions == 1 else 'are'} open")
     return "; ".join(why)
+
+
+def surfaces_check(root: Path, feature: str) -> str:
+    """What the drawing's own after-check says where the declaration is missing; nothing where it is there."""
+    research = root / "specs" / feature / "mockups" / RESEARCH
+    text = text_of(research) if research.is_file() else None
+    if text is not None and None not in declared(text):
+        return ""
+    return (f"The drawing is kept, but specs/{feature}/mockups/{RESEARCH} does not declare `Blockers open: N` and "
+            "`Questions open: N`, each on a line of its own, as /mockups asks; the board cannot tell whether "
+            "anything is left to discuss. Judge it yourself, or draw it again.")

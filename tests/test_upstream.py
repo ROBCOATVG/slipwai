@@ -16,6 +16,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai import stage_talk
 from slipwai.assets import TOOLKIT_ROOT
+from slipwai.drawn import record_verdict
 from slipwai.project.cruise import cruise_config
 from slipwai.upstream import APPROVED_BY, advance, next_step, stopped, unjudged
 from slipwai.wheel import CONFIG, orders
@@ -112,6 +113,7 @@ class AdvanceTest(Fixture):
         """`mock-states.md` is what the model and the chart read as a person's verdict."""
         self.answer(upstream="advance")
         self.draw()
+        self.declare(0, 0)  # what the drawing says is left to discuss: nothing
         board = Board(self.root)
         advance(board)
         self.assertEqual(board.verdicts, ["approved"], "and the step after it is started as a person's would be")
@@ -124,47 +126,48 @@ class AdvanceTest(Fixture):
         board = Board(self.root, launchable=True)
         advance(board)
         self.assertEqual((board.verdicts, board.fitting, board.launched), ([], None, False))
-        self.review("- [Blocker] The basket has no total\n")
+        self.declare(2, 1)
         stage_talk.said(self.root, "mockups", "why is it empty?")
         self.assertEqual(stopped(self.root), ("", ""), "and nothing is said about stopping a board that never moves")
 
-    def review(self, text: str) -> None:
-        (self.root / "specs/001-orders/mockups/review.md").write_text(f"# Review\n\n{text}", encoding="utf-8")
+    def declare(self, blockers: int | None, questions: int | None, prose: str = "") -> None:
+        """The research note as the drawing leaves it: its two lines, where it wrote them, and any prose."""
+        lines = [f"Blockers open: {blockers}" if blockers is not None else "",
+                 f"Questions open: {questions}" if questions is not None else "", prose]
+        (self.root / "specs/001-orders/mockups/research.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    def test_a_storyboard_whose_review_has_a_blocker_is_left_for_the_person_who_is_told_why(self) -> None:
+    def test_a_drawing_that_declares_a_blocker_is_left_for_the_person_who_is_told_why(self) -> None:
         self.answer(upstream="advance")
         self.draw()
-        self.review("## Basket\n- [Blocker] The basket has no total\n- [Nice-to-have] A colour\n")
-        board = Board(self.root)
-        advance(board)
+        self.declare(1, 0)
+        advance(board := Board(self.root))
         self.assertEqual(board.verdicts, [])
         self.assertFalse((self.root / "specs/001-orders/mockups/mock-states.md").exists(), "nothing approved")
-        why, where = stopped(self.root)
-        self.assertEqual(why, "The storyboard for 001-orders waits for you rather than being approved by the "
-                              "board: the review has 1 Blocker finding")
-        self.assertEqual(where, "#mockups")
+        self.assertEqual(stopped(self.root), ("The storyboard for 001-orders waits for you rather than being approved "
+                                              "by the board: the drawing says 1 Blocker is open", "#mockups"))
 
-    def test_a_review_that_cannot_be_read_stops_it_as_surely_as_a_blocker(self) -> None:
+    def test_a_drawing_that_declares_nothing_is_stopped_as_unknown_whatever_its_prose_says(self) -> None:
         self.answer(upstream="advance")
         self.draw()
-        self.review("Mostly fine, with some worries about the basket.\n")
+        self.declare(None, None, "## Blockers\n- None\n\n## Questions\n_None._\n")
+        advance(board := Board(self.root))
+        self.assertEqual(board.verdicts, [], "a drawing from before the lines is stopped, not waved through")
+        self.assertIn("does not say `Blockers open: N` and `Questions open: N`", stopped(self.root)[0])
+
+    def test_an_open_question_declared_stops_it_too(self) -> None:
+        self.answer(upstream="advance")
+        self.draw()
+        self.declare(0, 2, "## Questions\n- Can a basket be shared?\n")
         advance(board := Board(self.root))
         self.assertEqual(board.verdicts, [])
-        self.assertIn("could not be read", stopped(self.root)[0])
+        self.assertIn("2 questions only you can answer are open", stopped(self.root)[0])
 
-    def test_an_open_question_in_the_research_stops_it_too(self) -> None:
+    def test_nought_declared_and_nothing_said_is_approved_as_before_whatever_the_review_lists(self) -> None:
         self.answer(upstream="advance")
         self.draw()
-        (self.root / "specs/001-orders/mockups/research.md").write_text(
-            "# Research\n\n## Questions\n- Can a basket be shared?\n", encoding="utf-8")
-        advance(board := Board(self.root))
-        self.assertEqual(board.verdicts, [])
-        self.assertIn("1 question in the research only you can answer is open", stopped(self.root)[0])
-
-    def test_a_clean_review_and_nothing_said_is_approved_as_before(self) -> None:
-        self.answer(upstream="advance")
-        self.draw()
-        self.review("## Basket\n- [Should-address] The label could be plainer\n")
+        self.declare(0, 0)
+        (self.root / "specs/001-orders/mockups/review.md").write_text("- [Blocker] ~~no total~~ — answered (D4)\n",
+                                                                      encoding="utf-8")
         advance(board := Board(self.root))
         self.assertEqual(board.verdicts, ["approved"])
         self.assertEqual(stopped(self.root), ("", ""))
@@ -172,6 +175,7 @@ class AdvanceTest(Fixture):
     def test_a_word_to_a_stage_holds_the_board_until_the_person_says_to_carry_on(self) -> None:
         self.answer(upstream="advance")
         self.draw()
+        self.declare(0, 0)
         stage_talk.said(self.root, "mockups", "why is the basket empty?")
         advance(board := Board(self.root))
         self.assertEqual(board.verdicts, [], "a question is not an approval")
@@ -180,6 +184,20 @@ class AdvanceTest(Fixture):
         self.assertEqual(stage_talk.release(self.root), ["mockups"])
         advance(board)
         self.assertEqual(board.verdicts, ["approved"], "Carry on is the person's word to go on")
+
+    def test_a_withdrawn_verdict_is_a_stop_and_never_approved_over(self) -> None:
+        self.answer(upstream="advance")
+        self.draw()
+        self.declare(0, 0)
+        record_verdict(self.root, "001-orders", "approved")
+        (self.root / "specs/001-orders/mockups/basket.html").write_text(
+            "<title>Basket</title><article><h2>Full</h2></article>", encoding="utf-8")  # changed since, by hand
+        before = (self.root / "specs/001-orders/mockups/mock-states.md").read_text(encoding="utf-8")
+        advance(board := Board(self.root))
+        self.assertEqual(board.verdicts, [])
+        self.assertEqual((self.root / "specs/001-orders/mockups/mock-states.md").read_text(encoding="utf-8"), before)
+        self.assertIn("has changed since its verdict (Basket — shown)", stopped(self.root)[0])
+
 
 
 class SettingTest(Fixture):

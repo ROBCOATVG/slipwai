@@ -121,7 +121,7 @@ from .stage_steps import begin_model
 from .stage_steps import launch as continue_build
 from .stage_steps import triage as begin_triage
 from .stage_talk import release
-from .storyboard_card import talking_to
+from .storyboard_card import talking_to, verdict_refused
 from .talk_routes import route_get as talk_get
 from .talk_routes import route_post as talk_post
 from .telegraph import Refused
@@ -146,8 +146,9 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 948 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
-# by a conversation keeps Model again away (eight lines, against the 940 that was).
+# budget: 951 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
+# by a conversation keeps Model again away, and a verdict is refused while a turn is about to change the
+# pages (ten lines, against the 940 that was).
 # The cross-site guard and the app-version guard (2.1) on every change and page, one server
 # and every route the board answers, the need tick and the timeline among them, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
@@ -838,6 +839,8 @@ class Bridge(BaseHTTPRequestHandler):
                 else:
                     raise ValueError(f"{idea.slug} is {idea.state}; /sail is what moves an idea in that state")
             elif where == "/storyboard":
+                if refused := verdict_refused(self):  # not on pages a turn is about to change
+                    raise ValueError(refused)
                 said = record_verdict(self.root, str(held.get("feature", "")), str(held.get("verdict", "")),
                                       str(held.get("reason", "")))
                 release(self.root, "mockups")  # a verdict is the person's word to carry on from the drawing

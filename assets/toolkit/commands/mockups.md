@@ -56,8 +56,16 @@ the same file name, as a redraw would make it; the board withdraws any verdict o
 leave `mock-states.md` alone. A decision they make — an answer to one of `research.md`'s `## Questions`, how
 a finding in the review is settled — is written down in the same turn: the next entry of
 `specs/<feature>/decisions.md`, in the shape `commands/cruise.md` shows, with `Decided by: human`, and the
-question or the finding marked `— answered (D<n>)` where it was written. Saying it is not recording it. A
-verdict is still not yours: `approved`, `parked` and `n/a` are given on the board.
+question or the finding marked `— answered (D<n>)` where it was written, and the two counts below rewritten.
+Saying it is not recording it. A verdict is still not yours: `approved`, `parked` and `n/a` are given on the
+board.
+
+**What is left to discuss, declared.** `research.md` carries two lines of its own, each by itself, near its
+top: `Blockers open: N`, the Blocker findings nobody has settled, and `Questions open: N`, the questions under
+`## Questions` nobody has answered — `0` where there are none. Keep them true: rewrite the numbers whenever a
+finding or a question is settled, in a conversation turn as much as in the drawing. The board reads these two
+lines and nothing else to decide whether a storyboard has anything left to discuss, and a drawing that ends
+without them is refused as unfinished.
 
 ## 1. The researcher
 
@@ -93,11 +101,13 @@ old code, the old app's look is the direction to follow.
 
 It writes `specs/<feature>/mockups/research.md` in that shape, one section per surface, each naming what it
 drew on. Questions the spec does not answer go under `## Questions` and the stage copies them to the inbox.
+It opens with the two lines above, `Blockers open: N` and `Questions open: N`.
 
 Then one of two things, depending on what was in the directory.
 
 - **A person handed over mock-ups.** Review each against the note. One finding list per mock-up, in the
-  shape the `/gaps` stage uses, so one triage reads both. Do not redraw them.
+  shape the `/gaps` stage uses, so one triage reads both, in `specs/<feature>/mockups/review.md`. Do not
+  redraw them.
 - **A person handed over a prototype** (`docs/design/prototype/index.html`): the drawing they approved by
   playing it. The storyboard embeds it first, as the thing to play, and every surface drawn or reviewed
   follows its look and layout; a surface page that says a state in words the prototype shows is reviewed

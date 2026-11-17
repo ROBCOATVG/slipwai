@@ -30,14 +30,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import harness_cli
+from . import harness_cli, stage_talk
 from .logs import run_dir
 from .process_alive import alive
+from .review_reading import surfaces_check
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 725 — one runner for every child the board starts, and the file check an exit code does not make:
-# and what a person says to a stage while it runs, kept for the end of its turn and said then, beside the reply;
+# budget: 752 — one runner for every child the board starts, and the file check an exit code does not make:
+# and what a person says to a stage while it runs, kept for the end of its turn and said then, beside the reply,
+# never after a Stop; and a stage resumed with its own after-check, what was never delivered, and a failure before it;
 # assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
@@ -294,8 +296,10 @@ class Fitting:
         self.began = time.monotonic()
         self.stopped: float | None = None
         self.stage: Any = None  # the stage over the protocol running now, for its cards on the board
-        #: A turn of conversation under way rather than the stage's own run, and how that run ended.
-        self.talking, self.outcome = False, 0
+        #: A turn of conversation under way rather than the stage's own run; and a later stage's failure this run
+        #: was swapped in over to talk to an earlier one, which stays that stage's own: `(step, code)`.
+        self.talking: bool = False
+        self.earlier: tuple[str, int] | None = None
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
@@ -366,7 +370,7 @@ class Fitting:
         if not self.steps:
             self.stop(0)
             return
-        self.outcome = self.run_steps(self.steps)
+        self.run_steps(self.steps)
         self.drained()
 
     def run_steps(self, steps: list[Step], final: bool = True, announced: bool = True) -> int:
@@ -413,24 +417,34 @@ class Fitting:
         self.followed_in(message, kept=False)
         return True
 
-    def tell(self, message: str) -> str:
+    def tell(self, message: str, resend: str = "") -> str:
         """Something said to the stage whatever it is doing: a turn now where it has ended, `said`; kept for
-        the end of its turn where it has not, `queued` — never refused, and never dropped."""
+        the end of its turn where it has not, `queued` — never refused, and never dropped. `resend` is the id
+        of a message kept but not delivered — after a Stop, or a restart — said again under its own id."""
         with self.lock:
             if self.stage is None:
                 return ""
             going = self.code is None or not self.stage.done
-            if going:
+            if resend:
+                self.stage.requeue(resend, message)
+            elif going:
                 self.stage.queued(message)  # under the lock the run's end takes the queue under
         if going:
             self.say(f"› {message} (queued: said to the stage when its turn ends)")
             return "queued"
+        if resend:
+            self.drained(asked=True)
+            return "said"
         return "said" if self.reply(message) else self.tell(message)
 
-    def drained(self) -> None:
-        """What was queued while the stage ran, said now that its turn has ended, as one turn."""
+    def drained(self, asked: bool = False) -> None:
+        """What was queued while the stage ran, said now that its turn has ended, as one turn — unless the turn
+        ended because the person pressed Stop: a Stop starts nothing, and what was queued waits for their
+        word (`asked`) to be said."""
         with self.lock:
             if self.stage is None or not self.stage.queue or self.code is None:
+                return
+            if self.stage.cancelled and not asked:
                 return
             message = self.stage.waiting()
             self.code, self.stopped, self.began, self.talking = None, None, time.monotonic(), True
@@ -442,15 +456,16 @@ class Fitting:
         self.thread.start()
 
     def followed(self, message: str, kept: bool = False) -> None:
-        """A reply's turn to its end. Ending well it puts back how the stage's own run ended, which is not
-        what the reply changes: a question answered is not a step that ended well."""
+        """A reply's turn to its end. Its outcome is what the stage's own after-check says of the project now,
+        which the turn runs again: a draft that stopped short and was finished by a reply has ended well, as
+        it always had. Whether the board may move on from it is the hold's business, not this code's."""
         code = self.stage.follow(self, message, kept)
         with self.lock:
             self.talking = False
         if code:
             self.say("The reply stopped short; its lines above say where.", code=code)
         else:
-            self.stop(self.outcome)
+            self.stop(0)
         self.drained()
 
     def say(self, line: str, code: int | None = None) -> None:
@@ -633,8 +648,10 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     draws the first specification, and the storyboard turned down may not be that one.
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
-    step = stage_step(where, "mockups", feature or first_feature(where), argv, DRAWING, DRAWING_ACP, drew,
+    named = feature or first_feature(where)
+    step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP, drew,
                       "surfaces", limit=900.0, pid="surfaces.pid", stage="",
+                      after=lambda: surfaces_check(where, named) if named else "",  # what is left to discuss, declared
                       done="The surfaces are drawn. The storyboard is below: open it, then Approve or "
                            "Disapprove it on this page. That verdict is what the model and the chart read.",
                       undone="The drawing stopped short; nothing was approved. Its lines above say where.")
@@ -652,15 +669,24 @@ def kept_line(command: str) -> str:
     return f"The {command} stage's session is kept from an earlier run of this board. Reply to carry it on."
 
 
-def resumed(where: Path, command: str, said: list[str] | None = None) -> Fitting:
+def resumed(where: Path, command: str, said: list[str] | None = None,
+            earlier: tuple[str, int] | None = None) -> Fitting:
     """A stage's kept session, after the board that ran it was restarted or another stage has run since: an
     ended run with that stage in it, which is what a reply carries on. Its line is the one the card showed
-    before there was a run, after whatever the receipt already said."""
+    before there was a run, after whatever the receipt already said. `earlier` is a failure of the run this
+    replaces, kept as that stage's own; the stage's after-check comes with it, so a reply is judged as the
+    stage was; and what was said to it and never delivered is queued again, for the next turn to carry."""
     from .stage_session import StageSession  # noqa: PLC0415 — the edge tier, reached from here only
 
     fitting = Fitting(where, [])
     fitting.lines = [*(said or []), kept_line(command)]
-    fitting.stage = StageSession(where, command, **RESUMED.get(command, {}))
+    fitting.earlier = earlier
+    checks = {"mockups": lambda: surfaces_check(where, first_feature(where)) if first_feature(where) else "",
+              "draft": lambda: "" if any((where / "specs").glob("*/spec.md")) else
+              "The session ended without a specification under specs/."}
+    fitting.stage = StageSession(where, command, after=checks.get(command), **RESUMED.get(command, {}))
+    fitting.stage.queue = [{"id": one["id"], "text": one["text"]} for one in stage_talk.undelivered(where, command)
+                           if one.get("id")]
     fitting.stage.done = True
     fitting.stop(0)
     return fitting

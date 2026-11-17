@@ -90,10 +90,34 @@ def stopped(root: Path) -> tuple[str, str]:
                 "#storyboard-talk" if "mockups" in held else "#fitting")
     # Not while the drawing is still under way: what it has written so far is not yet the storyboard.
     waiting = unjudged(root) if outside_session(root) is None else ""
+    if waiting and (gone := withdrawn(root, waiting)):  # the board never writes its approval over a verdict
+        return (f"The storyboard for {waiting} has changed since its verdict ({'; '.join(gone)}): the board does "
+                "not approve over a verdict a person gave, so approve or disapprove it yourself", "#mockups")
     why = gate(root, waiting) if waiting else ""
     if why:
         return (f"The storyboard for {waiting} waits for you rather than being approved by the board: {why}",
                 "#mockups")
+    return "", ""
+
+
+def held_by(board: Any) -> tuple[str, str]:
+    """`stopped`, and what the board's own run says besides: a step that ended short — the stage's own, a reply
+    stopped or broken, or a later stage's failure a conversation with an earlier one was swapped in over — is
+    a stop too, and Carry on does not lift it. Said, so that pressing Carry on and seeing nothing happen never
+    happens without a reason on the page."""
+    why = stopped(board.root)
+    if why[0] or not advancing(board.root):
+        return why
+    running = board.fitting
+    said = running.said(10 ** 9) if running is not None else None
+    if said and said["done"] and said["code"]:
+        return (f"The last step on this board ({said['step'] or 'a reply'}) ended short, and the board does not "
+                "move on from a step that did: its lines on the stage card say where, and its button tries again",
+                "#fitting")
+    if running is not None and getattr(running, "earlier", None):
+        step, code = running.earlier
+        return (f"`{step}` ended short (exit {code}) before this conversation, and the board does not move on from "
+                "it: its button on the strip tries again", "#fitting")
     return "", ""
 
 
@@ -135,12 +159,14 @@ def advance(board: Any) -> None:
             board.drafted = True
             board.fitting = draft(board.root, running.said()["lines"] if running else None)
             return
-        done = not running or (running.said()["done"] and not running.said()["code"])
+        done = not running or (running.said()["done"] and not running.said()["code"]
+                                    and not getattr(running, "earlier", None))
         step = next_step(board.root, done and not outside_session(board.root), board.drawable(), board.launchable())
         lines = running.said()["lines"] if running else None
         if step == "draw":
             board.fitting = draw(board.root, lines)
-        elif step.startswith("approve "):
+        elif step.startswith("approve ") and not (board.root / "specs" / step.split()[1] / "mockups" /
+                                                  "mock-states.md").exists():  # never over a person's verdict
             board.after_storyboard(record_verdict(board.root, step.split()[1], "approved", by=APPROVED_BY))
         elif step == "launch":
             board.launched = True

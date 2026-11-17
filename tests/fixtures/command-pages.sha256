@@ -120,6 +120,7 @@
 # Re-taken 2026-11-16 for changelog.d/decision-log-a-person-can-read.md: only the rows for commands/cruise.md moved, deliberately — the decision entry gains `In short`, one sentence a product owner reads without the specification open, written by whoever decides, and the page says so where it shows the shape.
 # Re-taken 2026-11-17 for the captain-agent guides: only the rows for commands/cruise.md moved, deliberately — a person's word on the board reaches the deck log as a `told` the captain writes, not one the bridge writes, and the page now says so.
 # Re-taken 2026-11-17 for changelog.d/stage-talk.md: only the rows for commands/mockups.md and commands/cruise-settings.md moved, deliberately — /mockups says what a turn of conversation with the drawing session writes down (decisions.md, the question marked answered) and that it never gives a verdict, and the upstream setting's row says advancing waits on a Blocker, an open question, or a person's word to a stage.
+# Re-taken 2026-11-17 for changelog.d/stage-talk.md (round 2): only the rows for commands/mockups.md moved, deliberately — the drawing declares Blockers open: N and Questions open: N in research.md, keeps them current, and its review goes in mockups/review.md.
 66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  standard  commands/add-frontend.md
 0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  standard  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard  commands/adversary.md
@@ -140,7 +141,7 @@ bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard  comm
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  standard  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  standard  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  standard  commands/launch.md
-65372ae302c151aad3984656c2b42935dab25edcc9e2b834245d42457df60e4e  standard  commands/mockups.md
+d6ff70db8c4a2dff8795c19e069d2b757735c0c2ff91345f95966c36dcb4f328  standard  commands/mockups.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard  commands/model-delegation-settings.md
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  standard  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  standard  commands/sail-settings.md
@@ -170,7 +171,7 @@ de98c0a2b3147ce5ccfac4197f8766b23b892827636bcf8d37833a486884458a  event  command
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  event  commands/draft.md
 26d0ea9fd3ccb35659c85a7fe9619389b3f1b0272df33b63cf8b3d8034b7a505  event  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  event  commands/launch.md
-65372ae302c151aad3984656c2b42935dab25edcc9e2b834245d42457df60e4e  event  commands/mockups.md
+d6ff70db8c4a2dff8795c19e069d2b757735c0c2ff91345f95966c36dcb4f328  event  commands/mockups.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  event  commands/model-delegation-settings.md
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  event  commands/mutation.md
 ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event  commands/observe.md
@@ -201,7 +202,7 @@ de98c0a2b3147ce5ccfac4197f8766b23b892827636bcf8d37833a486884458a  event-state  c
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  event-state  commands/draft.md
 a8829b5c502f0a2cf9fb189705e4c718e89fe7107df48e9afdfc3c10ce71db48  event-state  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  event-state  commands/launch.md
-65372ae302c151aad3984656c2b42935dab25edcc9e2b834245d42457df60e4e  event-state  commands/mockups.md
+d6ff70db8c4a2dff8795c19e069d2b757735c0c2ff91345f95966c36dcb4f328  event-state  commands/mockups.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  event-state  commands/model-delegation-settings.md
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  event-state  commands/mutation.md
 ccddefe7035c02b19ddf5724bfd52e8cff311e95b094b90282a36ba72cd88c03  event-state  commands/observe.md
@@ -232,7 +233,7 @@ ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  event-two-serv
 63578f9fb94bb3e3af48a2925fb749f0c7e18854422fe6c962955aa46a8fdac9  event-two-services  commands/draft.md
 a8829b5c502f0a2cf9fb189705e4c718e89fe7107df48e9afdfc3c10ce71db48  event-two-services  commands/gaps.md
 34ea1655f9bc549cf93d4a581df6ea8d2970afb7c760f5c468b6f0cc013248b3  event-two-services  commands/launch.md
-5791275e51319a9181940b0398520fb1c7f32e361879f845b6cfd8512fe89c27  event-two-services  commands/mockups.md
+ea4939b65bd75467756e8e7b6a4b6ec7b0f95b343f873ce029286c81570d1434  event-two-services  commands/mockups.md
 71836736ee6a5d1623c09281ccc93d778c4c0e456a91c7cad6aa0f816647afc8  event-two-services  commands/model-delegation-settings.md
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  event-two-services  commands/mutation.md
 a0317f0ffc046b6b69d5373cf2466bc3f9936c7154da47ac25f2df8934edc7cd  event-two-services  commands/observe.md
@@ -263,7 +264,7 @@ bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard-manag
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  standard-managed  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  standard-managed  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  standard-managed  commands/launch.md
-65372ae302c151aad3984656c2b42935dab25edcc9e2b834245d42457df60e4e  standard-managed  commands/mockups.md
+d6ff70db8c4a2dff8795c19e069d2b757735c0c2ff91345f95966c36dcb4f328  standard-managed  commands/mockups.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  standard-managed  commands/model-delegation-settings.md
 79ffd326b69f6157c3987d004f718b0a009bf4525b349ce8f785b83a296d3fcf  standard-managed  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  standard-managed  commands/sail-settings.md
@@ -293,7 +294,7 @@ bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  no-application
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  no-applications  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  no-applications  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  no-applications  commands/launch.md
-65372ae302c151aad3984656c2b42935dab25edcc9e2b834245d42457df60e4e  no-applications  commands/mockups.md
+d6ff70db8c4a2dff8795c19e069d2b757735c0c2ff91345f95966c36dcb4f328  no-applications  commands/mockups.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  no-applications  commands/model-delegation-settings.md
 1d08cf38dba6ec33e8f95e9b076ca9e9d74550733688319a41322fffd451a3b2  no-applications  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  no-applications  commands/sail-settings.md
@@ -324,7 +325,7 @@ ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  adopted  comma
 26d0ea9fd3ccb35659c85a7fe9619389b3f1b0272df33b63cf8b3d8034b7a505  adopted  commands/gaps.md
 40c7e53c459a369f91ed9c93a4269801ca589bcbab0d8901156058895528ef39  adopted  commands/ground.md
 34ea1655f9bc549cf93d4a581df6ea8d2970afb7c760f5c468b6f0cc013248b3  adopted  commands/launch.md
-5791275e51319a9181940b0398520fb1c7f32e361879f845b6cfd8512fe89c27  adopted  commands/mockups.md
+ea4939b65bd75467756e8e7b6a4b6ec7b0f95b343f873ce029286c81570d1434  adopted  commands/mockups.md
 71836736ee6a5d1623c09281ccc93d778c4c0e456a91c7cad6aa0f816647afc8  adopted  commands/model-delegation-settings.md
 1d08cf38dba6ec33e8f95e9b076ca9e9d74550733688319a41322fffd451a3b2  adopted  commands/mutation.md
 0a395b265f2700037d8f15e16199d3d187694ba9af1afe40a7f15e95eb79eacb  adopted  commands/observe.md
@@ -356,7 +357,7 @@ ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  adopted-settle
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  adopted-settled  commands/gaps.md
 416556baab51101e62162ca0b01f8446eece3684871789039f9ef93fd8189e24  adopted-settled  commands/ground.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  adopted-settled  commands/launch.md
-65372ae302c151aad3984656c2b42935dab25edcc9e2b834245d42457df60e4e  adopted-settled  commands/mockups.md
+d6ff70db8c4a2dff8795c19e069d2b757735c0c2ff91345f95966c36dcb4f328  adopted-settled  commands/mockups.md
 faad595c4324165e75b0f29d3c603556aad3dffd1445523c5c44602de94a0851  adopted-settled  commands/model-delegation-settings.md
 1d08cf38dba6ec33e8f95e9b076ca9e9d74550733688319a41322fffd451a3b2  adopted-settled  commands/mutation.md
 2f3e72e0c439f1535d70ebdf1e432e24af73c43255ccffae42d6961fbd3d9c09  adopted-settled  commands/sail-settings.md

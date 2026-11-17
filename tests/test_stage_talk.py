@@ -41,7 +41,9 @@ def until(check, seconds: float = 20) -> None:
     raise AssertionError("it never happened")
 
 
-class StageTalkTest(BoardTest):
+class Talking(BoardTest):
+    """A board with a drawn feature, a stand-in agent to draw it, and the reads a test of talking needs."""
+
     def setUp(self) -> None:
         super().setUp()
         patched = mock.patch.object(board_settings, "SETTINGS", self.root / "board.json")
@@ -60,10 +62,13 @@ class StageTalkTest(BoardTest):
         held = json.loads((self.root / CONFIG).read_text(encoding="utf-8"))
         (self.root / CONFIG).write_text(json.dumps({**held, "upstream": "advance"}), encoding="utf-8")
 
-    def pages(self) -> None:
+    def pages(self, blockers: int = 0, questions: int = 0, prose: str = "") -> None:
+        """A drawing, with the two lines its research note declares about what is left to discuss."""
         (self.mockups / "basket.html").write_text('<title>Basket</title><article class="state"><h2>Empty</h2>'
                                                   "</article>", encoding="utf-8")
         (self.mockups / "storyboard.html").write_text("<title>Storyboard</title>", encoding="utf-8")
+        (self.mockups / "research.md").write_text(f"# Research\n\nBlockers open: {blockers}\nQuestions open: "
+                                                  f"{questions}\n\n{prose}", encoding="utf-8")
 
     def board_fitting(self) -> Fitting:
         return self.server.RequestHandlerClass.bench.outfit(self.root.resolve()).fitting  # type: ignore[attr-defined]
@@ -87,6 +92,8 @@ class StageTalkTest(BoardTest):
     def talk(self, since: int = 0) -> dict:
         return json.loads(self.get(f"/stage/talk.json?command=mockups&since={since}")[1])
 
+
+class StageTalkTest(Talking):
     def test_a_question_about_the_drawn_storyboard_is_answered_and_approves_nothing(self) -> None:
         """The incident: drawn, a question asked, the reply's turn ended — with `advance` set."""
         self.advance_on()
@@ -114,27 +121,27 @@ class StageTalkTest(BoardTest):
 
     def test_a_review_with_a_blocker_stops_the_board_and_says_why_where_the_person_looks(self) -> None:
         self.advance_on()
-        self.pages()
+        self.pages(1, 1, "## Questions\n- Can two members share a boat?\n")
         (self.mockups / "review.md").write_text("## Basket\n- [Blocker] The basket has no total\n"
                                                 "- [Nice-to-have] Rounder corners\n", encoding="utf-8")
-        (self.mockups / "research.md").write_text("## Questions\n- Can two members share a boat?\n",
-                                                  encoding="utf-8")
         live = json.loads(self.get("/live.json")[1])
         self.assertFalse((self.mockups / "mock-states.md").exists())
-        reason = ("The storyboard for 001-boats waits for you rather than being approved by the board: the review "
-                  "has 1 Blocker finding; 1 question in the research only you can answer is open")
+        reason = ("The storyboard for 001-boats waits for you rather than being approved by the board: the drawing "
+                  "says 1 Blocker is open; 1 question only you can answer is open")
         self.assertIn({"n": 1, "text": reason, "href": "#mockups"}, live["waiting"]["holding"])
         self.assertEqual(self.talk()["held"], reason, "and the stage card says it, from the same poll")
         page = self.get("/voyage")[1]
         self.assertIn('<details class="findings" id="findings-001-boats"><summary>What the drawing found · '
-                      "1 Blocker · 1 Nice-to-have · 1 open question</summary>", page, "collapsed, with its counts")
+                      "its own count: 1 Blocker and 1 question open · 1 Blocker · 1 Nice-to-have</summary>", page,
+                      "collapsed, with the drawing's own count first")
         self.assertLess(page.index("<h3>Blockers</h3>"), page.index("<h3>Open questions"), "Blockers first")
         self.assertIn('data-talk-about="About the Blocker on Basket: “The basket has no total” — "', page)
         self.assertIn('data-talk-about="Answering “Can two members share a boat?”: "', page)
-        (self.mockups / "review.md").write_text("We had some worries.\n", encoding="utf-8")
+        self.pages(3, 1, "## Questions\n- Can two members share a boat?\n")
         page = self.get("/voyage")[1]
-        self.assertIn('Not read here, so open it: <a href="', page)
-        self.assertNotIn("<h3>Blockers</h3>", page, "a review whose shape is not found is a link and nothing else")
+        self.assertIn("1 Blocker and 1 question listed here, as far as the files could be read; the count the "
+                      "board goes by is the drawing&#x27;s own.", page)
+        self.assertIn("the drawing says 3 Blockers are open", self.talk()["held"])
 
     def test_a_clean_review_with_nothing_said_is_approved_by_the_board_as_before(self) -> None:
         self.advance_on()
@@ -238,16 +245,24 @@ class StageTalkTest(BoardTest):
         self.ended(model)
         self.assertNotIn('id="model-running"', self.get("/voyage")[1])
 
-    def test_a_reply_ending_well_is_not_the_stage_ending_well(self) -> None:
-        stage = StageSession(self.root, "draft", "die", launch=STAND_IN)
+    def test_a_reply_is_judged_by_the_stage_s_own_after_check_as_it_was_at_park(self) -> None:
+        """A draft that stopped short, finished by a reply, has ended well — as it always had at `park`; one the
+        reply did not finish is still short. Whether the board moves on from it is the hold's business."""
+        finished = self.root / "specs/002-more/spec.md"
+        stage = StageSession(self.root, "draft", "docs/prd.md", launch=STAND_IN,
+                             after=lambda: "" if finished.is_file() else "no specification yet")
         fitting = Fitting(self.root, [Step([], "Drafting.", lambda code: f"ended {code}", "draft",
                                            session=stage.run)])
         fitting.thread.start()
         self.assertEqual(self.ended(fitting)["code"], 1)
-        self.assertTrue(fitting.reply("try again"))
+        self.assertTrue(fitting.reply("the organiser books"))
+        self.assertEqual(self.ended(fitting)["code"], 1, "the reply did not write it: still short")
+        finished.parent.mkdir(parents=True)
+        finished.write_text("# More\n", encoding="utf-8")
+        self.assertTrue(fitting.reply("write it, then"))
         said = self.ended(fitting)
-        self.assertIn("Drawn: try again", said["lines"])
-        self.assertEqual(said["code"], 1, "the stage failed; a reply that went well does not make it succeed")
+        self.assertIn("Drawn: write it, then", said["lines"])
+        self.assertEqual(said["code"], 0, "the after-check passes now, so the stage has ended well")
 
     def test_a_turn_of_conversation_is_asked_to_write_down_what_is_decided(self) -> None:
         asked: list[str] = []

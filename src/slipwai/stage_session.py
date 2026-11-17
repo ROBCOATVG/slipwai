@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import threading
 import time
 from collections.abc import Callable
@@ -99,6 +100,8 @@ class StageSession:
         self.talking = self.loading = False
         #: What the person said while the stage ran: kept, and said to it when its turn ends.
         self.queue: list[dict[str, Any]] = []
+        #: Whether the turn that ended last was ended by the person's Stop: then nothing starts by itself.
+        self.cancelled = False
 
     def say(self, role: str, kind: str, text: str, more: dict[str, Any] | None) -> None:
         """A turn from the agent: kept for the page's cards, and the ones that are words or work said as
@@ -144,6 +147,7 @@ class StageSession:
             return 2
         self.lines = fitting.say
         fitting.stage = self
+        self.cancelled = False
         return self.session(fitting, launch, self.words(), first=True)
 
     def follow(self, fitting: Any, message: str, kept: bool = False) -> int:
@@ -156,6 +160,10 @@ class StageSession:
         a state approved before somebody asked for it to be drawn differently is a state nobody has seen."""
         if not kept:
             stage_talk.said(self.root, self.command, message)
+        # Every message a person's — delivered now or queued before — holds the board again, whatever was
+        # said to carry on in between: an Approve pressed while it waited is not an answer to it.
+        stage_talk.hold(self.root, self.command)
+        self.cancelled = False
         launch = self.launch or launchable(self.root)
         if launch is None:
             nobody = "No agent this board can launch, so there is no session to say that to."
@@ -180,6 +188,12 @@ class StageSession:
         """What the person said while the stage was still going: kept, shown as waiting, said at its end.
         Called under the run's lock, so the run cannot end between the asking and the keeping."""
         self.queue.append(stage_talk.said(self.root, self.command, message, queued=True))
+
+    def requeue(self, ident: str, message: str) -> None:
+        """A message kept and not delivered — after a Stop, or a restart — put back to be said under its id."""
+        if all(one["id"] != ident for one in self.queue):
+            self.queue.append({"id": ident, "text": message})
+        stage_talk.hold(self.root, self.command)
 
     def waiting(self) -> str:
         """What was queued, taken for the turn that says it: the person's messages in the order said."""
@@ -249,6 +263,7 @@ class StageSession:
         return self.agent is not None and self.agent.answer(number, answer)
 
     def cancel(self) -> str:
+        self.cancelled = True
         if self.agent is not None:
             self.agent.cancel()
         return "stopped"
@@ -308,8 +323,10 @@ def route_post(bridge: Any, where: str, held: dict) -> bool:
         message = str(held.get("message") or "").strip()
         if not message:
             bridge.send(400, "say something first", "text/plain; charset=utf-8")
-        else:
-            bridge.send(200, bridge.fitting.tell(message) or "said", "text/plain; charset=utf-8")
+        else:  # `resend` is a kept message's id, said again by the person's Say it now
+            resend = str(held.get("resend") or "")
+            resend = resend if re.fullmatch(r"[0-9a-f]{12}", resend) else ""
+            bridge.send(200, bridge.fitting.tell(message, resend) or "said", "text/plain; charset=utf-8")
         return True
     if where == "/stage/cancel":
         bridge.send(200, stage.cancel(), "text/plain; charset=utf-8")

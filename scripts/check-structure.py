@@ -196,7 +196,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And the stop above the chart answered without a person, where the project says so — never past
               # a person's word to a stage (kept with what was said), or a review with something to discuss —
               # and the storyboard's card on the Screens tab, with what the drawing found and the conversation.
-              "stage_talk", "review_reading", "upstream", "storyboard_card", "storyboard_script",
+              "stage_talk", "step_record", "review_reading", "upstream", "storyboard_card", "storyboard_script",
               # And the board kept current: one read of a project shared by every poll, the one poll that
               # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
               "board_read", "voyage_live", "on_you", "fleet_tab",

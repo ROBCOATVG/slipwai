@@ -71,15 +71,17 @@ SCRIPT = """
   const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
                                                body: JSON.stringify(body)});
   // The stage card says why the board is not moving on by itself, with its Carry on, as this card does.
-  let fittingHeld = null, fittingCarry = null;
+  let fittingHeld = null, fittingCarry = null, fittingWaiting = null;
   if (fitting) {
     fittingHeld = document.createElement('p'); fittingHeld.className = 'held'; fittingHeld.hidden = true;
     fittingCarry = document.createElement('button'); fittingCarry.type = 'button'; fittingCarry.className = 'install';
     fittingCarry.textContent = 'Carry on'; fittingCarry.hidden = true;
     // The card's own row of buttons, a child of the card: the reply form inside it is an `.ask` as well.
+    fittingWaiting = document.createElement('ul'); fittingWaiting.className = 'not-said'; fittingWaiting.hidden = true;
     const row = fitting.querySelector(':scope > .ask');
-    if (row) { fitting.insertBefore(fittingHeld, row); row.appendChild(fittingCarry); }
-    else { fitting.append(fittingHeld, fittingCarry); }
+    if (row) { fitting.insertBefore(fittingHeld, row); fitting.insertBefore(fittingWaiting, row);
+               row.appendChild(fittingCarry); }
+    else { fitting.append(fittingHeld, fittingWaiting, fittingCarry); }
   }
   const log = card && card.querySelector('.log'), input = card && card.querySelector('input');
   const go = card && card.querySelector('button.go'), stop = card && card.querySelector('button.stop');
@@ -107,7 +109,10 @@ SCRIPT = """
     button.addEventListener('click', async () => {
       button.disabled = true;
       const answer = await post(where, body);
-      if (!answer.ok) draw({role: 'agent', kind: 'error', text: await answer.text()});
+      if (!answer.ok) {
+        const why = await answer.text();
+        if (log) draw({role: 'agent', kind: 'error', text: why}); else alert(why);
+      }
       poll();
     });
     return button;
@@ -128,6 +133,24 @@ SCRIPT = """
     for (const [words, button] of [[held, carry], [fittingHeld, fittingCarry]]) {
       if (!words) continue;
       words.textContent = said.held || ''; words.hidden = !said.held; button.hidden = !said.carry;
+    }
+    // On the stage card, every message to any stage not said to it, each with Say it now and Discard; one
+    // queued behind the turn under way is said, and says so.
+    if (fittingWaiting) {
+      const key = JSON.stringify(said.waiting_all);
+      if (fittingWaiting.dataset.key !== key) {
+        fittingWaiting.dataset.key = key;
+        fittingWaiting.replaceChildren(...said.waiting_all.map(one => {
+          const li = document.createElement('li');
+          li.textContent = 'Not yet said to the ' + one.named + ' stage: \\u201c' + one.text + '\\u201d'
+            + (one.live ? ' \\u2014 said when the turn under way ends' : '');
+          if (!one.live) li.append(' ', act('Say it now', '/stage/say', {command: one.command, message: one.text,
+                                                                         resend: one.id}),
+                                   ' ', act('Discard', '/stage/discard', {command: one.command, id: one.id}));
+          return li;
+        }));
+        fittingWaiting.hidden = !said.waiting_all.length;
+      }
     }
     if (log) {
       const end = log.scrollTop + log.clientHeight >= log.scrollHeight - 24;

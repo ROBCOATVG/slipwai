@@ -15,11 +15,11 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import stage_talk
+from slipwai import stage_talk, step_record
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.drawn import record_verdict
 from slipwai.project.cruise import cruise_config
-from slipwai.upstream import APPROVED_BY, advance, next_step, stopped, unjudged
+from slipwai.upstream import APPROVED_BY, advance, held_by, next_step, stopped, unjudged
 from slipwai.wheel import CONFIG, orders
 
 
@@ -40,6 +40,7 @@ class Fixture(unittest.TestCase):
         mockups.mkdir(parents=True, exist_ok=True)
         (mockups / "basket.html").write_text("<title>Basket</title><article><h2>Empty</h2></article>",
                                              encoding="utf-8")
+        step_record.ended(self.root, "surfaces", "001-orders", 0)  # the drawing ended well, and the board saw it
 
     def judge(self, verdict: str) -> None:
         (self.root / "specs/001-orders/mockups/mock-states.md").write_text(
@@ -185,6 +186,31 @@ class AdvanceTest(Fixture):
         self.assertEqual(stage_talk.release(self.root), ["mockups"])
         advance(board)
         self.assertEqual(board.verdicts, ["approved"], "Carry on is the person's word to go on")
+
+    def test_a_drawing_that_ended_well_and_drew_nothing_is_not_drawn_again_while_nothing_changes(self) -> None:
+        """Whatever the cause, the same press for the same feature twice in a row with nothing changed is not
+        made: the second poll finds the first press, the project as it was, and stops — and the page says so."""
+        self.answer(upstream="advance")
+        drew = []
+
+        class Ended:
+            def said(self, since: int = 0) -> dict:
+                return {"done": True, "code": 0, "lines": [], "step": "surfaces"}
+
+        def draw(root: Path, lines: object = None) -> Ended:
+            drew.append(root)
+            return Ended()
+        board = Board(self.root, drawable=True)
+        with mock.patch("slipwai.upstream.draw", draw):
+            advance(board)
+            advance(board)
+            advance(board)
+        self.assertEqual(len(drew), 1)
+        self.assertIn("nothing has changed since, so it will not draw it again by itself", held_by(board)[0])
+        (self.root / "specs/001-orders/spec.md").write_text("# Orders, said again\n", encoding="utf-8")
+        with mock.patch("slipwai.upstream.draw", draw):
+            advance(board)
+        self.assertEqual(len(drew), 2, "a person changed something: the press may be made again")
 
     def test_the_board_never_writes_its_approval_over_a_verdict_file_whatever_else_lets_it_through(self) -> None:
         """The last guard, held on its own: were every stop to say nothing, a `mock-states.md` already there — a

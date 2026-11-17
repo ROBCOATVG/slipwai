@@ -57,6 +57,7 @@
 # why: 2026-11-17 74d6c3e01c3eb587 scripts/agents/surfaces.py refuses, with exit 1 and a sentence, a drawing whose research.md does not declare Blockers open: N and Questions open: N (changelog.d/stage-talk.md); a drawing that declares them, one ended at its budget, and every other path behave as before on macOS and Linux
 # why: 2026-11-17 d5d4c898e53a1c51 scripts/agents/surfaces.py no longer fails a drawing whose research.md lacks the two counts: it reads them forgivingly (CRLF, bold, list markers, case) and prints a note, exiting as it did before the counts existed; every other path behaves as before on macOS and Linux
 # why: 2026-11-17 7195a540f5479f1b a stage that had already ended when its captain ended it is ended, not a PermissionError the slice parks on
+# why: 2026-11-17 092aea0b14d6c3ca scripts/agents/surfaces.py reads the two counts only where a line begins with the words and says a whole number, and still only prints a note; every other path behaves as before on macOS and Linux
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -151,6 +152,10 @@
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  event-modelling-postgres-toy-serve  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-memory-none  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-postgres-toy-serve  scripts/agents/run-state.py
+50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  event-modelling-memory-none  scripts/agents/surfaces.py
+50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
+50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  standard-memory-none  scripts/agents/surfaces.py
+50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  standard-postgres-toy-serve  scripts/agents/surfaces.py
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-memory-none  scripts/event-model/drawio.ts
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-postgres-toy-serve  scripts/event-model/drawio.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-memory-none  scripts/event-model/check.ts
@@ -289,10 +294,6 @@ aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  event-modellin
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  event-modelling-postgres-toy-serve  scripts/check-speckit.py
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  standard-memory-none  scripts/check-speckit.py
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  standard-postgres-toy-serve  scripts/check-speckit.py
-b211f5f3f09f85034fdd6b1ddbf9f79a307c40fc991961372aef33532e12d7d0  event-modelling-memory-none  scripts/agents/surfaces.py
-b211f5f3f09f85034fdd6b1ddbf9f79a307c40fc991961372aef33532e12d7d0  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
-b211f5f3f09f85034fdd6b1ddbf9f79a307c40fc991961372aef33532e12d7d0  standard-memory-none  scripts/agents/surfaces.py
-b211f5f3f09f85034fdd6b1ddbf9f79a307c40fc991961372aef33532e12d7d0  standard-postgres-toy-serve  scripts/agents/surfaces.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modelling-memory-none  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modelling-postgres-toy-serve  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-memory-none  scripts/agents/capabilities.py

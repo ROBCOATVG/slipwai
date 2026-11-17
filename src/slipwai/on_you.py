@@ -25,9 +25,10 @@ from .feedback_card import to_look_at
 from .fleet_page import first_sentence, group_card, parks_table, plural
 from .page_shell import esc
 from .stage_session import running
+from .storyboard_card import waiting_said
 from .talk_waits import captain_window
 from .talk_waits import items as talk_items
-from .upstream import held_by, unjudged
+from .upstream import NAMED, held_by, unjudged
 
 NOTHING_WAITS: dict[str, Any] = {"count": 0, "text": "", "href": "", "holding": [], "later": [], "slices": []}
 
@@ -117,6 +118,15 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     holding += parked(fleet, rows or [])
     holding += [{"n": 1, "text": f"The {row['fairway']} log cannot be read: its captain cannot start",
                  "href": "#from-streams"} for row in fleet.get("inbox") or [] if row.get("kind") == "unreadable"]
+    # What a person said to a stage and was never said to it — after a Stop or a restart — with the two things a
+    # person can do about it right here: say it now, or discard it. One queued behind a turn under way is said.
+    for one in waiting_said(board):
+        named = NAMED.get(one["command"], one["command"])
+        holding.append({"n": 1, "href": "#storyboard-talk" if one["command"] == "mockups" else "#fitting",
+                        "text": f"Said to the {named} stage and not said to it yet: “{one['text'][:80]}”"
+                                + (" — it is said when the turn under way ends" if one["live"] else ""),
+                        **({} if one["live"] else {"say": {"command": one["command"], "id": one["id"],
+                                                           "text": one["text"]}})})
     # Where the board was set to advance by itself and will not, why — in place of the line it would repeat.
     why, there = held_by(board)
     if why:

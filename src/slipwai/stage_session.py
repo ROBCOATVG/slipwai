@@ -14,7 +14,7 @@ through it from the board as well.
 """
 from __future__ import annotations
 
-# budget: 365 — a stage run, a turn of conversation and a message queued for one, and the routes that answer them
+# budget: 370 — a stage run, a turn of conversation and a message queued for one, and the routes that answer them
 # — the card, the stop, what is said, Carry on and Discard — beside the session they act on.
 import contextlib
 import os
@@ -317,8 +317,14 @@ def route_post(bridge: Any, where: str, held: dict) -> bool:
     """A card's answer, a stop for the running stage, something said to a stage — while it runs, queued for the
     end of its turn — or the person's word to carry on, from the board."""
     if where == "/stage/carry-on":
-        if stage_talk.waiting_anywhere(bridge.root):  # the same rule as Approve: not past a word not yet said
-            bridge.send(409, "something you said has not been said to the stage yet: say it now, or discard it, "
+        if waiting := stage_talk.waiting_anywhere(bridge.root):  # the same rule as Approve
+            stage, fitting = running(bridge), bridge.fitting
+            going = ({one["id"] for one in stage.queue} if stage is not None and fitting is not None
+                     and not fitting.said(10 ** 9)["done"] else set())
+            behind = all(one["id"] in going for one in waiting)
+            bridge.send(409, "something you said is queued behind the turn under way: it will be said when this "
+                             "turn ends, and you can carry on after that" if behind else
+                             "something you said has not been said to the stage yet: say it now, or discard it, "
                              "before you carry on", "text/plain; charset=utf-8")
             return True
         let = stage_talk.release(bridge.root)

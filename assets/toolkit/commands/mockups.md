@@ -61,16 +61,17 @@ Saying it is not recording it. A verdict is still not yours: `approved`, `parked
 board.
 
 **What is left to discuss, declared.** Begin `research.md` with these two lines, as plain text — no bold, no
-list marker — the numbers in figures:
+list marker:
 
 ```
-Blockers open: 0
-Questions open: 0
+Blockers open: pending
+Questions open: pending
 ```
 
-`Blockers open` counts the Blocker findings nobody has settled; `Questions open`, the questions under
-`## Questions` nobody has answered. Keep them true: rewrite the numbers whenever a finding or a question is
-settled, in a conversation turn as much as in the drawing. A board set to advance by itself reads these two
+Only when the review is finished, replace `pending` with the counts in figures: `Blockers open`, the Blocker
+findings nobody has settled; `Questions open`, the questions under `## Questions` nobody has answered; `0`
+where there are none. Until then `pending` tells the board the review is not finished. Keep the counts true:
+rewrite them whenever a finding or a question is settled, in a conversation turn as much as in the drawing. A board set to advance by itself reads these two
 lines to tell whether a storyboard has anything left to discuss, and waits for the person where it cannot
 read them; a person judging the storyboard needs nothing from them.
 

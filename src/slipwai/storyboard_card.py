@@ -25,7 +25,7 @@ from .review_reading import RESEARCH, reading
 from .stage_session import kept_stage
 from .storyboard_script import SCRIPT as SCRIPT  # the card's look and script, read by name by the Voyage page
 from .storyboard_script import STYLE as STYLE
-from .upstream import advancing, held_by
+from .upstream import NAMED, advancing, held_by
 
 #: The stages whose result has a tab of its own, by the step the board's run is on and the command it runs.
 WATCHED = {"surfaces": "mockups", "model": "model"}
@@ -80,7 +80,18 @@ def payload(board: Any, command: str, since: int) -> dict[str, Any]:
             "undelivered": [{"id": one["id"], "text": one["text"]} for one in kept if one["id"] not in going],
             "held": why, "carry": bool(advancing(root) and stage_talk.held(root)),
             "discarded_ids": [one["id"] for one in turns if one.get("discarded")],
-            "unkept": stage_talk.unignored(root)}
+            "unkept": stage_talk.unignored(root), "waiting_all": waiting_said(board)}
+
+
+def waiting_said(board: Any) -> list[dict[str, Any]]:
+    """Every message to any stage not yet said, each with whether the turn under way will say it (`live`): the
+    stage card and Waiting on you draw it with Say it now and Discard where it will not."""
+    fitting = board.fitting
+    stage = getattr(fitting, "stage", None)
+    going = ({one["id"] for one in getattr(stage, "queue", [])} if stage is not None and fitting is not None
+             and not fitting.said(10 ** 9)["done"] else set())
+    return [{**one, "live": one["id"] in going, "named": NAMED.get(one["command"], one["command"])}
+            for one in stage_talk.waiting_anywhere(board.root)]
 
 
 def verdict_refused(board: Any) -> str:

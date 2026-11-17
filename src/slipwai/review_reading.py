@@ -30,14 +30,19 @@ from .talk import read_bytes
 RESEARCH = "research.md"
 #: The two counts the stage declares — the only thing the gate reads — and what between the words and the number
 #: is forgiven: a colon, a table's bar, bold, italic, backticks, spaces.
-DECLARED = re.compile(r"\b(blockers|questions)[ \t]+open\b([ \t:|=*_`>-]{0,12})([0-9]{1,5}|[a-z]+)\b",
-                      re.IGNORECASE)
+DECLARED = re.compile(r"(blockers|questions)[ \t]+open[ \t]*[:|=][ \t]*(.*)$", re.IGNORECASE)
+#: What may come before the words on their line: a quote, a table's bar, a list marker, indentation.
+LEAD = re.compile(r"^[\s>|+-]*(?:\d{1,3}[.)]\s+)?")
+#: A count: a whole number, then nothing but a full stop or a remark in brackets.
+COUNT = re.compile(r"(\d{1,5})[ \t]*[.!]?[ \t]*(?:\([^)]*\))?[ \t]*[.!]?")
 #: What the drawing is told, in `/mockups` and in the board's own prompt to the drawing, word for word.
-DECLARE = ("Begin research.md with these two lines, as plain text — no bold, no list marker — with the numbers "
-           "kept true as findings and questions are settled:\n\nBlockers open: 0\nQuestions open: 0\n\n"
-           "`Blockers open` counts the Blocker findings nobody has settled; `Questions open`, the questions under "
-           "`## Questions` nobody has answered. The board reads these two lines to tell whether anything is left "
-           "to discuss.")
+DECLARE = ("Begin research.md with these two lines, as plain text — no bold, no list marker:\n\n"
+           "Blockers open: pending\nQuestions open: pending\n\n"
+           "and only when the review is finished replace `pending` with the counts, in figures — `Blockers open` "
+           "the Blocker findings nobody has settled, `Questions open` the questions under `## Questions` nobody "
+           "has answered, 0 where there are none — and keep them true as findings and questions are settled. The "
+           "board reads these two lines to tell whether anything is left to discuss; `pending` tells it the "
+           "review is not finished.")
 #: How much of a file is read, and how much of one line: a review is pages, not megabytes.
 READ = 512 * 1024
 LINE = 2000
@@ -194,15 +199,23 @@ def declared(text: str) -> tuple[int | None, int | None]:
     """The stage's own two counts, read forgivingly: whatever is around them — a list marker, bold, italic,
     backticks, a blockquote, a table's bars, indentation, case, a trailing full stop or a remark in brackets —
     and both on one line or the pair said twice where they agree. A count is `None`, unknown, where it is not
-    said, is said in words, or is said twice and disagrees. `N` alone is the instruction quoted, not a count."""
+    said, is said in words or as `pending`, is not a whole number, or is said twice and disagrees. `N` alone
+    is the instruction quoted, not a count. Only a line that begins with the words (after the markers), with a
+    colon or a table's bar after them, is read: prose that happens to say "blockers open" is not a count."""
     found: dict[str, set[int]] = {"blockers": set(), "questions": set()}
     unknown: set[str] = set()
-    for key, between, value in DECLARED.findall(text.replace("\r", "")):
-        key, value = key.lower(), value.lower()
-        if value.isdigit():
-            found[key].add(int(value))
-        elif value != "n" and re.search(r"[:|=]", between):  # `Blockers open: two` is a count in words
-            unknown.add(key)
+    for line in text.replace("\r", "").splitlines():
+        line = re.sub(r"[*_`]", "", line)
+        for part in re.split(r"[,;]\s+(?=(?:blockers|questions)\s+open\b)", line, flags=re.IGNORECASE):
+            said = DECLARED.match(LEAD.sub("", part, count=1).strip())
+            if not said:
+                continue
+            key, value = said.group(1).lower(), said.group(2).strip().rstrip("|").strip()
+            whole = COUNT.fullmatch(value)
+            if whole:
+                found[key].add(int(whole.group(1)))
+            elif value.lower() != "n":
+                unknown.add(key)
 
     def one(key: str) -> int | None:
         return None if key in unknown or len(found[key]) != 1 else next(iter(found[key]))

@@ -31,10 +31,11 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from . import stage_talk
+from . import stage_talk, step_record
 from .drawn import withdrawn
-from .init_run import draft, draw, outside_session
-from .passage import record_verdict, specifications, storyboards, surfaces
+from .init_run import draft, draw, first_feature, outside_session
+from .logs import run_dir
+from .passage import disapproved, record_verdict, specifications, storyboards, surfaces
 from .review_reading import gate
 from .stage_steps import launch
 from .wheel import orders
@@ -93,11 +94,37 @@ def stopped(root: Path) -> tuple[str, str]:
     if waiting and (gone := withdrawn(root, waiting)):  # the board never writes its approval over a verdict
         return (f"The storyboard for {waiting} has changed since its verdict ({'; '.join(gone)}): the board does "
                 "not approve over a verdict a person gave, so approve or disapprove it yourself", "#mockups")
+    if waiting and (unseen := unrecorded(root, waiting)):
+        return unseen, "#mockups"
     why = gate(root, waiting) if waiting else ""
     if why:
         return (f"The storyboard for {waiting} waits for you rather than being approved by the board: {why}",
                 "#mockups")
     return "", ""
+
+
+def unrecorded(root: Path, feature: str) -> str:
+    """Why the board cannot press past the drawing of `feature`: it has no record of that drawing ending well.
+    A pid file whose process is gone, with no record after it, is a drawing interrupted — the board or the
+    drawing stopped before it ended — and what is on disk is half a storyboard. Nothing where it ended well."""
+    seen = step_record.record(root, "surfaces")
+    marker = run_dir(root) / "surfaces.pid"
+    try:
+        began = marker.stat().st_mtime
+    except OSError:
+        began = None
+    if began is not None and outside_session(root) is None and (seen is None or seen["t"] < began):
+        return (f"The drawing of {feature} was interrupted — the board or the drawing stopped before it ended — so "
+                "what is drawn may be half a storyboard, and the board will not approve it by itself: draw it "
+                "again, or look at it and approve or disapprove it yourself")
+    if seen is None or seen.get("feature") != feature:
+        return (f"The board has no record of the drawing of {feature} ending — it was drawn before this build, by "
+                "hand, or in another window — so it will not approve it by itself: approve or disapprove it "
+                "yourself, once, and the board goes on from there")
+    if seen.get("code"):
+        return (f"The drawing of {feature} ended short (exit {seen['code']}), and the board does not approve what a "
+                "step that ended short left: draw it again, or approve or disapprove it yourself")
+    return ""
 
 
 def held_by(board: Any) -> tuple[str, str]:
@@ -118,7 +145,16 @@ def held_by(board: Any) -> tuple[str, str]:
         step, code = running.earlier
         return (f"`{step}` ended short (exit {code}) before this conversation, and the board does not move on from "
                 "it: its button on the strip tries again", "#fitting")
+    feature = drawing_of(board.root)
+    if board.drawable() and step_record.repeated(board.root, "draw", feature):
+        return (f"The board drew {feature or 'the storyboard'} by itself and nothing has changed since, so it will "
+                "not draw it again by itself: Draw the storyboard tries again", "#fitting")
     return "", ""
+
+
+def drawing_of(root: Path) -> str:
+    """The feature a press of Draw the storyboard draws: the one turned down, else the first specification."""
+    return disapproved(root) or first_feature(root)
 
 
 def next_step(root: Path, idle: bool, drawable: bool, launchable: bool) -> str:
@@ -163,6 +199,13 @@ def advance(board: Any) -> None:
                                     and not getattr(running, "earlier", None))
         step = next_step(board.root, done and not outside_session(board.root), board.drawable(), board.launchable())
         lines = running.said()["lines"] if running else None
+        name, about = (step.split() + ["", ""])[:2]
+        about = drawing_of(board.root) if name == "draw" else about
+        # Never the same press for the same feature twice in a row with nothing changed: a drawing that drew
+        # nothing is not drawn again on every poll. `held_by` says so on the page.
+        if not step or step_record.repeated(board.root, name, about):
+            return
+        step_record.pressed(board.root, name, about)
         if step == "draw":
             board.fitting = draw(board.root, lines)
         elif step.startswith("approve ") and not (board.root / "specs" / step.split()[1] / "mockups" /

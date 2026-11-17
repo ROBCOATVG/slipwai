@@ -161,13 +161,14 @@ def discard(root: Path, command: str, ident: str) -> bool:
     return True
 
 
-def waiting_anywhere(root: Path) -> list[str]:
-    """Every message, to any stage, kept and not yet said or discarded."""
+def waiting_anywhere(root: Path) -> list[dict[str, Any]]:
+    """Every message, to any stage, kept and not yet said or discarded: its stage's command, its id, its words."""
     try:
-        commands = [one.name for one in (run_dir(root) / KEPT).iterdir() if known(one.name)]
+        commands = sorted(one.name for one in (run_dir(root) / KEPT).iterdir() if known(one.name))
     except OSError:
         return []
-    return [one["text"] for command in commands for one in undelivered(root, command)]
+    return [{"command": command, "id": one["id"], "text": one["text"]} for command in commands
+            for one in undelivered(root, command) if one.get("id")]
 
 
 def undelivered(root: Path, command: str) -> list[dict[str, Any]]:

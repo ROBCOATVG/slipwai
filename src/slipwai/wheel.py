@@ -68,7 +68,8 @@ STOPS: tuple[tuple[str, str, dict[str, str]], ...] = (
 #: what it is; a sentence that explains it goes here, or the row is a wall of buttons nobody can read.
 MORE = {
     "upstream": "Advancing on their own, the board still waits for you on a storyboard whose drawing says a "
-                "Blocker or a question is open, and after you say something to a stage, until you press Carry on.",
+                "Blocker or a question is open, or that it did not see end well, and after you say something to a "
+                "stage, until you press Carry on.",
     "sessions": "The protocol is the Agent Client Protocol: a captain's work is shown as it goes and a stop "
                 "stops. Proven means this board has run that agent over it.",
 }

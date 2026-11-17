@@ -30,15 +30,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import harness_cli
+from . import harness_cli, step_record
+from .drawn import surface_pages
 from .logs import run_dir
 from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 752 — one runner for every child the board starts, and the file check an exit code does not make:
+# budget: 768 — one runner for every child the board starts, and the file check an exit code does not make:
 # and what a person says to a stage while it runs, kept for the end of its turn and said then, beside the reply,
-# never after a Stop; and a stage resumed with its own after-check, what was never delivered, and a failure before it;
+# never after a Stop; and a stage resumed with its own after-check, and a failure before it; and how each step
+# ended, written down for a board that advances (`step_record`), and a drawing that drew nothing said as such;
 # assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
@@ -154,6 +156,8 @@ class Step:
     #: specification — which ends the step failed, or nothing where all is well. A child's exit code is
     #: the child's word; the file is the board's.
     check: Callable[[], str] | None = None
+    #: What the step is about — the feature a drawing draws — for the record of how it ended (`step_record`).
+    about: str = ""
 
 
 def init_step(where: Path, harness: str, repository: str | None,
@@ -298,6 +302,7 @@ class Fitting:
         #: A turn of conversation under way rather than the stage's own run; and a later stage's failure this run
         #: was swapped in over to talk to an earlier one, which stays that stage's own: `(step, code)`.
         self.talking: bool = False
+        self.about = ""  # what the step that ran last was about, for the record of how it ended
         self.earlier: tuple[str, int] | None = None
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -398,6 +403,9 @@ class Fitting:
             if not code and step.check and (left := step.check()):
                 self.say(left)
                 code = 1
+            # How it ended, written down before it is said: what a board advancing by itself presses past.
+            self.about = step.about or (first_feature(self.where) if step.key == "surfaces" else "")
+            step_record.ended(self.where, step.key, self.about, code)
             ends = bool(code) and step.stops
             self.say(step.ended(code), code=(code or failed) if ends or last else None)
             if ends:
@@ -462,6 +470,7 @@ class Fitting:
         code = self.stage.follow(self, message, kept)
         with self.lock:
             self.talking = False
+        step_record.ended(self.where, self.step, self.about, code)  # the stage's outcome is the reply's now
         if code:
             self.say("The reply stopped short; its lines above say where.", code=code)
         else:
@@ -532,15 +541,15 @@ def stage_step(where: Path, command: str, argument: str, argv: list[str], announ
     from .stage_session import StageSession, launchable  # noqa: PLC0415 — the edge tier, reached from here only
 
     if launchable(where) is None:
-        return Step(argv, announced, ended, key, check=held.get("after"))
+        return Step(argv, announced, ended, key, check=held.get("after"), about=argument)
     words = prompt() if callable(prompt) else prompt
     if prompt is not None and not words:
-        return Step(argv, announced, ended, key, check=held.get("after"))
+        return Step(argv, announced, ended, key, check=held.get("after"), about=argument)
     session = StageSession(where, command, argument, limit=limit, prompt=words or "", **held)
     if done:
         def ended(code: int) -> str:
             return done if code == 0 else undone
-    return Step([], over, ended, key, session=session.run)
+    return Step([], over, ended, key, session=session.run, about=argument)
 
 
 def draft_step(where: Path) -> Step:
@@ -641,6 +650,17 @@ def triaged(code: int) -> str:
     return f"`make triage` exited {code}. Its last lines say why; Triage on the Feedback card tries again."
 
 
+def undrawn(where: Path, feature: str) -> str:
+    """What a drawing that drew nothing a person can approve says: no surface page, or a storyboard that shows
+    none. A real failure, and nothing to do with the counts its note declares, which never fail a drawing."""
+    home = where / "specs" / feature / "mockups"
+    if feature and home.is_dir() and surface_pages(home):
+        return ""
+    return (f"The session ended with no surface page under specs/{feature}/mockups/ — "
+            + ("a storyboard.html that shows no page per surface, " if (home / "storyboard.html").is_file() else "")
+            + "so there is nothing to approve; Draw the storyboard again, and read its lines above.")
+
+
 def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
     """The surfaces drawn, in the background: what the board's Draw the storyboard button starts.
 
@@ -648,8 +668,9 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     draws the first specification, and the storyboard turned down may not be that one.
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
-    step = stage_step(where, "mockups", feature or first_feature(where), argv, DRAWING, DRAWING_ACP, drew,
-                      "surfaces", limit=900.0, pid="surfaces.pid", stage="",
+    named = feature or first_feature(where)
+    step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP, drew,
+                      "surfaces", limit=900.0, pid="surfaces.pid", stage="", after=lambda: undrawn(where, named),
                       done="The surfaces are drawn. The storyboard is below: open it, then Approve or "
                            "Disapprove it on this page. That verdict is what the model and the chart read.",
                       undone="The drawing stopped short; nothing was approved. Its lines above say where.")

@@ -71,6 +71,22 @@ SCRIPT = """
       const line = document.createElement('li'), link = document.createElement('a');
       link.href = item.href || '#'; link.textContent = item.text;
       line.append(link);
+      // Something said to a stage and not said to it: the two things to do about it, here as on its card.
+      if (item.say) {
+        for (const [label, where, body] of [
+            ['Say it now', '/stage/say', {command: item.say.command, message: item.say.text, resend: item.say.id}],
+            ['Discard', '/stage/discard', {command: item.say.command, id: item.say.id}]]) {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'install';
+          button.textContent = label;
+          button.addEventListener('click', async () => {
+            button.disabled = true;
+            const answer = await fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                               body: JSON.stringify(body)});
+            if (!answer.ok) { button.disabled = false; alert(await answer.text()); }
+          });
+          line.append(' ', button);
+        }
+      }
       return line;
     }));
   };

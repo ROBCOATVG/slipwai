@@ -16,10 +16,12 @@ buttons come back, and a conversation that changed one takes its block out of th
 `storyboard.html`, the flow between the surfaces, withdraws nothing.
 
 **The drawing declares what it left to discuss.** `/mockups`, and the board's own prompt to the drawing, now
-ask for two lines at the top of `specs/<feature>/mockups/research.md` — `Blockers open: N` and
-`Questions open: N` — kept true as findings and questions are settled. They are read forgivingly (bold, a list
-marker, a quote, a table, either case, both on one line) and matter only to a board set to advance by itself;
-a drawing without them ends well, is shown and can be approved, and `make surfaces` only notes it. Under the
+ask for two lines at the top of `specs/<feature>/mockups/research.md` — `Blockers open: pending` and
+`Questions open: pending` while the review is under way, the counts in figures once it is finished — kept true
+as findings and questions are settled. They are read forgivingly (bold, a list marker, a quote, a table, either
+case, both on one line; a whole number on a line that begins with the words) and matter only to a board set to
+advance by itself; a drawing without them ends well, is shown and can be approved, and `make surfaces` only
+notes it. A drawing that leaves no surface page to approve ends short and says so, on either path. Under the
 storyboard the board lists what the drawing found — its own count first, then the
 Blocker findings and open questions it could read off `review.md`, `review-*.md`, `gaps.md` or `review/`,
 collapsed, each with a button that opens the conversation on it, nothing sent — and says so where what it
@@ -29,8 +31,9 @@ could read differs from the drawing's count. Only the count decides anything.
 session in the run folder (`stages/<command>/talk.jsonl`), so it can be read after the next stage has started
 and after the app restarts. Something said while a stage runs is queued, shown as queued, and said when its
 turn ends. After a Stop nothing starts by itself, and a message kept but not said — after a Stop, or a restart
-— is shown as not delivered, with Say it now and Discard; it is never said unasked, and until it is said or
-discarded neither a verdict nor Carry on is taken. A project still on the 2.0 run-folder layout, which git does
+— is shown as not delivered, with Say it now and Discard, wherever it is shown: the stage's card, the
+storyboard's conversation and Waiting on you. It is never said unasked, and until it is said or discarded
+neither a verdict nor Carry on is taken. A project still on the 2.0 run-folder layout, which git does
 not ignore, is told so on the card before anything is typed, and to migrate; it works the moment it has.
 
 **A running stage is visible where its result will appear, and its end is announced.** While the storyboard
@@ -44,7 +47,10 @@ well, and the board approved all 49 states past a review with 14 Blockers and st
 a person says to a stage holds the board until they press Carry on or give the storyboard its verdict, and
 every message delivered holds it again; the board never approves a storyboard whose drawing declares a Blocker
 or a question open, or declares nothing, or whose verdict a changed page has withdrawn; and a later stage's
-failure is not erased by talking to an earlier one. It stops and says why in the stage card and under Waiting
+failure is not erased by talking to an earlier one. It presses past only a step it has a record of ending
+well, written in the run folder when the step ends (`steps-ended.json`): a drawing interrupted by a restart is
+said as interrupted, and one it did not see end waits for the person once. It never presses the same step for
+the same feature twice in a row while nothing has changed. It stops and says why in the stage card and under Waiting
 on you. The settings card says so.
 
 **Catch-up:** update the app, and run `slipwai migrate` for the `/mockups` page's paragraphs on the declared

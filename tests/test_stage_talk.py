@@ -19,14 +19,14 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
 
-from slipwai import board_settings, stage_session, stage_talk
+from slipwai import board_settings, stage_session, stage_talk, step_record
 from slipwai.bridge import serve
 from slipwai.drawn import record_verdict
 from slipwai.init_run import Fitting, Step
 from slipwai.project.cruise import cruise_config
 from slipwai.stage_session import TALKING, StageSession
 from slipwai.upstream import APPROVED_BY, unjudged
-from slipwai.wheel import CONFIG, STOPS
+from slipwai.wheel import CONFIG, MORE
 
 AGENT = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
 STAND_IN = board_settings.Launch("stand-in", "Stand-in", (sys.executable, str(AGENT)), "a script")
@@ -69,6 +69,7 @@ class Talking(BoardTest):
         (self.mockups / "storyboard.html").write_text("<title>Storyboard</title>", encoding="utf-8")
         (self.mockups / "research.md").write_text(f"# Research\n\nBlockers open: {blockers}\nQuestions open: "
                                                   f"{questions}\n\n{prose}", encoding="utf-8")
+        step_record.ended(self.root, "surfaces", FEATURE, 0)  # and its end, as the board would have written it
 
     def board_fitting(self) -> Fitting:
         return self.server.RequestHandlerClass.bench.outfit(self.root.resolve()).fitting  # type: ignore[attr-defined]
@@ -291,9 +292,10 @@ class StageTalkTest(Talking):
         self.assertEqual(stage_talk.held(self.root), [], "Approve and Disapprove are the word to carry on")
 
     def test_the_setting_says_what_advancing_now_does(self) -> None:
-        says = dict((name, values) for name, _, values in STOPS)["upstream"]["advance"]
-        self.assertIn("wait for me on a storyboard with a Blocker or an open question", says)
-        self.assertIn("until I press Carry on", says)
+        says = MORE["upstream"]  # the row's sentence, under its short choices
+        self.assertIn("still waits for you on a storyboard whose drawing says a Blocker or a question is open", says)
+        self.assertIn("until you press Carry on", says)
+        self.assertIn("did not see end well", says)
 
 
 if __name__ == "__main__":

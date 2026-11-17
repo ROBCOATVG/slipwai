@@ -16,7 +16,7 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 from test_stage_talk import FEATURE, STAND_IN, Talking, until
 
-from slipwai import stage_session, stage_talk
+from slipwai import stage_session, stage_talk, step_record
 from slipwai.drawn import record_verdict
 from slipwai.init_run import draw
 from slipwai.review_reading import DECLARE
@@ -53,6 +53,7 @@ class DeclaredTest(Talking):
     def test_advancing_with_no_lines_waits_for_the_person_and_says_which_line_and_where_it_comes_from(self) -> None:
         self.advance_on()
         self.bare_pages()
+        step_record.ended(self.root, "surfaces", FEATURE, 0)  # it ended well, as the board saw it
         live = json.loads(self.get("/live.json")[1])
         self.assertFalse((self.mockups / "mock-states.md").exists())
         [why] = [one["text"] for one in live["waiting"]["holding"] if "does not say" in one["text"]]

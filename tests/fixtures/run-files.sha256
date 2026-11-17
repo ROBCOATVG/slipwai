@@ -58,6 +58,7 @@
 # why: 2026-11-17 d5d4c898e53a1c51 scripts/agents/surfaces.py no longer fails a drawing whose research.md lacks the two counts: it reads them forgivingly (CRLF, bold, list markers, case) and prints a note, exiting as it did before the counts existed; every other path behaves as before on macOS and Linux
 # why: 2026-11-17 7195a540f5479f1b a stage that had already ended when its captain ended it is ended, not a PermissionError the slice parks on
 # why: 2026-11-17 092aea0b14d6c3ca scripts/agents/surfaces.py reads the two counts only where a line begins with the words and says a whole number, and still only prints a note; every other path behaves as before on macOS and Linux
+# why: 2026-11-17 a5546cfb62f5cf44 an agent launched through the package runner is launched one at a time on a machine and tried once more where the runner fell over
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -321,6 +322,10 @@ c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  event-modellin
 c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  event-modelling-postgres-toy-serve  scripts/agents/models.py
 c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  standard-memory-none  scripts/agents/models.py
 c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  standard-postgres-toy-serve  scripts/agents/models.py
+c917daeb3abc8451c8ca7969069c4712e0e6245f82f62cc8630f8c822c1a0fed  event-modelling-memory-none  scripts/agents/acp.py
+c917daeb3abc8451c8ca7969069c4712e0e6245f82f62cc8630f8c822c1a0fed  event-modelling-postgres-toy-serve  scripts/agents/acp.py
+c917daeb3abc8451c8ca7969069c4712e0e6245f82f62cc8630f8c822c1a0fed  standard-memory-none  scripts/agents/acp.py
+c917daeb3abc8451c8ca7969069c4712e0e6245f82f62cc8630f8c822c1a0fed  standard-postgres-toy-serve  scripts/agents/acp.py
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  event-modelling-memory-none  scripts/agents/captain_events.py
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  event-modelling-postgres-toy-serve  scripts/agents/captain_events.py
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  standard-memory-none  scripts/agents/captain_events.py
@@ -359,10 +364,6 @@ dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modellin
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modelling-postgres-toy-serve  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  standard-memory-none  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  standard-postgres-toy-serve  scripts/check-migrations.py
-e0539f47b30790827e13ffb35e975fb9f0e6eb0677cc60747c19ac5bd95c5a0e  event-modelling-memory-none  scripts/agents/acp.py
-e0539f47b30790827e13ffb35e975fb9f0e6eb0677cc60747c19ac5bd95c5a0e  event-modelling-postgres-toy-serve  scripts/agents/acp.py
-e0539f47b30790827e13ffb35e975fb9f0e6eb0677cc60747c19ac5bd95c5a0e  standard-memory-none  scripts/agents/acp.py
-e0539f47b30790827e13ffb35e975fb9f0e6eb0677cc60747c19ac5bd95c5a0e  standard-postgres-toy-serve  scripts/agents/acp.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  event-modelling-memory-none  scripts/agents/orders.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  event-modelling-postgres-toy-serve  scripts/agents/orders.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  standard-memory-none  scripts/agents/orders.py

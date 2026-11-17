@@ -67,6 +67,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "talk",
        # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.
        "stuck", "captain_decisions",
+       # Where the product is and how dark a merge is: the release modes rebuilt so something reads them.
+       "release_state", "cli_release_state",
        # Talking to the fleet from the board: the windows, the strip, and every message placed in an inbox.
        "talk_said", "talk_fold", "captain_files", "talk_page", "talk_waits", "talk_card", "captain_window",
        "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",
@@ -76,7 +78,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "cli_offered", "cli_search",
        "project.briefs", "project.prose", "project.sail_section", "project.write_model_prose",
        "project.ladder", "project.capability_gates", "project.careen", "project.harbour", "project.unit_targets",
-       "project.release", "project.domain", "logs", "berths", "hooks", "project.events_index",
+       "project.domain", "logs", "berths", "hooks", "project.events_index",
        "project.wiring", "project.berth_commands", "extension_shape", "extension_directory", "extension_tools",
        "extension_install", "package_new", "package_templates", "language_templates", "package_release",
        "package_version", "package_sources", "cli_extension", "cli_package",

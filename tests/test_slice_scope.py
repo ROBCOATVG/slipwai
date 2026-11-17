@@ -12,6 +12,7 @@ path no fairway claims is nobody's to refuse, and that a project with no chart l
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -232,6 +233,59 @@ class OwnedPatternTest(unittest.TestCase):
     def test_anything_else_falls_through_to_a_glob_so_a_chart_may_name_one_file(self) -> None:
         self.assertTrue(self.module.owned_by("apps/orders/openapi.yaml", ["apps/*/openapi.yaml"]))
         self.assertFalse(self.module.owned_by("apps/orders/src/x.ts", ["apps/*/openapi.yaml"]))
+
+
+class KeystoneTest(unittest.TestCase):
+    """A pilot product keeps an unfinished capability from its users without a flag: every slice of it lands
+    unreachable, and its entry point is wired by its last slice in the chart's order and by no other."""
+
+    CHART = """
+    v: 1
+    feature: ordering
+    fairways:
+      ordering: {context: ordering, service: apps/orders, owns: [apps/orders/**]}
+    marks: {}
+    slices:
+      ORD-01: {fairway: ordering, capability: place-an-order, sets: [], steers_by: []}
+      ORD-02: {fairway: ordering, capability: place-an-order, sets: [], steers_by: []}
+    """
+
+    def setUp(self) -> None:
+        self.tree = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tree, True)
+        (self.tree / "scripts/agents").mkdir(parents=True)
+        shutil.copy(GATE, self.tree / "scripts/check-slice-scope.py")
+        shutil.copy(ROOT / "assets/toolkit/scripts/agents/release_state.py",
+                    self.tree / "scripts/agents/release_state.py")
+        (self.tree / "specs/ordering").mkdir(parents=True)
+        (self.tree / "specs/ordering/chart.yaml").write_text(textwrap.dedent(self.CHART).lstrip(), encoding="utf-8")
+        (self.tree / "specs/ordering/keystones.yaml").write_text("place-an-order: [apps/web/src/routes/orders/**]\n",
+                                                                encoding="utf-8")
+        self.state("pilot")
+        self.module = gate_module(self.tree)
+
+    def state(self, state: str | None) -> None:
+        document = {"deployables": {}, **({"state": state} if state else {})}
+        (self.tree / "project.json").write_text(json.dumps(document), encoding="utf-8")
+
+    def test_the_mode_is_read_from_the_project(self) -> None:
+        self.assertEqual(self.module.product_mode(), "keystone")
+        self.state(None)
+        self.assertEqual(self.module.product_mode(), "flagged")
+
+    def test_only_the_capability_s_last_slice_wires_its_entry(self) -> None:
+        held = self.module.keystones("ORD-01")
+        self.assertEqual(held, {"place-an-order": ("ORD-02", ["apps/web/src/routes/orders/**"])})
+        refused = self.module.keystone_violation("ORD-01", "apps/web/src/routes/orders/new.tsx", held)
+        self.assertIsNotNone(refused)
+        self.assertIn("wired by its last slice, `ORD-02`", refused or "")
+        self.assertIsNone(self.module.keystone_violation("ORD-02", "apps/web/src/routes/orders/new.tsx",
+                                                         self.module.keystones("ORD-02")))
+        self.assertIsNone(self.module.keystone_violation("ORD-01", "apps/orders/src/place.ts", held))
+
+    def test_the_keystones_file_is_the_host_s(self) -> None:
+        scope = self.module.Scope("ORD-01", "main")
+        self.assertIsNotNone(scope.violation("specs/ordering/keystones.yaml", "M"))
 
 
 class FlagDeclarationTest(unittest.TestCase):

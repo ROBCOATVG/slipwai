@@ -67,29 +67,34 @@
 # Re-taken 2026-11-16 for changelog.d/a-run-stops-waiting-on-a-person.md: only the rows for commands/sail.md moved, deliberately — a slice's `mark-set` and `demo` lines are written by `scripts/agents/deck_line.py` and never by hand, a mark stands once set, and a story's dates are written relative to the day it runs.
 # Re-taken 2026-11-16 for changelog.d/demo-is-feedback.md: only the rows for commands/sail.md moved, deliberately — under `demos: hand`, the default, the hand's verdict accepts a capability and nobody is asked; *awaiting-demo* is reached only under `person`.
 # Re-taken 2026-11-16 for changelog.d/demo-is-feedback.md (review): only the rows for commands/sail.md moved, deliberately — the demo stop says who writes an acceptance and that a session under `demos: hand` carries on.
+#
+# Re-taken for the release modes read from the product's state — pre-launch merges in the open, pilot by
+# keystone, live behind a flag, an unrecorded state flagged as before (`changelog.d/release-follows-product-state.md`).
+# Only the rows naming the release stage moved: `commands/sail.md`, `commands/cruise.md`,
+# `commands/cruise-settings.md` and `AGENTS.md`. Every other row is still its earlier reading.
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/event-modelling/aws/.  commands/adversary.md
-32e28cda598d78c6bf9a5463ba0da85008d0ef9934cae58ebea639bb65da6df5  bare/event-modelling/aws/.  commands/sail.md
+630d3b6ec223498071d4933af19545a97cf41e7bf44d5e4b14a1915c2540207c  bare/event-modelling/aws/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/event-modelling/aws/delivery  commands/adversary.md
-90799e63fb492c3b5dc063d0b2a443128d58bc335f1d994d8e0d73124f28d2ca  bare/event-modelling/aws/delivery  commands/sail.md
+14c9c624980c32226358f58802e172070750441f0ef1855d79116e81ef6564cd  bare/event-modelling/aws/delivery  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/event-modelling/none/.  commands/adversary.md
 f29f7d8ef25be4a9f0c72940010c4e45241399c76f9cc0974504bb5779a17caa  bare/event-modelling/none/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/event-modelling/none/delivery  commands/adversary.md
 fc28984004ffa045d4a599e5db7db1a01516d238899e06ade8b849a3b8098c49  bare/event-modelling/none/delivery  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/standard/aws/.  commands/adversary.md
-f7d066dad6f9cf2dda6c5823a247dbc33e1b7d51132ae458c40b631698e33f37  bare/standard/aws/.  commands/sail.md
+380f837a8df1cd7f595517fea70268b81dbdfdfbfdf7366e44bf1d43ccf8bc44  bare/standard/aws/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/standard/aws/delivery  commands/adversary.md
-5cf5df526c05e9ed383f46978b5f9f89db62e0424a1f92e7c5c5dafb50a4bc67  bare/standard/aws/delivery  commands/sail.md
+de9f16d8e980038e4461b5fa27488869172d3513d801c6a6775123cd17a57044  bare/standard/aws/delivery  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/standard/none/.  commands/adversary.md
 15f82072acd99084f87d06bfc96d8da83d22f697e48ecae2f551661c2a2072dd  bare/standard/none/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  bare/standard/none/delivery  commands/adversary.md
 e514e01858604f8890c60c4a0e2dcb51d1a7c30a30580981f0ce6be33046957f  bare/standard/none/delivery  commands/sail.md
 091c28c19ea9a7ebcbdedf7b3025b82d5d3cd877ac6cac47cf3ea5b4af0398aa  mixed/event-modelling/aws/.  commands/adversary.md
-1f8348b3fabab92e695b21818e0b3e76339f5fbb3ca804b2a8e3a995c803e7e8  mixed/event-modelling/aws/.  commands/sail.md
+d0389730bffb0943a576e5d8789570e22a73e30ab66fe69dfc63ef772b7781d0  mixed/event-modelling/aws/.  commands/sail.md
 621cb99c3a24f95ce78ec93d04bb2dc5d8ae7820f3c9144c41a78a32288e3609  mixed/event-modelling/aws/.  docs/event-model/model.yaml
 ac905fb74e8fd266b84807a5ee71584325f1e01f8fbe1246eee04bd15d06116c  mixed/event-modelling/aws/.  docs/event-modeling-to-code.md
 e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  mixed/event-modelling/aws/.  docs/first-slice.md
 091c28c19ea9a7ebcbdedf7b3025b82d5d3cd877ac6cac47cf3ea5b4af0398aa  mixed/event-modelling/aws/delivery  commands/adversary.md
-a7841a6049e4b80c373c5054264174fa123e0e0f0d6b433167c6fdb6173b230d  mixed/event-modelling/aws/delivery  commands/sail.md
+0744cc7be8a60d8f327174ef01fd1f45f59cdc46c102df563d23c89df7292582  mixed/event-modelling/aws/delivery  commands/sail.md
 621cb99c3a24f95ce78ec93d04bb2dc5d8ae7820f3c9144c41a78a32288e3609  mixed/event-modelling/aws/delivery  docs/event-model/model.yaml
 ac905fb74e8fd266b84807a5ee71584325f1e01f8fbe1246eee04bd15d06116c  mixed/event-modelling/aws/delivery  docs/event-modeling-to-code.md
 e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  mixed/event-modelling/aws/delivery  docs/first-slice.md
@@ -104,20 +109,20 @@ a99065820566eb9454e39dc3a726028c2133f6d100794d4d6fc869cfb917c8a3  mixed/event-mo
 ac905fb74e8fd266b84807a5ee71584325f1e01f8fbe1246eee04bd15d06116c  mixed/event-modelling/none/delivery  docs/event-modeling-to-code.md
 e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  mixed/event-modelling/none/delivery  docs/first-slice.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  mixed/standard/aws/.  commands/adversary.md
-6ea0af043d8421ddde2241b46f47779f94e4d9cdcdb45eed98765dcb20b12468  mixed/standard/aws/.  commands/sail.md
+eef2b4182df26401ff2abe3c91e586da10ae1c20490729cca65cc4149ee64a2e  mixed/standard/aws/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  mixed/standard/aws/delivery  commands/adversary.md
-045e264db00f1ac73f66ee51af59e32eb959f39b6bb8a0fea759114713a48a58  mixed/standard/aws/delivery  commands/sail.md
+0a0b0733465da282903f46a60004e943f5b78f5eeadd1b3035441fd5c840b97e  mixed/standard/aws/delivery  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  mixed/standard/none/.  commands/adversary.md
 1a79bde99fd7f4f5d59e5b7709c217544d5fccd5a8900ddfc1fca55e8fcc7dd8  mixed/standard/none/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  mixed/standard/none/delivery  commands/adversary.md
 8589c53fd61dab3cf5afdbcd8e5073d3449e25991c8dd811a2cd779db9a1ba3d  mixed/standard/none/delivery  commands/sail.md
 0e1e1c65fbb0e8977445d3228d732ac04f58c765b2b55d6940d7f1576a0aec33  sourced/event-modelling/aws/.  commands/adversary.md
-ba3b05ecacc2bc7819d19188259e1893e2a83eb65ae0a26495d9edfc79e6f273  sourced/event-modelling/aws/.  commands/sail.md
+8a6fd442dba5f1135eef07f2d533aa4b4f9d09616b60e43189592236d85a7ea6  sourced/event-modelling/aws/.  commands/sail.md
 621cb99c3a24f95ce78ec93d04bb2dc5d8ae7820f3c9144c41a78a32288e3609  sourced/event-modelling/aws/.  docs/event-model/model.yaml
 d671719b98d362ee8b4fd54a84bb99537f1951cb0b6522feb4a8eac7e3fa5a1a  sourced/event-modelling/aws/.  docs/event-modeling-to-code.md
 e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  sourced/event-modelling/aws/.  docs/first-slice.md
 0e1e1c65fbb0e8977445d3228d732ac04f58c765b2b55d6940d7f1576a0aec33  sourced/event-modelling/aws/delivery  commands/adversary.md
-74a0f36dfbcab64e58da688a01a71b3ef33f533b0b632daca8da24540a928442  sourced/event-modelling/aws/delivery  commands/sail.md
+d55ff25eca85a43cf4ba664f1a505470b3ad0c4b4d70d496e1e8c82019e817ca  sourced/event-modelling/aws/delivery  commands/sail.md
 621cb99c3a24f95ce78ec93d04bb2dc5d8ae7820f3c9144c41a78a32288e3609  sourced/event-modelling/aws/delivery  docs/event-model/model.yaml
 d671719b98d362ee8b4fd54a84bb99537f1951cb0b6522feb4a8eac7e3fa5a1a  sourced/event-modelling/aws/delivery  docs/event-modeling-to-code.md
 e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  sourced/event-modelling/aws/delivery  docs/first-slice.md
@@ -132,20 +137,20 @@ e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  sourced/event-
 d671719b98d362ee8b4fd54a84bb99537f1951cb0b6522feb4a8eac7e3fa5a1a  sourced/event-modelling/none/delivery  docs/event-modeling-to-code.md
 e7b942c775fa463655df3d19963a6f51549c3cfbf84db54ff749a38e421347f2  sourced/event-modelling/none/delivery  docs/first-slice.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  sourced/standard/aws/.  commands/adversary.md
-e3647c84ed6c54ee224f215ba2ee53f4689726db696e94c5f8fefb832b67e8c8  sourced/standard/aws/.  commands/sail.md
+22174e42239fd15a871125ed55da61987ed15631091e2ac62b688c75c77164fe  sourced/standard/aws/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  sourced/standard/aws/delivery  commands/adversary.md
-b6ad42f6f09c357f178ebaf0f6531c6549abfb9baa4a55641175063ec39c77f0  sourced/standard/aws/delivery  commands/sail.md
+4825038ce97c390968e5900496d29737de4fb5259dbb5a5b64d82619a1c70c8e  sourced/standard/aws/delivery  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  sourced/standard/none/.  commands/adversary.md
 1a79bde99fd7f4f5d59e5b7709c217544d5fccd5a8900ddfc1fca55e8fcc7dd8  sourced/standard/none/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  sourced/standard/none/delivery  commands/adversary.md
 8589c53fd61dab3cf5afdbcd8e5073d3449e25991c8dd811a2cd779db9a1ba3d  sourced/standard/none/delivery  commands/sail.md
 b8aabd88fc694aa85488ab21112a6df9f9d2531372d05ad6f8a154bdc86296d1  stored/event-modelling/aws/.  commands/adversary.md
-9117114410fa023d6cb63a3254cb65324577a179d192ebdfcc404a7d91bf49bd  stored/event-modelling/aws/.  commands/sail.md
+8f343d2fed61c07adbbe3d518951d8179a30a6df3ca95337d66f90461a5af068  stored/event-modelling/aws/.  commands/sail.md
 621cb99c3a24f95ce78ec93d04bb2dc5d8ae7820f3c9144c41a78a32288e3609  stored/event-modelling/aws/.  docs/event-model/model.yaml
 baa26ac492bc5a78b9a27892f428a6e4e75760c1bd4ad4e4d56b8d1ec23e0ecb  stored/event-modelling/aws/.  docs/event-modeling-to-code.md
 ce347d820f940583d486c571c7765a498ab32756398f3327441b799233246f7b  stored/event-modelling/aws/.  docs/first-slice.md
 b8aabd88fc694aa85488ab21112a6df9f9d2531372d05ad6f8a154bdc86296d1  stored/event-modelling/aws/delivery  commands/adversary.md
-21530f86905b7b3a23360aecd4ea085a8515f2941d9228fd9f5ebc0d929e311c  stored/event-modelling/aws/delivery  commands/sail.md
+b7144408fe4a22f4dcd854e5ee1f461f6b3dc5a2fc551f30bb4927866b7593ad  stored/event-modelling/aws/delivery  commands/sail.md
 621cb99c3a24f95ce78ec93d04bb2dc5d8ae7820f3c9144c41a78a32288e3609  stored/event-modelling/aws/delivery  docs/event-model/model.yaml
 baa26ac492bc5a78b9a27892f428a6e4e75760c1bd4ad4e4d56b8d1ec23e0ecb  stored/event-modelling/aws/delivery  docs/event-modeling-to-code.md
 ce347d820f940583d486c571c7765a498ab32756398f3327441b799233246f7b  stored/event-modelling/aws/delivery  docs/first-slice.md
@@ -160,9 +165,9 @@ a99065820566eb9454e39dc3a726028c2133f6d100794d4d6fc869cfb917c8a3  stored/event-m
 baa26ac492bc5a78b9a27892f428a6e4e75760c1bd4ad4e4d56b8d1ec23e0ecb  stored/event-modelling/none/delivery  docs/event-modeling-to-code.md
 ce347d820f940583d486c571c7765a498ab32756398f3327441b799233246f7b  stored/event-modelling/none/delivery  docs/first-slice.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  stored/standard/aws/.  commands/adversary.md
-20404a841a54c730fde4261977ee99ec68a7d243d662e1a89b9c3a65779149ba  stored/standard/aws/.  commands/sail.md
+44883150747b3b78681ae849ad39344100d819b4c25e47b0a9aa474e2198648f  stored/standard/aws/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  stored/standard/aws/delivery  commands/adversary.md
-a32a7a1637cf55789e3d76e82bc887cd0437dec58a1332d1aa44c09059197061  stored/standard/aws/delivery  commands/sail.md
+ce28711a69c1d110ec0c7c5953aed958b3d0d99376c39061dae59541404af16c  stored/standard/aws/delivery  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  stored/standard/none/.  commands/adversary.md
 1a79bde99fd7f4f5d59e5b7709c217544d5fccd5a8900ddfc1fca55e8fcc7dd8  stored/standard/none/.  commands/sail.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  stored/standard/none/delivery  commands/adversary.md

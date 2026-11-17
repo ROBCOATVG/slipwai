@@ -57,6 +57,7 @@ from .project.sail_settings import sail_config
 from .project.shared_packages import PACKAGES
 from .project.stage_models import stage_models
 from .project.strangle_command import strangle_files
+from .release_state import NEW_STATE
 from .services import App, prunable_features_of, services_of, web_apps, wrapped_of
 from .target_protocol import DEPLOYMENT_SHAPES
 from .targets import managed
@@ -77,7 +78,7 @@ FACTORY_IDENTITY = os.environ | {
 
 def project_files(
     project_name: str, profile: str, target: str, apps: list[App], layout: Layout = AT_ROOT,
-    adoption: Adoption | None = None, shape: str | None = None,
+    adoption: Adoption | None = None, shape: str | None = None, state: str | None = None,
 ) -> dict[str, str]:
     """Every file a generated project starts with, keyed by its path in the new repository.
 
@@ -110,7 +111,7 @@ def project_files(
     event = profile == "event-modelling"
     generated = {
         "README.md": readme(project_name, profile, apps, target, shape or "liner"),
-        "project.json": metadata(project_name, profile, target, apps, layout, adoption, shape),
+        "project.json": metadata(project_name, profile, target, apps, layout, adoption, shape, state),
         "init": init_script(apps, target, layout),
         ".gitignore": build_artifacts(event, apps, target),
         "renovate.json": renovate_config(apps),
@@ -238,7 +239,8 @@ def write_project(
     by the time it reaches here; kept out of `files` for the better reason too, which is that nothing a
     person handed over belongs in the manifest a replay regenerates from.
     """
-    files = project_files(project_name, profile, target, apps, layout, adoption, shape) if files is None else files
+    files = project_files(project_name, profile, target, apps, layout, adoption, shape,
+                          NEW_STATE if adoption is None else None) if files is None else files
     executables = {layout.place(path) for path in executable_paths(profile, apps)}
     # Every path held inside the destination before the first byte is written: generation never writes outside
     # the directory it was given, whatever a language answered.

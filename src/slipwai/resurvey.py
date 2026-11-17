@@ -32,6 +32,7 @@ from .programme import expired
 from .project.adopted import WRITTEN
 from .project.big_picture_page import ACTORS, BIG_PICTURE, big_picture_files, with_picture
 from .project.structure_page import structure_page
+from .release_state import state_of
 from .scaffold import FACTORY_IDENTITY, project_files
 from .services import App, wrapped_of
 from .strategy import with_recommendation
@@ -245,13 +246,12 @@ def refresh(root: Path, clean_checked: bool = False) -> Refreshed:
     )
 
     arguments = (document["name"], document["profile"], document["target"])
-    before = project_files(*arguments, apps, layout, adoption, recorded(document))
+    held = (recorded(document), state_of(document))
+    before = project_files(*arguments, apps, layout, adoption, *held)
     shape = structure(root, updated, layout.delivery, FACTORY_IDENTITY["GIT_AUTHOR_EMAIL"])
     picture = big_picture_files(big_picture(root, updated, shape, layout.delivery), layout)
     before = with_picture(before, picture, layout)
-    after = with_picture(
-        project_files(*arguments, updated, layout, after_adoption, recorded(document)), picture, layout,
-    )
+    after = with_picture(project_files(*arguments, updated, layout, after_adoption, *held), picture, layout)
     executables = {layout.place(path) for path in executable_paths(document["profile"], updated)}
     # A file the keel wrote before, still on disk and no longer listed in `.written`, is the repository's own from
     # then on: taking one over is deleting its line, and the keel leaves it alone and says so — the third real

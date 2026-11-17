@@ -71,7 +71,10 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                     "talk",
                     # Whether a slice is stuck, read off its activity log: the board's warning and the
                     # captain's wake-up, carried into every project so the two never disagree.
-                    "stuck")),
+                    "stuck",
+                    # Where the product is and how dark a merge is, carried into every project so the
+                    # release stage, the slice gate and `slipwai release-state` read one table.
+                    "release_state")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.
@@ -141,7 +144,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "package_new", "package_templates", "language_templates", "target_templates", "package_release",
               "package_version", "package_sources", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
-              "cli_telegraph", "harbour", "cli_fleet",
+              "cli_telegraph", "cli_release_state", "harbour", "cli_fleet",
               # The read side served to whatever is doing the work: the tools and the stdio session.
               "mcp", "cli_mcp",
               # The board, as a page a person answers from: the render, the server and the verb — and

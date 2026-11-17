@@ -71,13 +71,17 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
     if target != "none":
         rows.insert(5, (
             "Release constraint",
-            "Take the stage's own recommendation. `release: flagged` — every slice continues or opens a flag "
+            "Not a question: the mode is read from where the product is (`python3 scripts/agents/release_state.py`), "
+            "never weighed, and never moved by a run. **open** and **keystone** open no flag and do not stop. Only "
+            "under **flagged** does this setting apply: `release: flagged` — every slice continues or opens a flag "
             "seeded `off`, so every merge is dark and a person flips keys. `park` stops at the push instead",
-            "`plan.md`, the flag file, a decision entry"))
+            "`plan.md`, the flag file under flagged, a decision entry"))
         rows.insert(6, (
-            "\"A release they want now\" — no flag, or a flag already on, before the push",
+            "\"A release they want now\" — under flagged, no flag or a flag already on, before the push",
             "Never answered by the machine: a release nobody asked for is on the catastrophic list. Under "
-            "`flagged` it does not arise; where it does, park with the exact question", "a `parked` line in the log"))
+            "`release: flagged` it does not arise; where it does, park with the exact question. Under open and "
+            "keystone a merge is the release the state already says it is, and nothing is asked",
+            "a `parked` line in the log"))
     if adoption is not None:
         rows += [
             ("Ground: a convergence row still `unrecorded` on an axis the slice touches",

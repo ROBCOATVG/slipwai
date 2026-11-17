@@ -18,7 +18,7 @@ class ChoiceTest(unittest.TestCase):
         self.assertEqual(recorded({"target": "a-managed-target", "shape": "skiff"}), "skiff")
         # A field the manifest does not have decides nothing: the shape is recorded, or it is the liner
         # every pre-shape project was generated as.
-        self.assertEqual(recorded({"target": "a-managed-target", "state": "in-service"}), "liner")
+        self.assertEqual(recorded({"target": "a-managed-target", "state": "live"}), "liner")
 
     def test_a_new_project_starts_small_and_an_explicit_answer_is_kept(self) -> None:
         self.assertEqual(selected(None), "skiff")

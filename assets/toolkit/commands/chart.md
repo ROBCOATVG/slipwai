@@ -156,6 +156,21 @@ The split fills in, per slice:
 - `sets` — the marks this slice publishes, from the `marks` block. One mark has exactly one setter.
 - `steers_by` — the marks it builds against, which some other slice sets.
 
+**When the product is in pilot**, the split writes one more file. Check with `python3
+scripts/agents/release_state.py`; under any other mode, skip this. Pilot merges in **keystone** mode: a
+capability's slices land unreachable, and its entry point — the route, menu item or command a pilot user
+reaches it by — is wired by its last slice. Write `specs/<feature>/keystones.yaml` beside the chart, one line
+per capability that has an entry, naming the entry's files as globs:
+
+```yaml
+place-an-order: [apps/web/src/routes/orders/**, apps/web/src/menu.tsx]
+```
+
+The last slice of each capability in the chart's order is the one that wires it, and `make
+check-slice-scope` refuses the entry to every other slice. The file is the host's, like the chart. A
+pre-launch product merges every slice visible and needs no file; a live one holds a capability behind a
+flag instead.
+
 ## The shape
 
 ```yaml

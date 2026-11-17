@@ -17,6 +17,7 @@ from .layout import layout_of
 from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
 from .project.infra import target_files, target_scripts
+from .release_state import state_of
 from .scaffold import project_files
 from .targets import managed
 
@@ -66,7 +67,7 @@ def prepare(root: Path, requested: str) -> Path:
         )
     apps = apps_from_manifest(document)
     generated = project_files(document["name"], document["profile"], document["target"], apps,
-                              layout, adoption_of(document), requested)
+                              layout, adoption_of(document), requested, state_of(document))
     # This proposal changes deployment material only; service code and the person's current files stay put.
     prefixes = (layout.place("infra/"),)
     exact = {layout.place(path) for path in (

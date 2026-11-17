@@ -48,6 +48,7 @@ from .cli_prompts import (
 )
 from .cli_quickstart import applied as quickstart_applied
 from .cli_quickstart import quickstart_flag, quickstart_main
+from .cli_release_state import release_state_main
 from .cli_search import search_main, show_main
 from .cli_start import board_or_usage
 from .cli_target import target_main
@@ -72,7 +73,7 @@ from .upgrade import main as upgrade_main
 VERBS = ("generate", "add-service", "add-frontend", "describe-service", "migrate", "replay",
          "adopt", "converge", "upgrade", "list", "search", "show", "install", "language", "extension",
          "hooks", "package", "quickstart", "target", "trust", "channel", "telegraph", "fleet",
-         "bridge", "mcp", "brief")
+         "bridge", "mcp", "brief", "release-state")
 
 
 def main() -> None:
@@ -143,7 +144,8 @@ def dispatch(argv: list[str]) -> None:
                       ("extension", extension_main), ("hooks", hooks_main), ("package", package_main),
                       ("quickstart", quickstart_main), ("target", target_main), ("trust", trust_main),
                       ("channel", channel_main), ("telegraph", telegraph_main), ("fleet", fleet_main),
-                      ("bridge", bridge_main), ("mcp", mcp_main), ("brief", brief_main)):
+                      ("bridge", bridge_main), ("mcp", mcp_main), ("brief", brief_main),
+                      ("release-state", release_state_main)):
         if argv[:1] == [verb]:
             run(argv[1:])
             return

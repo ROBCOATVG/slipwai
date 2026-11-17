@@ -63,7 +63,7 @@ version 1, it uses version 1's own names and says so.
 | **Bunker** | The coal store: the token budget, per slice and per day. Tokens are the coal. The pressure gauge on the fleet board shows the rate they burn at | "token budget", "cost cap" |
 | **Bank the fires** | What the harbourmaster does when the bunker runs down faster than the telegraph position allows: it rings the position down one notch, which lowers every number together — delegates and boilers among them — and writes `fires-banked` with the step it rang and why. One notch at a time rather than straight to `stop`, because a run that stops dead loses what was in flight and a run that slows finishes it. A person stokes the fires back up | "throttle", "reef" |
 | **Hoist, strike** | To hoist a flag is to turn a release flag on for real actors. To strike a flag is to remove it after it has been on everywhere for long enough. Only a person hoists | "turn on", "remove the flag" |
-| **Slipway, sea trials, in service** | The three states of a product, recorded once in `project.json`. Slipway: no production yet. Sea trials: a production with a known set of pilot actors. In service: real actors. The release mode defaults from this state | "pre-launch", "beta", "GA" |
+| **Pre-launch, pilot, live** | The three states of a product, recorded once in `project.json` as `state`. Pre-launch: no production yet, or one only the team sees. Pilot: a production with a known set of pilot users. Live: real users. The release mode follows from this state. Plain words on purpose: an earlier draft called them slipway, sea trials and in service, which read as decoration on a fact a person has to act on | "slipway", "sea trials", "in service", "beta", "GA" |
 | **Release mode** | How dark a merge is. One of: open, keystone, flagged, promoted. Section 4, theme E, defines each | `release: flagged` |
 | **Skiff, liner** | The two shapes of a cloud target. A skiff is one environment on the smallest managed compute and database, for a staff tool. A liner is today's full stack, for a product. Theme E defines both | one stack for every project |
 | **Skipper, hand, bosun** | The three delegates inside one iteration. The skipper decides product questions. The hand runs the demo, and its verdict accepts a whole capability unless `.specify/cruise.json`'s `demos` says a person does. The bosun works round a block. Unchanged from version 1 | Same words |
@@ -779,7 +779,7 @@ shows.
 
 | Instrument | What it shows | Where the data already is |
 |---|---|---|
-| Position | The product state (slipway, sea trials, in service) and the release mode | `project.json` |
+| Position | The product state (pre-launch, pilot, live) and the release mode | `project.json` |
 | Heading | The feature in flight, its fairways, and for each: slices merged of total, the next cleared slice, the holder, and per capability whether its demo is accepted and whether its flag is hoisted — in separate columns, because a capability the business is deliberately holding back is not a late one | The chart, the deck logs, trunk |
 | The chart itself | The event model or the standard-profile chart, rendered, with each slice coloured by its deck log state | `model.yaml` or `contracts/`, the deck logs. `make model` already renders the first |
 | Flags | Every release flag: its capability, where it is hoisted, when, and whether it is due to be struck | The flag file, the harbour log |
@@ -822,8 +822,8 @@ deployments, waiting items and bill on one page without a checkout.
 
 **The problem.** In version 1, the setting `release` is either `flagged` or `park`. `flagged` is absolute: every
 slice continues or opens a flag seeded off; `check-flags` demands that the flag is declared, read, and tested on
-one path; and a slice with nothing holding it back parks for a person. When a product is in service, that is
-exactly right: merging is not releasing. When a product is on the slipway, with no production and no actor but
+one path; and a slice with nothing holding it back parks for a person. When a product is live, that is
+exactly right: merging is not releasing. When a product is pre-launch, with no production and no actor but
 the team, it is pure drag: a reader to call, two test paths, a key to hoist before every demo, and a park
 whenever a slice is simply visible. MANDA ran five berths under it on a product that nobody used yet.
 
@@ -832,12 +832,12 @@ release-constraint stage becomes a lookup against the chart, not a question aske
 
 | Mode | When | What a merge means | What the factory does |
 |---|---|---|---|
-| **Open** | On the slipway: no production, or a production that only the team sees | The change is visible at once. Trunk is the demo | No flags, no reader, `check-flags` off. The demo is the release. The gate is `make verify` plus the hand's verdict |
-| **Keystone** | Sea trials, or the first capability of any fairway | Dark by omission. Every slice lands except the entry point. The route, menu item or API that exposes the capability is the last task of the fairway's last slice. (This is Fowler's keystone interface pattern) | The chart names the keystone per capability. `check-slice-scope` refuses the entry wiring until the capability's other slices are implemented. Demos of the intermediate slices run at the `http` or `cli` rung, which the hand already knows. No flag in domain code. No two-path tests |
-| **Flagged** | In service: real actors use what trunk deploys | Dark behind a key that is seeded off. A person hoists it | Version 1's behaviour, with the three changes below |
+| **Open** | Pre-launch: no production, or a production that only the team sees | The change is visible at once. Trunk is the demo | No flags, no reader, `check-flags` off. The demo is the release. The gate is `make verify` plus the hand's verdict |
+| **Keystone** | Pilot | Dark by omission. Every slice lands except the entry point. The route, menu item or API that exposes the capability is the last task of the fairway's last slice. (This is Fowler's keystone interface pattern) | The chart names the keystone per capability. `check-slice-scope` refuses the entry wiring until the capability's other slices are implemented. Demos of the intermediate slices run at the `http` or `cli` rung, which the hand already knows. No flag in domain code. No two-path tests |
+| **Flagged** | Live: real actors use what trunk deploys | Dark behind a key that is seeded off. A person hoists it | Version 1's behaviour, with the three changes below |
 | **Promoted** | Teams whose production is a promoted build, not every push | Visible on trunk and in preview. Production receives only what passes the promotion gate | Pairs with the ephemeral pre-production environments and the staging-to-production gate already filed as issues #2, #4 and #5. Flags are optional |
 
-The mode is recorded once in `project.json`, next to the product state (slipway, sea trials, in service). It
+The mode is recorded once in `project.json`, next to the product state (pre-launch, pilot, live). It
 defaults from that state. A person changes it with an ADR. `/cruise` never changes it. A product moves from open
 to keystone when its first pilot actor appears, and to flagged when it has actors it cannot surprise.
 
@@ -878,8 +878,8 @@ down.
 
 Rules that hold the shapes to the same bar:
 
-- The shape is recorded in `project.json` beside the target. It defaults from the product state: `slipway`
-  gives a skiff, `in service` gives a liner, and the interview's question decides sea trials. A person can
+- The shape is recorded in `project.json` beside the target. It defaults from the product state: `pre-launch`
+  gives a skiff, `live` gives a liner, and the interview's question decides pilot. A person can
   override it either way at generation.
 - **Moving up is a step, not a rewrite.** `slipwai converge --shape liner` regenerates the target's module
   for the liner shape as a proposed diff, retains the original infrastructure, state and data, and writes
@@ -916,8 +916,9 @@ Rules that hold the shapes to the same bar:
 - A heavier shape than today's (own VPC, multi-AZ database, WAF, alarms and a runbook for on-call) is a later
   row, after 2.0.0, when a product asks for it.
 
-**Done when.** A product on the slipway runs the whole loop with no flag reader generated and no release park.
-A product in service keeps every guarantee it has in version 1. In every mode, the number of release-stage stops
+**Done when.** A pre-launch product runs the whole loop with no flag opened and no release park. A project with
+no state recorded keeps merging flagged, so nothing a migration does changes what a merge means. A live
+product keeps every guarantee it has in version 1. In every mode, the number of release-stage stops
 per slice is zero. A staff tool on AWS costs a third of what it costs today at idle, with the same gate.
 
 ## 5. The delivery loop, drawn
@@ -1911,7 +1912,7 @@ Depends on: phase 3.
 | 5.10b | Per-fairway `decisions.md`, adversary log, benchmark and register; the feature-level files rendered from them by `make decisions`, held by `check-rendered` | new | M | Two fairways each decide once and the rendered file has both, in timestamp order, with neither id changed | done |
 | 5.11a | One file per event, named after its mark, and the index that imports them generated rather than written | new | M | Two slices each add an event and the only file both touch is one that is regenerated, not merged | done |
 | 5.11b | The composition root rendered from the chart, one `wire_*` line per use case, behind a marked region | new | M | Two slices each add a use case and merge without resolving the composition root | done |
-| 5.12a | The product state in `project.json` and the four release modes derived from it, read once at the merge rung | new | M | A slipway product merges in the open and generates no flag reader; moving the product is the only thing that changes the mode | done |
+| 5.12a | The product state in `project.json` and the four release modes derived from it, read once at the merge rung. **Rebuilt 2026-11-17**: the first build's `project/release.py` was never wired in, so every project with a target opened a flag from its first slice (lean-coffee-club's SI1 and MT1). Now `release_state.py` is carried into every project; the release stage, `/cruise`'s stops, the guidance and `check-slice-scope` read it; a new project starts `pre-launch`; one with none recorded keeps merging flagged; `slipwai release-state <state> --why` moves it with an ADR. Under pilot, `specs/<feature>/keystones.yaml` names each capability's entry and the gate holds it to the capability's last slice. The flag reader is still generated, because five language packages ship it and the web app imports it; it is inert until a slice reads a flag | new | M | A pre-launch product merges in the open and opens no flag; moving the product is the only thing that changes the mode | done |
 | 5.12b | Flags at the entry wiring only, and the hygiene gate: `check-flags` refuses a flag hoisted everywhere and never struck. The shape beside the target is 3.4b's | new | M | A flag lives at one `if` at the route or menu, and one overdue to be struck fails the gate | done |
 | 5.13 | The deck log and harbour log formats, written by `/sail`; `.slipwai/logs/` ignored; `refs/slipwai/logs` sync | new | M | A run's status is answerable from the logs after the fact | done |
 | 5.14a | The berth record and its allocation policy in `src/slipwai/berths.py`: a port block per berth, a database per berth, and nothing chosen by hand | new | M | Two berths on one machine collide on neither ports nor databases, and nothing in a berth's record could hold a credential | done |
@@ -3044,11 +3045,11 @@ The one exception is `promoted`, which no state implies because it is a fact abo
 rather than about the product — a project declares it and keeps it, and any other declared mode loses to
 the state, which is version 1's setting prevented from coming back.
 
-**5.12a/b — The four release modes.** `project.json` gains `state: slipway | sea-trials | in-service` and
+**5.12a/b — The four release modes.** `project.json` gains `state: pre-launch | pilot | live` and
 `shape: skiff | liner`, asked at `generate` and changed by `slipwai converge --state`/`--shape`. The
-release mode follows from the state — `open` for slipway, `keystone` for sea trials, `flagged` or
-`promoted` for in service — and `sail.md`'s merge stage reads it to decide how dark a merge is. Flags
-exist at the entry wiring only (`project/flag_route.py`, back), so a slipway project runs the whole loop
+release mode follows from the state — `open` for pre-launch, `keystone` for pilot, `flagged` or
+`promoted` for live — and `sail.md`'s merge stage reads it to decide how dark a merge is. Flags
+exist at the entry wiring only (`project/flag_route.py`, back), so a pre-launch project runs the whole loop
 with no flag reader generated. The flag hygiene gate, `check-flags` in the toolkit, refuses a flag older
 than N releases with no `struck` line. Test: generate at each state, assert what is and is not written.
 

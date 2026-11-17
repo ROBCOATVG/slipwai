@@ -91,8 +91,9 @@ CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
     "decide": "who answers a product question: the host where the stage recommends an answer or a standing "
               "decision covers it and `sail-decide-skipper` otherwise, or `sail-decide-skipper` for every question",
-    "release": "the release-constraint stage: every slice continues or opens a flag seeded off, so every merge "
-               "is dark; or park at the push and let a person say it is a release they want",
+    "release": "the release-constraint stage when the product is live (flagged mode): every slice continues or "
+               "opens a flag seeded off, so every merge is dark; or park at the push and let a person say it is a "
+               "release they want. Pre-launch and pilot products open no flag, whatever this says",
     "constitution": "an unratified constitution: the skipper drafts and ratifies it, marked pending human "
                     "review; or park",
     "hand": "the top of the hand's ladder for a demo; each falls through to the next where it cannot run",

@@ -35,6 +35,10 @@ What a slice's change may contain — everything since the branch left `main`, c
   red on `main`, read and never declared is red on the branch — so a slice refused the file could pass on
   neither. lean-coffee-club's MT1 handed the line back, nothing could land it alone, and it parked for a
   person; SI1 before it stubbed sign-in round the flag it could not declare;
+- **under keystone mode** (the product in pilot, `scripts/agents/release_state.py`), **nothing of a
+  capability's entry point but in its last slice**: `specs/<feature>/keystones.yaml` names each capability's
+  entry as globs, and the chart's split order names its last slice. Every slice before it lands unreachable,
+  which is how a pilot product keeps an unfinished capability from its users without a flag;
 - **new migration files only**, timestamped so two slices never mint the same name: `YYYYMMDDHHMM_<name>`,
   or `V<YYYYMMDDHHMM>__<name>` under Flyway. The shipped numbered ones keep working — the order is lexical
   either way, and every stamp sorts after every number;
@@ -555,6 +559,57 @@ def chart_fairways(slice_id: str) -> tuple[str | None, dict[str, list[str]]]:
     return None, {}
 
 
+def product_mode() -> str:
+    """How dark a merge is here, from `scripts/agents/release_state.py` — `flagged` where it cannot be read,
+    which is how every project merged before the product's state was recorded."""
+    module_path = ROOT / DELIVERY / "scripts/agents/release_state.py"
+    if not module_path.is_file():
+        return "flagged"
+    spec = importlib.util.spec_from_file_location("release_state", module_path)
+    if spec is None or spec.loader is None:
+        return "flagged"
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True
+    spec.loader.exec_module(module)
+    return str(module.mode_of(module.read(ROOT)))
+
+
+def keystones(slice_id: str) -> dict[str, tuple[str, list[str]]]:
+    """Under keystone mode: each capability's entry point and the slice that may wire it — the capability's
+    last slice in the chart, which is split order. Read from `specs/<feature>/keystones.yaml`, beside the
+    chart that names this slice: `<capability>: [<glob>, …]`. Beside it rather than in it, because on the
+    event profile the chart is rendered from the model and compared whole."""
+    found: dict[str, tuple[str, list[str]]] = {}
+    for chart_path in sorted((ROOT / SPECS).glob("*/chart.yaml")) if (ROOT / SPECS).is_dir() else []:
+        listed = chart_path.parent / "keystones.yaml"
+        if not listed.is_file():
+            continue
+        chart, entries = load_chart(chart_path.read_text(encoding="utf-8")), load_chart(listed.read_text(encoding="utf-8"))
+        if not isinstance(chart, dict) or not isinstance(entries, dict):
+            continue
+        slices = chart.get("slices") if isinstance(chart.get("slices"), dict) else {}
+        if slice_id not in slices:
+            continue
+        for capability, globs in entries.items():
+            members = [name for name, body in slices.items()
+                       if isinstance(body, dict) and body.get("capability") == capability]
+            if members and isinstance(globs, list):
+                found[str(capability)] = (str(members[-1]), [str(glob) for glob in globs])
+    return found
+
+
+def keystone_violation(slice_id: str, path: str, held: dict[str, tuple[str, list[str]]]) -> str | None:
+    """A capability's entry point touched by a slice that is not the capability's last."""
+    for capability, (last, globs) in sorted(held.items()):
+        if slice_id != last and owned_by(path, globs):
+            return (
+                f"{path}: the entry point of capability `{capability}`. The product is in pilot, so a capability "
+                f"lands dark by omission: its entry is wired by its last slice, `{last}`, and every slice before "
+                f"it lands unreachable. Leave the entry out and demo this slice at the `http` or `cli` rung."
+            )
+    return None
+
+
 def check(branch: str | None) -> tuple[list[str], str]:
     """The violations, and the one line to print when there are none."""
     violations = lost_records()
@@ -567,8 +622,10 @@ def check(branch: str | None) -> tuple[list[str], str]:
     if base is None:
         return violations, f"check-slice-scope: slice/{slice_id} has no `main` to compare with — nothing to hold"
     scope = Scope(slice_id, base)
+    held = keystones(slice_id) if product_mode() == "keystone" else {}
     for path, status in sorted(changed_files(base).items()):
-        found = scope.violation(path, status) or scope.fairway_violation(path)
+        found = (scope.violation(path, status) or scope.fairway_violation(path)
+                 or keystone_violation(slice_id, path, held))
         if found:
             violations.append(found)
     if scope.unreadable is not None:

@@ -275,7 +275,9 @@ class Helm:
         if by == "rule":
             self.ruled(kind, slice_id, why)
             return default, by
-        return deciding, by
+        # An event no order decides (`DECIDING`) hands back what the captain did, for the caller to read: a
+        # message is answered only by an order that addresses it.
+        return (deciding if kind in DECIDING else acted), by
 
     def later(self, kind: str, slice_id: str, facts: dict[str, Any], may: list[str], default: list[Order],
               then: Callable[[list[Order], str], None], check: Check | None = None) -> threading.Thread:
@@ -466,9 +468,9 @@ class Helm:
                 return f"{order.get('ask')} is not the ask this event is about ({facts['ask']})"
             if any(one["verb"] in ("allow", "refuse") for one in done):
                 return "this ask is answered already"
-            if order["verb"] == "allow" and what == "permission" and not readable(ask):
-                return ("a write or a command outside the berth is not the captain's to allow: only reading is, "
-                        "and only inside the project")
+            why = unreadable(ask) if order["verb"] == "allow" and what == "permission" else ""
+            if why:
+                return f"not the captain's to allow: {why}"
             return ""
 
         slice_id = str(ask.get("slice") or "")
@@ -486,22 +488,21 @@ PROJECT = order_door.project_root(Path(__file__).resolve())
 
 
 def readable(ask: dict[str, Any], project: Path = PROJECT) -> bool:
-    """Whether a permission is a read inside the project: the most a captain may allow outside a berth. Inside
-    the project, not the berth the slice asked from (`root`): a read inside its berth is allowed by its own
-    policy and never asked, so measured against the berth no read a captain was asked about could be allowed."""
-    tool = ask.get("tool") or {}
-    root = Path(project).resolve()
+    """Whether a permission is a read a captain may allow outside a berth (`unreadable`)."""
+    return not unreadable(ask, project)
+
+
+def unreadable(ask: dict[str, Any], project: Path = PROJECT) -> str:
+    """Why a permission is not a read a captain may allow, or `''`: a `read` of one plain file of the project
+    (`captain_orders.unreadable`), measured against the project, not the berth the slice asked from — a read
+    inside its berth is allowed by its own policy and never asked — with a relative path the berth's."""
+    tool = ask.get("tool") if isinstance(ask.get("tool"), dict) else {}
+    if str(tool.get("kind") or "") != "read":
+        return "only a read is the captain's to allow outside a berth: no write, command, search or fetch"
     places = [str(one) for one in tool.get("locations") or []]
-    if str(tool.get("kind") or "") not in captain_orders.READS or not places:
-        return False
-    if any(Path(place).name == talk.KEY for place in places):
-        return False  # a key file is read by nobody a captain answers for
-    for place in places:
-        try:
-            Path(place).expanduser().resolve().relative_to(root)
-        except ValueError:
-            return False
-    return True
+    if len(places) != 1:
+        return "a read of one file is the most a captain allows"
+    return captain_orders.unreadable(places[0], project, Path(str(ask.get("root") or project)))
 
 
 def answer_of(what: str, order: Order, by: str) -> dict[str, Any]:

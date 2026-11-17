@@ -14,6 +14,7 @@ Standalone and dependency-free: this runs inside a generated project, which has 
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -32,6 +33,14 @@ FLOOD = 12
 #: Read-only tool kinds a captain may allow a slice's session outside its berth. A write outside the berth
 #: is never the captain's to allow: it is another slice's work, or the project's own controls.
 READS = ("read", "search", "fetch", "think")
+#: A file no session reads through its captain, nor the captain itself, by any part of its path, compared
+#: without case (a case-insensitive disk opens `.KEY` as `.key`): the conversation key and every other `.key`,
+#: environment files, private keys and certificates, the usual credential files.
+SECRET = re.compile(r"^(\.key|\.env(\..*)?|\.netrc|\.npmrc|\.pypirc|\.pgpass|\.git-credentials|credentials(\.json)?|"
+                    r"id_(rsa|dsa|ecdsa|ed25519)(\.pub)?)$|\.(pem|key|p12|pfx|jks|keystore)$", re.IGNORECASE)
+#: The project's folders no read through a captain reaches: the run's keys, conversations and orders, and git's
+#: own configuration and history.
+CLOSED = (".slipwai", ".git")
 #: The orders whose rules every event shares, held here rather than by the event's own check.
 COMMON = ("say", "ask", "message", "pause", "resume", "stop", "none")
 
@@ -90,6 +99,35 @@ def refusal(helm: Any, order: Any, path: Path, held: dict[str, Any], check: Call
     if check is not None and order["verb"] not in COMMON:
         return check(order, done)
     return helm.acts.common(order, held)
+
+
+def unreadable(place: str, project: Path, base: Path, open_under: tuple[Path, ...] = ()) -> str:
+    """Why one location may not be read through a captain, or `''`. Decided on the resolved path alone — a link
+    is what it leads to, a relative path is the berth's (`base`) — after its own name: one plain file that
+    exists, inside the project, not under `.slipwai/` or `.git/` (but for `open_under`, the captain's own
+    events and deck), and no secret by the name of any part of its path, whatever its case."""
+    if not isinstance(place, str) or not place.strip() or "\x00" in place:
+        return "it names no path"
+    given = Path(place).expanduser()
+    given = given if given.is_absolute() else Path(base) / given
+    if SECRET.search(given.name):
+        return f"`{given.name}` is a secret by its name"
+    try:
+        real = given.resolve(strict=True)
+        inside = real.relative_to(Path(project).resolve())
+    except ValueError:
+        return "it is outside the project"
+    except (OSError, RuntimeError):
+        return "it names nothing that exists"
+    if not real.is_file():
+        return "it is not one plain file"
+    secret = next((part for part in inside.parts if SECRET.search(part)), "")
+    if secret:
+        return f"`{secret}` is a secret by its name"
+    opened = any(str(real).lower().startswith(str(Path(one).resolve()).lower().rstrip("/") + "/") for one in open_under)
+    if inside.parts and inside.parts[0].lower() in CLOSED and not opened:
+        return f"it is under {inside.parts[0]}/, which holds the run's keys, conversations and history"
+    return ""
 
 
 def person_asked(home: Path) -> str:

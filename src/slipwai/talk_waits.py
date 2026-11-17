@@ -83,9 +83,9 @@ def items(root: Path, rows: list[dict[str, str]]) -> tuple[list[dict[str, Any]],
     by_slice = {row["slice"]: row for row in rows}
     for slice_id, folded in talking(root, rows).items():
         row = by_slice[slice_id]
-        if row.get("state") not in IN_FLIGHT:
-            continue
-        for one in open_asks(folded) if asks_you else []:
+        # A held slice is listed whatever its state: a captain can pause one that has not started, and no rule
+        # lifts that either. A merged one is held by nothing (its thread says `resumed` by the merge).
+        for one in open_asks(folded) if asks_you and row.get("state") in IN_FLIGHT else []:
             holding.append({"n": 1, "slice": slice_id, "href": window(row["fairway"], slice_id, f"#ask-{one['id']}"),
                             "text": f"{slice_id} asks: {first_sentence(one['text'], 90) or 'a question'}"})
         if folded["halted"] == "paused" and folded["by"] == talk.PERSON:

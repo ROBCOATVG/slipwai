@@ -26,7 +26,7 @@ pointed at a real checkout.
 
 Standalone and dependency-free: this runs inside a generated project, which has no slipwai to import.
 """
-# budget: 420 — the captain session's whole policy in one place: the command parsed as a shell would, the
+# budget: 500 — the captain session's whole policy in one place: the command parsed as a shell would, its reads, the
 # launch only over the protocol, and the evals' one door, each beside the reasons it is confined so
 from __future__ import annotations
 
@@ -47,6 +47,7 @@ sys.path.insert(0, str(HERE))
 import drive  # noqa: E402
 import harness  # noqa: E402
 import logs  # noqa: E402
+import captain_orders  # noqa: E402
 import orders as order_door  # noqa: E402
 import talk  # noqa: E402
 
@@ -143,7 +144,7 @@ def order_command() -> str:
 
 #: The commands the captain session was refused since the captain program last asked: how many, and the first —
 #: kept to that, so what the deck log says of them is bounded however many it tries.
-REFUSED: dict[str, Any] = {"count": 0, "first": "", "why": ""}
+REFUSED: dict[str, Any] = {"count": 0, "first": "", "why": "", "shapes": []}
 #: How much of a refused command is said: enough to recognise it, never the agent's words at length.
 SAID = 80
 
@@ -198,41 +199,99 @@ class Held:
         self.driver.terminate()  # the turn is cancelled; the session stays for the next event
 
 
-def permit(tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | None:
-    """The captain session's policy: reading is allowed, and running this project's own `orders.py` alone;
-    nothing else, wherever it is. Its hands are the orders, which the program checks."""
-    allowed = next((str(one["optionId"]) for one in options if one.get("kind") == "allow_once" and "optionId" in one), None)
-    refused = next((str(one["optionId"]) for one in options if one.get("kind") == "reject_once" and "optionId" in one), None)
+def permit(tool_call: Any, options: Any) -> str | None:
+    """The captain session's policy: running this project's own `orders.py` alone, and reading its own brief,
+    events and deck and the project's files; nothing else, wherever it is. Its hands are the orders, which the
+    program checks. Decided on the whole request: a request carrying a command is judged as a command whatever
+    its `kind` says, one with no `kind` that carries a command is an execute, and a shape this does not expect
+    is refused and counted with its keys named, so a supervised run shows at once what its harness sent."""
+    if not isinstance(tool_call, dict) or not isinstance(options, list):
+        return refuse(None, "", f"a request that is not a tool call and its options ({type(tool_call).__name__}, "
+                                f"{type(options).__name__})", shape=True)
+    offered = [one for one in options if isinstance(one, dict)]
+    allowed = next((str(one["optionId"]) for one in offered if one.get("kind") == "allow_once" and "optionId" in one), None)
+    refused = next((str(one["optionId"]) for one in offered if one.get("kind") == "reject_once" and "optionId" in one), None)
     kind = str(tool_call.get("kind") or "")
-    if kind in ("read", "search", "think") and allowed and not keyed(tool_call):
-        return allowed
-    why = refusal(tool_call) if kind == "execute" else ""
-    if kind == "execute" and allowed and not why:
-        return allowed
-    if kind == "execute":
-        raw = tool_call.get("rawInput") or {}
-        command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
-        REFUSED["count"] += 1
-        if not REFUSED["first"]:
-            # The order command's two long paths said once, at the end, so what is cut short is what it added.
-            shown = command.replace(order_command(), "<order command>", 1) if command else ""
-            REFUSED["first"] = " ".join((shown or str(tool_call.get("title") or "a command")).split())[:SAID]
-            REFUSED["why"] = why or "no way to allow it was offered"
+    raw = tool_call.get("rawInput")
+    if raw is not None and not isinstance(raw, dict):
+        return refuse(refused, "", f"rawInput that is not an object ({shape_of(tool_call)})", shape=True)
+    if kind == "execute" or "command" in (raw or {}):
+        why = refusal(tool_call)
+        if allowed and not why:
+            return allowed
+        return refuse(refused, str((raw or {}).get("command") or tool_call.get("title") or "a command"),
+                      why or "no way to allow it was offered")
+    if kind == "think" and not tool_call.get("locations") and not paths(raw or {}):
+        return allowed or refuse(refused, "", "no way to allow it was offered")
+    if kind == "read":
+        why = own_read(tool_call)
+        if allowed and not why:
+            return allowed
+        return refuse(refused, f"read {', '.join(places_of(tool_call))[:SAID]}", why or "no way to allow it was offered")
+    return refuse(refused, "", f"a request of a shape not expected ({shape_of(tool_call)})", shape=True)
+
+
+def refuse(refused: str | None, said: str, why: str, shape: bool = False) -> str | None:
+    """Count one refusal for the event's `noted` line, the first said with its reason, and every unexpected
+    shape by its keys alone; then refuse."""
+    REFUSED["count"] += 1
+    if shape and why not in REFUSED["shapes"] and len(REFUSED["shapes"]) < 3:
+        REFUSED["shapes"].append(why)
+    if not REFUSED["first"]:
+        # The order command's two long paths said once, at the end, so what is cut short is what it added.
+        shown = said.replace(order_command(), "<order command>", 1) if said else "a request"
+        REFUSED["first"] = " ".join(shown.split())[:SAID]
+        REFUSED["why"] = why
     return refused
 
 
+def shape_of(tool_call: dict[str, Any]) -> str:
+    """A request's shape by its keys alone, never their values: what a supervised run needs to see."""
+    raw = tool_call.get("rawInput")
+    inner = f"; rawInput keys {', '.join(sorted(map(str, raw))) or 'none'}" if isinstance(raw, dict) else ""
+    return f"kind {tool_call.get('kind') or 'none'}; keys {', '.join(sorted(map(str, tool_call))) or 'none'}{inner}"
+
+
+#: The `rawInput` fields a harness names a file to read by.
+PATHS = ("path", "filePath", "file_path", "abs_path", "absolute_path", "file", "filename", "target_file")
+
+
+def paths(raw: dict[str, Any]) -> list[str]:
+    return [str(raw[name]) for name in PATHS if raw.get(name) not in (None, "")]
+
+
+def places_of(tool_call: dict[str, Any]) -> list[str]:
+    found = [str(one.get("path") if isinstance(one, dict) else one) for one in tool_call.get("locations") or []]
+    raw = tool_call.get("rawInput")
+    return found + (paths(raw) if isinstance(raw, dict) else [])
+
+
+def own_read(tool_call: dict[str, Any]) -> str:
+    """Why the captain session may not read what a read names, or `''`: each place one plain file of this
+    project, no secret by name, nothing under `.slipwai/` or `.git/` but its own stream's events and the deck
+    logs (`captain_orders.unreadable`, the rule a slice's read through its captain is held to), and nothing
+    outside the project, which it never needs."""
+    places = places_of(tool_call)
+    if not places:
+        return "a read that names no file"
+    run = logs.run_dir(ROOT)
+    for place in places:
+        why = captain_orders.unreadable(place, ROOT, ROOT, (run / "events", logs.logs_dir(ROOT)))
+        if why:
+            return why
+    return ""
+
+
 def keyed(tool_call: dict[str, Any]) -> bool:
-    """Whether a tool call names a key file — the conversation key or any other `.key` — which no captain reads."""
-    places = [str(one.get("path") or "") for one in tool_call.get("locations") or [] if isinstance(one, dict)]
-    raw = tool_call.get("rawInput") or {}
-    places += [str(value) for value in raw.values()] if isinstance(raw, dict) else []
-    return any(Path(place).name == talk.KEY or place.endswith(f"/{talk.KEY}") for place in places)
+    """Whether a tool call reads something the captain may not (`own_read`): the old name, kept for its readers."""
+    return bool(own_read(tool_call))
 
 
 #: Outside any quotes, what a shell would read as more than words: a second command, a redirection, a
 #: substitution, a subshell, a glob, a comment. Each refuses the command; inside single quotes each is a letter.
 BARE = {";": "a `;`", "&": "an `&`", "|": "a `|`", ">": "a `>`", "<": "a `<`", "`": "a backtick", "$": "a `$`",
-        "(": "a `(`", ")": "a `)`", "*": "a `*`", "?": "a `?`", "[": "a `[`", "\n": "a new line"}
+        "(": "a `(`", ")": "a `)`", "*": "a `*`", "?": "a `?`", "[": "a `[`", "\n": "a new line", "~": "a `~`",
+        "{": "a `{`", "}": "a `}`"}
 
 
 def tokens(command: str) -> list[str] | str:
@@ -286,6 +345,8 @@ def tokens(command: str) -> list[str] | str:
             return f"{BARE[char]} outside quotes"
         if char == "#" and not started:
             return "a `#` outside quotes, which begins a comment"
+        if char == "=" and not started:
+            return "a word that begins with `=` outside quotes, which a shell may expand"
         word.append(char)
         started, index = True, index + 1
     if started:
@@ -303,19 +364,26 @@ def refusal(tool_call: dict[str, Any]) -> str:
     runs under, or `''` where it is: its first two words exactly the two the prompt handed the captain — no
     shell, no name looked up on PATH (a shim answers that), no copy of the script in a berth a slice could have
     edited — and nothing where the command itself cannot be read: the display title is never taken for it."""
-    raw = tool_call.get("rawInput") or {}
-    command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
-    if not command:
+    raw = tool_call.get("rawInput") if isinstance(tool_call, dict) else None
+    command = raw.get("command") if isinstance(raw, dict) else None
+    if not isinstance(command, str) or not command:
         return "no command could be read"
-    words = tokens(command)
-    if isinstance(words, str):
-        return words
-    if len(words) < 2 or words[0] != sys.executable or not Path(words[1]).is_absolute():
-        return "not the order command as it was handed"
+    # What the tokenizer does not see is not run: its own environment, words beside the command, another folder.
+    if raw.get("env"):
+        return "it sets an environment of its own"
+    if raw.get("args"):
+        return "it carries words beside its command line"
     try:
+        if raw.get("cwd") and not Path(str(raw["cwd"])).resolve().is_relative_to(ROOT.resolve()):
+            return "it runs from a folder outside the project"
+        words = tokens(command)
+        if isinstance(words, str):
+            return words
+        if len(words) < 2 or words[0] != sys.executable or not Path(words[1]).is_absolute():
+            return "not the order command as it was handed"
         return "" if Path(words[1]).resolve() == ORDERS.resolve() else "it runs another copy of `orders.py`"
-    except OSError:
-        return "its script could not be found"
+    except (OSError, ValueError, RuntimeError):
+        return "its paths cannot be read (a NUL, or a loop of links)"
 
 
 class Runner:
@@ -334,11 +402,13 @@ class Runner:
         """What the session was refused since this was last asked — once an event — as one sentence for the deck
         log: how many commands, and the first, cut short. `''` where it was refused nothing."""
         count, first, why = int(REFUSED["count"]), str(REFUSED["first"]), str(REFUSED["why"])
-        REFUSED.update(count=0, first="", why="")
+        shapes = list(REFUSED["shapes"])
+        REFUSED.update(count=0, first="", why="", shapes=[])
         if not count:
             return ""
         return (f"the captain session was refused {count} command{'s' if count > 1 else ''} in one event, the first "
-                f"`{first}` for {why}: it may run only `{order_command()} …`, prose in single quotes")
+                f"`{first}` for {why}: it may run only `{order_command()} …`, prose in single quotes"
+                + (f"; refused as shapes not expected: {' | '.join(shapes)}" if shapes else ""))
 
     def holds_session(self) -> bool:
         return self.driver is not None and self.driver.alive

@@ -208,7 +208,7 @@ six, by verb (every value a string unless said):
 | `pause`, `resume`, `stop` | `slice`, `why` |
 | `say` | `text`, `of` (optional: the message it answers) |
 | `ask` | `text`, `options` (optional, list of strings) |
-| `allow`, `refuse` | `ask` (the ask's id), `why` (for an allowed question, `why` is the answer, which the program writes as a deck `decision`, `decided_by: captain:<fairway>`, counted toward `decision_ceiling`) |
+| `allow`, `refuse` | `ask` (the ask's id; an `allow` of a permission is a `read` of one plain file of the project, decided on its resolved path, never under `.slipwai/` or `.git/` nor a key or environment file by name), `why` (for an allowed question, `why` is the answer, which the program writes as a deck `decision`, `decided_by: captain:<fairway>`, counted toward `decision_ceiling`) |
 | `none` | `why` |
 
 **`facts` by kind**, as small as the decision needs and kept stable:

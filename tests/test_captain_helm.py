@@ -285,6 +285,8 @@ class HelmTest(HelmBase):
         answer = helm.ruling(ask, {"verb": "refuse", "ask": "ask-1", "why": "outside the berth"})
         self.assertEqual((answer["allow"], answer["by"]), (False, "rule"))
         self.assertIn("not the captain's to allow", self.results()[0][1])
+        (self.root / "specs").mkdir(exist_ok=True)
+        (self.root / "specs/x.md").write_text("x", encoding="utf-8")  # a read is of a file that is there
         read = dict(ask, tool={"kind": "read", "locations": [str(self.root / "specs/x.md")]})
         self.assertTrue(helm.ruling(read, {"verb": "refuse", "ask": "ask-1", "why": "x"})["allow"])
 

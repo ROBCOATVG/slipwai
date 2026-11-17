@@ -7,7 +7,7 @@ the case reads what the program did — the deck log, the conversations, the res
 folds. Where `STAND_IN_ASKS=1`, the stand-in asks permission for every order it runs, as an agent does, so
 the captain session's own policy (`captain_agent.permit`) is in the loop.
 """
-# budget: 420 — every event kind and every order verb through one real program, in one place a reader can scan
+# budget: 450 — every event kind and every order verb through one real program, in one place a reader can scan
 from __future__ import annotations
 
 import json
@@ -186,6 +186,15 @@ class MessageTest(Through):
         inbox = loaded_inbox(self.root)
         self.assertEqual(inbox.owed("ORD")["unread"], [], "nothing parks the stream an hour later over it")
 
+    def test_an_order_that_does_not_address_the_words_leaves_them_unaddressed_and_unread(self) -> None:
+        """M-B: the captain's only order is an unrelated pause."""
+        self.granted("ORD-01", "ORD-02", "ORD-03")
+        sent = self.said("which store does ORD-01 use?")
+        self.go({"message": [{"verb": "pause", "slice": "ORD-03", "why": "holding it"}]})
+        self.assertEqual(self.lines("read"), [])
+        self.assertIn(("unaddressed", sent["id"]), [(one["kind"], one.get("id")) for one in self.thread(talk.CAPTAIN)])
+        self.assertEqual(len(loaded_inbox(self.root).owed("ORD")["unread"]), 1)
+
     def test_words_the_rule_closes_leave_their_told_unread(self) -> None:
         self.granted("ORD-01")
         self.said("what are you doing?")
@@ -196,14 +205,27 @@ class MessageTest(Through):
     def test_a_pause_holds_a_slice_not_yet_started_and_a_resume_lets_it_run(self) -> None:
         self.granted("ORD-01", "ORD-02", "ORD-03")
         self.said("hold ORD-02 a while")
-        said = self.go({"message": [{"verb": "pause", "slice": "ORD-02", "why": "the person asked"}]}, "--interval",
-                       "0.2")
+        # The pause, and a word to the person: only words answer words (M-B), and unanswered ones park the stream.
+        said = self.go({"message": [{"verb": "pause", "slice": "ORD-02", "why": "the person asked"},
+                                    {"verb": "say", "text": "ORD-02 is paused"}]}, "--interval", "0.2")
         merged = [one.get("slice") for one in self.lines("merged")]
         self.assertEqual(merged, ["ORD-01", "ORD-03"], said)
         self.assertEqual(talk.halted(talk.place(logs.run_dir(self.root), "ORD", "ORD-02"))[:2],
                          ("paused", "captain:ORD"))
+        # M-C: the board lists it and its card says so, though it never started.
+        from slipwai.talk_card import held_html
+        from slipwai.talk_waits import items, summaries
+        rows = [{"slice": f"ORD-0{n}", "state": state, "fairway": "ORD", "title": "", "feature": "ordering", "why": ""}
+                for n, state in ((1, "merged"), (2, "todo"), (3, "merged"))]
+        self.assertEqual([one["text"] for one in items(self.root, rows)[1]],
+                         ["ORD-02 is paused by captain:ORD, and no rule lifts it: resume it when you are ready"])
+        card = held_html({**rows[1], "talk": json.dumps(summaries(self.root, rows)["ORD-02"])})
+        self.assertIn("Paused by captain:ORD", card)
         self.said("let ORD-02 go")
-        self.go({"message": [{"verb": "resume", "slice": "ORD-02", "why": "the person said go"}]}, "--interval", "0.2")
+        said = self.go({"message": [{"verb": "resume", "slice": "ORD-02", "why": "the person said go"},
+                                    {"verb": "say", "text": "ORD-02 goes on"}]}, "--interval", "0.2")
+        self.assertIn("captain: nothing to start in ORD — every slice that may start is held; ORD-02 is paused by its "
+                      "captain (captain:ORD) until its captain or a person resumes it: the person asked", said)
         # The captain answers while that turn ends with nothing to start; its resume is read at the next one.
         said = self.go({}, "--interval", "0.2")
         self.assertEqual([one.get("slice") for one in self.lines("merged")], ["ORD-01", "ORD-03", "ORD-02"], said)
@@ -387,10 +409,19 @@ class EnvironmentTest(AgentBase):
         said = self.turn("today", captain="off")
         self.assertEqual(said.count("SLIPWAI_CAPTAIN=off in the environment turns this stream's captain agent off"),
                          1, said)
-        noted = [str(e.fields.get("what")) for e in self.read("ORD") if e.kind == "noted"]
-        self.assertEqual(len(noted), 1, noted)
-        self.assertIn("whatever harbour.json says", noted[0])
+        self.assertEqual([e.kind for e in self.read("ORD")][:1], ["claimed"], "the deck is the program alone's")
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "noted"], [])
+        status = json.loads((logs.run_dir(self.root) / "events/ORD/captain.json").read_text(encoding="utf-8"))
+        self.assertEqual(status["agent"], False)
+        self.assertIn("whatever harbour.json says", status["why"], "the board's captain window and strip say why")
         self.assertEqual(self.closed(), [], "the program alone: nothing is put to an agent")
+
+    def test_slipwai_captain_agreeing_with_harbour_json_says_nothing(self) -> None:
+        self.budget(minutes=5)  # no `captain` block at all: `off` changes nothing
+        self.granted("ORD-01")
+        said = self.turn("today", captain="off")
+        self.assertNotIn("in the environment turns", said)
+        self.assertFalse((logs.run_dir(self.root) / "events/ORD/captain.json").exists())
 
 
 def loaded_inbox(root: Path):  # noqa: ANN201 — the project's own carried module

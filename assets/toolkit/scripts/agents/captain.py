@@ -1887,8 +1887,13 @@ def heard_captain(fairway: str, feature: str = "") -> None:
                  # What it answers, where it answers something: a person's answer to the captain's own `ask`.
                  **({"of": str(message["of"])} if message.get("of") else {})}
 
-        def then(_orders: list[dict], by: str, ident: str = ident) -> None:
-            if by == "rule":
+        def then(orders: list[dict], by: str, ident: str = ident) -> None:
+            # Read only where an order answers these words — a `say` or an `ask` to the person, or the message
+            # routed on — never because the captain did something else on the same event, such as a pause.
+            addressed = by == "captain" and any(
+                one.get("verb") in ("say", "ask") or (one.get("verb") == "message" and str(one.get("of")) == ident)
+                for one in orders)
+            if not addressed:
                 talk.note(home, "unaddressed", id=ident, why="its captain did not answer it; the stream's log has it "
                                                             "as a `told`, which answers a park it has")
             elif feature:
@@ -1998,17 +2003,20 @@ def helm(feature: str, fairway: str) -> captain_events.Helm | None:
     overriding = captain_agent.overridden(harbour())
     if overriding and "captain-env" not in NOTED:
         # Said once: a variable left in a shell is otherwise invisible, and the stream is not what its file says.
+        # On its output and beside its events for the board's reader — never in the deck log, which a run on
+        # the program alone must leave exactly as it always did.
         NOTED.add("captain-env")
         print(f"captain: {fairway}: {overriding}", flush=True)
-        Stream(feature, fairway).noted(overriding)
     if not held["agent"]:
+        if overriding:
+            captain_agent.say_status(events, False, overriding)
         return None
     started = captain_agent.launch()
     if isinstance(started, str):
         captain_agent.say_status(events, False, started)
         print(f"captain: {fairway} has {started}; it runs on the program alone", flush=True)
         return None
-    captain_agent.say_status(events, True)
+    captain_agent.say_status(events, True, overriding)
     found = captain_events.Helm(run, fairway, captain_agent.Runner(fairway, run, held, started),
                                 Stream(feature, fairway), say=lambda line: print(line, flush=True), settings=held,
                                 failed=agent_failed)
@@ -2473,9 +2481,16 @@ def held_by_talk(fairway: str, slices: list[str]) -> list[str]:
 
 
 def held_said(fairway: str, slices: list[str]) -> str:
-    """The slices held through their conversations, said for the line a turn with nothing to start ends on."""
-    named = [f"{one} is {talk.halted(conversation(fairway, one))[0]} by a person until they resume it"
-             for one in slices if talk.halted(conversation(fairway, one))[0]]
+    """The slices held through their conversations, each with who holds it and why, said for the line a turn
+    with nothing to start ends on: a person's hold lifts when they resume it, a captain's when it or a person does."""
+    named = []
+    for one in dict.fromkeys(slices):
+        how, by, why = talk.halted(conversation(fairway, one))
+        if not how:
+            continue
+        who = "a person" if by == talk.PERSON else f"its captain ({by})" if by.startswith("captain:") else by or "its captain"
+        lifts = "until they resume it" if by == talk.PERSON else "until its captain or a person resumes it"
+        named.append(f"{one} is {how} by {who} {lifts}" + (f": {why}" if why else ""))
     return "; ".join(named)
 
 
@@ -2795,8 +2810,8 @@ def turn(fairway: str) -> str:
         if giving_up:
             write(feature, fairway, logs.entry("yielded", fairway=fairway, to=giving_up))
             return f"captain: {fairway} yields its berth to {giving_up}"
-        first, why = next_slices(fairway, [])
-        first = [one for one in first if one not in held_by_talk(fairway, first)]
+        offered, why = next_slices(fairway, [])
+        first = [one for one in offered if one not in held_by_talk(fairway, offered)]
         if not first:
             lifting = paused_until(found, fairway)
             if lifting:
@@ -2804,7 +2819,8 @@ def turn(fairway: str) -> str:
                 # the time, rather than "nothing to start", which reads as a fairway with nothing to do.
                 return (f"captain: {fairway} is paused until {lifting} — {len(held)} claimed slice(s) wait "
                         f"for the harness, and {why}")
-            holding = held_said(fairway, resuming(found))
+            holding = held_said(fairway, [*offered, *resuming(found)])
+            why = why or ("every slice that may start is held" if offered else "nothing is cleared to start")
             return f"captain: nothing to start in {fairway} — {why}" + (f"; {holding}" if holding else "")
         said = sail_out(feature, fairway, choose(feature, fairway, first, 1, [],
                                                  lambda: (next_slices(fairway, [])[0], 1)), fresh=True)

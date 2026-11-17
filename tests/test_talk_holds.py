@@ -185,5 +185,24 @@ class DriverTest(unittest.TestCase):
         self.assertEqual((held.message_commits, held.message_commits_person), (True, False))
 
 
+class PausingHoldsTest(unittest.TestCase):
+    """M3, in the fold itself: a captain's `pausing` is a hold from the moment it is written, in both copies."""
+
+    def test_a_captain_s_pausing_holds_and_a_person_s_hold_outranks_it(self) -> None:
+        import importlib.util
+
+        from slipwai.assets import TOOLKIT_ROOT
+        spec = importlib.util.spec_from_file_location("talk_toolkit_copy", TOOLKIT_ROOT / "scripts/agents/talk.py")
+        assert spec is not None and spec.loader is not None
+        carried = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(carried)
+        mine = [{"kind": "pausing", "by": "captain:ORD", "why": "circling", "t": "2026-11-17T10:00:00Z"}]
+        theirs = [{"kind": "paused", "by": "person", "why": "lunch", "t": "2026-11-17T09:00:00Z"}, *mine]
+        for module in (talk, carried):
+            with self.subTest(module=module.__name__):
+                self.assertEqual(module.halted(Path("."), mine), ("paused", "captain:ORD", "circling"))
+                self.assertEqual(module.halted(Path("."), theirs), ("paused", "person", "lunch"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,6 +16,7 @@ that is not JSON, a response carrying `error`, a call that outlives its ceiling,
 agent's stderr tail, raised to the caller of the one call it broke and nothing else. A reader thread never
 raises past itself.
 """
+# budget: 375 — the session, its pipe, and each tool call as its updates said it, for a permission asked of it
 from __future__ import annotations
 
 import contextlib
@@ -127,6 +128,9 @@ class Session:
         self.ids = itertools.count(1)
         self.waiting: dict[int, tuple[threading.Event, dict[str, Any]]] = {}
         self.open: dict[Any, str] = {}  # the agent's own requests not yet answered, by id, with their method
+        #: Each tool call as its `tool_call` and `tool_call_update`s said it, by id: a permission asked of one may
+        #: carry less (no `kind`, no `rawInput`), and a policy decides on the whole of what is known.
+        self.calls: dict[str, dict[str, Any]] = {}
         self.lock = threading.Lock()  # over `waiting`, `open` and the write side of the pipe
         self.busy = False
         self.exited: int | None = None
@@ -234,7 +238,9 @@ class Session:
                         self.open[message["id"]] = str(message.get("method"))
                     threading.Thread(target=self.serve, args=(message,), daemon=True).start()
                 elif message.get("method") == "session/update":
-                    self.on_update(dict((message.get("params") or {}).get("update") or {}))
+                    update = dict((message.get("params") or {}).get("update") or {})
+                    self.known(update)
+                    self.on_update(update)
         finally:
             if child is not None:
                 child.wait()
@@ -250,12 +256,27 @@ class Session:
                 box["gone"] = True
                 done.set()
 
+    def known(self, update: dict[str, Any]) -> None:
+        """Keep what an update says of a tool call, each field as it was last said."""
+        if update.get("sessionUpdate") in ("tool_call", "tool_call_update") and update.get("toolCallId"):
+            with self.lock:
+                held = self.calls.setdefault(str(update["toolCallId"]), {})
+                held.update({key: value for key, value in update.items()
+                             if key != "sessionUpdate" and value is not None})
+
+    def whole(self, call: Any) -> dict[str, Any]:
+        """A permission's tool call over what the session's updates already said of it: the request's own fields win."""
+        said = dict(call) if isinstance(call, dict) else {}
+        with self.lock:
+            known = dict(self.calls.get(str(said.get("toolCallId") or ""), {}))
+        return {**known, **{key: value for key, value in said.items() if value is not None}}
+
     def serve(self, message: dict[str, Any]) -> None:
         """One request from the agent: a permission, a question, or something this client does not offer."""
         number, method, params = message.get("id"), str(message.get("method")), dict(message.get("params") or {})
         try:
             if method == "session/request_permission":
-                chosen = self.on_permission(dict(params.get("toolCall") or {}), list(params.get("options") or []))
+                chosen = self.on_permission(self.whole(params.get("toolCall")), list(params.get("options") or []))
                 outcome = {"outcome": "cancelled"} if chosen is None else {"outcome": "selected", "optionId": chosen}
                 self.reply(number, {"outcome": outcome})
             elif method == "elicitation/create":

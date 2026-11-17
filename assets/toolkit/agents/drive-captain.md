@@ -46,8 +46,10 @@ prose value in single quotes** — `--why 'the third run failed the same way; a 
 log'` — and write an apostrophe inside one as `'\''` (`--text 'ORD-02'\''s demo passed'`). Inside single
 quotes anything a sentence holds is safe: `;`, `$0.01`, `draft -> sent`, a backtick. The program reads your
 command as a shell would and refuses it where a shell would read more than words: outside quotes a `;`, `&`,
-`|`, `<`, `>`, `$`, backtick, bracket, glob, `#` or new line, and inside double quotes a `$` or backtick. A
-refused command is said in the stream's log with the rule that refused it. Your session
+`|`, `<`, `>`, `$`, backtick, bracket, brace, `~`, glob, `#`, a word beginning with `=`, or new line, and inside
+double quotes a `$` or backtick. A refused command is said in the stream's log with the rule that refused it.
+You may read this brief, your event and state files, the deck log and the project's own files; nothing outside
+the project, nothing under `.git/`, no key or environment file. Your session
 
 is given a key that signs your orders; a slice's session has none, which is how the program knows an order is
 yours. Each order prints `done` or `refused — why` once the program has read it. A refusal is final for that

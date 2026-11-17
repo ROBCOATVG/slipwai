@@ -62,6 +62,7 @@
 # why: 2026-11-17 c4268550b7e4ca4a mender.py: docstring only. check-dispatch.py: also reads MTG-01-style slice ids where a project's plans name them so, and says which plan files it read when they name none; pure Python string handling, identical on macOS and Linux, no platform branch touched
 # why: 2026-11-17 7a59fcc456a1c4f1 Not Windows work, and deliberately a change on every platform: check-slice-scope lets a slice add its own flag's declaration to infra/service/flags.auto.tfvars, seeded off and additively, since check-flags passes the declaration only in the same change as its reader; the realm files gain a public web client the password grant may use, so a story that signs in can seed.
 # why: 2026-11-17 38e17315f6867180 Not Windows work, and deliberately a change on every platform: check-slice-scope reads the product's state through scripts/agents/release_state.py, a new standard-library module carried into every project, and under pilot holds a capability's entry to its last slice; a project with no state recorded merges flagged as before.
+# why: 2026-11-17 68b004cd9fe48155 Not Windows work, and the same on every platform: the backing-service pruner asks git which of an option's matching paths it ignores, and counts none of those as the option installed; git check-ignore runs the same everywhere, and a path outside a repository is counted as before.
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -263,8 +264,6 @@
 925a71b9e01299e85de73ab15e8cee79a055a68ae686680964ba1b6ab9518e3f  standard-memory-none  scripts/check-constitution.py
 925a71b9e01299e85de73ab15e8cee79a055a68ae686680964ba1b6ab9518e3f  standard-postgres-toy-serve  scripts/check-constitution.py
 93cbde4e454f22a30b1add18e6c7ac956410e40712f173dc35cc38cc1487095b  standard-memory-none  Makefile
-9402457cffa2988a4c71aecf794c42fd2d544d3a5bbee2529c1a4e0ee6b7561f  event-modelling-postgres-toy-serve  scripts/backing-services.py
-9402457cffa2988a4c71aecf794c42fd2d544d3a5bbee2529c1a4e0ee6b7561f  standard-postgres-toy-serve  scripts/backing-services.py
 970085a6312d045a0da05ac0c917dc8691640f6fbc8581a6662502e3eed7df7a  event-modelling-postgres-toy-serve  Makefile
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  event-modelling-memory-none  scripts/agents/benchmark.py
 98827e8f58f2fbf35b6e1540a7f912f22ea6279e4fae7b304fada0b468a90a5d  event-modelling-postgres-toy-serve  scripts/agents/benchmark.py
@@ -381,6 +380,8 @@ e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  event-modellin
 e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  event-modelling-postgres-toy-serve  scripts/agents/travel.py
 e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  standard-memory-none  scripts/agents/travel.py
 e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  standard-postgres-toy-serve  scripts/agents/travel.py
+ee7e69f780182207b6027883c19c16dcecfead26ef5f216570d519fd243b2d47  event-modelling-postgres-toy-serve  scripts/backing-services.py
+ee7e69f780182207b6027883c19c16dcecfead26ef5f216570d519fd243b2d47  standard-postgres-toy-serve  scripts/backing-services.py
 efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  event-modelling-memory-none  scripts/agents/telegraph.py
 efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  event-modelling-postgres-toy-serve  scripts/agents/telegraph.py
 efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  standard-memory-none  scripts/agents/telegraph.py

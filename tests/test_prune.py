@@ -79,3 +79,25 @@ class EmptyFileTest(unittest.TestCase):
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
+
+
+class IgnoredPathTest(unittest.TestCase):
+    """What a build or a run left is never a feature's file. A Java service's `target/` matched the SQLite and
+    external-identity patterns after one `make verify`, and a replay brought both back into lean-coffee-club."""
+
+    def test_a_path_git_ignores_is_not_counted_and_a_tracked_one_is(self) -> None:
+        import subprocess
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / ".gitignore").write_text("target/\n")
+            (root / "target").mkdir()
+            (root / "kept.txt").write_text("x")
+            found = prune_script.ignored(root, [root / "target", root / "kept.txt"])
+            self.assertEqual(found, {root / "target"})
+
+    def test_outside_a_repository_nothing_is_called_ignored(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "target").mkdir()
+            self.assertEqual(prune_script.ignored(root, [root / "target"]), set())

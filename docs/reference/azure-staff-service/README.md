@@ -36,7 +36,7 @@ Always run `show` first.
 |---|---|
 | `profile event-modelling` | An internal service is exactly where somebody asks "who changed this, and when?" six months later, in an audit. The workflow is modelled before it is built, and it is delivered one stamped slice at a time |
 | `target azure` | The subscription that the company already has: one Container App for each app, deployed by revision behind the environment's own ingress, with PostgreSQL Flexible Server and Entra ID, provisioned by OpenTofu |
-| `language java` + `framework spring` | Two questions, because people decide in two steps. The family is `java`. The framework is the second question. `java-spring` is the backend that the two answers together name, so both packages are listed under `languages` |
+| `language java` + `framework spring-boot` | Two questions, because people decide in two steps. The family is `java`. The framework is the second question, answered in the word the `java-spring` package gives it, `spring-boot`. `java-spring` is the backend that the two answers together name, so both packages are listed under `languages` |
 | `frontend none` | The service has no screens of its own. Its callers are other services, and people who already have a tool open |
 | `write-model events` | The log is the truth. See below: this is the one answer here that you cannot change back |
 | `persistence postgres` | PostgreSQL Flexible Server, which is what `azure` provisions for this axis. SQLite is not offered under a managed target |

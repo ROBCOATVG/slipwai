@@ -118,6 +118,7 @@
 # Re-taken 2026-11-16 for changelog.d/driver-held-open.md: only the rows for commands/cruise-settings.md moved, deliberately — `sessions` gains `auto`, the new default: the Agent Client Protocol where the harness's launch is proven, print mode elsewhere.
 # Re-taken 2026-11-16 at the merge of the two changes above: the rows both moved (commands/cruise-settings.md, and an adopted project's cruise.json) now carry `sessions: auto` and `demos` together; nothing else moved.
 # Re-taken 2026-11-16 for changelog.d/decision-log-a-person-can-read.md: only the rows for commands/cruise.md moved, deliberately — the decision entry gains `In short`, one sentence a product owner reads without the specification open, written by whoever decides, and the page says so where it shows the shape.
+# Re-taken 2026-11-17 for the captain-agent guides: only the rows for commands/cruise.md moved, deliberately — a person's word on the board reaches the deck log as a `told` the captain writes, not one the bridge writes, and the page now says so.
 66d331cb3c5ef22e660804383367ffcd7602a2b9c64b91fe8dfd8c9398f8cbfd  standard  commands/add-frontend.md
 0c5d6f3c16243ec7a2c928dab9502e52ae7ed8d97352c8f188764854f6cec241  standard  commands/add-service.md
 40fc8caab6e6375893b09f96fbf9d368fc698abcc7eaacfe28768fa764af98d7  standard  commands/adversary.md
@@ -134,7 +135,7 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  standard  comm
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  standard  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard  commands/cruise-watch.md
-b6cca50fef3146f45a8e62452fe7b168fa874d7fbc74b8abf35b73790683dd99  standard  commands/cruise.md
+8a3fc21a290cd8473de2fb9418f4cfa41182740cb718b81ccae8b3b4f2647045  standard  commands/cruise.md
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  standard  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  standard  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  standard  commands/launch.md
@@ -164,7 +165,7 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  event  command
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  event  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  event  commands/cruise-watch.md
-8506cfe7d52daad3dedff18e8aadd59acf466501adf9c6877a1b161ef9b4498d  event  commands/cruise.md
+de98c0a2b3147ce5ccfac4197f8766b23b892827636bcf8d37833a486884458a  event  commands/cruise.md
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  event  commands/draft.md
 26d0ea9fd3ccb35659c85a7fe9619389b3f1b0272df33b63cf8b3d8034b7a505  event  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  event  commands/launch.md
@@ -195,7 +196,7 @@ f28b890748c27e6c0a3b566661d1a584f5a94c00d8bcdbd078ab39e0771be247  event-state  c
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  event-state  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  event-state  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  event-state  commands/cruise-watch.md
-8506cfe7d52daad3dedff18e8aadd59acf466501adf9c6877a1b161ef9b4498d  event-state  commands/cruise.md
+de98c0a2b3147ce5ccfac4197f8766b23b892827636bcf8d37833a486884458a  event-state  commands/cruise.md
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  event-state  commands/draft.md
 a8829b5c502f0a2cf9fb189705e4c718e89fe7107df48e9afdfc3c10ce71db48  event-state  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  event-state  commands/launch.md
@@ -226,7 +227,7 @@ d4dc7b6a5d9153a08047d6b3ece4d5fe8e3ccfa1ad916b55db652a7e83a8aec7  event-two-serv
 2e05a38c77a5ba88758fa2aa0309fc2f5014a68b0fb53189aeb7b5935a54259a  event-two-services  commands/cruise-stop.md
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  event-two-services  commands/cruise-tell.md
 463309ea6eef6c4443ae1e037763393c491dc25af0c0515a626d1ec968042f23  event-two-services  commands/cruise-watch.md
-71f92ebb7d551926aab6e6efddc60b365d1a64642b26d14dbfc79c2275b02bb6  event-two-services  commands/cruise.md
+8ac4b932e89886363a0f026684bbdefcf53de71428966b512d92bd920f502dff  event-two-services  commands/cruise.md
 63578f9fb94bb3e3af48a2925fb749f0c7e18854422fe6c962955aa46a8fdac9  event-two-services  commands/draft.md
 a8829b5c502f0a2cf9fb189705e4c718e89fe7107df48e9afdfc3c10ce71db48  event-two-services  commands/gaps.md
 34ea1655f9bc549cf93d4a581df6ea8d2970afb7c760f5c468b6f0cc013248b3  event-two-services  commands/launch.md
@@ -257,7 +258,7 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  standard-manag
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  standard-managed  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  standard-managed  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  standard-managed  commands/cruise-watch.md
-268a911501918a90903563a72fbdaa5a6a224f25c75ce139e0f2b555dd10b4be  standard-managed  commands/cruise.md
+4687b284589591f4b03df479ebaad27ad929b3aabce6bfa86330f4770cef758f  standard-managed  commands/cruise.md
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  standard-managed  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  standard-managed  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  standard-managed  commands/launch.md
@@ -287,7 +288,7 @@ cdb55480c9c0618c42773f71b436e975ac8216572ffdab68ad05ae02fb25626d  no-application
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  no-applications  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  no-applications  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  no-applications  commands/cruise-watch.md
-b6cca50fef3146f45a8e62452fe7b168fa874d7fbc74b8abf35b73790683dd99  no-applications  commands/cruise.md
+8a3fc21a290cd8473de2fb9418f4cfa41182740cb718b81ccae8b3b4f2647045  no-applications  commands/cruise.md
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  no-applications  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  no-applications  commands/gaps.md
 b200f0569ef0af5168a8fc03b633219ae31e4d19eab5b395ee12f29b19218620  no-applications  commands/launch.md
@@ -317,7 +318,7 @@ d4dc7b6a5d9153a08047d6b3ece4d5fe8e3ccfa1ad916b55db652a7e83a8aec7  adopted  comma
 2e05a38c77a5ba88758fa2aa0309fc2f5014a68b0fb53189aeb7b5935a54259a  adopted  commands/cruise-stop.md
 ceb47bde72007abaf2b76129dc1ff5748f707eec7da4a4413b2e3bbcc60b9406  adopted  commands/cruise-tell.md
 463309ea6eef6c4443ae1e037763393c491dc25af0c0515a626d1ec968042f23  adopted  commands/cruise-watch.md
-e240f5c13205860d8707dcf27cfa53b3470f931e8ba29bb5a443358eef67f2a5  adopted  commands/cruise.md
+3b64582e81b1582493a61b373425029a30958fe51308243ddb03db577d938d85  adopted  commands/cruise.md
 63578f9fb94bb3e3af48a2925fb749f0c7e18854422fe6c962955aa46a8fdac9  adopted  commands/draft.md
 26d0ea9fd3ccb35659c85a7fe9619389b3f1b0272df33b63cf8b3d8034b7a505  adopted  commands/gaps.md
 40c7e53c459a369f91ed9c93a4269801ca589bcbab0d8901156058895528ef39  adopted  commands/ground.md
@@ -349,7 +350,7 @@ b0657dad2c689e3385d0f4e327d4f33d218e615aaf4adb5af2d3b56d5d972ad2  adopted-settle
 20c677132f26a8f1db5e0e6252fcfa1bd2d634b564f43fb2f43439e399d62127  adopted-settled  commands/cruise-stop.md
 685638997102c04cf993d29ef4c922d54ba6a4401aec8568a343ef85f0f54b9d  adopted-settled  commands/cruise-tell.md
 bb2ef98db7911b54bca1d7dfcbf4675adb43656c2e254460238d5d918136dce3  adopted-settled  commands/cruise-watch.md
-742517f825dbe4b18120a88d51496026ab866c1aebf4b16f09c07ef89335061d  adopted-settled  commands/cruise.md
+4010c4fa77cf7a4606053e136e9efc3f399b13c450a7fa7c5f339dd1b1a56471  adopted-settled  commands/cruise.md
 ca95e79c0a04574c66f737819e505c7e8a836e9e592ad2c2e4790cc0c5af91ab  adopted-settled  commands/draft.md
 bfa835e290e5abe3a9ab80626a4bf98e901f13775a204080c6086a68c784503f  adopted-settled  commands/gaps.md
 416556baab51101e62162ca0b01f8446eece3684871789039f9ef93fd8189e24  adopted-settled  commands/ground.md

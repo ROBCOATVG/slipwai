@@ -60,7 +60,8 @@ Only this machine can open it.
 ## The development loop
 
 Every project that slipwai makes runs the same loop. A feature goes in at the top as a sentence or a
-requirements document. It comes out at the bottom as a capability that a person watched work and accepted.
+requirements document. It comes out at the bottom as a capability that was walked as its actor, filmed, and
+accepted.
 
 ```
 ONCE PER FEATURE                                         ● = stops for you, by default
@@ -72,7 +73,7 @@ ONCE PER SLICE, in its own fairway, berth and worktree                 ▼
             → review of the whole diff → merge, after the full gate passes on trunk
                                                                        │
 ONCE PER CAPABILITY, when its last slice merges                        ▼
-  the capability's gates → demo to you, as the actor ● → accepted
+  the capability's gates → the hand walks it as the actor, on film → accepted
 ```
 
 **Once per feature.** The agent writes the constitution and the specification. It then draws a wireframe
@@ -85,12 +86,17 @@ slice that owns each contract between fairways. That contract is a **mark**.
 is set. The captain claims the next cleared slice, and the slice goes through its stages in its own
 worktree. Implementation is test-first and commits one example at a time. The captain never merges. It asks
 the **harbourmaster**, which rebases the branch onto trunk, runs the whole gate there, and merges. Then the
-captain takes the next cleared slice.
+captain takes the next cleared slice. A captain is a program that always runs and, where the coding agent
+can be held over the Agent Client Protocol, an agent on top of it that makes a few choices — which slice
+next, whether to retry, what to do about a stuck slice — which the program checks before it carries them out.
+You can talk to any slice while it works, and pause or stop it, from its own window on the board.
 
 **Once per capability.** When the last slice of a capability merges, its gates run: converge, a gaps trace
 over the whole diff, the design review, an adversary pass where a slice widened the attack surface, and
-mutation testing. Then you see a demo as the actor. Say yes, and an `accepted` line goes into the log. Say no
-with notes, and the notes go back into the slice.
+mutation testing. Then the hand walks it as the actor and films the walk. By default the hand's verdict is the
+acceptance, and the film is on the board for you to say what it showed. Set `demos` to `person`, and the
+capability waits for you instead: say yes, and an `accepted` line goes into the log; say no with notes, and the
+notes go back into the slice.
 
 **The loop starts where the files say it is.** Each stage writes a file, and a stage is done when its file
 exists. Close the terminal half way through a slice, and the next run starts at the first file that is
@@ -106,7 +112,7 @@ There are three ways to drive it. All three run the same stages.
 
 By default the specification, the storyboard and the model each wait for you. Set **Who answers** to
 *advance on their own* and the board starts each of those steps when the one before it ends well. The demo
-always waits for you. [The workflow](docs/guide/the-workflow.md) lists every step, with who does it and the
+waits for you only where `demos` says a person accepts it. [The workflow](docs/guide/the-workflow.md) lists every step, with who does it and the
 file it writes. [Your first feature](docs/guide/first-feature.md) walks one slice through the loop.
 
 ## New to this — start here

@@ -143,8 +143,8 @@ that owns the mark sets it at its first stage, in its own worktree. See
 | 5.2 | terminal *or* board | `slipwai telegraph slow-ahead` — or **Slow ahead** on the Speed tab | `slipwai telegraph` shows the position; start slow |
 | 5.3 | agent *or* board | `/cruise` — or **Cast off the fleet** | a harbourmaster and a captain per fairway are running, and the command has exited |
 | 5.4 | agent *or* board | `/cruise-status`, `/cruise-watch` — or the Voyage tab | lines arrive in the deck logs |
-| 5.5 | agent *or* board | `/cruise-tell <fairway> <what it should know>` — or the answer box on the waiting line | the captain writes a `read` line at its next boundary. A message to a parked fairway also clears the park |
-| 5.6 | agent *or* board | `/cruise-stop` — or **Stop the fleet** | every captain parks at the end of the stage it is in |
+| 5.5 | agent *or* board | `/cruise-tell <fairway> <what it should know>` — or the answer box on the waiting line, a slice's window, or a captain's window | `/cruise-tell`: the captain writes a `read` line at its next boundary. The board: the message's receipt says *delivered* or *answered*. A message to a parked fairway also clears the park |
+| 5.6 | agent *or* board | `/cruise-stop` — or **Stop the fleet** | every captain has stopped and written a `stopped` line for each slice it was on; those slices are carried on when the fleet is cast off again |
 
 Three things still stop for a person: mock-up approval, the demo, and the decision ceiling. The board's
 **Settings** box has a tab each for speed, fine tune, who answers at each stop, delegation and models. The

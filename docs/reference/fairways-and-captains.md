@@ -4,7 +4,9 @@ A **fairway** is the slices of one bounded context, in split order, with one rel
 The fairway is the unit of scope, of ownership and of release. Several fairways run side by side into the
 same harbour. Fairways share nothing except [marks](the-chart-and-the-mark.md).
 
-A **captain** is the outer loop for one fairway. A **harbourmaster** is the part that the captains share.
+A **captain** runs one fairway: a program that is always there, and, where the harness allows it, an agent on
+top of it that makes a few choices the program checks. A **harbourmaster** is the part that the captains
+share.
 
 ```
 python3 scripts/agents/claims.py          # every fairway the chart has, and who holds it
@@ -55,14 +57,15 @@ python3 scripts/agents/claims.py --release ordering
 
 ## What a captain does
 
-A captain does these things, in this order:
+The captain program does these things, in this order:
 
 1. It fetches trunk and reads both logs.
 2. It works out the state of the fairway from the logs and trunk. It never reads a `status` field.
 3. It gives [clearance](clearance.md).
 4. It claims `slice/<id>`.
 5. It dispatches the stage, with the stage's budgets.
-6. It makes the stage read the inbox at every boundary.
+6. It delivers what is said to the slice through the slice's driver, and wakes its captain agent, where it
+   has one, when there is a choice to make.
 7. It writes a heartbeat.
 8. It ends a stage that is wedged.
 9. It appends every result to its own [deck log](the-logs.md). It writes to no other log.
@@ -76,7 +79,8 @@ then gets:
 
 - **its own berth**: a worktree at `../<project>-<id>` on `slice/<id>`, the same name `/sail` gives one, with
   `.slipwai/run/logs` linked to the project's so that every line lands in the one deck log;
-- its own headless session, stage bound, retries, `.working` marker
+- its own session — held open over the Agent Client Protocol where `sessions` and the harness allow it,
+  the harness's print mode elsewhere — stage bound, retries, `.working` marker
   (`.slipwai/run/running/captain-<fairway>--<slice>.working`) and gate, read from the lines that carry its
   `slice`;
 - its own merge request. Merges still go one at a time through the harbourmaster. A rebase conflict with a
@@ -108,6 +112,69 @@ harbourmaster answers it. Examples are a push, a merge, a deploy, a flag change 
 **None of the captain's controls depends on a harness hook.** The captain reads the last line of every
 iteration itself. It compares the controlled files before and after. It owns the waits. When a harness has
 a hook, the hook is a second, extra control.
+
+---
+
+## The captain agent
+
+The program decides by fixed rules. The **captain agent** is one coding-agent session per fairway that makes
+some of those decisions instead, with the program still underneath it. No setting makes the agent the only
+decider: the program is always there.
+
+**What wakes it.** The program writes an event to `.slipwai/run/events/<fairway>/<id>.json` when there is a
+choice to make, with the facts the choice needs, the orders it will accept, and the order its fixed rule
+would give. Beside the events, `state.json` is the fairway as its log says it now. Each wake-up hands the agent
+these, never what it remembers, so a cold start answers as a warm one would.
+
+| Event | The choice |
+|---|---|
+| `choose-next` | Which cleared slices start, when more could start than there are free slots |
+| `gate-failed` | Retry the slice with a note, or park it with a reason |
+| `stuck` | Message, interrupt, pause, stop or park a slice that is taking long, going in circles or gone quiet, or tell the person |
+| `message` | Where something said to the stream goes, or what to answer |
+| `permission` | Whether a slice's session may touch something outside its berth: a read inside the project, nothing else |
+| `question` | Only where `captain.answers` is on: an answer to a question a slice's session asked mid-turn |
+| `trunk-red` | What to say or do while trunk is red. Nothing new starts until it is green |
+
+**How it acts.** Only by running the project's own `scripts/agents/orders.py`, which writes a signed order to
+`.slipwai/run/orders/<fairway>/`. The program reads the order, checks it against the rules as they stand when
+it is carried out — clearance, the free slots, the attempts left, a person's hold, the merge — does it or
+refuses it, and writes `done` or `refused` with why beside it. It writes every deck line itself.
+
+**When the agent fails.** Where it says nothing within `captain.bound` seconds of its session being ready,
+gives an order the event does not allow, or cannot be run, the program closes the event by its fixed rule,
+records that the rule closed it and why, and tries the agent again at the next event. Its own loop never
+waits on the agent. If the agent's machinery fails outright, the fairway runs on the program alone until the
+captain is next started, `captain.json` beside the events says `"agent": false` with why, and the deck log
+gets one `noted` line.
+
+**Only over the Agent Client Protocol.** The agent's session is held over the protocol with a policy that lets
+it read and run `orders.py` and refuses every other tool call. A captain run headless, with a shell of its
+own, could reach anything in the project, and nothing checked afterwards could tell its changes from the
+fleet's own work, so there is no such captain. Where the harness has no launch over the protocol that the
+registry marks proven, the fairway runs on the program alone and says so once.
+
+**It does not answer product questions.** A question a slice's session asks mid-turn is declined and goes down
+the deck log's `question` path, to the skipper or a person as the project's *Who answers* settings say. With
+`captain.answers: true` the agent may answer; every answer, and every refusal with words in it, is then a
+`decision` by `captain:<fairway>`, counted toward the decision ceiling.
+
+**Settings.** `harbour.json`'s `captain`: `agent` (true in a new project; absent or false is the program
+alone, and migrating never sets it), `bound` (60 seconds), `answers` (false) and `per_hour` (30, the most
+times the agent is woken in an hour). `SLIPWAI_CAPTAIN` in the environment says first: `off`, `1` for the
+project's own harness, or a command that starts an agent speaking the protocol.
+
+**Where the checks stop.** Every check here is against the captain agent and the slices' sessions acting
+through their tools. None is against another process of the same user writing the run folder directly. Such
+a process can append a `told` line as a person, clear a park, write a line in a conversation's thread, or read
+the keys that sign messages and orders. Only running sessions as another user would stop it, and nothing is
+built against it.
+
+**Evals.** The keel repository scores the agent's choices against recorded situations: `make evals` puts
+each case to the captain through the harness several times and reports, for each decision, how often its
+order was one a person would accept; `make evals-rescore` judges a saved run again without calling an agent.
+The score is advice and gates nothing. A project carries none of this. [The captain's
+evals](../captain-evals.md) describes the cases and the scoring.
 
 ---
 

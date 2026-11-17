@@ -85,8 +85,13 @@ you press it.
 
 The fleet has two kinds of process:
 
-- **A captain** works one fairway. At each turn it reads the logs, takes the next slice that clearance
-  allows, writes `claimed`, and runs `/sail` in its berth. A captain holds no credential and never merges.
+- **A captain** works one fairway. Its program reads the logs at each turn, takes the next slice that
+  clearance allows, writes `claimed`, and runs `/sail` in the slice's berth. Where the harness has a proven
+  launch over the Agent Client Protocol and the project has turned it on, a captain agent sits on top of the
+  program and makes a few choices for it — which cleared slice starts next, whether a slice that missed its
+  gate runs again, what to do about a stuck slice, where something said to the stream goes — and the program
+  checks each one against the rules before it does it. A captain holds no credential and never merges.
+  [Let it cruise](let-it-cruise.md#the-captain) says more.
 - **The harbourmaster** is one process per machine. It copies marks between fairways, allocates berths,
   answers a captain's requests, and performs each merge after the full gate passes on trunk.
 
@@ -131,6 +136,21 @@ your message as the answer. On the pass after that, the harbourmaster lights the
 
 A project generated before this change has older copies of `scripts/agents/`. In that project a message
 does not clear a park. Upgrade the project with `slipwai migrate`.
+
+### How to steer a slice that is working
+
+You do not have to wait for a park. **Open its window** on a slice's card opens its conversation:
+
+- **Send** puts a message in after the turn under way; **Interrupt** cancels the turn and puts it in at once,
+  where the slice's session is held over the Agent Client Protocol.
+- **Pause** lets the turn finish and gives the session slot back; **Resume** carries on in the same session;
+  **Stop** ends the session now and puts the slice back in the queue. A pause or stop you make holds the slice
+  until you resume it.
+- Each message shows its receipt: queued, held at the merge, delivered, answered, delivered and not
+  addressed, or not delivered with why.
+
+What you want a whole stream to know goes to its captain, from the captains strip above the tabs.
+[The board](the-board.md#a-slices-window) describes both windows.
 
 ## Step 9: the demo and acceptance
 

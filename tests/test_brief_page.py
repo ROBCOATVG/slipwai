@@ -171,7 +171,8 @@ class FirstPageTest(BoardTest):
         (home / "brief" / "look").mkdir()
         (home / "brief" / "look" / "look.css").write_text(":root{}", encoding="utf-8")
         code, said = self.get("/brief/files/club-boats/prototype/index.html")
-        self.assertEqual((code, said), (200, "<title>Play</title>"))
+        # The page itself, after the one line every prototype is served with (`brief_faults`).
+        self.assertEqual((code, said.split("</script>", 1)[-1]), (200, "<title>Play</title>"))
         sheet = served("/brief/files/club-boats/brief/look/look.css")
         assert sheet is not None
         self.assertEqual(sheet[1], "text/css; charset=utf-8")

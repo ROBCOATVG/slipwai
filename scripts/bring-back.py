@@ -129,7 +129,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # Where trunk's CI is read, asked before the fleet sails. The experiment merged with no CI to read.
        "trunk_remote",
        # The brief read before it is handed over, and the page reader the board and that check share.
-       "drawn", "brief_check", "brief_session", "brief_page", "cli_brief",
+       "drawn", "brief_check", "brief_faults", "brief_session", "brief_page", "cli_brief",
        # The Agent Client Protocol's client half, and what the board runs it on. The experiment had one
        # harness, by name.
        "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session", "stage_steps",

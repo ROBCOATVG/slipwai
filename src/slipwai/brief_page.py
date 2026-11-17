@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote
 
+from . import brief_faults
 from .brief_session import BRIEF, BROUGHT, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
 from .errors import Busy
 from .page_shell import document, esc
@@ -139,7 +140,7 @@ SCRIPT = """
       drawWaiting(log, busy, said.thinking, said.doing, said.for);
       if (said.turns.length || busy) { empty.hidden = true; if (stuck || follow) bottom(); }
       if (said.turns.length) follow = false;
-      paint(said);
+      paint(said); document.dispatchEvent(new CustomEvent('brief-polled', {detail: said}));
       if (frame && drawn !== before) {
         frame.hidden = false; frame.src = frame.dataset.src + '?v=' + Date.now();
         if (undrawn) undrawn.hidden = true;
@@ -158,6 +159,7 @@ SCRIPT = """
     };
     page.querySelector('form.ask').addEventListener('submit', event => { event.preventDefault(); ask(input.value); });
     stop.addEventListener('click', () => post('/brief/cancel', {}));
+    document.addEventListener('brief-say', event => ask(event.detail));  // the fault's own button
     page.querySelector('[data-clear]').addEventListener('click', async () => {
       await post('/brief/reset', {});
       log.querySelectorAll('.turn').forEach(one => one.remove());
@@ -265,7 +267,8 @@ def sketch_page(slug: str) -> str:
             f'<a class="quiet-link" href="/brief/read?sketch={quote(slug)}&amp;file=people">the people</a> · '
             f'<a class="quiet-link" href="/brief/read?sketch={quote(slug)}&amp;file=domain">the facts</a></p>'
             f'<p class="empty" style="margin-top:8px">Folder: <code>{esc(home / BRIEF)}</code></p></div>'
-            f'<div class="card" style="margin-top:14px"><h2>The prototype</h2>{frame}</div></div></div>')
+            f'<div class="card" style="margin-top:14px"><h2>The prototype</h2>{frame}'
+            f'{brief_faults.under(played, has_prototype)}</div></div></div>')
 
 
 #: The brief's documents a person may read on the board, by the name the address carries.
@@ -289,7 +292,8 @@ def page(query: str) -> str:
     slug = chosen(query)
     body = sketch_page(slug) if slug else listing()
     return document("Start from an idea", "A prototype to play with, and the brief it leaves behind",
-                    f"<style>{STYLE}{CARDS}</style>{body}", DRAW + SCRIPT + BEGIN, now="/brief")
+                    f"<style>{STYLE}{CARDS}{brief_faults.STYLE}</style>{body}",
+                    DRAW + SCRIPT + BEGIN + brief_faults.SCRIPT, now="/brief")
 
 
 def served(where: str) -> tuple[Path, str] | None:
@@ -325,7 +329,9 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
         slug = (asked.get("sketch") or [""])[0]
         try:
             since = int((asked.get("since") or ["0"])[0])
-            bridge.send(200, json.dumps(for_slug(slug).said(since)), "application/json; charset=utf-8")
+            said = {**for_slug(slug).said(since),
+                    "fault": brief_faults.fault(workspace(slug) / PROTOTYPE / "index.html") if slug else None}
+            bridge.send(200, json.dumps(said), "application/json; charset=utf-8")
         except ValueError as refused:
             bridge.send(400, str(refused), "text/plain; charset=utf-8")
     elif where.startswith("/brief/files/"):
@@ -337,7 +343,7 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
                              'color:#7a8891;font:14px system-ui,sans-serif">Nothing drawn yet.</body></html>',
                         "text/html; charset=utf-8")
         else:
-            bridge.send(200, found[0].read_bytes(), found[1])
+            bridge.send(200, brief_faults.outgoing(found[0], found[1], PROTOTYPE), found[1])
     else:
         return False
     return True

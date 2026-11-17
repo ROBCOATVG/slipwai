@@ -23,6 +23,10 @@ brief/
   shows it beside this conversation and reloads it when you write it, so never tell them to open a file:
   say "tap through it on the right". At hand-over it travels with the brief as `docs/design/prototype/`:
   the builder's surfaces follow its look and layout, so what they approved by playing is what gets built.
+  It runs in a browser frame, and a script that fails there leaves the person a white box: put the whole
+  script inside one block (`{ … }`) so no name of yours is a global, and never declare `top`, `window`,
+  `document` or `location` at the top of a script, which a browser refuses. The page tells the person
+  when the prototype fails to run or draws nothing, and they will pass that on: fix it before anything else.
 
 A fact in `brief/domain.md` is one `## ` heading, a sentence or two, and a line beginning `Source:` saying
 where it is written down. A person in `brief/people.md` is one `## <Name>` heading, a `role:` line and a

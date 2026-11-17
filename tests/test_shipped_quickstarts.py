@@ -233,8 +233,7 @@ class AnswersTest(unittest.TestCase):
                     # `java-spring` answers `spring-boot`: held equal, `framework spring` shipped.
                     short = [name.removeprefix(f"{one.language}-") for name in named
                              if name.startswith(f"{one.language}-")]
-                    self.assertTrue(any(one.framework == word or one.framework.startswith(f"{word}-")
-                                        for word in short),
+                    self.assertTrue(any(one.framework == w or one.framework.startswith(f"{w}-") for w in short),
                                     f"{one.name} answers `framework {one.framework}` and names no package of it")
 
     def test_the_framework_it_answers_is_one_the_package_it_names_offers_where_that_package_is_known(self) -> None:

@@ -22,7 +22,6 @@ from slipwai.on_you import waiting
 from slipwai.talk_page import payload
 
 
-
 def row(slice_id: str, state: str, fairway: str = "ORD") -> dict[str, str]:
     return {"slice": slice_id, "title": "", "state": state, "fairway": fairway, "feature": "ordering", "why": ""}
 

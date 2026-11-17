@@ -27,7 +27,7 @@ from .page_shell import esc
 from .stage_session import running
 from .talk_waits import captain_window
 from .talk_waits import items as talk_items
-from .upstream import unjudged
+from .upstream import stopped, unjudged
 
 NOTHING_WAITS: dict[str, Any] = {"count": 0, "text": "", "href": "", "holding": [], "later": [], "slices": []}
 
@@ -48,7 +48,8 @@ def button_waiting(board: Any, able: dict[str, bool]) -> tuple[str, str]:
     fitting = getattr(board, "fitting", None)
     approving = unjudged(board.root) if fitting is None or fitting.said()["done"] else ""
     if approving:
-        return f"The storyboard for {approving} is drawn: approve it or send it back", "#tab-screens"
+        # What the fleet cannot start without, so it holds the work up: said the moment the drawing ends.
+        return f"The storyboard for {approving} is ready to look at: approve it or send it back", "#mockups"
     for flag, said, where in (("draftable", "The draft ended without a specification: draft it again", "#draft"),
                               ("drawable", "The specification is ready: read it, then draw the storyboard", "#draw"),
                               ("modelable", "The storyboard is approved: model it", "#model"),
@@ -116,8 +117,12 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     holding += parked(fleet, rows or [])
     holding += [{"n": 1, "text": f"The {row['fairway']} log cannot be read: its captain cannot start",
                  "href": "#from-streams"} for row in fleet.get("inbox") or [] if row.get("kind") == "unreadable"]
+    # Where the board was set to advance by itself and will not, why — in place of the line it would repeat.
+    why, there = stopped(board.root)
+    if why:
+        holding.append({"n": 1, "text": why, "href": there})
     said, where = button_waiting(board, able)
-    if said:
+    if said and not (why and there == where):
         holding.append({"n": 1, "text": said, "href": where})
     # A product question a slice asked a person, where the project says a person answers them, and a slice a
     # person or its captain paused, since no rule lifts a pause (`talk_waits`).

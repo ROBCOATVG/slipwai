@@ -193,8 +193,10 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "film", "slice_card",
               # And the slice's example map, read off its examples file and drawn in its window.
               "example_map", "example_map_source", "example_map_page",
-              # And the stop above the chart answered without a person, where the project says so.
-              "upstream",
+              # And the stop above the chart answered without a person, where the project says so — never past
+              # a person's word to a stage (kept with what was said), or a review with something to discuss —
+              # and the storyboard's card on the Screens tab, with what the drawing found and the conversation.
+              "stage_talk", "review_reading", "upstream", "storyboard_card",
               # And the board kept current: one read of a project shared by every poll, the one poll that
               # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
               "board_read", "voyage_live", "on_you", "fleet_tab",

@@ -175,7 +175,10 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "project.intake", "project.intake_cleanup",
        # The board pressing its own next button above the chart, where the project asks it to. The
        # experiment's board had no buttons above the chart to press.
-       "upstream"}
+       "upstream",
+       # A storyboard a person can talk about without a verdict: the conversation kept, the hold a word puts on
+       # the board, the review read for them, and the card. The experiment's storyboard had no session.
+       "stage_talk", "review_reading", "storyboard_card"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will
 # grow a verb per slice, `assets` holds the paths and not the asset trees, `__init__` and `__main__` are
 # the package's own. The ledger's row for each describes what it becomes, not what is here, so they are

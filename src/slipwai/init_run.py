@@ -36,7 +36,8 @@ from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 690 — one runner for every child the board starts, and the file check an exit code does not make:
+# budget: 725 — one runner for every child the board starts, and the file check an exit code does not make:
+# and what a person says to a stage while it runs, kept for the end of its turn and said then, beside the reply;
 # assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
@@ -293,6 +294,8 @@ class Fitting:
         self.began = time.monotonic()
         self.stopped: float | None = None
         self.stage: Any = None  # the stage over the protocol running now, for its cards on the board
+        #: A turn of conversation under way rather than the stage's own run, and how that run ended.
+        self.talking, self.outcome = False, 0
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
@@ -363,7 +366,8 @@ class Fitting:
         if not self.steps:
             self.stop(0)
             return
-        self.run_steps(self.steps)
+        self.outcome = self.run_steps(self.steps)
+        self.drained()
 
     def run_steps(self, steps: list[Step], final: bool = True, announced: bool = True) -> int:
         """`steps` run in order, ending at the first that fails; the exit status. With `final` the last one's end
@@ -405,18 +409,49 @@ class Fitting:
         with self.lock:
             if self.stage is None or self.code is None or not self.stage.done:
                 return False
-            self.code, self.stopped, self.began = None, None, time.monotonic()
-        self.say(f"› {message}")
-        self.thread = threading.Thread(target=self.followed, args=(message,), daemon=True)
-        self.thread.start()
+            self.code, self.stopped, self.began, self.talking = None, None, time.monotonic(), True
+        self.followed_in(message, kept=False)
         return True
 
-    def followed(self, message: str) -> None:
-        code = self.stage.follow(self, message)
+    def tell(self, message: str) -> str:
+        """Something said to the stage whatever it is doing: a turn now where it has ended, `said`; kept for
+        the end of its turn where it has not, `queued` — never refused, and never dropped."""
+        with self.lock:
+            if self.stage is None:
+                return ""
+            going = self.code is None or not self.stage.done
+            if going:
+                self.stage.queued(message)  # under the lock the run's end takes the queue under
+        if going:
+            self.say(f"› {message} (queued: said to the stage when its turn ends)")
+            return "queued"
+        return "said" if self.reply(message) else self.tell(message)
+
+    def drained(self) -> None:
+        """What was queued while the stage ran, said now that its turn has ended, as one turn."""
+        with self.lock:
+            if self.stage is None or not self.stage.queue or self.code is None:
+                return
+            message = self.stage.waiting()
+            self.code, self.stopped, self.began, self.talking = None, None, time.monotonic(), True
+        self.followed_in(message, kept=True)
+
+    def followed_in(self, message: str, kept: bool) -> None:
+        self.say(f"› {message}")
+        self.thread = threading.Thread(target=self.followed, args=(message, kept), daemon=True)
+        self.thread.start()
+
+    def followed(self, message: str, kept: bool = False) -> None:
+        """A reply's turn to its end. Ending well it puts back how the stage's own run ended, which is not
+        what the reply changes: a question answered is not a step that ended well."""
+        code = self.stage.follow(self, message, kept)
+        with self.lock:
+            self.talking = False
         if code:
             self.say("The reply stopped short; its lines above say where.", code=code)
         else:
-            self.stop(0)
+            self.stop(self.outcome)
+        self.drained()
 
     def say(self, line: str, code: int | None = None) -> None:
         with self.lock:
@@ -448,7 +483,7 @@ class Fitting:
                     "seconds": round((self.stopped or time.monotonic()) - self.began, 1),
                     "done": self.code is not None, "code": self.code,
                     # A stage over the protocol keeps its session, so what it said can be answered.
-                    "talk": self.stage is not None}
+                    "talk": self.stage is not None, "talking": self.talking}
 
 
 def start(where: Path, harness: str | None = None, said: list[str] | None = None,
@@ -617,13 +652,14 @@ def kept_line(command: str) -> str:
     return f"The {command} stage's session is kept from an earlier run of this board. Reply to carry it on."
 
 
-def resumed(where: Path, command: str) -> Fitting:
-    """A stage's kept session, after the board that ran it was restarted: an ended run with that stage in it,
-    which is what a reply carries on. Its one line is the one the card showed before there was a run."""
+def resumed(where: Path, command: str, said: list[str] | None = None) -> Fitting:
+    """A stage's kept session, after the board that ran it was restarted or another stage has run since: an
+    ended run with that stage in it, which is what a reply carries on. Its line is the one the card showed
+    before there was a run, after whatever the receipt already said."""
     from .stage_session import StageSession  # noqa: PLC0415 — the edge tier, reached from here only
 
     fitting = Fitting(where, [])
-    fitting.lines = [kept_line(command)]
+    fitting.lines = [*(said or []), kept_line(command)]
     fitting.stage = StageSession(where, command, **RESUMED.get(command, {}))
     fitting.stage.done = True
     fitting.stop(0)

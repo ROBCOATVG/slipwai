@@ -49,7 +49,9 @@ STOPS: tuple[tuple[str, str, dict[str, str]], ...] = (
     # Met first, but last here: it is the board's stop rather than the fleet's, and the four above are what
     # this card has always been read for.
     ("upstream", "The specification, storyboard and model",
-     {"park": "stop for me at each", "advance": "advance on their own"}),
+     {"park": "stop for me at each",
+      "advance": "advance on their own, but wait for me on a storyboard with a Blocker or an open question, "
+                 "and after I say something to a stage, until I press Carry on"}),
     # Not a stop either, but the one switch a person has over how a captain runs, and the card is the one
     # place on the board they set this file from.
     ("sessions", "A captain's session",

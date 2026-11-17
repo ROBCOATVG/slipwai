@@ -51,8 +51,8 @@ class VoyageTest(unittest.TestCase):
         (self.root / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
         (mockups / "discover.html").write_text("<p>drawn</p>", encoding="utf-8")
         said = said_of(board(self.root), {}, {"drawable": True})
-        self.assertEqual(said["text"], "The storyboard for 001-demo is drawn: approve it or send it back")
-        self.assertEqual(said["href"], "#tab-screens")
+        self.assertEqual(said["text"], "The storyboard for 001-demo is ready to look at: approve it or send it back")
+        self.assertEqual(said["href"], "#mockups", "the storyboard's own card, inside the Screens tab")
         # Not while a stage of this board is still running: what it draws is not there to judge yet.
         running = board(self.root, [], done=False)
         self.assertEqual(said_of(running, {}, {})["count"], 0)

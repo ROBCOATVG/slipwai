@@ -4,7 +4,8 @@ One JSON object per line on stdin and stdout, as the protocol says. It answers `
 and `session/load`; on a prompt it streams a message chunk, asks permission to write a file in its working
 directory and writes it, and does more by the words in the prompt: `outside` asks permission for a path
 beyond the directory, `ask` puts a question, `slow` waits on a permission until it is answered or cancelled,
-`die` exits mid-turn. Nothing here is clever; it is the other end of the wire, held still.
+`die` exits mid-turn, `repaint` changes every surface page under `specs/*/mockups/`. Nothing here is clever;
+it is the other end of the wire, held still.
 
 For a driver held open (`tests/test_drive_held.py`): `count` says how many prompts its session has had,
 `linger` waits for a cancel, `dawdle` waits for a `.go` file before it goes on, and a delivered message is
@@ -224,6 +225,10 @@ def turn(number, session, words):
         (HOME / "brief").mkdir(exist_ok=True)
         (HOME / "brief" / "prd.md").write_text("# Requirements\n\n## What it must do\n\n- Book a boat.\n",
                                                 encoding="utf-8")
+    if "repaint" in words:  # a person asked for the drawing to change: every surface page beside a storyboard
+        for page in sorted(HOME.glob("specs/*/mockups/*.html")):
+            if page.name != "storyboard.html":
+                page.write_text(page.read_text(encoding="utf-8") + "<!-- repainted -->\n", encoding="utf-8")
     if "outside" in words:
         allowed, cancelled = permission(number * 10 + 2, session, Path("/etc/hosts"))
         text(session, "wrote outside" if allowed else "refused outside")

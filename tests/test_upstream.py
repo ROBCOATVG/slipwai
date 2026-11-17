@@ -14,9 +14,10 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
+from slipwai import stage_talk
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.project.cruise import cruise_config
-from slipwai.upstream import APPROVED_BY, advance, next_step, unjudged
+from slipwai.upstream import APPROVED_BY, advance, next_step, stopped, unjudged
 from slipwai.wheel import CONFIG, orders
 
 
@@ -123,6 +124,62 @@ class AdvanceTest(Fixture):
         board = Board(self.root, launchable=True)
         advance(board)
         self.assertEqual((board.verdicts, board.fitting, board.launched), ([], None, False))
+        self.review("- [Blocker] The basket has no total\n")
+        stage_talk.said(self.root, "mockups", "why is it empty?")
+        self.assertEqual(stopped(self.root), ("", ""), "and nothing is said about stopping a board that never moves")
+
+    def review(self, text: str) -> None:
+        (self.root / "specs/001-orders/mockups/review.md").write_text(f"# Review\n\n{text}", encoding="utf-8")
+
+    def test_a_storyboard_whose_review_has_a_blocker_is_left_for_the_person_who_is_told_why(self) -> None:
+        self.answer(upstream="advance")
+        self.draw()
+        self.review("## Basket\n- [Blocker] The basket has no total\n- [Nice-to-have] A colour\n")
+        board = Board(self.root)
+        advance(board)
+        self.assertEqual(board.verdicts, [])
+        self.assertFalse((self.root / "specs/001-orders/mockups/mock-states.md").exists(), "nothing approved")
+        why, where = stopped(self.root)
+        self.assertEqual(why, "The storyboard for 001-orders waits for you rather than being approved by the "
+                              "board: the review has 1 Blocker finding")
+        self.assertEqual(where, "#mockups")
+
+    def test_a_review_that_cannot_be_read_stops_it_as_surely_as_a_blocker(self) -> None:
+        self.answer(upstream="advance")
+        self.draw()
+        self.review("Mostly fine, with some worries about the basket.\n")
+        advance(board := Board(self.root))
+        self.assertEqual(board.verdicts, [])
+        self.assertIn("could not be read", stopped(self.root)[0])
+
+    def test_an_open_question_in_the_research_stops_it_too(self) -> None:
+        self.answer(upstream="advance")
+        self.draw()
+        (self.root / "specs/001-orders/mockups/research.md").write_text(
+            "# Research\n\n## Questions\n- Can a basket be shared?\n", encoding="utf-8")
+        advance(board := Board(self.root))
+        self.assertEqual(board.verdicts, [])
+        self.assertIn("1 question in the research only you can answer is open", stopped(self.root)[0])
+
+    def test_a_clean_review_and_nothing_said_is_approved_as_before(self) -> None:
+        self.answer(upstream="advance")
+        self.draw()
+        self.review("## Basket\n- [Should-address] The label could be plainer\n")
+        advance(board := Board(self.root))
+        self.assertEqual(board.verdicts, ["approved"])
+        self.assertEqual(stopped(self.root), ("", ""))
+
+    def test_a_word_to_a_stage_holds_the_board_until_the_person_says_to_carry_on(self) -> None:
+        self.answer(upstream="advance")
+        self.draw()
+        stage_talk.said(self.root, "mockups", "why is the basket empty?")
+        advance(board := Board(self.root))
+        self.assertEqual(board.verdicts, [], "a question is not an approval")
+        self.assertIn("You said something to the drawing stage", stopped(self.root)[0])
+        self.assertIn("press Carry on", stopped(self.root)[0])
+        self.assertEqual(stage_talk.release(self.root), ["mockups"])
+        advance(board)
+        self.assertEqual(board.verdicts, ["approved"], "Carry on is the person's word to go on")
 
 
 class SettingTest(Fixture):

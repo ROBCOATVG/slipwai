@@ -35,6 +35,8 @@ from .project.intake import ideas as intake_ideas
 from .seats import parameter
 from .settings_card import project_tabs, settings
 from .slice_card import lit
+from .storyboard_card import live
+from .storyboard_card import payload as talk_payload
 from .trunk_remote import card as remote_card
 from .try_card import card as try_card
 from .try_card import payload as try_payload
@@ -63,18 +65,23 @@ def able(board: Any, rows: list[dict[str, str]], fleet: dict) -> dict[str, bool]
             "draftable": board.draftable()}
 
 
-def shaped(made_of: str, decided: bool) -> str:
+def shaped(made_of: str, decided: bool, running: str = "") -> str:
     """The page's shape with whether its Decisions tab exists: the tab, its styles and its script are drawn
     only once there is a decision, so the first one changes which cards the page has — a reload, as a file
-    appearing is — where every later one only moves the band and the count the poll already swaps."""
-    return f"{made_of}|{'d' if decided else ''}"
+    appearing is — where every later one only moves the band and the count the poll already swaps.
+
+    And with the stage that has a tab of its own, while it runs: its start puts a card in its result's place,
+    and its end puts the result there, each a reload. While it runs what it writes is not the shape: a page
+    reloaded at every surface it wrote would be eight reloads of a card that says the same thing."""
+    return f"{running}|{'d' if decided else ''}" if running else f"{made_of}|{'d' if decided else ''}"
 
 
 def passage(board: Any, found: list, rows: list[dict[str, str]], fleet: dict, flags: dict[str, bool],
             listed: dict[str, Any], decided: bool) -> str:
     return voyage_payload(found, flags["launchable"], any(one.state == "working" for one in found),
                           flags["castable"], flags["stoppable"], flags["drawable"],
-                          shaped(board.made_of(rows, fleet)[1], decided), flags["modelable"], waiting=listed,
+                          shaped(board.made_of(rows, fleet)[1], decided, live(board)["running"]),
+                          flags["modelable"], waiting=listed,
                           draftable=flags["draftable"])
 
 
@@ -126,7 +133,8 @@ def voyage(board: Any) -> str:
     listed = waiting(board, fleet, flags, kept.rows)
     feature, made_of = board.made_of(rows, fleet)
     decided = decision_tab(root, band)
-    made_of = shaped(made_of, bool(decided[0]))
+    now = live(board)
+    made_of = shaped(made_of, bool(decided[0]), now["running"])
     xml, note = model_xml(root, states_of(rows))
     running = bool(board.fitting and not board.fitting.said()["done"])
     adopting = adoption_card(root, running)
@@ -143,7 +151,7 @@ def voyage(board: Any) -> str:
                        decided, points=kept.points, adopting=adopting,
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
                        draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed,
-                       captains=strip_html(root, kept.rows, set(listed["slices"])))
+                       captains=strip_html(root, kept.rows, set(listed["slices"])), stage=now)
 
 
 def route_get(board: Any, where: str, query: str) -> bool:
@@ -163,6 +171,10 @@ def route_get(board: Any, where: str, query: str) -> bool:
     elif where == "/feedback.json":
         kept = read(board.root)
         board.send(200, feedback_payload(board.root, kept.rows, kept.fleet, board.triaging()), JSON)
+    elif where == "/stage/talk.json":  # a conversation with a stage, and whether it runs: `storyboard_card`
+        since = parameter(query, "since")
+        board.send(200, json.dumps(talk_payload(board, unquote(parameter(query, "command")),
+                                                int(since) if since.isdigit() else 0)), JSON)
     elif where == "/try.json":
         board.send(200, try_payload(board.root, board.named_seat()), JSON)
     else:

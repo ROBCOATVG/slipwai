@@ -63,7 +63,9 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
      "at the catastrophic or when it fails; or a park at once"),
     ("upstream", ("park", "advance"), "park",
      "the steps above the chart — the drafted specification, the storyboard and the event model: stop at "
-     "each for a person, or have the board start the next one, and approve the storyboard, as each ends well"),
+     "each for a person, or have the board start the next one, and approve the storyboard, as each ends well — "
+     "never past a storyboard whose review has a Blocker or an open question, nor after a person has said "
+     "something to a stage, until they press Carry on"),
     ("sessions", ("auto", "print", "protocol"), "auto",
      "how a captain starts a session: `auto`, over the Agent Client Protocol — which shows its work as it "
      "goes, holds the session open and takes messages and a stop — where the harness's launch is marked "

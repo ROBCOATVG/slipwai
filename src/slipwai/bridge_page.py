@@ -15,7 +15,8 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 472 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
+# budget: 474 — and a reply said while the stage runs is queued, which the box says and does not wait on;
+# the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
 # each group carries its own heading, count and the rows under it, so the page is a little longer than one
 # that listed them flat. The made card carries a reply box for a stage that has ended, and the script that sends it.
 # Five more for an answer already placed, shown on its row in place of a second box.
@@ -103,7 +104,7 @@ if (fitting) {
     }
     // The card's own button and, on the Voyage, the strip's: two elements, so two ids.
     document.querySelectorAll('#launch, #launch-made').forEach(launch => { launch.hidden = !said.launchable; });
-    replying.hidden = !(said.talk && said.done);
+    replying.hidden = !said.talk;  // while it runs too: what is said then is queued for the end of its turn
     paint();
     if (running) setTimeout(poll, 700);
   };
@@ -117,8 +118,10 @@ if (fitting) {
     if (!box.value.trim()) return;
     const answer = await fetch('/stage/say', {method: 'POST', headers: {'Content-Type': 'application/json'},
                                                body: JSON.stringify({message: box.value.trim()})});
-    if (!answer.ok) { alert(await answer.text()); return; }
+    const told = await answer.text();
+    if (!answer.ok) { alert(told); return; }
     box.value = '';
+    if (told === 'queued') { poll(); return; }
     replying.hidden = true;
     running = true; seconds = 0;
     chip.dataset.state = 'running'; chip.className = 'chip running';
@@ -404,9 +407,9 @@ def fitting_card(made: dict, verb: str = "Made") -> str:
     # has ended well; a specification a person has read is what pressing it means.
     launch = (f'<button class="go" id="launch-made"{"" if made.get("launchable") else " hidden"}>'
               f'Continue the build</button>')
-    # A stage over the protocol kept its session, so once it has ended what it said can be answered here, as
-    # on the first page: a question the agent asked in its words rather than on a card has somewhere to go.
-    talk = made.get("talk") and made["done"]
+    # A stage over the protocol kept its session, so what it said can be answered here, as on the first page;
+    # while it runs, what is said waits for the end of its turn.
+    talk = made.get("talk")
     reply = (f'<div id="stage-reply"{"" if talk else " hidden"}><form class="ask">'
              f'<input placeholder="Reply, or tell it what to do next…" autocomplete="off" aria-label="Reply">'
              f'<button class="go" type="submit">Reply</button></form></div>')

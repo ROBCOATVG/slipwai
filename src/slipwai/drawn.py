@@ -9,8 +9,10 @@ way: two readings of "drawn" were once a storyboard the board offered to approve
 """
 from __future__ import annotations
 
+import hashlib
 import html
 import re
+import time
 from pathlib import Path
 
 _FEATURE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
@@ -137,3 +139,64 @@ def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by:
         lines.append("")
     (root / "specs" / feature / "mockups" / "mock-states.md").write_text("\n".join(lines), encoding="utf-8")
     return "approved" if verdict == "approved" else "disapproved"
+
+
+#: The line a verdict that no longer stands leaves in `mock-states.md`, one per surface a conversation changed.
+WITHDRAWN = re.compile(r"^<!-- withdrawn: (?P<surface>.+?) — (?P<states>.*?) \(changed ", re.MULTILINE)
+
+
+def fingerprints(root: Path) -> dict[str, str]:
+    """Every surface page of every feature, by its path in the project, with a digest of what it says now:
+    taken before a conversation turn and again after it, so what the turn changed is known by its pages."""
+    specs = root / "specs"
+    found: dict[str, str] = {}
+    for home in sorted(specs.glob("*/mockups")) if specs.is_dir() else []:
+        for page in surface_pages(home):
+            try:
+                found[page.resolve().relative_to(root.resolve()).as_posix()] = hashlib.sha1(
+                    page.read_bytes()).hexdigest()
+            except (OSError, ValueError):
+                continue
+    return found
+
+
+def withdraw(root: Path, before: dict[str, str]) -> list[str]:
+    """A verdict on a page a conversation has since changed no longer stands: each such surface's states are
+    taken out of its feature's `mock-states.md` and said there as withdrawn, so the file approves nothing
+    nobody has seen. Answers `<surface> — <states>` for each, for the board to say which."""
+    after = fingerprints(root)
+    changed = [path for path, digest in after.items() if before.get(path) != digest]
+    said: list[str] = []
+    for feature in sorted({path.split("/")[1] for path in changed if path.startswith("specs/")}):
+        verdicts = root / "specs" / feature / "mockups" / "mock-states.md"
+        try:
+            text = verdicts.read_text(encoding="utf-8")
+        except OSError:
+            continue  # nothing judged yet, so nothing withdrawn: the drawing waits on its verdict as it was
+        if "surfaces: none" in text:
+            continue
+        names = {decided_states(root / path)[0]: [state for state, _ in decided_states(root / path)[1]]
+                 for path in changed if path.split("/")[1] == feature}
+        kept, dropping, lines = [], "", text.splitlines()
+        for line in lines:
+            if line.startswith("## Surface: "):
+                dropping = line.removeprefix("## Surface: ").strip()
+                dropping = dropping if dropping in names else ""
+            if not dropping:
+                kept.append(line)
+        when = time.strftime("%Y-%m-%d %H:%M")
+        marks = [f"<!-- withdrawn: {name} — {', '.join(states)} (changed in a conversation with the drawing "
+                 f"stage at {when}, after this verdict: approve or disapprove the storyboard again) -->"
+                 for name, states in names.items()]
+        verdicts.write_text("\n".join([*marks, *kept]) + "\n", encoding="utf-8")
+        said += [f"{name} — {', '.join(states)}" for name, states in names.items()]
+    return said
+
+
+def withdrawn(root: Path, feature: str) -> list[str]:
+    """The surfaces whose verdict a conversation withdrew, `<surface> — <states>`, until the next verdict."""
+    try:
+        text = (root / "specs" / feature / "mockups" / "mock-states.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    return [f"{found.group('surface')} — {found.group('states')}" for found in WITHDRAWN.finditer(text)]

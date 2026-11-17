@@ -11,6 +11,13 @@ stops here as it always did, so does a disapproved storyboard, and so does anyth
 running. What is decided is the one step the board would offer next — this reads the same `drawable` and
 `launchable` the buttons are shown by, so it cannot press one that is not there.
 
+**And only where there is nothing to discuss.** The first real run asked a question of a finished storyboard,
+the reply's turn ended well, and that end was read as the step's: the board approved forty-nine states
+straight past a review with fourteen Blockers, and started the model. A reply is not a step ending; a person's
+word to a stage holds the board until they say to carry on (`stage_talk`), and a storyboard whose review has
+a Blocker, whose research has a question open, or whose review cannot be read is left for the person, with
+the reason said in the stage card and under Waiting on you (`stopped`).
+
 **An approval given this way says so.** The storyboard's `mock-states.md` carries a line naming the setting,
 because the file is what the model and the chart read as a person's verdict, and one nobody gave has to be
 told apart from one somebody did.
@@ -24,8 +31,11 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from . import stage_talk
+from .drawn import withdrawn
 from .init_run import draft, draw, outside_session
 from .passage import record_verdict, specifications, storyboards, surfaces
+from .review_reading import gate
 from .stage_steps import launch
 from .wheel import orders
 
@@ -46,13 +56,45 @@ def advancing(root: Path) -> bool:
 
 
 def unjudged(root: Path) -> str:
-    """The feature whose storyboard is drawn and has no verdict yet, or `""` where there is none."""
+    """The feature whose storyboard is drawn and has no verdict yet, or one a conversation has withdrawn part
+    of by changing its pages, or `""` where there is none."""
     judged = {path.parent.parent.name for path in storyboards(root)}
     for spec in specifications(root):
         mockups = spec.parent / "mockups"
-        if spec.parent.name not in judged and mockups.is_dir() and next(mockups.glob("*.html"), None):
+        drawn = mockups.is_dir() and next(mockups.glob("*.html"), None)
+        if drawn and (spec.parent.name not in judged or withdrawn(root, spec.parent.name)):
             return spec.parent.name
     return ""
+
+
+#: Which stage a command's conversation is, said the way a person reads it.
+NAMED = {"mockups": "drawing", "model": "model", "draft": "draft", "launch": "launch", "assess": "assessment"}
+
+
+def stopped(root: Path) -> tuple[str, str]:
+    """Why the board, set to advance, will not press the next button by itself, and where on the page to go
+    about it; `("", "")` where nothing holds it, and always on a project left at `park`.
+
+    A person's word holds it — anything said to a stage, answered or queued, until they press Carry on or
+    give the verdict the step waits for. And a storyboard is never approved past a review with a Blocker, a
+    question only the person can answer, or a review that cannot be read."""
+    if not advancing(root):
+        return "", ""
+    held = stage_talk.held(root)
+    if held:
+        named = " and ".join(f"the {NAMED.get(one, one)} stage" for one in held)
+        queued = any(stage_talk.undelivered(root, one) for one in held)
+        return (f"You said something to {named}{', and it waits to be said' if queued else ''}: the board does "
+                "not move on by itself until you press Carry on" + (", or approve or disapprove the storyboard"
+                                                                    if "mockups" in held else ""),
+                "#storyboard-talk" if "mockups" in held else "#fitting")
+    # Not while the drawing is still under way: what it has written so far is not yet the storyboard.
+    waiting = unjudged(root) if outside_session(root) is None else ""
+    why = gate(root, waiting) if waiting else ""
+    if why:
+        return (f"The storyboard for {waiting} waits for you rather than being approved by the board: {why}",
+                "#mockups")
+    return "", ""
 
 
 def next_step(root: Path, idle: bool, drawable: bool, launchable: bool) -> str:
@@ -83,6 +125,10 @@ def advance(board: Any) -> None:
         return  # another window's poll is already pressing it
     try:
         running = board.fitting
+        # Anything a person has said, and a storyboard with something in it to discuss, is a stop: `stopped`
+        # says which, and the page says it where the person is looking.
+        if advancing(board.root) and stopped(board.root)[0]:
+            return
         # The draft is not a step a person holds off: a document with no specification is drafted the
         # moment the board sees it, once. What a draft that drafted nothing leaves is the button, and a line.
         if board.draftable() and not board.drafted:

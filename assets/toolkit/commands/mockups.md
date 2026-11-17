@@ -49,6 +49,16 @@ a `## Redrawn` section to `research.md` saying what changed and which part of th
 answers. Leave `mock-states.md` alone: `surfaces.py` retires it to
 `disapproved.md` once the redraw lands, so the new storyboard waits on a verdict of its own.
 
+**When the person talks to that session afterwards.** The board keeps the drawing's session, and what a
+person types under the storyboard comes to it as one more turn, followed by a line beginning *The board
+started this turn*. Answer in that turn. A change they ask for is made there and then, in place and under
+the same file name, as a redraw would make it; the board withdraws any verdict on a page that changed, so
+leave `mock-states.md` alone. A decision they make — an answer to one of `research.md`'s `## Questions`, how
+a finding in the review is settled — is written down in the same turn: the next entry of
+`specs/<feature>/decisions.md`, in the shape `commands/cruise.md` shows, with `Decided by: human`, and the
+question or the finding marked `— answered (D<n>)` where it was written. Saying it is not recording it. A
+verdict is still not yours: `approved`, `parked` and `n/a` are given on the board.
+
 ## 1. The researcher
 
 Delegate this half to a fresh context that may write under `specs/<feature>/mockups/` and nowhere else. Give

@@ -64,6 +64,7 @@ from .decision_log import confirm as confirm_decision
 from .decision_log import mark as mark_decisions
 from .deck import dismiss, mark_read, tick_need
 from .dials import set_dial
+from .drawn import withdrawn
 from .errors import Busy, GenerationError
 from .feedback_card import act as feedback_act
 from .film import ranged
@@ -72,7 +73,7 @@ from .folder_choice import chosen
 from .ground_card import card as ground_card
 from .ground_card import record as record_ground
 from .harbour import config
-from .init_run import Fitting, kept_line, outside_session, resumed
+from .init_run import Fitting, kept_line, outside_session
 from .init_run import adopted as adopted_init
 from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
@@ -104,6 +105,7 @@ from .passage import (
     profile_of,
     record_verdict,
     specifications,
+    storyboards,
     surfaces,
 )
 from .post_guard import refusal as cross_site
@@ -118,6 +120,8 @@ from .stage_session import route_post as stage_post
 from .stage_steps import begin_model
 from .stage_steps import launch as continue_build
 from .stage_steps import triage as begin_triage
+from .stage_talk import release
+from .storyboard_card import talking_to
 from .talk_routes import route_get as talk_get
 from .talk_routes import route_post as talk_post
 from .telegraph import Refused
@@ -142,7 +146,9 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 940 — the cross-site guard and the app-version guard (2.1) on every change and page, one server
+# budget: 948 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
+# by a conversation keeps Model again away (eight lines, against the 940 that was).
+# The cross-site guard and the app-version guard (2.1) on every change and page, one server
 # and every route the board answers, the need tick and the timeline among them, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
 # one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
@@ -612,7 +618,9 @@ class Bridge(BaseHTTPRequestHandler):
             return False
         _, approved, parked = surfaces(self.root)
         idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
-        return bool(approved) and not parked and idle
+        # A verdict a conversation withdrew by changing a page is a storyboard waiting on a person again.
+        changed = any(withdrawn(self.root, one.parent.parent.name) for one in storyboards(self.root))
+        return bool(approved) and not parked and idle and not changed
 
     def castable(self, rows: list[dict[str, str]], fleet: dict) -> bool:
         """Whether the fleet can be cast off from here: a split to work, nothing of it running, and no child
@@ -697,8 +705,8 @@ class Bridge(BaseHTTPRequestHandler):
                 return
             if settings_post(self, where, held):
                 return
-            if where == "/stage/say" and self.fitting is None and (command := kept_stage(self.root)):
-                self.fitting = resumed(self.root, command)  # a stage kept from before a restart, carried on
+            if where == "/stage/say" and (refused := talking_to(self, str(held.get("command") or ""))):
+                raise ValueError(refused)  # a kept stage is carried on in `talking_to`; another running is a no
             if stage_post(self, where, held):
                 return
             if talk_post(self, where, held):  # everything said to a slice or a captain: `talk_routes.py`
@@ -832,6 +840,7 @@ class Bridge(BaseHTTPRequestHandler):
             elif where == "/storyboard":
                 said = record_verdict(self.root, str(held.get("feature", "")), str(held.get("verdict", "")),
                                       str(held.get("reason", "")))
+                release(self.root, "mockups")  # a verdict is the person's word to carry on from the drawing
                 said = self.after_storyboard(said)
             elif where == "/draft":
                 if not self.draftable():

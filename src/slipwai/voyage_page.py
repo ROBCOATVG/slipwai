@@ -18,7 +18,6 @@ from .captains_strip import STYLE as CAPTAINS_STYLE
 from .console_page import console_card
 from .decision_cards import SCRIPT as DECISIONS_SCRIPT
 from .decision_cards import STYLE as DECISIONS_STYLE
-from .drawn import decided_states
 from .feedback_card import SCRIPT as FEEDBACK_SCRIPT
 from .feedback_card import STYLE as FEEDBACK_STYLE
 from .film import SCRIPT as FILM_SCRIPT
@@ -28,7 +27,7 @@ from .fleet_tab import STYLE as MACHINERY_STYLE
 from .fleet_tab import fleet_sub
 from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
-from .passage import Stage, current, surface_pages
+from .passage import Stage, current
 from .slice_card import STYLE as SLICE_STYLE
 from .slice_card import (  # noqa: F401 — the card's names, kept importable here
     answer_html,
@@ -37,11 +36,21 @@ from .slice_card import (  # noqa: F401 — the card's names, kept importable he
     facts_html,
     slice_html,
 )
+from .storyboard_card import SCRIPT as STORYBOARD_SCRIPT
+from .storyboard_card import STYLE as STORYBOARD_STYLE
+from .storyboard_card import (  # noqa: F401 — the storyboard's names, kept importable here
+    marker,
+    mockups_card,
+    placeholder,
+    screens_band,
+    verdict_form,
+)
 from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 
-# budget: 840 — the one poll that keeps every band current, and the bands of one window, and who decided
+# budget: 785 — (the storyboard, its verdict and its conversation went to `storyboard_card.py`)
+# the one poll that keeps every band current, and the bands of one window, and who decided
 # each state the storyboard's note counts: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
 # would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
@@ -601,77 +610,6 @@ def screens_card(shots: list[dict[str, str]], mocks: list[dict[str, str]], app: 
     return f'<div class="card" id="built"><h2>Built screens · {len(shots)}</h2>{link}{blocks}</div>'
 
 
-def verdict_form(root: Path, feature: str) -> str:
-    """Approve marks every drawn state approved. Disapprove parks them, and has to say why.
-
-    Only where there is a page per surface to mark: a storyboard with the surfaces drawn inside it has no state
-    a verdict can name, and buttons for one were buttons the server refused. That feature is told what is
-    missing and what draws it, instead.
-    """
-    home = root / "specs" / feature / "mockups"
-    if not surface_pages(home):
-        return ('<p class="empty">This storyboard has no page per surface, so there is nothing to approve: '
-                "each surface is drawn as its own page, which the storyboard links. Draw the storyboard draws it "
-                "again.</p>")
-    path = home / "mock-states.md"
-    note = "Nothing on this storyboard is approved yet."
-    text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
-    parked = next((line.split("parked:", 1)[1].strip()
-                   for line in text.splitlines() if "\u2014 parked:" in line), "")
-    if parked:
-        note = (f"Disapproved: {parked}. It is being drawn again from that, and the new drawing waits on a "
-                f"verdict of its own.")
-    elif "\u2014 approved" in text:
-        note = "Approved."
-    # Where the pages say who chose each state, the note says how many a person decided and how many the
-    # tool put in: the person approving knows which states they have already seen.
-    who = [one for page in surface_pages(home) for _, one in decided_states(page)[1]]
-    if any(who):
-        proposed = sum(one.lower() == "proposed" for one in who)
-        note += (f" {len(who)} states: {sum(bool(one) for one in who) - proposed} decided by a person, "
-                 f"{proposed} proposed.")
-    # Either verdict locks both. A refusal (a disapproval with no reason) turns them back on in the page.
-    held = " disabled" if parked or "\u2014 approved" in text else ""
-    return (f'<form class="verdict" onsubmit="return false"><p class="empty">{esc(note)} '
-            f"Approving marks every drawn state approved. Disapproving draws it again from your reason.</p>"
-            f'<div class="ask"><input id="why-{esc(feature)}" type="text" maxlength="240" '
-            f'placeholder="Why, if you disapprove"{held}>'
-            f'<button type="button" class="go" data-storyboard="{esc(feature)}" data-verdict="approved"{held}>'
-            f'Approve storyboard</button>'
-            f'<button type="button" class="install" data-storyboard="{esc(feature)}" data-verdict="parked"{held}>'
-            f"Disapprove</button></div></form>")
-
-
-def mockups_card(found: list[dict[str, str]], root: Path | None = None) -> str:
-    """The storyboard the mock-up stage wrote, where it wrote one — every mock-up is reached from it, which
-    is what it is for — else the wireframes themselves, shown small. Nothing where the stage has not run."""
-    if not found:
-        return ""
-    features: list[str] = []
-    for row in found:
-        if row["feature"] not in features:
-            features.append(row["feature"])
-    forms = "".join(verdict_form(root, feature) for feature in features) if root is not None else ""
-    boards = [row for row in found if row["name"] == "storyboard.html"]
-    if boards:
-        tiles = "".join(
-            f'<a class="mock board" href="{esc(row["href"])}" target="_blank" rel="noopener">'
-            f'<iframe src="{esc(row["href"])}" loading="lazy" tabindex="-1" title="{esc(row["title"])}"></iframe>'
-            f'<b>{esc(row["title"])}</b><span class="fw">{esc(row["feature"])} · '
-            f'{sum(1 for one in found if one["feature"] == row["feature"]) - 1} mock-ups, from the storyboard'
-            "</span></a>"
-            for row in boards)
-        return (f'<div class="card" id="mockups"><h2>Storyboard</h2><div class="mocks">{tiles}</div>'
-                f"{forms}</div>")
-    tiles = "".join(
-        f'<a class="mock" href="{esc(row["href"])}" target="_blank" rel="noopener">'
-        f'<iframe src="{esc(row["href"])}" loading="lazy" tabindex="-1" title="{esc(row["title"])}"></iframe>'
-        f'<b>{esc(row["title"])}</b><span class="fw">{esc(row["feature"])} · {esc(row["name"])}</span></a>'
-        for row in found)
-    return (f'<div class="card" id="mockups"><h2>Mockups · {len(found)}</h2><div class="mocks">{tiles}</div>'
-            f"{forms}</div>")
-
-
 def intake_card(found: list) -> str:
     """Ideas handed to `/sail` that are not yet specified or killed, and the button that moves the earliest."""
     pending = [one for one in found if one.state not in ("specified", "kill")]
@@ -755,9 +693,10 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
          dates: str = "", draftable: bool = False, machinery: str = "", streams: str = "",
-         waiting: dict | None = None, captains: str = "") -> str:
+         waiting: dict | None = None, captains: str = "", stage: dict | None = None) -> str:
     """The window. `strip` is Needs a look, `machinery` the Fleet tab and `streams` what the streams asked,
-    each a band the poll keeps current; `waiting` is the one list, whose slices the column draws."""
+    each a band the poll keeps current; `waiting` is the one list, whose slices the column draws; `stage` is
+    the stage with a tab of its own running now, which that tab says (`storyboard_card.live`)."""
     now = current(found)
     # An adopted repository walks its own steps until its first specification, and the strip a generated
     # project has would name a stage it is not on: the adoption's card stands where the strip does.
@@ -780,20 +719,22 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     tabs = [("work", f'Work<span class="count" data-waiting-count{"" if count else " hidden"}>'
                      f'{f"{count} waiting" if count else ""}</span>', work),
             ("try", "Try it & feedback" if trying else "Feedback", f"{trying}{feedback}"),
-            ("screens", "Screens", screens_card(shots or [], mocks or [], "" if trying else app)
-             + mockups_card(left, root)),
-            ("model", "Model",
-             model_card(xml, note, viewer_fault, model_said(rows)) if xml or note or viewer_fault else ""),
+            ("screens", f"Screens{marker('surfaces', stage)}", screens_card(shots or [], mocks or [],
+                                                                       "" if trying else app)
+             + screens_band(root, left, stage)),
+            ("model", f"Model{marker('model', stage)}",
+             (placeholder("model", stage) if stage and stage.get("running") == "model" else "")
+             + (model_card(xml, note, viewer_fault, model_said(rows)) if xml or note or viewer_fault else "")),
             ("fleet", "Fleet", machinery),
             ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
                           f"{decisions[1]} unread</span>", decisions[0]),
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
-            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}</style>"
+            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}</style>"
             f"{where}{landed}{'' if adopting else band('expect', expect_card(found))}{band('captains', captains)}"
             f"{tabs_html(tabs)}{console_card()}")
-    script = SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + (TRY_SCRIPT if trying else "") \
+    script = SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT + (TRY_SCRIPT if trying else "") \
         + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
         + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person

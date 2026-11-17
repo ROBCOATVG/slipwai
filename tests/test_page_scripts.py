@@ -27,6 +27,7 @@ from slipwai import (
     landing_page,
     live_page,
     settings_page,
+    storyboard_card,
     timeline_page,
     turn_cards,
     voyage_page,
@@ -38,6 +39,7 @@ SCRIPTS = {
     "captain_page": captain_page.SCRIPT, "chandlery_page": chandlery_page.SCRIPT, "console_page": console_page.SCRIPT,
     "fleet_page": fleet_page.SCRIPT, "landing_page": landing_page.SCRIPT,
     "live_page.window": live_page.WINDOW_SCRIPT, "settings_page": settings_page.SCRIPT,
+    "storyboard_card": storyboard_card.SCRIPT,
     "timeline_page": timeline_page.SCRIPT, "turn_cards": turn_cards.SCRIPT, "voyage_page": voyage_page.SCRIPT,
     "voyage_page.model": voyage_page.MODEL_SCRIPT,
 }

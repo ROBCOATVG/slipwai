@@ -61,6 +61,8 @@ ASSETS_HERE = trees_here()
 # Written for version 2 rather than brought back, so the ledger will never hold them.
 OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_page", "board_read", "voyage_live",
        "on_you", "fleet_tab", "demos",
+       # Trunk on the board: the trunk mender's attempts and words, folded and drawn.
+       "trunk_story", "trunk_card",
        # A conversation with a slice: the experiment wrote what a person said into the deck log.
        "talk",
        # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.

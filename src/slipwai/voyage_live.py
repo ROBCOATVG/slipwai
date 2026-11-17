@@ -37,6 +37,8 @@ from .settings_card import project_tabs, settings
 from .slice_card import lit
 from .storyboard_card import live
 from .storyboard_card import payload as talk_payload
+from .trunk_card import band_html as trunk_band
+from .trunk_card import mend_card
 from .trunk_remote import card as remote_card
 from .try_card import card as try_card
 from .try_card import payload as try_payload
@@ -88,7 +90,7 @@ def passage(board: Any, found: list, rows: list[dict[str, str]], fleet: dict, fl
 def voyage_json(board: Any) -> str:
     found, rows, _, fleet, _, kept = parts(board)
     flags = able(board, rows, fleet)
-    return passage(board, found, rows, fleet, flags, waiting(board, fleet, flags, rows),
+    return passage(board, found, rows, fleet, flags, waiting(board, fleet, flags, rows, trunk=kept.trunk),
                    bool(decisions_polled(board.root)[0]))
 
 
@@ -98,7 +100,7 @@ def lit_rows(board: Any, kept: Read) -> list[dict[str, str]]:
 
 
 def machinery(kept: Read, rows: list[dict[str, str]], stoppable: bool) -> str:
-    return fleet_tab(kept.fleet, rows, kept.trunk, stoppable)
+    return fleet_tab(kept.fleet, rows, kept.trunk, stoppable) + mend_card(kept.trunk)
 
 
 def live_json(board: Any) -> str:
@@ -107,9 +109,9 @@ def live_json(board: Any) -> str:
     found, _, fault, fleet, _, kept = parts(board)
     rows = lit_rows(board, kept)
     flags = able(board, kept.rows, fleet)
-    listed = waiting(board, fleet, flags, kept.rows)
+    listed = waiting(board, fleet, flags, kept.rows, trunk=kept.trunk)
     cards, unread = decisions_polled(board.root)
-    drawn = {"look": look_html(rows, kept.folds, kept.trunk),
+    drawn = {"trunk": trunk_band(kept.trunk), "look": look_html(rows, kept.folds, kept.trunk),
              "points": feedback_points_card(kept.points),
              "work": work_card(rows, fault, set(listed["slices"])),
              "streams": streams_card(fleet),
@@ -130,7 +132,7 @@ def voyage(board: Any) -> str:
     folds, films = kept.folds, films_of(root, seat)
     rows = lit(kept.rows, folds, root, films)
     flags = able(board, kept.rows, fleet)
-    listed = waiting(board, fleet, flags, kept.rows)
+    listed = waiting(board, fleet, flags, kept.rows, trunk=kept.trunk)
     feature, made_of = board.made_of(rows, fleet)
     decided = decision_tab(root, band)
     now = live(board)
@@ -151,7 +153,8 @@ def voyage(board: Any) -> str:
                        decided, points=kept.points, adopting=adopting,
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
                        draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed,
-                       captains=strip_html(root, kept.rows, set(listed["slices"])), stage=now)
+                       captains=strip_html(root, kept.rows, set(listed["slices"])), stage=now,
+                       trunk=trunk_band(kept.trunk))
 
 
 def route_get(board: Any, where: str, query: str) -> bool:

@@ -45,6 +45,7 @@ from .storyboard_card import (  # noqa: F401 — the storyboard's names, kept im
     screens_band,
     verdict_form,
 )
+from .trunk_card import STYLE as TRUNK_STYLE
 from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
@@ -693,7 +694,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
          dates: str = "", draftable: bool = False, machinery: str = "", streams: str = "",
-         waiting: dict | None = None, captains: str = "", stage: dict | None = None) -> str:
+         waiting: dict | None = None, captains: str = "", stage: dict | None = None, trunk: str = "") -> str:
     """The window. `strip` is Needs a look, `machinery` the Fleet tab and `streams` what the streams asked,
     each a band the poll keeps current; `waiting` is the one list, whose slices the column draws; `stage` is
     the stage with a tab of its own running now, which that tab says (`storyboard_card.live`)."""
@@ -731,8 +732,9 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("next", "Next features", intake_card(ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
-            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}</style>"
-            f"{where}{landed}{'' if adopting else band('expect', expect_card(found))}{band('captains', captains)}"
+            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}</style>"
+            f"{where}{band('trunk', trunk)}{landed}{'' if adopting else band('expect', expect_card(found))}"
+            f"{band('captains', captains)}"
             f"{tabs_html(tabs)}{console_card()}")
     script = SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT + (TRY_SCRIPT if trying else "") \
         + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") \

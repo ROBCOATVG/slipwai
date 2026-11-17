@@ -21,12 +21,14 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from .activity import live
 from .fleet import ASKED, board, harbour_log
 from .harbour import config
 from .logs import Entry
 from .shell_environment import ANSWERED, KEEP_LOGIN
+from .trunk_story import story
 from .voyage import feedback_points, fleet_running, folded
 
 #: Seconds a read is kept. Under the page's poll, so each poll of a window on its own still reads the run
@@ -46,7 +48,7 @@ class Read:
     config: dict
     folds: dict[str, dict]
     points: list[dict]
-    trunk: dict[str, str]
+    trunk: dict[str, Any]
 
 
 GUARD = threading.Lock()
@@ -67,7 +69,8 @@ def trunk_of(harbour: list[Entry]) -> dict[str, str]:
 
 
 def fold(root: Path) -> Read:
-    """The read itself, made fresh: the columns, the berths, the activity, and trunk."""
+    """The read itself, made fresh: the columns, the berths, the activity, and trunk with what the trunk mender
+    did about it (`trunk_story`)."""
     asked, login = ASKED.set({}), KEEP_LOGIN.set(True)
     try:
         rows, fault = folded(root)
@@ -76,7 +79,9 @@ def fold(root: Path) -> Read:
         unreadable = fleet.get("unreadable")
         if fault or (isinstance(unreadable, dict) and unreadable.get("clearance")):
             ANSWERED.clear()  # the shell's answer may be why: the next read asks it again
-        return Read(rows, fault, fleet, held, live(root, rows), feedback_points(root), trunk_of(harbour_log(root)))
+        harbour = harbour_log(root)
+        return Read(rows, fault, fleet, held, live(root, rows), feedback_points(root),
+                    {**trunk_of(harbour), **story(root, harbour, held)})
     finally:
         ASKED.reset(asked)
         KEEP_LOGIN.reset(login)

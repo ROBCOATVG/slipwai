@@ -200,6 +200,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And the board kept current: one read of a project shared by every poll, the one poll that
               # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
               "board_read", "voyage_live", "on_you", "fleet_tab",
+              # And trunk on it: what the trunk mender did about a red trunk, folded, and drawn as a band,
+              # a card on the Fleet tab and an item under Waiting on you.
+              "trunk_story", "trunk_card",
               # And talking to the fleet: a conversation drawn, what it adds to a card and to the one list,
               # a captain's window, the captains on the board, and the routes every message goes through.
               "talk_page", "talk_waits", "talk_card", "captain_window", "captains_strip", "talk_routes",

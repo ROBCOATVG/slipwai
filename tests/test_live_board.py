@@ -241,7 +241,8 @@ class OnePollTest(BoardTest):
 
     def test_the_poll_carries_every_band_and_the_page_was_drawn_with_the_same_signatures(self) -> None:
         found = json.loads(self.get("/live.json")[1])
-        self.assertEqual(set(found["bands"]), {"look", "points", "work", "streams", "expect", "fleet", "captains"})
+        self.assertEqual(set(found["bands"]),
+                         {"trunk", "look", "points", "work", "streams", "expect", "fleet", "captains"})
         page = self.get("/voyage")[1]
         for name, band in found["bands"].items():
             with self.subTest(band=name):

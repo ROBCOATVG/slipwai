@@ -313,8 +313,11 @@ committed yet is not shown.
 - **Pause**: the turn finishes, the session is kept and the slot is given back. **Resume** carries on in the
   same session. **Stop**: the session ends now and the slice goes back to the queue; its commits stay on its
   branch and uncommitted edits in its berth. A stop you make holds the slice until you resume it, and it then
-  starts in a fresh session. A slice you paused is listed under *When you have time*; one its captain paused
-  is not.
+  starts in a fresh session. A slice you paused, or one its captain paused, is listed under *When you have
+  time*: no timer and no rule lifts either pause, so it stays paused until you resume it (or, for a
+  captain's pause, until its captain does). The slice's card says who holds it and since when — *Paused by
+  you since 14:02*, *Paused by captain:ORD since 10:40* — and your pause counts from the moment you press
+  it, even while the turn under way is still finishing.
 - **A pause or a stop you make is a hold.** It stands from the moment it is heard until you resume the slice,
   however the turn ends and whatever anyone else says meanwhile. A captain's pause or stop on top of it does
   not replace it. A pause its captain made is lifted only by a resume, from the captain or from you; no timer
@@ -337,6 +340,11 @@ same receipts and, beside each message, the slices it went to.
 What it decided is a line for each choice it was woken for: *Started*, *Retried*, *Parked*, *Told*,
 *Paused*, *Said to you*, *Asked you*, *Allowed* or *Refused what was asked*, or *Left it to the rule*. A choice
 the agent did not make in time, or made wrongly, is listed as closed by the rule, with why.
+
+Where a stream's captain agent is off or has failed, its button on the captains strip says *Running on the
+program alone* and why, and the captain's window says so at the top, with when. Anything the captain program
+noted about its agent is listed in the window under *Noted by the captain program*, for your information:
+nothing there waits on you. The next start of the fleet tries the captain agent again.
 
 Where the stream's captain is the program alone, the window says so and still lists the slices: the program
 starts slices in chart order, retries a failed gate by its fixed rule and parks what it cannot decide. What you

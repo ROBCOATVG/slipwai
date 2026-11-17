@@ -108,3 +108,24 @@ class WheelTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RowsCanBeReadTest(unittest.TestCase):
+    """The card was a wall: one choice forty words long took the whole row and left its name a column of
+    syllables under the buttons. A button says what the choice is; what explains it goes under the row."""
+
+    def test_no_choice_is_a_sentence_and_what_explains_one_sits_under_its_row(self) -> None:
+        from slipwai import settings_card, wheel
+        for name, _, says in wheel.STOPS:
+            for value, words in says.items():
+                self.assertLessEqual(len(words), 62, f"{name}={value} is too long to be a button: {words}")
+        self.assertIn("Blocker", wheel.MORE["upstream"])
+        self.assertIn("Carry on", wheel.MORE["upstream"])
+        drawn = settings_card.stops_tab({name: next(iter(says)) for name, _, says in wheel.STOPS}, True)
+        assert drawn is not None
+        self.assertIn(f"<small>{wheel.MORE['upstream']}</small>", drawn[2])
+
+    def test_the_name_keeps_a_width_of_its_own_and_the_choices_wrap_beside_it(self) -> None:
+        from slipwai import settings_card
+        self.assertIn("grid-template-columns:minmax(9rem,15rem) minmax(0,1fr)", settings_card.STYLE)
+        self.assertIn("white-space:normal", settings_card.STYLE)

@@ -10,13 +10,20 @@ log can have a conflict.
 |---|---|---|
 | Path | `.slipwai/run/logs/<feature>/<fairway>.jsonl` | `.slipwai/run/logs/harbour/<machine>.jsonl` |
 | One per | Fairway | Machine |
-| Written by | That fairway's captain, and nothing else | That machine's harbourmaster, and nothing else |
+| Written by | That fairway's captain program, and a person's receipts and messages from the project's own scripts (below) | That machine's harbourmaster, and nothing else |
 | Read by | Everybody | Everybody |
 | Synced through | `refs/slipwai/logs/<fairway>` | `refs/slipwai/logs/harbour/<machine>` |
 
 Neither log is committed. `.gitignore` lists `.slipwai/run/`, because heartbeat and token lines arrive
 every few seconds and do not belong in trunk's history. The harbourmaster pushes and fetches the logs
 through their own refs. So a captain on another machine reads the same lines without a commit on `main`.
+
+Three things besides the captain program append to a deck log, each through the project's own scripts:
+`/cruise-tell` (`fleet.py tell`) writes a person's `told`, a slice's session writes a `told` to hand something
+back, and the board writes a `read` when a person presses **Done** on a note or marks a decision read, and a
+`need-done` when a person ticks a need. What a person says to a slice or a captain on the board is not a
+deck line: it goes to that conversation's inbox under `.slipwai/run/talk/`, and the captain program writes a
+`told` from it where it answers a park.
 
 ## Where the run's state lives
 
@@ -50,6 +57,10 @@ still reads that file with the rest, and nothing rewrites it: these lines are th
 `v` is the format version of the line. When a reader meets a version that it does not know, it refuses the
 line and names `slipwai upgrade`. It does not guess which fields moved.
 
+A kind that the reader does not have is refused the same way. A new kind is added without a new `v`, so a
+board older than the log — one that predates `dispatched` and `noted`, say — refuses the first such line,
+says which line, and shows nothing more of that fairway until the app is updated. The log itself is whole.
+
 A line that the reader cannot read stops the fold. The reader does not skip it. A log that is missing the
 events it could not parse looks exactly like the log of a run that did not have those events. A board that
 is folded from a log with gaps is wrong, and it looks certain.
@@ -68,8 +79,8 @@ Every line has `v`, `t` and `kind`. Each kind also has the fields named here.
 | `claimed` | `fairway`, `slice` | This captain has taken the slice |
 | `mark-set` | `fairway`, `slice`, `mark` | A contract is published. Written at the setting slice's first stage, in its own worktree — this is what gives a sibling [clearance](clearance.md), which is why it is not `merged` |
 | `demo` | `fairway`, `slice`, `verdict` | The hand walked the examples. `verdict` is one of `accepted`, `behaviour` or `implementation`, and nothing else |
-| `accepted` | `fairway`, `capability` | A person accepted a demo. Against a capability, not a slice |
-| `demo-due` | `fairway`, `capability` | A capability's last slice has merged, so a person's demo is owed |
+| `accepted` | `fairway`, `capability` | A capability was accepted: by the hand's verdict, the default, or by a person where `demos` is `person`. Against a capability, not a slice |
+| `demo-due` | `fairway`, `capability` | A capability's last slice has merged, so a person's demo is owed. Written only where `demos` is `person` |
 | `merged` | `fairway`, `slice`, `commit` | The slice is on trunk |
 | `decision` | `fairway`, `id`, `what` | A decision, with the fairway-carrying id that makes renumbering impossible |
 | `question` | `fairway`, `slice`, `id`, `what` | A product question this slice cannot be guessed past, waiting on a person. Open until a `decision` line carries the same `id`; while it is open [clearance](clearance.md) reports the slice as *awaiting decision* and names the siblings the wait reaches |
@@ -81,7 +92,12 @@ Every line has `v`, `t` and `kind`. Each kind also has the fields named here.
 | `stowed` | `fairway`, `slice`, `from`, `what` | Work moved into the careen when a stage ran out of budget |
 | `taken-over` | `fairway`, `slice`, `from` | Another machine went past its lease and this captain took the claim, the log and the in-flight branch over mid-slice. The one thing in a fairway's history a later reader cannot work out from any other line |
 | `stopped` | `fairway`, `slice` | The captain was asked to stop — `fleet stop`, a reboot, a Ctrl-C — while on this slice. It ended the running stage and gave its claim back; the next captain lit for the fairway carries the slice on. Not a park: nobody is asked anything |
+| `yielded` | `fairway`, `to` | The captain gave its berth up to the fairway named in `to`, which the harbour's priority put ahead. Not a park |
 | `parked` | `fairway`, `why` | This fairway has stopped and says why. With `slice` as well, only that slice has stopped, and its siblings carry on |
+| `need-done` | `fairway`, `parked`, `need` | A person ticked one need of a park on the board |
+| `seeded` | `fairway`, `slice`, `records`, `commit` | The slice's story ran green against the app its berth runs, at the Demo rung |
+| `dispatched` | `fairway`, `slice` | One run of `/sail` for the slice, written when it ends. `free` says why it cost no attempt, where it did not. The program counts these before every run: between a person's words to a slice, at most `2 × attempts + 1` that cost an attempt, then the slice parks for a person |
+| `noted` | `fairway`, `what` | What the captain program says about its captain agent for a person to read: that it failed and the fairway runs on the program alone, or that its session was refused commands. Nothing waits on it, and it never holds the fairway |
 
 ---
 
@@ -126,8 +142,9 @@ could close two waits. The second fairway would then continue on an answer that 
 **Two things cause the receipt to be written.** The harbourmaster writes it in both cases, because the
 harbourmaster is the only writer of the harbour log:
 
-- **A `told` line after the park.** The board's answer box, `/cruise-tell` and `make cruise-tell` each write
-  a `told` line in the fairway's deck log. On each pass, the harbourmaster reads every deck log in full. For
+- **A `told` line after the park.** `/cruise-tell` and `make cruise-tell` each write a `told` line in the
+  fairway's deck log. The board's answer box places the answer in the slice's inbox instead, and the
+  captain program writes the `told` when it next runs. On each pass, the harbourmaster reads every deck log in full. For
   each open park that has a later `told` for the same fairway, it writes `cleared` with that park's
   timestamp. `what` is the last such message. A second pass writes nothing, because the receipt has already
   closed the park.

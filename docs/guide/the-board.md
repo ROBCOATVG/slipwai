@@ -126,6 +126,10 @@ are not counted. The same number goes on the Work tab, on the tab's title, *(3) 
 installed board's badge, and the **Waiting on you** column holds exactly the slices this list names. The first
 page shows a one-line strip when a card asks you something, and when the brief is ready to hand over.
 
+Under the strip and the captains, the rest of the window is tabs: **Work** (with the count of what waits on
+you), **Feedback** (*Try it & feedback* once a slice has a story to try), **Screens**, **Model**, **Fleet**,
+**Decisions** (with the count nobody has read) and **Next features**. A tab with nothing in it is left out.
+
 The cards come in this order, from the top.
 
 ### The stage strip
@@ -228,10 +232,16 @@ opens that captain's window (below). Beside them:
 
 ### The work
 
-The slices, in columns: **To do**, **Queued**, **Working**, **Waiting on you** and **Done**. Click a card to
-open it: its steps, what it is doing now, and the box that answers it when it waits on you. **Cards** and
+The slices, in columns: **To do**, **Queued**, **Working**, **Waiting on you** and **Done**. **Cards** and
 **Compact** switch the view; Compact is one line for each slice in flight, waiting first, and a line opens its
 card. Your choice is remembered in this browser.
+
+Closed, a card in flight is a strip of six steps — **Examples**, **Plan**, **Build**, **Demo**, **Review**,
+**Merge** — with the one it is on, how long it has been on it, what is still to come, and the task in hand.
+Under Examples it counts the slice's example map: *11 rules · 16 examples · 1 question open*. Opened, it is a
+timeline: each step with when it began and how long it took, the last few lines of its activity log under the
+step it is on, the box that answers it when it waits on you, and, where the hand has filmed its capability,
+**Watch from this chapter**.
 
 A card whose conversation has something you have not seen carries **New ·** and the last thing said. Opened,
 a slice in flight shows the last message with its receipt, a one-line box that sends after its current turn,
@@ -258,10 +268,37 @@ the new one instead. A message for a whole stream is read by its captain only wh
 Where a session limit has paused slices, **Try the N paused slices now anyway** asks each of them to resume.
 **Talk to a stream's captain** links to each stream's captain window.
 
+### Decisions
+
+The **Decisions** tab is the decision log, a card for each decision. A card leads with the decision's *In
+short* sentence, one line a product owner can read without the specification open; an entry written before
+that rule shows its question instead. Under it: the options with the chosen one marked and the recommended one
+named, who decided, how sure they were, what would change it, and its status. **Why, in full** shows the entry
+as it was written.
+
+The tab opens on the decisions nobody has read, least sure first, then the rest, grouped by capability and then
+by slice. The filters for stream, slice, who decided and status are kept in the address. The count on the tab
+is the unread ones, which is what the decision ceiling counts.
+
+- **Confirm** marks a decision read. The board keeps a record of it in `decisions-confirmed.json`, beside the
+  logs, and writes the `read` line. It edits and commits nothing in the project.
+- **Change this** opens the Feedback box with the decision quoted and its slice as the context.
+
+An answer you give in a conversation is a decision in the log like any other.
+
 ### A slice's window
 
-**Open its window** on a card opens one slice in a window of its own: **Where it is** and **Example map** as
-tabs, and beside them its conversation.
+**Open its window** on a card opens one slice in a window of its own: **Where it is**, **Example map** and
+**Decisions** as tabs, and beside them its conversation. A done slice has a window too.
+
+**Example map** is drawn from the slice's own `examples.md`: the story across the top, a column for each rule
+with its examples under it, and the questions last. An example opens in place on its Given, When and Then,
+and says *Proven by a test* once `tasks.md`'s `## Examples proven` names it beside a test. A question is red
+while it is open, and faded once its line says what answered it. The map is read-only: to change it, say so to
+the slice. While the slice is in flight the map is read from its branch, so what its session has not
+committed yet is not shown.
+
+**Decisions** lists the decisions taken for this slice, as cards like the Decisions tab's.
 
 - What you said is on the right with its receipt beneath it: *Queued · goes in when its current turn ends*,
   *Held: this slice is at its merge*, *Delivered 11:47*, *Answered* with the reply under it, *Delivered, not
@@ -278,6 +315,15 @@ tabs, and beside them its conversation.
   branch and uncommitted edits in its berth. A stop you make holds the slice until you resume it, and it then
   starts in a fresh session. A slice you paused is listed under *When you have time*; one its captain paused
   is not.
+- **A pause or a stop you make is a hold.** It stands from the moment it is heard until you resume the slice,
+  however the turn ends and whatever anyone else says meanwhile. A captain's pause or stop on top of it does
+  not replace it. A pause its captain made is lifted only by a resume, from the captain or from you; no timer
+  lifts it. The window says who paused the slice. A merge ends every hold.
+- **From a slice's merge request to the answer, nothing is delivered to it.** A message sent then says
+  *Held: this slice is at its merge*. If the merge is refused the message goes back to the berth with the
+  slice; if the merge lands the message is marked not delivered.
+- **Your pause and stop stay on this machine.** They are in the slice's conversation, which is in the run
+  folder and does not travel. A stream that another machine takes over does not see them.
 
 The window marks what it has shown you as seen, in `.slipwai/run/board/seen.json`, for the project rather than
 for one browser.
@@ -286,8 +332,18 @@ for one browser.
 
 A captain button opens one stream's captain: its slices in flight, each opening that slice's window; what it
 decided today, read from its orders and from the events its fixed rule closed; and its conversation, with the
-same receipts and, beside each message, the slices it went to. Where the stream's captain is the program alone,
-the window says so and still lists the slices.
+same receipts and, beside each message, the slices it went to.
+
+What it decided is a line for each choice it was woken for: *Started*, *Retried*, *Parked*, *Told*,
+*Paused*, *Said to you*, *Asked you*, *Allowed* or *Refused what was asked*, or *Left it to the rule*. A choice
+the agent did not make in time, or made wrongly, is listed as closed by the rule, with why.
+
+Where the stream's captain is the program alone, the window says so and still lists the slices: the program
+starts slices in chart order, retries a failed gate by its fixed rule and parks what it cannot decide. What you
+say to it is read at its next turn and written into the stream's log as a `told`, which clears a park it
+answers; it routes nothing and answers nothing. To change what one slice is doing, say it in that slice's own
+window. [Let it cruise](let-it-cruise.md#the-captain) says when a stream's captain is an agent and how to
+turn it on.
 
 ### Fleet
 
@@ -339,6 +395,7 @@ stage that is running now.
 | A block | the bosun works around it · park and ask me |
 | A release | continue behind a flag, so every merge is dark · park and ask me |
 | The specification, storyboard and model | stop for me at each · advance on their own |
+| A captain's session | over the Agent Client Protocol where the agent's is proven, print mode elsewhere · the agent's print mode · over the Agent Client Protocol |
 | A capability's demo | the hand's verdict accepts it; the film is there when I have time · wait for me to accept it |
 
 The value that stops for a person is drawn amber. The line above the rows names every stop where this run
@@ -350,14 +407,36 @@ film shows on the Voyage tab with **Say what it showed**, which opens the Feedba
 on it. With **wait for me to accept it**, the Feedback card lists each capability that is ready for you,
 with **Accept** and **Not yet: say why**, and the film says *Ready for you*.
 
-The last row is the `upstream` setting. **advance on their own** makes the board start each upstream step
+**A captain's session** is the `sessions` setting: how each slice's session is run. With **over the Agent
+Client Protocol where the agent's is proven** (`auto`), a session is held open over the protocol where the
+harness registry marks the coding agent's launch as proven and this machine can make it, and runs in the
+agent's print mode elsewhere; the captain says once when it falls back, and why. **Over the Agent Client
+Protocol** (`protocol`) asks for it on any launch this machine can make. Only over the protocol does a slice
+take **Interrupt**, show its work as it goes and keep one session across its turns. This setting is about the slices' sessions; whether a stream's captain is
+an agent is `harbour.json`'s, below. A newly generated project is
+written with `auto`. A project whose file says nothing reads as print mode, and migrating does not change
+that.
+
+**The captain agent has no control on the board.** It is `captain` in `harbour.json`:
+
+| Key | Default in a new project | What it does |
+|---|---|---|
+| `agent` | `true` | The stream's captain is an agent over the captain program, where the harness has a proven launch over the Agent Client Protocol. Absent or `false`: the program alone. An existing project is not switched by migrating |
+| `bound` | `60` | Seconds a decision may take, from when the captain's session is ready. Past it the fixed rule decides |
+| `answers` | `false` | Whether the captain answers a question a slice's session asks mid-turn. Off, the question goes to the skipper or to you, as it always did |
+| `per_hour` | `30` (not written) | The most times a stream's captain is woken in an hour. Past it the stream runs on its rules alone until the hour has passed |
+
+`SLIPWAI_CAPTAIN` in the fleet's environment says first: `off` turns the agent off whatever the file says,
+and `1` turns it on through the project's own harness.
+
+The `upstream` setting's row is **The specification, storyboard and model**. **advance on their own** makes the board start each upstream step
 when the step before it ends well. [The workflow](the-workflow.md#the-upstream-setting) lists its limits.
 
 ---
 
 ## What the board does by itself
 
-The board starts something without a button press in three cases only:
+The board starts something without a button press in two cases only:
 
 1. **After Generate.** It runs `./init`, and `make draft` when the project starts from a requirements
    document.

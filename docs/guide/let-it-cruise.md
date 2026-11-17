@@ -34,13 +34,21 @@ because it reads the logs.
 
 ## The captain
 
-There is one captain for each fairway. On each turn, a captain does these things:
+There is one captain for each fairway. A captain is two things: **the captain program**, which always runs,
+and, where the harness allows it, **the captain agent** on top of it. The agent chooses; the program checks
+and does.
+
+### The captain program
+
+On each turn, the program does these things:
 
 1. It fetches trunk and both logs.
 2. It works out its own state from its own `claimed` and `merged` lines.
-3. It picks the next slice that clearance allows.
+3. It picks the next slice that clearance allows, or, where there is a captain agent and a choice to make,
+   starts the cleared slice the agent ordered.
 4. It writes `claimed`.
-5. It runs `/sail` in that fairway's berth.
+5. It runs `/sail` in that slice's berth, through the slice's driver: one session held open over the Agent
+   Client Protocol where the `sessions` setting and the harness allow it, the harness's print mode elsewhere.
 6. It watches the log while `/sail` runs.
 
 **The captain believes the log, not the agent.** If a stage shows no progress for the stage bound, the
@@ -64,6 +72,72 @@ A captain holds no credential and never merges. It asks for the merge:
 ```
 2026-10-08T09:14:50Z  asked to merge: merge slice/BOK-01 into trunk after the full gate
 ```
+
+**No slice runs without limit.** The program writes a `dispatched` line for each run of `/sail` it starts for
+a slice. Between two things a person says to that slice, it runs at most `2 × attempts + 1` runs that cost an
+attempt — five at the default two — whoever asks for them, across restarts and cleared parks. Then the slice
+parks for a person. A run you asked for, by a message or an interrupt, costs no attempt.
+
+### The captain agent
+
+The agent is one coding-agent session for the stream, held open over the Agent Client Protocol. The program
+wakes it with an **event** when there is a choice to make, and nothing else wakes it. The agent's choices are:
+
+- which cleared slice starts next, when more could start than there are free slots;
+- after a slice misses its gate, whether it runs again and with what note, or parks and why;
+- what to do about a stuck slice — taking long, going in circles, or gone quiet: send it a message, interrupt
+  it, pause or stop it, park it, or tell you;
+- where something said to the whole stream goes: to which slice, or answered itself;
+- whether a slice's session may touch something outside its berth. It may allow a read inside the project,
+  and nothing else.
+
+It acts only by giving orders through the project's own `scripts/agents/orders.py`. The program checks each
+order against the rules as they are when it carries the order out — clearance, the free slots, the attempts
+left, a person's hold, the merge — does it or refuses it, and writes why. Clearance, the session slots, the
+stage budgets, the retry ceiling, the gate, merge requests, the ceiling on unreviewed decisions and the deck
+log stay the program's. The agent writes no line and edits no file.
+
+**The program never waits on it.** Where the agent says nothing within its bound (60 seconds by default),
+orders something it may not, or cannot be run, the program makes that one choice by the fixed rule it has
+always used, says so, and asks the agent again at the next event. If the agent's own machinery fails, the
+stream runs on the program alone until the captain is next started, and the deck log gets one `noted` line
+saying so. Nothing waits on a `noted` line: it is news for you, not a question.
+
+**It does not answer product questions.** A question a slice's session asks mid-turn is declined, as it was
+before there was an agent, and goes down the deck log's `question` path: to the skipper under `/cruise`, to
+you otherwise, as the **Who answers** settings say. The skipper is unchanged. A project can let the captain
+answer by setting `answers` to `true`; then every answer it gives is written as a `decision` by the captain for
+you to review. The program cannot tell an operational question from a product one by its words, and under
+`/cruise` nothing else bounds what it answers. That is why it is off.
+
+**Only over the Agent Client Protocol.** Over the protocol the agent's session is confined to reading and
+running `orders.py`. A captain run headless, with a shell of its own, could not be confined, so there is no
+such captain. Where the project's harness has no launch over the protocol that the registry marks proven, or
+this machine cannot make it, the stream runs on the program alone, exactly as before, and says so once on the
+captain's output: *no captain agent: this harness has no proven protocol launch*.
+
+**What it costs.** Each event is one turn of the project's harness. `per_hour` (30 by default) is the most
+times a stream's captain is woken in an hour; past it, the stream runs on its rules alone until the hour has
+passed.
+
+### Turning the captain agent on
+
+A newly generated project has it on: its `harbour.json` carries
+
+```json
+"captain": {"agent": true, "bound": 60, "answers": false}
+```
+
+An existing project is not switched by `slipwai migrate`. To turn the agent on there, migrate first, so the
+project has the new `scripts/agents/`, then add that `captain` block to `harbour.json` and cast the fleet off
+again. It runs only where the project's harness has a proven launch over the Agent Client Protocol. Set
+`SLIPWAI_CAPTAIN=off` in the fleet's environment to turn it off whatever the file says, or
+`SLIPWAI_CAPTAIN=1` to turn it on through the project's own harness.
+
+The slices' own sessions are a separate setting: `sessions` in `.specify/cruise.json`, on the board's **Who
+answers** tab as *A captain's session*. A new project is written with `auto`: over the protocol where the
+harness's launch is proven, print mode elsewhere. An existing project stays in print mode until you choose
+`auto` there, or run `python3 scripts/agents/cruise.py --set sessions=auto`.
 
 ## The harbourmaster
 
@@ -128,25 +202,65 @@ brake: running captains finish the stage that they are in, and then park.
 
 ## Saying something to a run that is going
 
+There are two places to say something: to one slice, or to a stream's captain.
+
+**To one slice.** Open the slice's window from its card (**Open its window**), or use the one-line box on the
+opened card. Choose for each message:
+
+- **Send** waits for the turn under way to end, and the message is the next prompt. This is the default.
+- **Interrupt** cancels the turn and delivers the message at once. A turn cancelled for your message costs the
+  slice no attempt. A slice in print mode has no Interrupt; its messages go in with its next run.
+
+Each message shows its receipt: *queued* (you can still withdraw it), *held* while the slice is at its merge,
+*delivered* at the time the slice's driver records, *answered* with the reply under it, *delivered, not
+addressed* where the turn ended without a word about it, or *not delivered* with why and **Send again**.
+
+**Pause**, **Resume** and **Stop** are in the same window. Pause lets the turn finish, keeps the session and
+gives the slot back. Stop ends the session now and puts the slice back in the queue; its commits stay on its
+branch and its uncommitted edits stay in its berth. A pause or stop you make holds the slice until you resume
+it, whatever anyone else does meanwhile. A slice you paused is listed under *When you have time*.
+
+**To a stream.** The captains strip above the tabs has a button for each stream's captain, which opens its
+window and its conversation. **Tell every captain** puts one message in every captain's inbox; each captain
+works out which of its slices it is for, sends it on, and reports back. Where a stream's captain is the
+program alone, it reads what you said at its next turn and writes it into the stream's log; it routes nothing.
+
+**Ask about this project**, beside them, opens a console that reads the run's logs and answers questions. It
+never acts. Something you want done, say to a captain or a slice.
+
+From the agent:
+
 ```text
 /cruise-tell booking the hold should expire after 15 minutes, not 45
 ```
 
 The first word is the stream, and the rest is the message. `/cruise-tell` refuses a message with no stream,
-and lists the streams that there are. `--everyone` as the first word sends the message to every stream. The
-board's answer box writes the same line.
+and lists the streams that there are. `--everyone` as the first word sends the message to every stream.
+`/cruise-tell` writes the message as a `told` line in the fairway's deck log. When the captain has read it, it
+writes a `read` line with the timestamp of the message that it answers. This makes the `read` line a receipt,
+not just a claim that somebody looked.
 
-The message goes into that fairway's inbox. The captain reads the inbox **at every boundary**, not only at
-the start of a slice. When the captain has read the message, it writes a `read` line with the timestamp of
-the message that it answers. This makes the `read` line a receipt, not just a claim that somebody looked.
-
-**A message to a parked fairway clears the park.** The message is a `told` line in the fairway's deck log.
-The board's answer box places your answer in the parked slice's inbox, and its captain writes the same line. On its next pass, the harbourmaster writes a `cleared` receipt
-in the harbour log for each open park that the message came after. It keeps the message as the answer. On
-the pass after that, it starts the captain again.
+**A message to a parked fairway clears the park.** The park is cleared by a `told` line in the fairway's deck
+log after it. `/cruise-tell` writes that line itself. The board places your answer in the parked slice's
+inbox instead, and its captain writes the `told` line when it next runs; the row on the board says whether that
+has happened. On its next pass, the harbourmaster writes a `cleared` receipt in the harbour log for each open
+park that the message came after. It keeps the message as the answer. On the pass after that, it starts the
+captain again.
 
 **The harbourmaster does not start a captain for a parked fairway.** That captain would read the park and
-exit at once. The fairway waits until a person clears the park.
+exit at once. The fairway waits until a person clears the park. The one exception is a message waiting for
+the captain: the harbourmaster lights the captain so that it can read it.
+
+## A board older than the log
+
+The deck log gained two kinds with the captain agent: `dispatched` and `noted`. A reader that meets a kind it
+does not have refuses the line rather than skip it, because a board folded from a log with holes in it is
+wrong and looks certain. So a board from before this release, opened on a project whose fleet has run since,
+says it cannot read that stream's log, names the line it stopped at, and shows nothing more of that stream. Nothing is
+lost: the lines are all there for a newer board. Update the app.
+
+An app that checks its release against the project's says so before that: if the project was written by a
+newer slipwai, every page says the app is older, and the app changes nothing until you update it.
 
 ## What still stops for a person
 

@@ -42,8 +42,8 @@ project has adopted a code index, a caller or blast-radius question is one call 
 around each delegation the way every stage is bracketed, and pass `driver=cruise` to every `end` this
 session closes.
 
-**A person's word arrives as a `told` line in the stream's own deck log**, written by `/cruise-tell` or from
-the bridge. Read the inbox at every stage boundary (`python3 {{inbox}} <stream>`) and act on what is
+**A person's word arrives as a `told` line in the stream's own deck log**, written by `/cruise-tell`, or by
+the captain from what a person said to the stream on the board. Read the inbox at every stage boundary (`python3 {{inbox}} <stream>`) and act on what is
 there before the next stage: a steer takes precedence over what the artifacts alone would make this stage do,
 a fact the run lacked is the answer to a block, and a scope or a preference is written down — into the owner
 brief (`{{owner-brief}}`) or a decision entry with `Decided by: human` — so it outlives this session. A `told` that answers an open

@@ -139,16 +139,17 @@ def reap(conversations: Path) -> list[int]:
     whose process cannot be read, is left alone. What was ended."""
     ended = []
     for path in sorted(Path(conversations).glob(f"*/{AGENT_PID}")):
-        try:
-            held = json.loads(path.read_text(encoding="utf-8"))
-            pid, captain, was = int(held["pid"]), int(held["captain"]), str(held["identity"])
-        except (OSError, ValueError, KeyError, TypeError):
-            continue
+        held = talk.read_json(path)
+        if not isinstance(held, dict) or not all(isinstance(held.get(name), int) and not isinstance(held[name], bool)
+                                                 and held[name] > 1 for name in ("pid", "captain")) \
+                or not isinstance(held.get("identity"), str):
+            continue  # not a record a drive wrote: nothing is signalled on its strength
+        pid, captain, was = held["pid"], held["captain"], held["identity"]
         if captain == os.getpid():
             continue
         # The captain is still the captain only where it is the process that was recorded: a pid reused by
         # something else after it died would otherwise keep its agent from ever being ended.
-        captain_was = str(held.get("captain_identity") or "")
+        captain_was = held.get("captain_identity") if isinstance(held.get("captain_identity"), str) else ""
         if alive(captain) and (not captain_was or identity(captain) in (captain_was, "")):
             continue
         if not alive(pid):
@@ -259,10 +260,7 @@ def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
 def reviewing(record: Path) -> bool:
     """Whether the newest stage `benchmark.py` bracketed in this slice's record is one that reads the slice
     fresh — open, or the last thing to have run."""
-    try:
-        held = json.loads(Path(record).read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
-        return False
+    held = talk.read_json(Path(record))
     stages = held.get("stages") if isinstance(held, dict) else None
     newest = stages[-1] if isinstance(stages, list) and stages else None
     return isinstance(newest, dict) and str(newest.get("stage", "")) in REVIEWS
@@ -753,8 +751,9 @@ class Drive:
             path.parent.mkdir(parents=True, exist_ok=True)
             with talk.WRITING, path.open("a", encoding="utf-8") as out:
                 out.write(json.dumps(line, ensure_ascii=False) + "\n")
-            if path.stat().st_size > ACTIVITY_LIMIT:
-                kept = path.read_text(encoding="utf-8").splitlines()[-ACTIVITY_KEEP:]
+            got = talk.read_bytes(path, ACTIVITY_LIMIT, -ACTIVITY_LIMIT)
+            if got is not None and got[1] > ACTIVITY_LIMIT:
+                kept = got[0].decode("utf-8", errors="replace").splitlines()[1:][-ACTIVITY_KEEP:]
                 path.write_text("\n".join(kept) + "\n", encoding="utf-8")
         except OSError:
             return

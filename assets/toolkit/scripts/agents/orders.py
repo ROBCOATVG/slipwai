@@ -44,6 +44,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import talk  # noqa: E402 — carried beside this; its `read_json` is the one reader for the run folder
+
 V = 1
 #: Every verb, and what each must carry beyond itself. Anything else is not an order.
 VERBS: dict[str, tuple[str, ...]] = {
@@ -138,10 +141,7 @@ def open_events(folder: Path) -> list[dict[str, Any]]:
             continue
         if path.with_name(f"{path.stem}.closed.json").exists():
             continue
-        try:
-            held = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, UnicodeDecodeError):
-            continue
+        held = talk.read_json(path)
         if isinstance(held, dict) and held.get("id") == path.stem:
             found.append(held)
     return sorted(found, key=lambda one: (str(one.get("t", "")), str(one["id"])))
@@ -198,9 +198,8 @@ def give(verb: str, target: str = "", event: str = "", **said: Any) -> tuple[int
     result = path.with_name(f"{order['id']}.result.json")
     until = time.monotonic() + float(os.environ.get("SLIPWAI_CAPTAIN_WAIT") or 30)
     while time.monotonic() < until:
-        try:
-            answer = json.loads(result.read_text(encoding="utf-8"))
-        except (OSError, ValueError, UnicodeDecodeError):
+        answer = talk.read_json(result)
+        if not isinstance(answer, dict):
             time.sleep(0.1)
             continue
         state, why = str(answer.get("state")), str(answer.get("why") or "")

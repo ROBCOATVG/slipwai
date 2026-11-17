@@ -98,16 +98,31 @@ def mtime(path: Path) -> float:
 
 
 def write_json(path: Path, body: dict[str, Any]) -> None:
+    """Written aside and renamed into place, so a reader never meets half of it; where either step fails, the
+    file aside is removed before the fault goes on, so nothing is left behind by a write that did not land."""
     path.parent.mkdir(parents=True, exist_ok=True)
     aside = path.with_name(f".{path.name}.{secrets.token_hex(2)}.part")
-    aside.write_text(json.dumps(body, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    os.replace(aside, path)
+    try:
+        aside.write_text(json.dumps(body, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        os.replace(aside, path)
+    except BaseException:
+        aside.unlink(missing_ok=True)
+        raise
 
 
 class Helm:
     def __init__(self, run: Path, fairway: str, runner: Runner, stream: captain_orders.Stream,
-                 say: Callable[[str], None] = print, settings: dict[str, Any] | None = None) -> None:
+                 say: Callable[[str], None] = print, settings: dict[str, Any] | None = None,
+                 failed: Callable[[BaseException, str], None] | None = None) -> None:
         self.run, self.fairway, self.runner, self.stream, self.say = Path(run), fairway, runner, stream, say
+        #: What is called where the agent's machinery raised, from whichever thread: the captain program's one
+        #: path for letting its agent go (`captain.agent_failed`), or — with no program around it — `fail`.
+        self.failed = failed or (lambda fault, during: self.fail(f"the captain agent failed while {during} "
+                                                                 f"({type(fault).__name__}: {fault})"))
+        #: Why this captain was let go, or `''` while it is the captain: once set, nothing is put to it again.
+        self.down = ""
+        #: The events put and not yet closed, each closed once, by whichever of the decision and `fail` is first.
+        self.live: set[str] = set()
         self.settings = settings or {}
         self.events = self.run / "events" / fairway
         self.orders = self.run / "orders" / fairway
@@ -141,9 +156,11 @@ class Helm:
         that was handed the last one is still open."""
         if not self.runner.holds_session():
             self.key = secrets.token_bytes(32)
+        # The command it gives orders with is in its prompt alone, quoted as one: a second spelling of it here was
+        # unquoted, and refused in a project whose path has a space. `_PY` is the script's path, for the suite's
+        # stand-in, and advertised to nobody.
         return {order_door.KEY: self.key.hex(), order_door.FAIRWAY: self.fairway,
                 order_door.EVENTS: str(self.events), order_door.ORDERS: str(self.orders), "SLIPWAI_STAGE": "captain",
-                "SLIPWAI_CAPTAIN_ORDERS_CMD": f"{sys.executable} {Path(__file__).resolve().parent / 'orders.py'}",
                 "SLIPWAI_CAPTAIN_ORDERS_PY": str(Path(__file__).resolve().parent / "orders.py")}
 
     # -- whose turn ---------------------------------------------------------------------------------------------
@@ -158,7 +175,7 @@ class Helm:
             try:
                 while self.busy or min(self.queue) != ticket:
                     left = until - time.monotonic()
-                    if left <= 0:
+                    if left <= 0 or self.down:
                         return False
                     self.cond.wait(left)
                 self.busy = True
@@ -177,6 +194,8 @@ class Helm:
     def decide(self, kind: str, slice_id: str, facts: dict[str, Any], may: list[str], default: list[Order],
                check: Check | None = None) -> tuple[list[Order], str]:
         """Put one choice to the agent and return (the orders that decide it, `captain` or `rule`)."""
+        if self.down:
+            return default, "rule"  # let go: nothing is put to it again
         limit = int(self.settings.get("per_hour") or PER_HOUR)
         self.woken = [one for one in self.woken if one >= time.time() - HOUR]
         if len(self.woken) >= limit:
@@ -203,6 +222,19 @@ class Helm:
                 check: Check | None) -> tuple[list[Order], str]:
         held = self.open(kind, slice_id, facts, may, default)
         began = time.monotonic()
+        try:
+            return self.answered(kind, slice_id, held, began, may, default, check)
+        except BaseException as fault:
+            # Whatever ends a decision part way — the machinery failing, the program stopped — the event it opened
+            # is closed by the rule, with why: an event left open is one no rule ever closed.
+            self.close(held["id"], {"v": 1, "id": held["id"], "t": now(), "by": "rule",
+                                    "why": f"the decision ended part way ({type(fault).__name__})", "orders": [],
+                                    "cost": {"seconds": round(time.monotonic() - began, 3), "ready_seconds": None,
+                                             "ended": "failed", "via": "none", "tokens": None}})
+            raise
+
+    def answered(self, kind: str, slice_id: str, held: dict[str, Any], began: float, may: list[str],
+                 default: list[Order], check: Check | None) -> tuple[list[Order], str]:
         done: list[Order] = []
         taken = captain_orders.Taken()
         turn = self.runner.wake(self.events / f"{held['id']}.json", self.events / "state.json", held,
@@ -214,8 +246,9 @@ class Helm:
             how, why = self.watch(turn, held, check, done, taken)
             ready = turn.ready()
         self.take(held, check, done, taken)
-        for why in getattr(self.runner, "refusals", list)():
-            self.stream.noted(why)
+        refused = getattr(self.runner, "refusals", str)()
+        if refused:
+            self.stream.noted(refused)  # one line for the whole event, however many it was refused
         if taken.rekey:
             self.key = secrets.token_bytes(32)
             self.runner.reset()
@@ -232,7 +265,7 @@ class Helm:
         closed = {"v": 1, "id": held["id"], "t": now(), "by": by, "why": why, "orders": taken.seen,
                   "cost": {"seconds": round(time.monotonic() - began, 3), "ready_seconds": ready,
                            "ended": how, "via": getattr(turn, "kind", "none"), "tokens": None}}
-        write_json(self.events / f"{held['id']}.closed.json", closed)
+        self.close(held["id"], closed)
         self.sweep()
         if by == "rule":
             self.ruled(kind, slice_id, why)
@@ -249,8 +282,8 @@ class Helm:
             # the loop holds open — is always answered.
             try:
                 chosen, by = self.decide(kind, slice_id, facts, may, default, check)
-            except Exception as fault:  # noqa: BLE001
-                self.say(f"captain: {kind} decided by the rule — the decision failed ({type(fault).__name__}: {fault})")
+            except Exception as fault:  # noqa: BLE001 — the agent's machinery failed: let go as on the main thread
+                self.failed(fault, f"deciding {kind}")
                 chosen, by = default, "rule"
             try:
                 then(chosen, by)
@@ -264,8 +297,38 @@ class Helm:
     def drain(self) -> None:
         """Let what was asked in the background close, each by its bound, before the captain program leaves:
         an event left open would be one no rule ever closed."""
-        for asked in list(self.asked):
+        for asked in [one for one in self.asked if one is not threading.current_thread()]:
             asked.join(timeout=2 * self.runner.bound(None) + 5)
+
+    def close(self, ident: str, record: dict[str, Any]) -> None:
+        """Write an event's closing record, once: by whichever of its decision and `fail` comes first."""
+        with self.cond:
+            if ident not in self.live:
+                return
+            self.live.discard(ident)
+        write_json(self.events / f"{ident}.closed.json", record)
+
+    def fail(self, why: str) -> None:
+        """Let this captain go: nothing is put to it again; every event still open is closed by the rule now, its
+        record saying why; what was asked in the background is answered — by the rule, at once — before this
+        returns; its session is ended; and no file of its own is left half written."""
+        with self.cond:
+            self.down = why
+            self.cond.notify_all()
+            opened = sorted(self.live)
+        for ident in opened:
+            try:
+                self.close(ident, {"v": 1, "id": ident, "t": now(), "by": "rule", "why": why, "orders": [],
+                                   "cost": {"seconds": None, "ready_seconds": None, "ended": "failed", "via": "none",
+                                            "tokens": None}})
+            except OSError:
+                pass  # the folder may be the very thing that failed
+        self.drain()
+        try:
+            getattr(self.runner, "close", lambda: None)()
+        finally:
+            for part in list(self.events.glob(".*.part")) if self.events.is_dir() else []:
+                part.unlink(missing_ok=True)
 
     def watch(self, turn: Turn, held: dict[str, Any], check: Check | None, done: list[Order],
               taken: captain_orders.Taken) -> tuple[str, str]:
@@ -275,6 +338,9 @@ class Helm:
             self.take(held, check, done, taken)
             if turn.finished():
                 return "finished", ""
+            if self.down:
+                turn.end()
+                return "failed", self.down
             ready = turn.ready()
             if ready is None and time.monotonic() - turn.started() > bound:
                 turn.end()
@@ -295,15 +361,23 @@ class Helm:
         except Exception as fault:  # noqa: BLE001 — a fold that fails must not cost the decision
             state = {"unreadable": str(fault)}
         write_json(self.events / "state.json", {"v": 1, "t": t, "fairway": self.fairway, **state})
-        write_json(self.events / f"{held['id']}.json", held)
+        with self.cond:
+            self.live.add(held["id"])
+        try:
+            write_json(self.events / f"{held['id']}.json", held)
+        except BaseException:
+            with self.cond:
+                self.live.discard(held["id"])  # never put: there is nothing to close
+            raise
         return held
 
     # -- the orders --------------------------------------------------------------------------------------------
 
     def waiting(self) -> list[Path]:
-        return [path for path in sorted(self.orders.glob("*.json")) if not path.name.endswith(".result.json")
-                and path not in self.refused
-                and not path.with_name(f"{path.stem}.result.json").exists()] if self.orders.is_dir() else []
+        present = sorted(self.orders.glob("*.json")) if self.orders.is_dir() else []
+        self.refused.intersection_update(present)  # remembered while it is on disk, and no longer
+        return [path for path in present if not path.name.endswith(".result.json") and path not in self.refused
+                and not path.with_name(f"{path.stem}.result.json").exists()]
 
     def answer(self, path: Path, state: str, why: str) -> None:
         """The result beside the order — or, where none can be written there (a name too long, a folder gone
@@ -315,7 +389,9 @@ class Helm:
             return
 
     def take(self, held: dict[str, Any], check: Check | None, done: list[Order], taken: captain_orders.Taken) -> None:
-        """Read every order not yet read, and do each that passes as it comes."""
+        """Read every order not yet read, and do each that passes as it comes — none, once this captain is let go."""
+        if self.down:
+            return
         for path in self.waiting():
             order = talk.read_json(path)
             if order is None:

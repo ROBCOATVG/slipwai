@@ -36,7 +36,8 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 545 — the conversation's whole format in one place, both runtimes' copy: the inbox and its signing,
+# budget: 590 — the conversation's whole format in one place, both runtimes' copy: the one reader for the run
+# folder, the inbox and its signing,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
 # and the fold into receipts for every kind, which a reader and the writer must not disagree on
 from __future__ import annotations
@@ -79,6 +80,8 @@ WRITING = threading.RLock()
 #: Files in an inbox this process refused and could not move aside: never read again while it runs.
 REJECTED: set[Path] = set()
 READ: dict[Path, tuple[int, list[dict[str, Any]], bytes]] = {}
+#: The most of a thread one read takes; the rest is read at the next.
+THREAD_READ = 8 * 1024 * 1024
 
 
 def now() -> str:
@@ -166,13 +169,11 @@ def key(home: Path, make: bool = False) -> bytes:
                              f"send again: the next message makes a new one")
     if key_trouble(path):
         return b""
-    try:
-        return path.read_bytes()
-    except OSError as fault:
-        if make:
-            raise ValueError(f"the conversation key at {path} cannot be read ({fault}); check its owner, or "
-                             f"remove it and send again") from fault
-        return b""
+    got = read_bytes(path, 4096)
+    if got is None and make:
+        raise ValueError(f"the conversation key at {path} cannot be read; check its owner, or remove it and send "
+                         f"again")
+    return got[0] if got is not None else b""
 
 
 def signature(secret: bytes, message: dict[str, Any], home: Path) -> str:
@@ -221,44 +222,100 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
         message["quote"] = quote
         message["quote_from"] = quote_from
     message["sig"] = signature(key(home, make=True), message, home)
+    whole = json.dumps(message, ensure_ascii=False) + "\n"
+    if len(whole.encode("utf-8")) > LARGEST:
+        raise ValueError(f"this message is {len(whole.encode('utf-8')):,} bytes, and a message may be "
+                         f"{LARGEST:,}: say it shorter, or put what is long in a file and say where it is")
     box = Path(home) / "inbox"
     box.mkdir(parents=True, exist_ok=True)
     aside = box / f".{message['id']}.json.part"
-    aside.write_text(json.dumps(message, ensure_ascii=False) + "\n", encoding="utf-8")
+    aside.write_text(whole, encoding="utf-8")
     os.replace(aside, box / f"{message['id']}.json")
     return message
 
 
 #: The largest file in the run folder the program reads as JSON: a message, an order, an event is a few lines.
+#: `send` refuses to write a message larger, so the reader and the writer hold one limit.
 LARGEST = 1_000_000
+TOO_LARGE = f"it is larger than the {LARGEST:,} bytes a message may be"
+#: How a file in the run folder is opened: once, to read, never through a link, never waiting on a pipe. A flag
+#: this platform has not got (Windows, under Git Bash) is no flag: there the handle's own check still holds.
+OPENING = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
 
 
 def regular(path: Path) -> bool:
-    """Whether a path is a plain file, not followed through a link: nothing else is ever opened — a pipe would
-    wait for ever, a device or a directory is not a message, and a link may lead anywhere."""
+    """Whether a path is a plain file, not followed through a link: for a listing's sake only — what is read is
+    checked again on its own handle (`read_bytes`), since a path looked at twice can change in between."""
     try:
         return stat.S_ISREG(Path(path).lstat().st_mode)
     except (OSError, ValueError):
         return False
 
 
-def read_json(path: Path) -> Any:
-    """The one reader for a JSON file the program takes from the run folder — a message, an order, an event, a
-    result — or None where it will not read it: not a plain file, larger than `LARGEST`, or anything at all
-    that fails while it is read or parsed (nesting deep enough to exhaust the parser included). It never
-    raises: a file somebody put in a folder is never what stops the program."""
+def read_bytes(path: Path, limit: int = LARGEST, start: int = 0) -> tuple[bytes, int] | None:
+    """The one reader for a file in the run folder: (at most `limit` bytes from `start` — counted from the end
+    where it is negative — and the file's size then), or None where it is not a plain file or cannot be read.
+    The path is opened once and everything is asked of the handle, so a pipe, a link or a device swapped in
+    between a look and a read is never what is read, and nothing waits on one."""
     try:
-        if not regular(path) or Path(path).lstat().st_size > LARGEST:
-            return None
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001 — a recursion, an encoding, a race with whoever removed it: all a refusal
+        handle = os.open(path, OPENING)
+    except (OSError, ValueError):
         return None
+    try:
+        held = os.fstat(handle)
+        if not stat.S_ISREG(held.st_mode):
+            return None
+        at = max(0, held.st_size + start) if start < 0 else min(start, held.st_size)
+        os.lseek(handle, at, os.SEEK_SET)
+        chunks, left = [], max(0, limit)
+        while left:
+            chunk = os.read(handle, min(left, 1 << 20))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            left -= len(chunk)
+        return b"".join(chunks), held.st_size
+    except OSError:
+        return None
+    finally:
+        os.close(handle)
+
+
+def read_json(path: Path) -> Any:
+    """A JSON file the program takes from the run folder — a message, an order, an event, a record — through
+    `read_bytes`, or None where it will not read it: not a plain file, larger than `LARGEST`, or anything at all
+    that fails while it is parsed (nesting deep enough to exhaust the parser included). A file somebody put in a
+    folder is never what stops the program; a stop of the program is not an `Exception`, and goes through."""
+    got = read_bytes(path, LARGEST + 1)
+    if got is None or len(got[0]) > LARGEST:
+        return None
+    try:
+        return json.loads(got[0].decode("utf-8"))
+    except Exception:  # noqa: BLE001 — a recursion, an encoding: all a refusal
+        return None
+
+
+def json_lines(raw: bytes) -> list[dict[str, Any]]:
+    """Each line of `raw` that is a JSON object with a `kind` that is a word; any other line, however deep or
+    broken, is skipped, never raised."""
+    found = []
+    for line in raw.split(b"\n"):
+        try:
+            one = json.loads(line.decode("utf-8"))
+        except Exception:  # noqa: BLE001 — a line nobody can parse is not a line
+            continue
+        if isinstance(one, dict) and isinstance(one.get("kind"), str) and one["kind"]:
+            found.append(one)
+    return found
 
 
 def read_box(folder: Path) -> tuple[list[dict[str, Any]], list[Path]]:
     """The messages in one folder of the inbox, and the files in it that are not one."""
     found, bad = [], []
-    for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+    present = sorted(folder.glob("*.json")) if folder.is_dir() else []
+    # Kept only while the file is still there, so what is remembered is bounded by what is on disk.
+    REJECTED.difference_update({one for one in REJECTED if one.parent == folder} - set(present))
+    for path in present:
         if path in REJECTED:
             continue
         message = read_json(path)
@@ -291,7 +348,7 @@ def refused(home: Path) -> list[tuple[Path, str]]:
     box = Path(home) / "inbox"
     found, bad = read_box(box)
     done = handled(home)
-    out = [(path, "it is not a message this reads") for path in bad]
+    out = [(path, TOO_LARGE if oversized(path) else "it is not a message this reads") for path in bad]
     for message in found:
         path = box / f"{message['id']}.json"
         if str(message["id"]) in done:
@@ -299,6 +356,14 @@ def refused(home: Path) -> list[tuple[Path, str]]:
         elif not genuine(home, message):
             out.append((path, REKEYED if rekeyed(home, message) else UNSIGNED))
     return out
+
+
+def oversized(path: Path) -> bool:
+    """Whether a file was refused for its size alone: a plain file over `LARGEST`. For what a receipt says."""
+    try:
+        return regular(path) and Path(path).lstat().st_size > LARGEST
+    except OSError:
+        return False
 
 
 def rekeyed(home: Path, message: dict[str, Any]) -> bool:
@@ -352,28 +417,16 @@ def thread(home: Path) -> list[dict[str, Any]]:
     path = Path(home) / "thread.jsonl"
     with WRITING:
         offset, lines, rest = READ.get(path, (0, [], b""))
-        if not regular(path):
+        got = read_bytes(path, THREAD_READ, offset)
+        if got is not None and got[1] < offset:  # cut back or replaced: read it whole again
+            offset, lines, rest = 0, [], b""
+            got = read_bytes(path, THREAD_READ)
+        if got is None:
             return list(lines)
-        try:
-            with path.open("rb") as held:
-                size = held.seek(0, 2)
-                if size < offset:  # cut back or replaced: read it whole again
-                    offset, lines, rest = 0, [], b""
-                held.seek(offset)
-                raw = rest + held.read()
-                offset = held.tell()
-        except OSError:
-            return []
-        *whole, rest = raw.split(b"\n")
-        lines = list(lines)
-        for line in whole:
-            try:
-                one = json.loads(line.decode("utf-8"))
-            except Exception:  # noqa: BLE001 — a line nobody can parse, however deep, is skipped, never raised
-                continue
-            if isinstance(one, dict) and one.get("kind"):
-                lines.append(one)
-        READ[path] = (offset, lines, rest)
+        *whole, rest = (rest + got[0]).split(b"\n")
+        rest = rest if len(rest) <= LARGEST else b""  # a line longer than any message is not one
+        lines = [*lines, *json_lines(b"\n".join(whole))]
+        READ[path] = (offset + len(got[0]), lines, rest)
         return list(lines)
 
 
@@ -532,9 +585,8 @@ def forget_session(home: Path) -> None:
 
 
 def saved_session(home: Path) -> dict[str, Any]:
-    """What `save_session` wrote, or nothing."""
-    try:
-        held = json.loads((Path(home) / "session.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
+    """What `save_session` wrote, or nothing: read by `read_json`, its fields held to the types it wrote."""
+    held = read_json(Path(home) / "session.json")
+    if not isinstance(held, dict) or not isinstance(held.get("id"), str) or not held["id"]:
         return {}
-    return held if isinstance(held, dict) and held.get("id") else {}
+    return {name: value for name, value in held.items() if name not in ("harness", "t") or isinstance(value, str)}

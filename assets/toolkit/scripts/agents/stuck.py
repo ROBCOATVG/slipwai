@@ -12,6 +12,8 @@ Pure, and the standard library only: a generated project has no slipwai to impor
 from __future__ import annotations
 
 import json
+import os
+import stat
 import statistics
 from datetime import UTC, datetime
 from pathlib import Path
@@ -31,9 +33,9 @@ KINDS = ("start", "done", "ran", "failed", "edit", "said", "wait", "link", "stag
 LAUNCH = 5
 
 
-def stamp(text: str) -> float:
+def stamp(text: object) -> float:
     try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+        return datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp() if isinstance(text, str) else 0.0
     except (TypeError, ValueError):
         return 0.0
 
@@ -42,24 +44,47 @@ def now_stamp() -> float:
     return datetime.now(UTC).timestamp()
 
 
+#: The fields a reader takes as words: one of any other type is read as absent, never raised on.
+WORDS = ("t", "kind", "agent", "what", "role", "model", "task", "id", "commit")
+#: How the log is opened: once, never through a link, never waiting on a pipe (`talk.OPENING`, which the captain
+#: reads through; this module is carried with nothing to import, so it holds the same flags).
+OPENING = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+
+
 def tail_lines(path: Path) -> list[dict]:
-    """The newest lines of one activity log, oldest first. A line that is not a JSON object is skipped."""
-    if not path.is_file():
+    """The newest lines of one activity log, oldest first, as `parsed` takes them."""
+    try:
+        handle = os.open(path, OPENING)
+    except (OSError, ValueError):
         return []
     try:
-        with path.open("rb") as held:
-            size = held.seek(0, 2)
-            held.seek(max(0, size - TAIL))
-            raw = held.read().decode("utf-8", errors="replace")
+        held = os.fstat(handle)
+        size = held.st_size
+        if not stat.S_ISREG(held.st_mode):
+            return []
+        os.lseek(handle, max(0, size - TAIL), os.SEEK_SET)
+        raw = os.read(handle, TAIL)
     except OSError:
         return []
+    finally:
+        os.close(handle)
+    return parsed(raw, size > TAIL)
+
+
+def parsed(raw: bytes, cut: bool) -> list[dict]:
+    """The lines of a log's tail (`cut` where the first may be part of one), oldest first. A line that is not a
+    JSON object of a known kind with an instant is skipped, however deep or broken; a field of the wrong type is
+    left out of the line it is in, so whoever reads it reads it as absent."""
     found = []
-    for line in raw.splitlines()[1 if size > TAIL else 0:]:
+    for line in raw.decode("utf-8", errors="replace").splitlines()[1 if cut else 0:]:
         try:
             one = json.loads(line)
-        except ValueError:
+        except Exception:  # noqa: BLE001 — a recursion, a parse: a line nobody can read is not a line
             continue
-        if isinstance(one, dict) and one.get("kind") in KINDS and one.get("t"):
+        if not isinstance(one, dict):
+            continue
+        one = {name: value for name, value in one.items() if name not in WORDS or isinstance(value, str)}
+        if one.get("kind") in KINDS and one.get("t"):
             found.append(one)
     return found
 

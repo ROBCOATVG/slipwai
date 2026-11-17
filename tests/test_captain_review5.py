@@ -118,9 +118,10 @@ class FolderTest(AgentBase):
             (run / "events").mkdir(parents=True, exist_ok=True)
             (run / "events/ORD").write_text("not a folder", encoding="utf-8")  # nothing can be written in it
         said = self.plant_then_sail(plant)
-        failed = [e for e in self.read("ORD") if e.kind == "told" and e.fields.get("by") == "captain program"]
+        # Said as a `noted` line, which nothing waits on (round 6, finding 2): a `told` was the fault.
+        failed = [e for e in self.read("ORD") if e.kind == "noted" and e.fields.get("by") == "captain program"]
         self.assertEqual(len(failed), 1, said)
-        self.assertIn("The captain agent failed", str(failed[0].fields["message"]))
+        self.assertIn("The captain agent failed", str(failed[0].fields["what"]))
 
 
 class PauseTest(HelmBase):
@@ -219,13 +220,13 @@ class CommandTest(HelmBase):
         for _ in range(2):
             agent.permit({"kind": "execute", "rawInput": {"command": f"python3 {own} none --why x"}}, options)
         runner = agent.Runner("ORD", self.run_dir, agent.settings({}), (["x"], None))
-        said = runner.refusals()
-        self.assertEqual(len(said), 1)
-        self.assertIn(agent.order_command(), said[0])
+        said = runner.refusals()  # one sentence, counted (round 6, finding 2): one a command was the fault
+        self.assertIn("refused 2 commands", said)
+        self.assertIn(agent.order_command(), said)
         noted: list[str] = []
         self.stream.noted = noted.append  # type: ignore[attr-defined]
         helm = self.helm(lambda h, env: None)
-        helm.runner.refusals = lambda: ["refused once"]
+        helm.runner.refusals = lambda: "refused once"
         self.choose(helm)
         self.assertEqual(noted, ["refused once"])
 

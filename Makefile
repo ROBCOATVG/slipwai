@@ -54,6 +54,7 @@ SLOW += test_captain_log
 SLOW += test_harbourmaster_needs test_bridge_needs
 SLOW += test_fence
 SLOW += test_mender test_stop_the_line
+SLOW += test_scaffold_starts_green
 SLOW += test_run_folder
 SLOW += test_harbourmaster_stop
 SLOW += test_example_map_source

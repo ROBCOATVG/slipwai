@@ -8,7 +8,9 @@ whose merge made it, while every other fairway kept building on top. In game-clu
 the red came from the scaffold's own workflow (`actions/upload-artifact@v3`, refused at *Set up job*), the
 captain it would have gone to had parked and left, and the order was never written because the reader of
 `merged` ran eighteen minutes before the captain wrote it. Trunk stayed red overnight with four slices
-built and waiting.
+built and waiting. The scaffold no longer names that ref, and a gate test holds every generated workflow to
+it, so a fresh project needs no mend for it; the permission to move a refused ref stays, for a project
+generated before.
 
 So the harbourmaster sends one agent, `agents/harbour-trunk-mender.md`, into a worktree of its own made from
 trunk, with the red commit, the failed job and its log. It fixes forward or reverts the merge that went red,

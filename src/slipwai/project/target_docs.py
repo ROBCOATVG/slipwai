@@ -24,7 +24,7 @@ from ..deployment_shapes import row
 from ..errors import GenerationError
 from ..loaded_targets import answer, cloud_of
 from ..services import App
-from ..target_protocol import DOCS_PAGES, PREREQUISITES, README_WORDS
+from ..target_protocol import DOCS_PAGES, PIPELINE, PREREQUISITES, README_WORDS
 from ..targets import managed
 from .existing import EXISTING_README
 
@@ -90,6 +90,21 @@ def words(target: str) -> dict[str, str]:
     return dict(answer(target, README_WORDS, default={}) or {})
 
 
+def until_bootstrapped(target: str) -> str:
+    """The sentence that says a deploy is skipped, not failed, before `make bootstrap` — where it is.
+
+    Only for a target that names the variable the pipeline waits for (`configured`); a target that does not
+    has a pipeline that never waits, and a README that said it did would be wrong about the one thing it
+    describes.
+    """
+    variable = dict(answer(target, PIPELINE, default={})).get("configured")
+    if not variable:
+        return ""
+    return (f"\n\nUntil `make bootstrap` has run, every deploy is skipped rather than failed: the pipeline "
+            f"waits for the `{variable}` variable it writes to the forge, so a project pushed before its "
+            f"cloud is ready keeps a green trunk, and the first push after the bootstrap deploys.")
+
+
 def production_readme(target: str, services: list[App], web: list[App], shape: str = "liner") -> str:
     """The README's account of where this project goes to production, for a project that goes anywhere."""
     if target == "existing":
@@ -113,7 +128,7 @@ make rollback ENV=production      # restore the recorded previous images
 
 [Deployment details](docs/deployment.md) and [infrastructure operations](infra/README.md) describe this
 shape. `slipwai converge --shape liner` prepares a proposed change and its data-preserving cutover runbook;
-it never applies infrastructure or discards the current database.
+it never applies infrastructure or discards the current database.{until_bootstrapped(target)}
 """
     nouns = words(target)
     site = nouns["site"] if web else ""
@@ -152,5 +167,5 @@ configures the repository on the forge from the outputs (variables; and, on a fo
 Gitea, the two secrets of a key that can only assume the deploy role). Run it again after `add-service`.
 [`infra/README.md`](infra/README.md) says what it decides and how. `make ci` builds every image and proves
 it answers, which is the half of a deploy that can be proved without an account; `tofu validate` is what the
-gate holds the stacks to.
+gate holds the stacks to.{until_bootstrapped(target)}
 """

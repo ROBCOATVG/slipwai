@@ -26,9 +26,9 @@ where the failure is in the code. Then, in this order:
    a person's own push.
 
 **CI is yours only where no check ran.** When the run failed before any step of the project's did, at *Set up
-job* or while resolving an action, as a deprecated `actions/upload-artifact@v3` does, you may move that
-action's `uses:` to a ref of the same action that runs. That is the only change to `.github/workflows/` you
-may make. You may not remove, skip, reorder or weaken any step, add `continue-on-error`, change an `if:`, or
+job* or while resolving an action, as a deprecated `actions/upload-artifact@v3` does in a project
+generated before the scaffold stopped naming it, you may move that action's `uses:` to a ref of the same
+action that runs. That is the only change to `.github/workflows/` you may make. You may not remove, skip, reorder or weaken any step, add `continue-on-error`, change an `if:`, or
 touch any other line. A red from a check that ran is fixed in the code, or by a revert, and never in the
 workflow.
 

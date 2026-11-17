@@ -90,6 +90,30 @@ def pipeline(target: str) -> dict[str, str]:
     return dict(answer(target, PIPELINE, default={}))
 
 
+def waiting(target: str, job: str, condition: str = "") -> str:
+    """A job's `name:` and `if:` lines, holding it until the forge has been pointed at the cloud.
+
+    A project is pushed before its cloud is ready as often as after — a landing zone someone else owns, an
+    account not yet opened — and `make bootstrap` is what writes the repository variables every sign-in
+    reads. Until then each deploy failed at the sign-in, on every push to `main`, and the harbourmaster
+    holds all merges while any run on trunk is red: the fleet could land nothing for want of a cloud.
+
+    So the first job of each pipeline asks for the variable the target names as `configured`, and is
+    skipped whole while it is empty; the jobs after it need it and are skipped with it, and the run reads
+    *skipped*, which the harbourmaster counts as green. The name says why, on the run's own page. `vars`
+    is offered to a job's `if:` and `name:` (`secrets` is offered to neither), and an unset variable reads
+    as the empty string. A target that names no such variable gets exactly the lines it always had.
+    """
+    variable = pipeline(target).get("configured")
+    if not variable:
+        return f"    if: {condition}\n" if condition else ""
+    ready = f"vars.{variable} != ''"
+    # No colon in it: the `name:` value is a plain YAML scalar, and `: ` inside one ends the file's parse.
+    reason = f"{job} (skipped until make bootstrap sets {variable} on this repository)"
+    return (f"    name: ${{{{ {ready} && '{job}' || '{reason}' }}}}\n"
+            f"    if: {f'{condition} && ' if condition else ''}{ready}\n")
+
+
 def deploy_job(
     environment: str, needs: str, web: bool, target: str, condition: str = "", *, registry: bool = False,
 ) -> str:
@@ -163,10 +187,9 @@ concurrency:
 env:
 """
         + cloud_environment(target, auth0)
-        + """jobs:
-  build:
-    if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+        + "jobs:\n  build:\n"
+        + waiting(target, "build", "github.event.workflow_run.conclusion == 'success'")
+        + """    runs-on: ubuntu-latest
     steps:
 """
         + CHECKOUT
@@ -228,7 +251,7 @@ concurrency:
 env:
 {cloud_environment(target, auth0)}jobs:
   promote:
-    runs-on: ubuntu-latest
+{waiting(target, "promote")}    runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v6
@@ -290,7 +313,7 @@ concurrency:
 env:
 {cloud_environment(target, auth0)}jobs:
   rollback:
-    runs-on: ubuntu-latest
+{waiting(target, "rollback")}    runs-on: ubuntu-latest
     environment: ${{{{ inputs.environment }}}}
     steps:
       - uses: actions/checkout@v6

@@ -59,6 +59,7 @@
 # why: 2026-11-17 7195a540f5479f1b a stage that had already ended when its captain ended it is ended, not a PermissionError the slice parks on
 # why: 2026-11-17 092aea0b14d6c3ca scripts/agents/surfaces.py reads the two counts only where a line begins with the words and says a whole number, and still only prints a note; every other path behaves as before on macOS and Linux
 # why: 2026-11-17 a5546cfb62f5cf44 an agent launched through the package runner is launched one at a time on a machine and tried once more where the runner fell over
+# why: 2026-11-17 c4268550b7e4ca4a mender.py: docstring only. check-dispatch.py: also reads MTG-01-style slice ids where a project's plans name them so, and says which plan files it read when they name none; pure Python string handling, identical on macOS and Linux, no platform branch touched
 
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-memory-none  scripts/agents/harness.py
 0173db91f84c2d792ddd963e73ce10a1ab5516a2b648bce395cd1cbfcb3bef43  event-modelling-postgres-toy-serve  scripts/agents/harness.py
@@ -102,10 +103,6 @@
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-postgres-toy-serve  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-memory-none  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-postgres-toy-serve  scripts/check-crossing.py
-3121138cb0a38b7a64c77b7b22a6e3c46639b3f9234f0dd28d4bcadd170039f3  event-modelling-memory-none  scripts/check-dispatch.py
-3121138cb0a38b7a64c77b7b22a6e3c46639b3f9234f0dd28d4bcadd170039f3  event-modelling-postgres-toy-serve  scripts/check-dispatch.py
-3121138cb0a38b7a64c77b7b22a6e3c46639b3f9234f0dd28d4bcadd170039f3  standard-memory-none  scripts/check-dispatch.py
-3121138cb0a38b7a64c77b7b22a6e3c46639b3f9234f0dd28d4bcadd170039f3  standard-postgres-toy-serve  scripts/check-dispatch.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  event-modelling-memory-none  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  event-modelling-postgres-toy-serve  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  standard-memory-none  scripts/check-imports.py
@@ -185,6 +182,10 @@
 6c52dfa5f9751de3310fac50a2b2cf6ea52d977be01bb63ae124c5a494794d86  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
 6c52dfa5f9751de3310fac50a2b2cf6ea52d977be01bb63ae124c5a494794d86  standard-memory-none  scripts/agents/harbourmaster.py
 6c52dfa5f9751de3310fac50a2b2cf6ea52d977be01bb63ae124c5a494794d86  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
+6c8f548ad07c8405e48f863754400b8d0f2e5ff8aa0f9783dc664490cebcec3e  event-modelling-memory-none  scripts/check-dispatch.py
+6c8f548ad07c8405e48f863754400b8d0f2e5ff8aa0f9783dc664490cebcec3e  event-modelling-postgres-toy-serve  scripts/check-dispatch.py
+6c8f548ad07c8405e48f863754400b8d0f2e5ff8aa0f9783dc664490cebcec3e  standard-memory-none  scripts/check-dispatch.py
+6c8f548ad07c8405e48f863754400b8d0f2e5ff8aa0f9783dc664490cebcec3e  standard-postgres-toy-serve  scripts/check-dispatch.py
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-memory-none  scripts/event-model/model.ts
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-postgres-toy-serve  scripts/event-model/model.ts
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-memory-none  scripts/check-decisions.py
@@ -374,10 +375,6 @@ e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  event-modellin
 e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  event-modelling-postgres-toy-serve  scripts/agents/travel.py
 e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  standard-memory-none  scripts/agents/travel.py
 e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  standard-postgres-toy-serve  scripts/agents/travel.py
-ef581e79e42d1f8d55efffd270a59239a73c24a7a186c396c5f1c54e55ae2125  event-modelling-memory-none  scripts/agents/mender.py
-ef581e79e42d1f8d55efffd270a59239a73c24a7a186c396c5f1c54e55ae2125  event-modelling-postgres-toy-serve  scripts/agents/mender.py
-ef581e79e42d1f8d55efffd270a59239a73c24a7a186c396c5f1c54e55ae2125  standard-memory-none  scripts/agents/mender.py
-ef581e79e42d1f8d55efffd270a59239a73c24a7a186c396c5f1c54e55ae2125  standard-postgres-toy-serve  scripts/agents/mender.py
 efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  event-modelling-memory-none  scripts/agents/telegraph.py
 efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  event-modelling-postgres-toy-serve  scripts/agents/telegraph.py
 efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  standard-memory-none  scripts/agents/telegraph.py
@@ -406,6 +403,10 @@ fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  event-modellin
 fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  event-modelling-postgres-toy-serve  scripts/agents/draft.py
 fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  standard-memory-none  scripts/agents/draft.py
 fbf91ff542a759670f916be44e2122fcbb1ccf342e4326605b878fbbe6201426  standard-postgres-toy-serve  scripts/agents/draft.py
+fcef547ff58ad44f76cf2bd67088813fbeee5960c48fde197f0cbbe69a898e40  event-modelling-memory-none  scripts/agents/mender.py
+fcef547ff58ad44f76cf2bd67088813fbeee5960c48fde197f0cbbe69a898e40  event-modelling-postgres-toy-serve  scripts/agents/mender.py
+fcef547ff58ad44f76cf2bd67088813fbeee5960c48fde197f0cbbe69a898e40  standard-memory-none  scripts/agents/mender.py
+fcef547ff58ad44f76cf2bd67088813fbeee5960c48fde197f0cbbe69a898e40  standard-postgres-toy-serve  scripts/agents/mender.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  event-modelling-memory-none  scripts/agents/sail.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  event-modelling-postgres-toy-serve  scripts/agents/sail.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  standard-memory-none  scripts/agents/sail.py

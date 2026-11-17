@@ -71,18 +71,21 @@ class GeneratedShapeTest(unittest.TestCase):
     def test_no_generated_workflow_asks_a_condition_of_what_github_does_not_offer_there(self) -> None:
         """A step's or a job's `if:` may not read `secrets`: GitHub refuses the whole file before any job is
         made, with no log. The Azure target chose its sign-in that way, so every project generated for Azure
-        began with a red trunk, and the mender — rightly forbidden to edit an `if:` — could not clear it."""
+        began with a red trunk, and the mender — rightly forbidden to edit an `if:` — could not clear it.
+
+        Held to GitHub's context-availability table, not only to `secrets`: a job's `if:` and `name:` and a
+        step's `if:` each read only what GitHub offers there (`test_scaffold_starts_green.OFFERED`), over
+        every target, shape and profile."""
         import re
+
+        from test_scaffold_starts_green import asked_where_not_offered, parsed, workflows
 
         from slipwai.scaffold import project_files
         asks = re.compile(r"^\s*(?:-\s*)?if:.*\bsecrets\.", re.MULTILINE)
-        for target in ("aws", "azure"):
-            for shape in ("skiff", "liner"):
-                files = project_files("a-staff-tool", "event-modelling", target, self.apps(), shape=shape)
-                for name, text in files.items():
-                    if name.startswith(".github/workflows/") and isinstance(text, str):
-                        with self.subTest(target=target, shape=shape, workflow=name):
-                            self.assertEqual(asks.findall(text), [])
+        for (target, shape, profile, name), text in workflows().items():
+            with self.subTest(target=target, shape=shape, profile=profile, workflow=name):
+                self.assertEqual(asks.findall(text), [])
+                self.assertEqual(asked_where_not_offered(parsed(text)), [])
         deploy = project_files("a-staff-tool", "event-modelling", "azure", self.apps())[".github/workflows/deploy.yml"]
         self.assertIn("steps.azure-sign-in.outputs.by == 'federation'", deploy)
         self.assertIn("steps.azure-sign-in.outputs.by == 'secret'", deploy)

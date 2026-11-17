@@ -21,7 +21,6 @@ from slipwai.captains_strip import strip_html
 from slipwai.on_you import waiting
 from slipwai.talk_page import payload
 
-NOW = talk.now()
 
 
 def row(slice_id: str, state: str, fairway: str = "ORD") -> dict[str, str]:
@@ -61,16 +60,17 @@ class CaptainWindowTest(BoardTest):
         self.assertIn("Conversation with the ORD captain", page)
 
     def test_what_a_captain_agent_decided_today_is_read_from_its_orders_and_events(self) -> None:
+        now = talk.now()  # taken here: a suite that runs past midnight has a new today
         mine = talk.send(talk.place(self.run_dir, "ORD"), "say", "accent colour on every button")
         orders, events = self.run_dir / "orders/ORD", self.run_dir / "events/ORD"
-        written(orders / "o1.json", {"v": 1, "id": "o1", "t": NOW, "verb": "message", "slice": "ORD-01",
+        written(orders / "o1.json", {"v": 1, "id": "o1", "t": now, "verb": "message", "slice": "ORD-01",
                                      "text": "accent colour on every button", "of": mine["id"]})
         written(orders / "o1.result.json", {"result": "done"})
-        written(orders / "o2.json", {"v": 1, "id": "o2", "t": NOW, "verb": "start", "slice": "ORD-09"})
+        written(orders / "o2.json", {"v": 1, "id": "o2", "t": now, "verb": "start", "slice": "ORD-09"})
         written(orders / "o2.result.json", {"result": "refused", "why": "ORD-09 has no clearance"})
-        written(orders / "o3.json", {"v": 1, "id": "o3", "t": NOW, "verb": "say", "text": "I nudged ORD-01."})
+        written(orders / "o3.json", {"v": 1, "id": "o3", "t": now, "verb": "say", "text": "I nudged ORD-01."})
         (orders / "broken.json").write_text("{not json", encoding="utf-8")
-        written(events / "e1.json", {"v": 1, "id": "e1", "t": NOW, "kind": "stuck", "slice": "ORD-02"})
+        written(events / "e1.json", {"v": 1, "id": "e1", "t": now, "kind": "stuck", "slice": "ORD-02"})
         written(events / "e1.closed.json", {"by": "rule", "why": "the captain was silent past its bound"})
         code, page = self.get("/captain-window?fairway=ORD")
         self.assertEqual(code, 200)

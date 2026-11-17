@@ -128,6 +128,34 @@ class StripTest(BoardTest):
         self.assertIn("Captain · BIL · sent · the fleet is not running", drawn)
         self.assertEqual(self.post("/talk/all", {"message": "  "})[0], 400)
 
+    def test_a_long_tell_to_every_captain_is_kept_and_one_past_the_limit_is_refused_before_any_is_told(self) -> None:
+        from slipwai.talk_said import told_all
+
+        long = "the accent colour, said at length. " * 3000  # past the 64 KB the tail was once read in
+        self.assertEqual(self.post("/talk/all", {"message": long})[0], 200)
+        self.assertEqual([one["text"] for one in told_all(self.root)], [long.strip()])
+        self.assertEqual(self.post("/talk/all", {"message": "and a short one"})[0], 200)
+        self.assertEqual([one["text"] for one in told_all(self.root)], ["and a short one", long.strip()],
+                         "the next tell keeps the long one")
+        code, said = self.post("/talk/all", {"message": "x" * talk.LARGEST})
+        self.assertEqual(code, 400, said)
+        self.assertIn(f"{talk.LARGEST:,}", said)
+        for fairway in ("BIL", "ORD"):
+            self.assertEqual(len(talk.inbox(talk.place(self.run_dir, fairway))), 2, "no captain was told it")
+
+    def test_turns_said_in_one_second_are_drawn_in_the_order_they_were_said(self) -> None:
+        from slipwai.talk_fold import fold
+
+        place = talk.place(self.run_dir, "ORD", "ORD-01")
+        with mock.patch.object(talk, "now", return_value="2026-11-17T09:00:00Z"):
+            for number in range(20):
+                talk.send(place, "say", f"message {number}")
+            talk.note(place, "ask", id="ask-1", what="question", text="first ask", options=[])
+            talk.note(place, "paused", by="person", why="second note")
+        drawn = [one["text"] for one in fold(place)["turns"]]
+        self.assertEqual(drawn, [f"message {number}" for number in range(20)]
+                         + ["first ask", "Paused by you: second note"])
+
 
 class AskTest(unittest.TestCase):
     """A product question waits on a person only where the project says a person answers them."""

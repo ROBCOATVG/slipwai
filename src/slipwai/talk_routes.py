@@ -20,7 +20,7 @@ from .seats import parameter
 from .talk_fold import heard as thread_heard
 from .talk_fold import see
 from .talk_page import SHOWN, dumps, payload
-from .talk_said import answer, home, receipt_line, say, steer, tell, tell_every_captain
+from .talk_said import answer, home, known, receipt_line, say, steer, tell, tell_every_captain
 
 JSON = "application/json; charset=utf-8"
 TEXT = "text/plain; charset=utf-8"
@@ -73,13 +73,19 @@ def route_post(board: Any, where: str, held: dict[str, Any]) -> bool:
                      str(held.get("of", "")))
         said = f"{sent['kind']} sent to {slice_id} · message {sent['id']}"
     elif where in ("/talk/interrupt", "/talk/again"):
-        # Interrupt now: the queued one withdrawn and the same words sent to cut in. Send again: the same words.
+        # Interrupt now: the queued one withdrawn and the same message sent to cut in. Send again: the same
+        # message. Either way it stays whose it was — who sent it, through whom, what it routes and the words
+        # it quotes — and only the mode changes: a captain's message re-sent as the person's would answer a
+        # park and give a run back that a captain's words never do.
         was = message_of(board, fairway, slice_id, str(held.get("id", "")))
         if where == "/talk/interrupt":
             steer(root, fairway, slice_id, "withdraw", of=str(was["id"]))
-        sent = say(root, fairway, slice_id, str(was.get("text", "")),
-                   "interrupt" if where == "/talk/interrupt" else str(was.get("mode") or "wait"), talk.PERSON,
-                   str(was.get("of", "")))
+        known(root, fairway)
+        sent = talk.send(home(root, fairway, slice_id), "say", str(was.get("text", "")),
+                         "interrupt" if where == "/talk/interrupt" else str(was.get("mode") or "wait"),
+                         str(was.get("from") or talk.PERSON), of=str(was.get("of", "") or ""),
+                         via=str(was.get("via", "") or ""), quote=str(was.get("quote", "") or ""),
+                         quote_from=str(was.get("quote_from", "") or ""))
         said = receipt_line(root, fairway, slice_id, sent)
     elif where == "/talk/seen":
         try:

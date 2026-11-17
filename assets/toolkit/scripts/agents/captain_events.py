@@ -25,6 +25,8 @@ process with a shell of its own could not be confined, so there is none.
 
 Standalone and dependency-free: this runs inside a generated project, which has no slipwai to import.
 """
+# budget: 530 — the one place an order is read, checked again, done or refused, and told what became of it,
+# with the bound, the queue of asks and the fallback to the rule that keep the program from waiting on its agent
 from __future__ import annotations
 
 import json
@@ -54,6 +56,9 @@ DECIDING = {"choose-next": ("start",), "gate-failed": ("retry", "park"), "stuck"
 NEEDS = ("choose-next", "gate-failed", "question", "permission")
 #: What a slice's turn under way asks: put to the captain ahead of everything else, since the turn waits on it.
 ASKS = ("question", "permission")
+#: The orders the program accepts at once and carries out after: a start waits for the loop to start it, and a
+#: stuck slice's park for its turn to end. Their result says `accepted` until `Helm.carried` says what became of it.
+LATER = (("start", "choose-next"), ("park", "stuck"))
 #: How often the orders folder is read while the agent works.
 LOOK = 0.1
 #: Events a stream's captain is woken for in an hour, where `harbour.json` does not say.
@@ -379,12 +384,28 @@ class Helm:
         return [path for path in present if not path.name.endswith(".result.json") and path not in self.refused
                 and not path.with_name(f"{path.stem}.result.json").exists()]
 
-    def answer(self, path: Path, state: str, why: str) -> None:
+    def answer(self, path: Path, state: str, why: str, **more: str) -> None:
         """The result beside the order — or, where none can be written there (a name too long, a folder gone
         read-only), the order remembered so it is not looked at again."""
         self.refused.add(path)
         try:
-            write_json(path.with_name(f"{path.stem}.result.json"), {"v": 1, "t": now(), "state": state, "why": why})
+            write_json(path.with_name(f"{path.stem}.result.json"),
+                       {"v": 1, "t": now(), "state": state, "why": why, **more})
+        except OSError:
+            return
+
+    def carried(self, order: Order, done: bool, why: str = "") -> None:
+        """What became of an order the program accepted and carries out later (`LATER`): `carried out`, or
+        `not carried out` with why — a start the stream could no longer make, a park whose slice had ended. Its
+        `state` stays `done`, which says it was accepted, so a reader of the first form is not misled."""
+        ident = str(order.get("id") or "")
+        path = self.orders / f"{ident}.result.json"
+        held = talk.read_json(path) if ident else None
+        if not isinstance(held, dict) or held.get("carried") != "accepted":
+            return
+        try:
+            write_json(path, {**held, "carried": "carried out" if done else "not carried out",
+                              **({} if done else {"carried_why": why})})
         except OSError:
             return
 
@@ -414,7 +435,8 @@ class Helm:
             self.answer(path, "refused", str(fault) or type(fault).__name__)
             return
         done.append(order)
-        self.answer(path, "done", said)
+        later = (order["verb"], held["kind"]) in LATER
+        self.answer(path, "done", said, carried="accepted" if later else "carried out")
 
     def sweep(self) -> None:
         """Every order still unanswered once its event is closed: refused, saying so."""
@@ -459,12 +481,18 @@ class Helm:
         return answer_of(what, order, by)
 
 
-def readable(ask: dict[str, Any]) -> bool:
-    """Whether a permission is a read inside the project: the most a captain may allow outside a berth."""
+#: The project this program runs: a slice's berth is a worktree beside it, never inside it.
+PROJECT = order_door.project_root(Path(__file__).resolve())
+
+
+def readable(ask: dict[str, Any], project: Path = PROJECT) -> bool:
+    """Whether a permission is a read inside the project: the most a captain may allow outside a berth. Inside
+    the project, not the berth the slice asked from (`root`): a read inside its berth is allowed by its own
+    policy and never asked, so measured against the berth no read a captain was asked about could be allowed."""
     tool = ask.get("tool") or {}
-    root = Path(str(ask.get("root") or "")).resolve() if ask.get("root") else None
+    root = Path(project).resolve()
     places = [str(one) for one in tool.get("locations") or []]
-    if str(tool.get("kind") or "") not in captain_orders.READS or not places or root is None:
+    if str(tool.get("kind") or "") not in captain_orders.READS or not places:
         return False
     if any(Path(place).name == talk.KEY for place in places):
         return False  # a key file is read by nobody a captain answers for

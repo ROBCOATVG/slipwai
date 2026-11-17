@@ -489,8 +489,8 @@ def halted(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, 
 
 
 def hold(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, str, str, str]:
-    """`halted`, and since when: the instant the hold standing now was first heard — a person's `pausing`
-    where the turn has not yet ended, kept when its `paused` follows. What the board's card says."""
+    """`halted`, and since when: the instant the hold standing now was first heard — a `pausing` where the
+    turn has not yet ended, kept when its `paused` follows. What the board's card says."""
     last: tuple[str, str, str, str] = ("", "", "", "")
     for one in thread(home) if lines is None else lines:
         kind, by, t = one.get("kind"), str(one.get("by", "")), str(one.get("t", ""))
@@ -498,11 +498,13 @@ def hold(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, st
         # captain's stop or pause on top of it is not a second hold, and its stop does not hand the slice
         # back to the queue. A merge ends it as well, since a merged slice is held by nothing.
         person_holds = last[1] == PERSON
-        if kind == "pausing" and by == PERSON:
-            # A person's pause holds from the moment it is heard, whatever then ends the turn: it is the hold.
+        if kind == "pausing" and (by == PERSON or not person_holds):
+            # A pause holds from the moment it is heard, whatever then ends the turn — a captain's as a person's:
+            # one held only once its turn ended was lost when a bound cancelled that turn, and the slice was run
+            # again. A person's hold still outranks a captain's, which neither lifts nor replaces it.
             last = ("paused", by, str(one.get("why", "")), last[3] if last[:2] == ("paused", by) else t)
         elif kind == "pausing":
-            continue  # anyone else's is only asked for until its turn ends and it is `paused`
+            continue
         elif kind == "resumed":
             if not person_holds or by in (PERSON, "merge"):
                 last = ("", "", "", "")

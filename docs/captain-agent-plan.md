@@ -54,6 +54,13 @@ layout and wording, not for code: `Board.dc.html` on the owner's design canvas.
 8. **Every conversation with a slice goes through its driver.** The board never writes a stream's deck log
    again. What a person says is dropped in the slice's inbox; the driver delivers it and writes the receipt.
    The instruction to a session to "check your inbox between stages" goes.
+   *Built, as of the whole-branch review (2026-11-17), with two known gaps, deferred:* `fleet.py tell`
+   (`/cruise-tell`) still writes `told` straight to the deck log. Such words have no inbox file and no
+   receipt, are not put to the captain agent, and are not delivered to a held-open session; they reach a
+   session only through `assets/cruise/cruise.md`'s "read the inbox at every stage boundary", so that
+   instruction stays until `tell` is rerouted. Sessions also use `tell` for hand-backs. And the board still
+   writes three deck kinds itself: `read` (*Mark read*), `need-done` (a ticked need) and a person's
+   `accepted` (a demo a person accepts).
 9. **A person chooses per message**: *Send* waits for the current turn to end, *Interrupt* cancels the turn
    and delivers at once. Send is the default. On the headless path there is no Interrupt and delivery is at
    the next dispatch.
@@ -77,7 +84,12 @@ layout and wording, not for code: `Board.dc.html` on the owner's design canvas.
     time), and nothing blocks or is listed as waiting. A person is asked only where a person is at the
     wheel: under `/sail`, in a project with no cruise settings, or for a stop the settings set to *park and
     ask me*. There it is a card under *Waiting on you*, the turn held five minutes for a quick answer before
-    the slice pauses.
+    the slice pauses. *Not built (whole-branch review, 2026-11-17):* the five-minute hold. A slice's mid-turn
+    question is answered at once — declined, or by its captain where answering is on — and the driver writes
+    the `answer` beside the `ask`, so the board's answer card for a slice's own mid-turn question
+    (`talk_fold.open_asks`) is never drawn for one; it is drawn for a captain's own `ask`, which is listed
+    under *Waiting on you* in every run, `/cruise` or not, since no skipper or recommendation answers a captain
+    and this decision says nothing of one.
 13. **Where conversations live.** Each in a window of its own: a slice's (where it is, example map,
     conversation) and a captain's (its slices, what it decided today, conversation). The board carries a
     marker and the last thing said on a card, and a one-line quick send in the opened card. Captains are
@@ -142,7 +154,10 @@ A slice's is `talk/<fairway>/<slice>/`; a captain's is `talk/<fairway>/_captain/
   `seen` (an inbox file was read), `delivered` (`id`, `mode`), `reply` (`to`, `text`), `unaddressed` (`id`),
   `failed` (`id`, `why`), `withdrawn` (`id`), `ask` (`id`, `what`: `permission`|`question`, `text`,
   `options`), `answer` (`to`, `by`, `text`), `turn` (`state`: `started`|`ended`|`cancelled`, `stop`),
-  `paused`, `resumed`, `stopped` (`by`, `why`), `session` (`id`, `loaded`: bool).
+  `paused`, `resumed`, `stopped` (`by`, `why`), `session` (`id`, `loaded`: bool). *As built:* also `said`
+  (a captain's word to a person, `text`, `by`), `held` (`id`, `why`: kept back, at a merge), `returned` (`id`),
+  `pausing` (`by`, `why`: a pause heard and not yet in force — a hold from the moment it is written, a
+  person's outranking a captain's), and `merged`. An `ask` a captain gave carries `by: captain`.
 - A receipt is read from the two: in `inbox/` with no `delivered` → queued; `delivered` → delivered;
   `reply` → answered; `failed` → not delivered; `unaddressed` → the quiet flag.
 - `session.json` — the saved session id and harness, written at close, read at open.
@@ -151,9 +166,14 @@ What the agent does (tool calls, its plan, a sentence for a person) goes on bein
 log, `activity/<fairway>/<slice>.jsonl`, in the kinds `activity.py` already reads, plus `plan`.
 
 ### 2.2 The captain's orders (`orders/`)
-The captain agent acts only by running `python3 scripts/agents/orders.py <verb> …` in the project, which
-validates the shape and writes `orders/<fairway>/<id>.json`; the captain program reads it, checks it against
-the rules, does it or refuses it, and writes `orders/<fairway>/<id>.result.json` (`done` or `refused`, `why`).
+The captain agent acts only by running the order command its prompt hands it — the program's own interpreter
+and the project's own `scripts/agents/orders.py`, both by absolute path, every prose value in single quotes —
+`<python> <orders.py> <verb> …`, which validates the shape and writes `orders/<fairway>/<id>.json`; the captain
+program reads it, checks it against the rules, does it or refuses it, and writes
+`orders/<fairway>/<id>.result.json` (`done` or `refused`, `why`; *added in the whole-branch review:* for a
+`start` and a stuck slice's `park`, which the program carries out after accepting them, `carried`:
+`accepted`, then `carried out` or `not carried out` with `carried_why`). The session's policy parses the
+command as a POSIX shell would and refuses what a shell would read as more than one run of that command.
 Verbs: `start <slice>`, `message <slice> --text … [--interrupt] [--of <id>]`, `retry <slice> --note …`,
 `park <slice> --why … [--needs …]`, `pause|resume|stop <slice> --why …`, `say --text …` (to the person, in
 the captain's conversation), `ask --text … [--options …]` (becomes *Waiting on you*), `allow|refuse <ask-id>
@@ -165,7 +185,7 @@ An **event** is what wakes it: `events/<fairway>/<id>.json` with `{"v":1,"id","t
 accept for it; `default` is the orders the fixed rule would give, in the order shape below. An event is closed
 by its orders' results or by the fallback, recorded as `events/<fairway>/<id>.closed.json` (`by`:
 `captain`|`rule`, `why`, `orders`: the order ids read for it, `cost`: `{"seconds", "ready_seconds", "ended":
-"finished"|"bound"|"unavailable", "via": "protocol"|"none", "tokens": null}`). Beside the
+"finished"|"bound"|"unavailable"|"failed", "via": "protocol"|"none", "tokens": null}`). Beside the
 events, `events/<fairway>/state.json` is the stream as its log says it at the moment of the event (`in_flight`,
 `unmerged`, `merged`, `parked`, `stream_parked`, `attempts`, `trunk_red`, `recent`: the newest forty deck
 lines without `fairway`), rewritten at every event.
@@ -198,7 +218,7 @@ six, by verb (every value a string unless said):
 | `choose-next` | null | `free` (slots free now), `in_flight` (slices), `cleared`: `[{"slice", "steers_by", "sets", "progress"}]` in the rule's order (`progress` 0–8, the captain's rung) |
 | `gate-failed` | the slice | `slice`, `why`, `cause` (`silence`, `exit`, `demo`, `gate`), `tried`, `attempts`, `sets` |
 | `stuck` | the slice | `slice`, `warnings`: `[{"kind": "long"|"circles"|"quiet", "level", "said"}]` |
-| `message` | null | `inbox` (the message's id in `talk/<fairway>/_captain/`), `from`, `text`, `mode`, `t` |
+| `message` | null | `inbox` (the message's id in `talk/<fairway>/_captain/`), `from`, `text`, `mode`, `t`; `of` where it answers something, a captain's own `ask` among them |
 | `question`, `permission` | the asking slice | `ask` (its id), `text`, `options`, `tool` (`{"title", "kind", "locations"}` for a permission, else null) |
 | `trunk-red` | null | `commit`, `job`, `t` |
 
@@ -230,7 +250,21 @@ most it is woken in an hour; absent is the program alone, and `SLIPWAI_CAPTAIN` 
 `off`, `1` for the project's own harness's launch over the protocol, or a command that starts an agent
 speaking it).
 `.specify/cruise.json`: `sessions` defaults to
-`protocol` where the harness's registry row has a launch; `demos` is `hand` (default) or `person`.
+`protocol` where the harness's registry row has a launch marked `proven: true`; `demos` is `hand` (default) or
+`person`.
+
+### 2.4 Known and recorded (whole-branch review, 2026-11-17)
+- **The captain's confinement rests on the harness asking.** `captain_agent.permit` sees only what the
+  harness asks permission for. The captain's session starts in the project's root and so inherits the
+  project's own harness allow-rules (`src/slipwai/project/agent_settings.py`), and anything those rules allow
+  is never asked. Starting the session in a folder of its own was weighed and not done: the run folder is
+  inside the project's repository, and whether a harness then reads the repository's settings anyway is the
+  harness's own behaviour, which no test here can see. **The first thing a supervised run with a real
+  harness must confirm** is that every tool call of the captain's session other than a read reaches `permit`.
+- **Two builds with one version string.** Two builds both numbered `2.1.0.dev0` can disagree on the deck
+  kinds they know, and the app's version gate compares the strings alone, so it cannot tell them apart. A
+  project migrated by this build is opened with this build.
+
 
 ## 3. Rules every stream keeps
 

@@ -55,6 +55,23 @@ class WholeStreamParkTest(Fixture):
         self.assertEqual(answer["line"], "read by the captain · delivered when the slice carries on")
         self.assertFalse(answer["changeable"], "a told is written: nothing can take it back now")
 
+    def test_an_answer_from_a_parked_slice_s_card_is_the_answer_on_the_same_park_s_row(self) -> None:
+        from slipwai.fleet import fairways
+        from slipwai.voyage import held_on
+        from slipwai.voyage_page import SCRIPT, slice_html
+
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01", t="2026-11-16T09:00:00Z"),
+                  logs.entry("parked", fairway="ORD", why="ORD-01: the gate stayed red", t=PARKED))
+        owner = next(one for one in fairways(self.root)[0] if one.name == "ORD")
+        card = slice_html({"slice": "ORD-01", "title": "", "state": "waiting", "fairway": "ORD",
+                           "clearance": "running", "why": "", **held_on(owner, "ORD-01")})
+        of = card.split('data-of="', 1)[1].split('"', 1)[0]
+        row = self.row()
+        self.assertEqual(of, row["key"], "the card's box answers the park the row answers")
+        self.assertIn("of: event.target.dataset.of", SCRIPT, "and the page sends it with the card's answer")
+        tell(self.root, "ORD", "sorted from the card", "ORD-01", of=of)  # what the card's button posts
+        self.assertEqual(self.row()["answer"]["text"], "sorted from the card", "the row shows it: no second box")
+
     # With no captain agent the captain program reads its own inbox, and a person's message to the stream
     # clears a park that names no slice: what telling a stream did before the board stopped writing the log.
     def test_an_unaimed_group_button_reaches_the_captain_which_answers_the_stream_s_park(self) -> None:
@@ -101,6 +118,19 @@ class AnsweredRowTest(BoardTest):
         stranger = talk.send(place, "say", "from a session", by="session")
         self.assertEqual(self.post("/tell", {"fairway": "ORD", "message": "x", "question": "D13",
                                              "replaces": stranger["id"]})[0], 400)
+
+
+class UnaimedQuestionTest(BoardTest):
+    def test_a_question_whose_slice_field_is_no_slice_id_is_answered_to_the_stream_s_captain(self) -> None:
+        self.deck("ORD", logs.entry("question", fairway="ORD", id="D14", slice="the chart", what="Which accent?"))
+        code, said = self.post("/tell", {"fairway": "ORD", "message": "The club's green.", "question": "D14"})
+        self.assertEqual(code, 200, said)
+        [sent] = talk.inbox(talk.place(logs.run_dir(self.root), "ORD", talk.CAPTAIN))
+        self.assertEqual((sent["of"], sent["from"]), ("question:D14", "person"))
+        self.assertIn("The club's green.", sent["text"])
+        row = next(one for one in board(self.root, config(self.root))["inbox"]  # type: ignore[attr-defined]
+                   if one["kind"] == "question")
+        self.assertEqual((row["aim"], row["answer"]["text"]), ("", sent["text"]), "and its row shows it answered")
 
 
 class CrossSiteTest(BoardTest):

@@ -308,7 +308,7 @@ function paintPassage(found){
       if (box && box.value.trim()) {
         event.target.disabled = true;
         send('/tell', {fairway: answer, slice: event.target.dataset.slice, message: box.value.trim(),
-                      replaces: event.target.dataset.replaces || ''});
+                      of: event.target.dataset.of || '', replaces: event.target.dataset.replaces || ''});
       }
     }
     const story = event.target.dataset && event.target.dataset.storyboard;

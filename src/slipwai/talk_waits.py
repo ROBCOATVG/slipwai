@@ -2,7 +2,8 @@
 
 Two things a conversation can hold a person up with, and one it never does. A product question a slice
 asked is *Holding work up* where the project says a person answers them, and nothing at all where the
-skipper does (the skipper's answer is in the thread, and in the decision log). A slice a person paused is
+skipper does (the skipper's answer is in the thread, and in the decision log). A captain's own `ask` is
+*Holding work up* in every run: no skipper answers a captain, so it is a person's. A slice a person paused is
 *When you have time* — it will not move until they resume it — and so is one its captain paused: no timer and
 no rule lifts a captain's pause (`docs/captain-agent-plan.md`, decision 17a), so unless the captain resumes it,
 a person is the one who will. A message nobody has read is a marker on a card, never a count.
@@ -94,7 +95,26 @@ def items(root: Path, rows: list[dict[str, str]]) -> tuple[list[dict[str, Any]],
             later.append({"n": 1, "href": window(row["fairway"], slice_id),
                           "text": f"{slice_id} is paused by {holder(folded['by'])}, and no rule lifts it: "
                                   f"resume it when you are ready"})
-    return holding, later
+    return holding + captains_asking(root, rows), later
+
+
+def captains_asking(root: Path, rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+    """A captain's own open asks (its `ask` order), holding work up whatever the run: it asks only what a person
+    must decide, and under `/cruise` no skipper or recommendation answers a captain, so unlisted it reached
+    nobody. A person's answer — the box in its window, carrying the ask's id — takes it off the list."""
+    run = run_dir(root)
+    found: list[dict[str, Any]] = []
+    for fairway in sorted({row.get("fairway") or "" for row in rows} - {""}):
+        if talk.CAPTAIN not in talk.conversations(run, fairway):
+            continue
+        try:
+            folded = turns(talk.place(run, fairway, talk.CAPTAIN))
+        except ValueError:
+            continue
+        found += [{"n": 1, "href": captain_window(fairway) + f"#ask-{one['id']}",
+                   "text": f"The {fairway} captain asks: {first_sentence(one['text'], 90) or 'a question'}"}
+                  for one in open_asks(folded) if one.get("asker") == "captain"]
+    return found
 
 
 def holder(by: str) -> str:

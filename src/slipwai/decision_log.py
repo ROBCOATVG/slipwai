@@ -134,7 +134,7 @@ def decisions(root: Path) -> list[Decision]:
     for feature, fairway in streams(root):
         lines, _ = entries(root, fairway, feature)
         asked = {str(e.fields.get("id")): str(e.fields.get("what", "")) for e in lines if e.kind == "question"}
-        receipts = {str(e.fields.get("told")) for e in lines if e.kind == "read"}
+        receipts = {str(e.fields.get("told")) for e in lines if e.kind == "read" and not e.fields.get("inbox")}
         for line in (e for e in lines if e.kind == "decision"):
             what, ident = str(line.fields.get("what", "")), str(line.fields.get("id", ""))
             named = _NUMBER.match(what)

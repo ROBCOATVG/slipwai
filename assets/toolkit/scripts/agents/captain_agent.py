@@ -26,6 +26,8 @@ pointed at a real checkout.
 
 Standalone and dependency-free: this runs inside a generated project, which has no slipwai to import.
 """
+# budget: 420 — the captain session's whole policy in one place: the command parsed as a shell would, the
+# launch only over the protocol, and the evals' one door, each beside the reasons it is confined so
 from __future__ import annotations
 
 import argparse
@@ -57,7 +59,7 @@ BRIEF = "agents/drive-captain.md"
 #: Beside a stream's events: whether its captain is an agent, and why not where it is not.
 STATUS = "captain.json"
 #: What the evals write at the root of a throwaway project they lay out; `decide` runs nowhere else.
-EVAL_MARKER = ".slipwai-eval"
+EVAL_MARKER = order_door.EVAL_MARKER
 NO_LAUNCH = "no captain agent: this harness has no proven protocol launch"
 
 
@@ -91,6 +93,17 @@ def settings(held: dict[str, Any]) -> dict[str, Any]:
     agent = named.lower() != "off" and (said.get("agent") is True or bool(named))
     return {"agent": agent, "bound": number("bound", BOUND), "answers": said.get("answers") is True,
             "per_hour": int(number("per_hour", PER_HOUR))}
+
+
+def overridden(held: dict[str, Any]) -> str:
+    """Where `SLIPWAI_CAPTAIN` in the environment, not `harbour.json`, is what turned the captain agent on or
+    off, that said as one sentence; `''` where the two agree or the variable is unset."""
+    named = os.environ.get(COMMAND, "").strip()
+    said = held.get("captain") if isinstance(held.get("captain"), dict) else {}
+    if not named or (named.lower() != "off") == (said.get("agent") is True):
+        return ""
+    return (f"SLIPWAI_CAPTAIN={'off' if named.lower() == 'off' else named[:60]} in the environment turns this "
+            f"stream's captain agent {'off' if named.lower() == 'off' else 'on'}, whatever harbour.json says")
 
 
 def command() -> str:
@@ -130,7 +143,7 @@ def order_command() -> str:
 
 #: The commands the captain session was refused since the captain program last asked: how many, and the first —
 #: kept to that, so what the deck log says of them is bounded however many it tries.
-REFUSED: dict[str, Any] = {"count": 0, "first": ""}
+REFUSED: dict[str, Any] = {"count": 0, "first": "", "why": ""}
 #: How much of a refused command is said: enough to recognise it, never the agent's words at length.
 SAID = 80
 
@@ -147,7 +160,9 @@ def prompt(fairway: str, event: Path, state: Path, held: dict[str, Any]) -> str:
     return (f"You are the captain of the `{fairway}` stream of the project at {ROOT}. Read {ROOT / BRIEF} for what "
             f"you are asked and what you may do. Event {held['id']} ({held['kind']}) needs you: read {event}. The "
             f"stream's state, as its log says it now, is {state} — believe it over anything you remember. Act only "
-            f"by running `{order_command()} <verb> … --event {held['id']}` — that command exactly, as written — and "
+            f"by running `{order_command()} <verb> … --event {held['id']}` — that command exactly, as written, with "
+            f"every prose value in single quotes (`--why 'the third run failed; read the demo log'`, an apostrophe "
+            f"written '\\''), since any other quoting of `;`, `$` or a backtick is refused — and "
             f"change nothing else anywhere; this "
             f"event takes {', '.join(held.get('may') or [])}. Say what you did in one sentence a person can read, "
             f"with `say`, where it is worth saying, and end your turn.")
@@ -191,13 +206,18 @@ def permit(tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str | No
     kind = str(tool_call.get("kind") or "")
     if kind in ("read", "search", "think") and allowed and not keyed(tool_call):
         return allowed
-    if kind == "execute" and allowed and ordering(tool_call):
+    why = refusal(tool_call) if kind == "execute" else ""
+    if kind == "execute" and allowed and not why:
         return allowed
     if kind == "execute":
         raw = tool_call.get("rawInput") or {}
         command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
         REFUSED["count"] += 1
-        REFUSED["first"] = REFUSED["first"] or " ".join((command or str(tool_call.get("title") or "a command")).split())[:SAID]
+        if not REFUSED["first"]:
+            # The order command's two long paths said once, at the end, so what is cut short is what it added.
+            shown = command.replace(order_command(), "<order command>", 1) if command else ""
+            REFUSED["first"] = " ".join((shown or str(tool_call.get("title") or "a command")).split())[:SAID]
+            REFUSED["why"] = why or "no way to allow it was offered"
     return refused
 
 
@@ -209,27 +229,93 @@ def keyed(tool_call: dict[str, Any]) -> bool:
     return any(Path(place).name == talk.KEY or place.endswith(f"/{talk.KEY}") for place in places)
 
 
+#: Outside any quotes, what a shell would read as more than words: a second command, a redirection, a
+#: substitution, a subshell, a glob, a comment. Each refuses the command; inside single quotes each is a letter.
+BARE = {";": "a `;`", "&": "an `&`", "|": "a `|`", ">": "a `>`", "<": "a `<`", "`": "a backtick", "$": "a `$`",
+        "(": "a `(`", ")": "a `)`", "*": "a `*`", "?": "a `?`", "[": "a `[`", "\n": "a new line"}
+
+
+def tokens(command: str) -> list[str] | str:
+    """A command split as a POSIX shell splits it, or why it is refused. Parsed, never scanned: text in single
+    quotes is inert and may hold anything a sentence holds — `;`, a backtick, `$0.01`, `draft -> sent` — which
+    is where the brief tells the captain to put every prose value. Inside double quotes a `$`, a backtick or a
+    line continued is refused, since there the shell would still expand it; outside quotes anything a shell
+    reads as more than words (`BARE`) is refused, as is a `#` that begins a word, which would hide the rest."""
+    words: list[str] = []
+    word: list[str] = []
+    started = False
+    index, size = 0, len(command)
+    while index < size:
+        char = command[index]
+        if char == "'":
+            end = command.find("'", index + 1)
+            if end < 0:
+                return "a single quote that is never closed"
+            word.append(command[index + 1:end])
+            started, index = True, end + 1
+            continue
+        if char == '"':
+            index += 1
+            while index < size and command[index] != '"':
+                char = command[index]
+                if char in "$`":
+                    return f"{BARE[char]} inside double quotes, where the shell expands it: single-quote prose"
+                if char == "\\" and index + 1 < size:
+                    if command[index + 1] == "\n":
+                        return "a line continued inside double quotes"
+                    if command[index + 1] in '"\\':
+                        index += 1
+                word.append(command[index])
+                index += 1
+            if index >= size:
+                return "a double quote that is never closed"
+            started, index = True, index + 1
+            continue
+        if char == "\\":
+            if index + 1 >= size or command[index + 1] == "\n":
+                return "a line continued outside quotes"
+            word.append(command[index + 1])  # `'it'\''s'`: the brief's way to write an apostrophe
+            started, index = True, index + 2
+            continue
+        if char in " \t":
+            if started:
+                words.append("".join(word))
+            word, started, index = [], False, index + 1
+            continue
+        if char in BARE:
+            return f"{BARE[char]} outside quotes"
+        if char == "#" and not started:
+            return "a `#` outside quotes, which begins a comment"
+        word.append(char)
+        started, index = True, index + 1
+    if started:
+        words.append("".join(word))
+    return words
+
+
 def ordering(tool_call: dict[str, Any]) -> bool:
-    """Whether a command is one run of this project's own `orders.py`, by its resolved path, under the very
-    interpreter this program runs under, and nothing beside it: no shell, no copy of the script in a berth a
-    slice could have edited, and nothing where the command itself cannot be read — the display title is never
-    taken for it."""
+    """Whether a command is one run of this project's own `orders.py`, and nothing beside it (`refusal`)."""
+    return not refusal(tool_call)
+
+
+def refusal(tool_call: dict[str, Any]) -> str:
+    """Why a command is not one run of this project's own `orders.py` under the very interpreter this program
+    runs under, or `''` where it is: its first two words exactly the two the prompt handed the captain — no
+    shell, no name looked up on PATH (a shim answers that), no copy of the script in a berth a slice could have
+    edited — and nothing where the command itself cannot be read: the display title is never taken for it."""
     raw = tool_call.get("rawInput") or {}
     command = str(raw.get("command") or "") if isinstance(raw, dict) else ""
-    if not command or any(mark in command for mark in (";", "&", "|", ">", "<", "`", "$", "\n")):
-        return False
+    if not command:
+        return "no command could be read"
+    words = tokens(command)
+    if isinstance(words, str):
+        return words
+    if len(words) < 2 or words[0] != sys.executable or not Path(words[1]).is_absolute():
+        return "not the order command as it was handed"
     try:
-        words = shlex.split(command)
-    except ValueError:
-        return False
-    if len(words) < 2 or words[0] != sys.executable:
-        return False  # exactly the interpreter it was handed: not a name looked up on PATH, which a shim answers
-    script = Path(words[1]).expanduser()
-    script = script if script.is_absolute() else ROOT / script
-    try:
-        return script.resolve() == ORDERS.resolve()
+        return "" if Path(words[1]).resolve() == ORDERS.resolve() else "it runs another copy of `orders.py`"
     except OSError:
-        return False
+        return "its script could not be found"
 
 
 class Runner:
@@ -247,12 +333,12 @@ class Runner:
     def refusals(self) -> str:
         """What the session was refused since this was last asked — once an event — as one sentence for the deck
         log: how many commands, and the first, cut short. `''` where it was refused nothing."""
-        count, first = int(REFUSED["count"]), str(REFUSED["first"])
-        REFUSED.update(count=0, first="")
+        count, first, why = int(REFUSED["count"]), str(REFUSED["first"]), str(REFUSED["why"])
+        REFUSED.update(count=0, first="", why="")
         if not count:
             return ""
-        return (f"the captain session was refused {count} command{'s' if count > 1 else ''} while it answered one "
-                f"event, the first `{first}`: it may run only `{order_command()} …`")
+        return (f"the captain session was refused {count} command{'s' if count > 1 else ''} in one event, the first "
+                f"`{first}` for {why}: it may run only `{order_command()} …`, prose in single quotes")
 
     def holds_session(self) -> bool:
         return self.driver is not None and self.driver.alive

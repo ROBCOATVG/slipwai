@@ -936,6 +936,7 @@ def halted(slice_id: str, fairway: str) -> None:
     reads its own inbox while it is up, or — with none up — by what the inbox says now."""
     held = FLIGHT.get(slice_id, {}).get("driver")
     if isinstance(held, drive.Drive):
+        held.paused_now()  # a pause still waiting on a turn the bound ended holds as surely as one that landed
         if held.halted is not None:
             FLIGHT[slice_id].pop("driver", None)
             raise Halted(*held.halted)
@@ -1772,12 +1773,15 @@ def choose(feature: str, fairway: str, candidates: list[str], free: int, flying:
     if free <= 0 or len(candidates) <= free:
         return [str(one["slice"]) for one in default]
     asked = HELM is not None
-    chosen = [str(one["slice"]) for one in decided("choose-next", "", facts, ["start", "say", "none"], default, check)
+    orders = [one for one in decided("choose-next", "", facts, ["start", "say", "none"], default, check)
               if one.get("verb") == "start"]
-    if not asked or now is None:
-        return chosen
-    still, room = now()
-    return [one for one in chosen if one in still][:max(0, room)]
+    chosen = [str(one["slice"]) for one in orders]
+    if asked and now is not None:
+        still, room = now()
+        chosen = [one for one in chosen if one in still][:max(0, room)]
+    said_started({"orders": [one for one in orders if one.get("id")]}, chosen,
+                 "it may no longer start: held, parked, or no slot free")
+    return chosen
 
 
 def ask_choice(feature: str, candidates: list[str], free: int, flying: list[str], pending: dict) -> None:
@@ -1787,12 +1791,21 @@ def ask_choice(feature: str, candidates: list[str], free: int, flying: list[str]
     default, facts, check = choice(feature, candidates, free, flying)
 
     def then(orders: list[dict], _by: str) -> None:
-        pending.update(chosen=[str(one["slice"]) for one in orders if one.get("verb") == "start"], done=True)
+        pending.update(chosen=[str(one["slice"]) for one in orders if one.get("verb") == "start"], done=True,
+                       orders=[one for one in orders if one.get("verb") == "start" and one.get("id")])
     pending["asked"] = True
     known = facts_or_rule("choose-next", facts) if helm is not None else None
     if known is None or guarded("putting choose-next", lambda: helm.later(  # type: ignore[union-attr]
             "choose-next", "", known, ["start", "say", "none"], default, then, check)) is None:
         then(default, "rule")  # let go meanwhile, its facts not gathered, or failed before it was asked: the rule's choice, at once
+
+
+def said_started(pending: dict, starting: list[str], why: str) -> None:
+    """Each start the captain ordered, carried out or not, on its result: accepted is not the same as started."""
+    helm = HELM
+    for one in pending.get("orders") or []:
+        if helm is not None:
+            helm.carried(one, str(one.get("slice")) in starting, why)
 
 
 def still_startable(feature: str, fairway: str, queued: list[str], flying: list[str]) -> tuple[list[str], int]:
@@ -1843,9 +1856,14 @@ def look_stuck(feature: str, fairway: str, flying: list[str]) -> None:
             for one in chosen:
                 home = conversation(fairway, slice_id)
                 person = talk.halted(home)[1] == talk.PERSON or captain_orders.person_asked(home)
+                if one.get("verb") == "park" and helm is not None and one.get("id"):
+                    helm.carried(one, slice_id in FLIGHT and not person,
+                                 "a person holds it" if person else "its turn had already ended")
                 if one.get("verb") == "park" and slice_id in FLIGHT and not person:
                     # Ended through its conversation, as a person's stop is, and parked where it ends.
                     FLIGHT[slice_id]["parking"] = str(one.get("why") or "its captain parked it")
+                    if one.get("needs"):  # what would let it go on, carried as the gate-failed park carries it
+                        FLIGHT[slice_id]["parking_needs"] = [{"what": str(one["needs"]), "by": "person"}]
                     talk.send(conversation(fairway, slice_id), "stop", str(one.get("why") or ""),
                               by=f"captain:{fairway}")
         guarded("putting stuck", lambda: helm.later("stuck", slice_id, {"slice": slice_id, "warnings": found},
@@ -1853,7 +1871,7 @@ def look_stuck(feature: str, fairway: str, flying: list[str]) -> None:
                                                     [captain_rules.none("stuck")], then, check))
 
 
-def heard_captain(fairway: str) -> None:
+def heard_captain(fairway: str, feature: str = "") -> None:
     """Put what was said to this stream's captain to its agent, one event a message: where it goes is the
     captain's to decide. With no agent `heard_stream` is the whole of it. Each is put once: one a silent agent
     left is closed by the rule — its `told` has already done what a `told` does — and not put again."""
@@ -1865,16 +1883,33 @@ def heard_captain(fairway: str) -> None:
         ident = str(message["id"])
         talk.note(home, "delivered", id=ident, mode=str(message.get("mode") or "wait"))
         facts = {"inbox": ident, "from": str(message.get("from") or ""), "text": str(message.get("text") or ""),
-                 "mode": str(message.get("mode") or "wait"), "t": str(message.get("t") or "")}
+                 "mode": str(message.get("mode") or "wait"), "t": str(message.get("t") or ""),
+                 # What it answers, where it answers something: a person's answer to the captain's own `ask`.
+                 **({"of": str(message["of"])} if message.get("of") else {})}
 
         def then(_orders: list[dict], by: str, ident: str = ident) -> None:
             if by == "rule":
                 talk.note(home, "unaddressed", id=ident, why="its captain did not answer it; the stream's log has it "
                                                             "as a `told`, which answers a park it has")
+            elif feature:
+                read_told(feature, fairway, ident)
             talk.settle(home, ident)
         guarded("putting a message", lambda: helm.later("message", "", facts,
                                                         ["message", "pause", "resume", "stop", "say", "ask", "none"],
                                                         [captain_rules.none("message")], then))
+
+
+def read_told(feature: str, fairway: str, inbox_id: str) -> None:
+    """The `told` a person's words to the stream became is read once its captain has acted on them: a `read`
+    naming the `told`'s instant, as every reader honours, and its inbox id, which ties it to that `told` alone
+    where another line shares its second. Without it the words stayed unread after the captain had answered,
+    and an hour later a person at the wheel was told their message had gone unanswered."""
+    found = entries(feature, fairway)
+    if any(e.kind == "read" and str(e.fields.get("inbox", "")) == inbox_id for e in found):
+        return
+    told = next((e for e in found if e.kind == "told" and str(e.fields.get("inbox", "")) == inbox_id), None)
+    if told is not None:
+        write(feature, fairway, logs.entry("read", fairway=fairway, told=told.t, inbox=inbox_id))
 
 
 def handed_to_captain(home: Path) -> set[str]:
@@ -1960,6 +1995,12 @@ def helm(feature: str, fairway: str) -> captain_events.Helm | None:
     held = captain_agent.settings(harbour())
     run = logs.run_dir(ROOT)
     events = run / "events" / fairway
+    overriding = captain_agent.overridden(harbour())
+    if overriding and "captain-env" not in NOTED:
+        # Said once: a variable left in a shell is otherwise invisible, and the stream is not what its file says.
+        NOTED.add("captain-env")
+        print(f"captain: {fairway}: {overriding}", flush=True)
+        Stream(feature, fairway).noted(overriding)
     if not held["agent"]:
         return None
     started = captain_agent.launch()
@@ -2552,7 +2593,7 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
         # Every pass, while there is an agent: putting an event costs the loop nothing, since it does not wait.
         if HELM is not None and time.monotonic() - looked_stuck >= POLL:
             looked_stuck = time.monotonic()
-            heard_captain(fairway)
+            heard_captain(fairway, feature)
             look_stuck(feature, fairway, list(threads))
         if not ON.get("drained"):
             limit = allowed(fairway, len(threads), found)
@@ -2578,6 +2619,7 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
                 if pending.get("done"):
                     still, room = still_startable(feature, fairway, queued, list(threads))
                     starting = [one for one in pending["chosen"] if one in still][:max(0, min(room, free))]
+                    said_started(pending, starting, "it may no longer start: held, parked, or no slot free")
                     pending.clear()
                 elif not pending and queued:
                     if HELM is not None and 0 < free < len(queued):
@@ -2600,6 +2642,8 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
             # The captain answered when nothing could start — the turn drained, the stream parked or merging, no
             # slot free: its choice is closed and dropped, and the loop can end. A pending choice is always
             # answered, by the captain or by the rule at the bound (`captain_events.Helm.later`).
+            said_started(pending, [], "nothing could start when it came: the turn had drained, or the stream was "
+                                      "parked or merging")
             pending.clear()
         if not threads and not pending:
             return said
@@ -2618,7 +2662,8 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
             # the set has not got is a line every reader refuses, so writing it raised here and ended the turn.
             line = (let_go(feature, fairway, slice_id, *held["halted"]) if how == "held" else
                     finished(feature, fairway, slice_id, False, str(held["parking"]), since, alone and not threads,
-                             carried={"cause": "other"}) if how == "parked" else
+                             carried={"cause": "other", **({"needs": held["parking_needs"]}
+                                                           if held.get("parking_needs") else {})}) if how == "parked" else
                     let_go(feature, fairway, slice_id, *held["halted"]) if held.get("halted") else
                     finished(feature, fairway, slice_id, done, fault, since, alone and not threads, waiting,
                              held.get("park") or {}))
@@ -2701,7 +2746,7 @@ def turn(fairway: str) -> str:
     found = entries(feature, fairway)
     LET_GO.clear()
     heard_closed(feature, fairway, found)
-    heard_captain(fairway)
+    heard_captain(fairway, feature)
     found = entries(feature, fairway)
     parked, held = state(found, fairway)
     if parked:

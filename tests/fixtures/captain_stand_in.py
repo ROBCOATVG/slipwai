@@ -14,7 +14,16 @@ must leave the same deck log as without it. Every other mode misbehaves, writing
 - `flood` gives forty orders at once; `lift` resumes the slice named in `STAND_IN_TARGET`;
 - `message` sends `STAND_IN_TARGET` a message and then does as `today`;
 - `stopper` stops every slice in flight at every event, which is how a captain would try to run a slice for
-  ever, and otherwise does as `today`.
+  ever, and otherwise does as `today`;
+- `script` gives, for each kind of event, the orders `SCRIPT` (JSON, `{kind: [order, ...]}`) lists, the event's
+  `default` for a kind it does not name, and the default again for a kind in `SCRIPT_ONCE` after its first
+  time, with `$slice`, `$inbox`, `$ask` and `$first` (the first slice offered) put for their values; what it
+  was woken for and each order's exit and output go to `SCRIPT_LOG`.
+
+With `STAND_IN_ASKS=1` each order through `orders.py` is asked for first, as a real agent asks before it runs a
+command: a `session/request_permission` for an `execute` call whose command is the order command its prompt
+handed it, each value in single quotes as the brief says, run by `sh -c` only where the program allows it, so
+the captain session's policy (`captain_agent.permit`) is in the loop of the whole run.
 
 Run with an event file's path instead — `captain_stand_in.py <event>` — it is the evals' captain under test,
 once, as a process: their throwaway project is the one place a captain runs that way.
@@ -25,6 +34,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -53,18 +63,85 @@ def order(held, verb, secret=KEY, **said):
     os.replace(aside, ORDERS / f"{body['id']}.json")
 
 
+#: Where `STAND_IN_ASKS` is set: the open session, the order command its prompt handed it, and the next request
+#: number, so `door` can ask the program before it runs an order.
+ASKING: dict = {"session": "", "command": "", "number": 9000}
+
+
+def quoted(value):
+    """A value in single quotes, an apostrophe written `'\\''`, as the captain's brief says."""
+    return "'" + str(value).replace("'", "'\\''") + "'"
+
+
 def door(held, one):
     """One order through `orders.py`, as the real captain gives it."""
-    argv = [sys.executable, os.environ["SLIPWAI_CAPTAIN_ORDERS_PY"], one["verb"]]
+    words = [one["verb"]]  # what follows the order command, each value as the captain quotes it
     target = one.get("slice") or one.get("ask")
     if target:
-        argv.append(str(target))
-    for name in ("note", "why", "text", "needs", "of"):
+        words.append(quoted(target))
+    for name in ("note", "why", "text", "needs", "of", "options"):
         if one.get(name):
-            argv += [f"--{name}", str(one[name])]
+            value = one[name]
+            words += [f"--{name}", quoted(",".join(value) if isinstance(value, list) else value)]
     if one.get("interrupt"):
-        argv.append("--interrupt")
-    subprocess.run([*argv, "--event", held["id"]], check=False, capture_output=True, text=True)
+        words.append("--interrupt")
+    words += ["--event", quoted(held["id"])]
+    if os.environ.get("STAND_IN_ASKS") == "1":
+        # `raw` is what a careless or a hostile captain would write after the order command, as it stands.
+        command = " ".join([ASKING["command"], *([one["raw"]] if "raw" in one else words)])
+        if not ask(command):
+            logged({"event": held["kind"], "order": one, "exit": None, "out": "refused permission", "command": command})
+            return
+        done = subprocess.run(["sh", "-c", command], check=False, capture_output=True, text=True)
+    else:
+        argv = [sys.executable, os.environ["SLIPWAI_CAPTAIN_ORDERS_PY"], *shlex.split(" ".join(words))]
+        done = subprocess.run(argv, check=False, capture_output=True, text=True)
+    logged({"event": held["kind"], "order": one, "exit": done.returncode, "out": (done.stdout + done.stderr).strip()})
+
+
+def logged(entry):
+    if os.environ.get("SCRIPT_LOG"):
+        with open(os.environ["SCRIPT_LOG"], "a", encoding="utf-8") as out:
+            out.write(json.dumps(entry) + "\n")
+
+
+def ask(command):
+    """Ask the program to run a command, as an agent does before it runs one: whether it was allowed."""
+    ASKING["number"] += 1
+    number = ASKING["number"]
+    call = {"toolCallId": f"call-{number}", "title": command[:60], "kind": "execute", "status": "pending",
+            "rawInput": {"command": command}}
+    send(method="session/update", params={"sessionId": ASKING["session"],
+                                          "update": {"sessionUpdate": "tool_call", **call}})
+    send(id=number, method="session/request_permission", params={
+        "sessionId": ASKING["session"], "toolCall": call,
+        "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"},
+                    {"optionId": "no", "name": "Reject", "kind": "reject_once"}]})
+    for line in sys.stdin:
+        message = json.loads(line)
+        if message.get("id") == number and "method" not in message:
+            outcome = (message.get("result") or {}).get("outcome") or {}
+            return outcome.get("outcome") == "selected" and outcome.get("optionId") == "yes"
+    return False
+
+
+def scripted(held):
+    """`script`: the orders `SCRIPT` lists for this kind of event, given through `orders.py`."""
+    script = json.loads(os.environ.get("SCRIPT") or "{}")
+    facts = held.get("facts") or {}
+    subs = {"$slice": held.get("slice") or "", "$inbox": facts.get("inbox") or "", "$ask": facts.get("ask") or "",
+            "$first": ((facts.get("cleared") or [{}])[0]).get("slice", "")}
+    logged({"woken": held["kind"], "slice": held.get("slice"), "may": held.get("may"), "facts": facts})
+    given = script.get(held["kind"])
+    if given is None:
+        given = held.get("default") or []
+    if held["kind"] in os.environ.get("SCRIPT_ONCE", "").split(","):
+        mark = Path(os.environ["SCRIPT_LOG"] + "." + held["kind"])
+        if mark.exists():
+            given = held.get("default") or []
+        mark.write_text("x", encoding="utf-8")
+    for one in given:
+        door(held, {key: (subs.get(value, value) if isinstance(value, str) else value) for key, value in one.items()})
 
 
 def decide(event):
@@ -72,6 +149,9 @@ def decide(event):
     held = json.loads(Path(event).read_text(encoding="utf-8"))
     target = os.environ.get("STAND_IN_TARGET", "")
     cleared = [one["slice"] for one in (held.get("facts") or {}).get("cleared") or []]
+    if MODE == "script":
+        scripted(held)
+        return True
     if MODE == "silent":
         return False
     if MODE == "late":
@@ -130,9 +210,12 @@ def speak():
                                     "agentInfo": {"name": "captain stand-in", "version": "0.1"},
                                     "agentCapabilities": {"loadSession": False}, "authMethods": []})
         elif method == "session/new":
-            send(id=number, result={"sessionId": f"captain-{secrets.token_hex(3)}", "configOptions": []})
+            ASKING["session"] = f"captain-{secrets.token_hex(3)}"
+            send(id=number, result={"sessionId": ASKING["session"], "configOptions": []})
         elif method == "session/prompt":
             words = " ".join(str(block.get("text", "")) for block in params.get("prompt") or [])
+            handed = re.search(r"by running `(.+?) <verb> ", words)
+            ASKING["command"] = handed.group(1) if handed else ""
             found = re.search(r"needs you: read (\S+\.json)\. ", words)
             if found and not decide(found.group(1)):
                 waiting = number  # silent: the turn stays open until the program cancels it

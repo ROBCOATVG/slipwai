@@ -9,7 +9,7 @@ beyond the directory, `ask` puts a question, `slow` waits on a permission until 
 For a driver held open (`tests/test_drive_held.py`): `count` says how many prompts its session has had,
 `linger` waits for a cancel, `dawdle` waits for a `.go` file before it goes on, and a delivered message is
 answered `Reply: <text>` — or not at all where it says `quiet`. A captain's drive does the same where a
-`.linger` or `.dawdle` file is in the berth, once each.
+`.linger` or `.dawdle` file is in the berth, once each, and asks what `asked_once` says, once each.
 """
 import hashlib
 import json
@@ -212,6 +212,7 @@ def turn(number, session, words):
                 if marker == ".busy":
                     return busy(session)
                 dawdle()
+        asked_once(number, session)
         drove(words)
         return "end_turn"
     allowed, cancelled = permission(number * 10 + 1, session, HOME / "prototype" / "index.html")
@@ -237,6 +238,34 @@ def turn(number, session, words):
         said = (result or {}).get("content") or {}
         text(session, f"You said: {said.get('answer', '(nothing)')}")
     return "end_turn"
+
+
+def asked_once(number, session):
+    """What a captain's drive asks mid-turn, once each, where a marker is in `STAND_IN_MARKS` (the berth where it
+    is not set — a berth is made at run time, so a suite names a folder of its own): `.outside` a write beyond
+    the project, `.readin` a read of `STAND_IN_READ` (a file of the project outside the berth), `.askq` a
+    question. What it was answered is written beside the marker, `<marker>-said`."""
+    marks = Path(os.environ.get("STAND_IN_MARKS") or HOME)
+    for marker in (".outside", ".readin", ".askq"):
+        if not (marks / marker).exists():
+            continue
+        (marks / marker).unlink()
+        if marker == ".outside":
+            said, _ = permission(number * 10 + 2, session, Path("/etc/hosts"))
+        elif marker == ".readin":
+            path = Path(os.environ.get("STAND_IN_READ") or HOME / "specs/ordering/chart.yaml").as_posix()
+            call = {"toolCallId": f"call-r{number}", "title": f"Read {path}", "kind": "read", "status": "pending",
+                    "locations": [{"path": path}], "rawInput": {"filePath": path}}
+            update(session, sessionUpdate="tool_call", **call)
+            said, _ = ask(number * 10 + 5, "session/request_permission", {
+                "sessionId": session, "toolCall": call,
+                "options": [{"optionId": "yes-once", "name": "Allow once", "kind": "allow_once"},
+                            {"optionId": "no-once", "name": "Reject", "kind": "reject_once"}]})
+        else:
+            said, _ = ask(number * 10 + 4, "elicitation/create", {
+                "sessionId": session, "message": "Which colour?", "mode": "form",
+                "requestedSchema": {"type": "object", "properties": {"answer": {"type": "string"}}}})
+        (marks / f"{marker}-said").write_text(json.dumps(said), encoding="utf-8")
 
 
 def drove(words):

@@ -2,18 +2,21 @@
 """The only way a stream's captain agent acts: one order, checked for shape, signed, and handed to the program.
 
 The captain became a program because rules given to an agent as instructions failed under load. It is an
-agent again only for choosing, and only through this door: the agent runs
+agent again only for choosing, and only through this door: the agent runs the order command its prompt
+hands it — `<python>` and `<orders.py>` below, the program's own interpreter and this script, both by their
+full paths — with every prose value in single quotes, since its session's policy refuses anything a shell
+would read as more than words (`captain_agent.tokens`):
 
-    python3 scripts/agents/orders.py start ORD-02
-    python3 scripts/agents/orders.py retry ORD-01 --note "the demo log names the missing seed step"
-    python3 scripts/agents/orders.py park ORD-01 --why "the third run failed the same way" --needs "a person reads it"
-    python3 scripts/agents/orders.py message ORD-01 --text "the rounding rule is in D12" [--interrupt] [--of <id>]
-    python3 scripts/agents/orders.py message captain:BIL --text "ORD-02 has set Paid"
-    python3 scripts/agents/orders.py pause|resume|stop ORD-01 --why "..."
-    python3 scripts/agents/orders.py say --text "Started ORD-02 ahead of ORD-03: it is nearer its merge"
-    python3 scripts/agents/orders.py ask --text "Ship the export without the CSV?" --options yes,no
-    python3 scripts/agents/orders.py allow|refuse ask-3 --why "..."
-    python3 scripts/agents/orders.py none --why "nothing to add"
+    <python> <orders.py> start ORD-02 --event <id>
+    <python> <orders.py> retry ORD-01 --note 'the demo log names the missing seed step' --event <id>
+    <python> <orders.py> park ORD-01 --why 'the third run failed the same way; read the demo log' --needs 'a person reads it'
+    <python> <orders.py> message ORD-01 --text 'the rounding rule is in D12' [--interrupt] [--of <id>]
+    <python> <orders.py> message captain:BIL --text 'ORD-02 has set Paid'
+    <python> <orders.py> pause|resume|stop ORD-01 --why '...'
+    <python> <orders.py> say --text 'Started ORD-02 ahead of ORD-03: it is nearer its merge'
+    <python> <orders.py> ask --text 'Ship the export without the CSV?' --options yes,no
+    <python> <orders.py> allow|refuse ask-3 --why '...'
+    <python> <orders.py> none --why 'nothing to add'
 
 and this writes `orders/<fairway>/<id>.json` under the run folder, bound to the event it answers (`--event`,
 or the one event still open). The captain program reads it, checks it against the rules **again** — this
@@ -64,6 +67,8 @@ KEY = "SLIPWAI_CAPTAIN_KEY"
 FAIRWAY = "SLIPWAI_CAPTAIN_FAIRWAY"
 ORDERS = "SLIPWAI_CAPTAIN_ORDERS"
 EVENTS = "SLIPWAI_CAPTAIN_EVENTS"
+#: What the evals write at the root of a throwaway project they lay out: the one place an order goes unsigned.
+EVAL_MARKER = ".slipwai-eval"
 
 
 def project_root(script: Path) -> Path:
@@ -165,7 +170,10 @@ def give(verb: str, target: str = "", event: str = "", **said: Any) -> tuple[int
         secret = b""
     fairway = os.environ.get(FAIRWAY, "")
     run = run_dir()
-    evaluating = bool(os.environ.get("SLIPWAI_EVAL"))
+    # The evals' door alone, by the same test `captain_agent.evaluate` makes: `SLIPWAI_EVAL=1` in a project
+    # carrying their marker. Any value in any project let a slice's session write unsigned order files.
+    evaluating = (os.environ.get("SLIPWAI_EVAL") == "1"
+                  and (project_root(Path(__file__).resolve()) / EVAL_MARKER).is_file())
     if evaluating and not fairway:
         # An eval's throwaway project holds one event; its stream is the folder it is in. An order written
         # here unsigned is read by the eval and nothing else: the program believes no unsigned order.

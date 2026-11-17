@@ -306,7 +306,7 @@ def answer_html(row: dict[str, str]) -> str:
             f'<div class="ask"{" hidden" if given else ""}><textarea id="{esc(box)}" rows="4" placeholder="Your '
             f'answer, or what {esc(row["slice"])} needs to know"></textarea>'
             f'<button type="button" class="go" data-answer="{esc(row["fairway"])}" data-slice="{esc(row["slice"])}" '
-            f'data-box="{esc(box)}">Send to {esc(row["slice"])}</button></div>')
+            f'data-of="{esc(row.get("park_of", ""))}" data-box="{esc(box)}">Send to {esc(row["slice"])}</button></div>')
 
 
 def slice_html(row: dict[str, str]) -> str:

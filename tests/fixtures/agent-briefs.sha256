@@ -63,7 +63,8 @@
 # Re-taken 2026-11-16 for changelog.d/the-captain-is-an-agent.md (fourth review): only the rows for agents/drive-captain.md moved, deliberately — a captain's pause is lifted by no rule, and a person's pause still waiting for its turn is the person's.
 # Re-taken 2026-11-16 for changelog.d/the-captain-is-an-agent.md (fifth review): only the rows for agents/drive-captain.md moved, deliberately — the captain runs the exact order command its prompt hands it.
 # Re-taken 2026-11-17 for changelog.d/the-captain-is-an-agent.md (sixth review): only the rows for agents/drive-captain.md moved, deliberately — the order command is in the prompt alone, quoted as one, and the brief names the `noted` line.
-19503349c5ba7dacb07f284879b696f041c99f0f2ddbc2816f3f7118187297a6  .  agents/drive-captain.md
+# Re-taken 2026-11-17 for changelog.d/captain-agent-review-fixes.md (whole-branch review): only the rows for agents/drive-captain.md moved, deliberately — every prose value of an order goes in single quotes, and a refused command is said with the rule that refused it.
+9d99a43f0e9468e36794a133c0f8b7a1523b7582f5656430ebc53c7e938257be  .  agents/drive-captain.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  .  agents/sail-adversary-privateer.md
 f2dab9b976f34e96095a5e8352ea2bd182e19a4cefb6dbd7a5f7749fdba916c8  .  agents/sail-converge-navigator.md
 6252ae68400e55596bb58a2cebf658d3d3560e0e7cc000fa1c959ae4556520c5  .  agents/sail-decide-skipper.md
@@ -75,7 +76,7 @@ e36ab9a1227df04f33120679c4e9c66cf0fe17fc1edcd35500552328ee9019d2  .  agents/sail
 2ba5efe2404960e4bd50b4bcd9cdf4c3dec191e4d2634514539fb6a39c7affc5  .  agents/sail-slice-watch.md
 31677aa0d822ac03d6ee9c3762abc38aa29c6d3ce197772f612b4474acc0dcd8  .  agents/sail-tasks-quartermaster.md
 11db71ae6d5675ef05aa8583f7c70925f2269001f57d7db08f7a9e6747c52984  .  agents/sail-unblock-bosun.md
-19503349c5ba7dacb07f284879b696f041c99f0f2ddbc2816f3f7118187297a6  delivery  agents/drive-captain.md
+9d99a43f0e9468e36794a133c0f8b7a1523b7582f5656430ebc53c7e938257be  delivery  agents/drive-captain.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  delivery  agents/sail-adversary-privateer.md
 8332db386dfcf0aff0bec7f2ed86ea13156bdb8eb88427f0f3903f6727433d59  delivery  agents/sail-converge-navigator.md
 6252ae68400e55596bb58a2cebf658d3d3560e0e7cc000fa1c959ae4556520c5  delivery  agents/sail-decide-skipper.md

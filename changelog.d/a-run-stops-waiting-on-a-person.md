@@ -49,6 +49,6 @@ PATCH
 built and parked for a line it could not write, write the line with `deck_line.py` and start the fleet
 again; a story with fixed dates in its `try-it.json` can take the relative ones. Branches named `mend/*`
 left by earlier runs are safe to delete once their work is on trunk. One thing no release can do for you: a
-print-mode Claude Code session in a workspace nobody has opened interactively ignores the project's
-`permissions.allow` entries (*this workspace has not been trusted*); open the project in the harness once
-and accept the dialog.
+print-mode session of a harness that asks whether to trust a workspace can ignore the project's allow-rules
+in a workspace nobody has opened interactively; open the project in the harness once and accept its
+question.

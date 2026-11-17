@@ -49,9 +49,14 @@ def read(record: Path) -> dict[str, dict]:
 
 def shape(decks: dict[str, list[list[str]]]) -> dict[str, object]:
     """What is compared of one case's decks: each stream's `claimed` lines in order, and each slice's count of
-    every kind of line."""
+    every kind of line. A `noted` line is the program saying something about its agent — here, that
+    `SLIPWAI_CAPTAIN` in the environment, not `harbour.json`, turned it on — which a run with no agent has no
+    cause to say; nothing waits on it and it is no slice's progress, so it is not compared."""
     held: dict[str, object] = {}
-    for deck, lines in decks.items():
+    for deck, every in decks.items():
+        lines = [line for line in every if line[0] != "noted"]
+        if not lines:
+            continue  # a log that holds that note alone was written for it alone
         # Slices started together are threads that each write their own `claimed`, in whichever order the
         # scheduler runs them: a run of `claimed` lines with nothing between them is one start, compared as a set.
         starts: list[list[str]] = []

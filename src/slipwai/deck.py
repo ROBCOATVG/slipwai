@@ -63,7 +63,7 @@ def said(entry: Entry) -> str:
     if kind == "taken-over":
         return f"took {at.get('slice')} over from {at.get('from')}, mid-slice"
     if kind == "stopped":
-        return f"asked to stop, mid-way through {at.get('slice')}, which is carried on when it is lit again"
+        return stopped_said(at)
     if kind == "parked":
         return f"parked: {at.get('why')}"
     if kind == "request":
@@ -76,6 +76,25 @@ def said(entry: Entry) -> str:
         return f"ran {at.get('slice')}" + (", at no attempt's cost" if at.get("free") else "")
     rest = ", ".join(f"{name}={value}" for name, value in at.items())
     return f"{kind}" + (f" ({rest})" if rest else "")
+
+
+def stopped_said(at: dict) -> str:
+    """A `stopped` line as what it is. With no `by` it is the fleet being stopped mid-slice, as it always was;
+    with one it is a slice paused or stopped through its conversation (`captain.let_go`), by a person or a
+    captain, and each lifts differently: a pause waits for a resume, a person's stop for a person, and anyone
+    else's stop puts the slice back in the queue."""
+    slice_id, by, why = at.get("slice"), str(at.get("by") or ""), str(at.get("why") or "")
+    if not by:
+        return f"asked to stop, mid-way through {slice_id}, which is carried on when it is lit again"
+    who = ("you" if by == "person" else f"the {by.removeprefix('captain:')} captain" if by.startswith("captain:")
+           else f"the {by}")
+    because = f": {why}" if why else ""
+    if at.get("paused"):
+        lifted = "until you resume it" if by == "person" else "until you or its captain resume it"
+        return f"{slice_id} paused by {who}{because} — it waits {lifted}"
+    if by == "person":
+        return f"{slice_id} stopped by {who}{because} — it waits until you resume it"
+    return f"{slice_id} stopped by {who}{because} — it goes back in the queue"
 
 
 def streams(root: Path) -> list[tuple[str, str]]:
@@ -103,7 +122,7 @@ def mark_read(root: Path, fairway: str, stamps: list[str]) -> str:
     if fault:
         raise ValueError(fault)
     decided = {e.t for e in found if e.kind == "decision"}
-    done = {str(e.fields.get("told")) for e in found if e.kind == "read"}
+    done = {str(e.fields.get("told")) for e in found if e.kind == "read" and not e.fields.get("inbox")}
     wanted = [one for one in dict.fromkeys(stamps) if one in decided and one not in done]
     if not wanted:
         raise ValueError(f"nothing to mark read: {fairway} has no unread decision at those instants")

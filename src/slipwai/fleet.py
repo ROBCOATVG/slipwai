@@ -17,7 +17,8 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 650 — the clearance answers one read of the board shares, and today's tokens; every column of the
+# budget: 660 — the clearance answers one read of the board shares, a `read` tied to its `told` by inbox id,
+# and today's tokens; every column of the
 # board folded from the logs, an instant read in either shape it is written, including what waits on a person: a park,
 # a deck log nobody can read, a last-seen age said in the unit a person reads it in,
 # a told, the decisions nobody has read, a question a headless stage posted and nobody has answered, and the
@@ -192,7 +193,7 @@ class Fairway:
     def unreviewed(self) -> list[Entry]:
         """Every `decision` a person has not read: no `read` names its instant, and no person took it. The
         rule `inbox.py` holds the ceiling to, so what the board offers to mark read is what the ceiling counts."""
-        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
+        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read" and not e.fields.get("inbox")}
         return [e for e in self.entries if e.kind == "decision" and e.fields.get("decided_by") != "human"
                 and e.t not in receipts]
 
@@ -205,7 +206,9 @@ class Fairway:
         me` a person ever sent stayed under *Waiting on you* — and turned the Slices step red with "make
         cruise-tell answers a park" while the fleet ran and nothing was parked.
         """
-        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
+        # A `read` naming an inbox id is that `told`'s alone (`inbox.unread`), never another line's in its second.
+        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read" and not e.fields.get("inbox")}
+        answered = {str(e.fields["inbox"]) for e in self.entries if e.kind == "read" and e.fields.get("inbox")}
         # A hand-back with needs is answered by trunk, not by a reading: the harbourmaster's `told-met`.
         receipts |= {str(e.fields.get("told", "")) for e in self.receipts
                      if e.kind == "told-met" and str(e.fields.get("fairway", "")) == self.name}
@@ -219,7 +222,8 @@ class Fairway:
                 parked = True
             elif entry.kind == "claimed":
                 parked = False
-            if entry.kind != "told" or entry.t in receipts or for_someone_else(entry):
+            if entry.kind != "told" or entry.t in receipts or for_someone_else(entry) or \
+                    str(entry.fields.get("inbox") or "-") in answered:
                 continue
             if again[index][0] != index:
                 continue

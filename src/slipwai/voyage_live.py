@@ -63,17 +63,26 @@ def able(board: Any, rows: list[dict[str, str]], fleet: dict) -> dict[str, bool]
             "draftable": board.draftable()}
 
 
+def shaped(made_of: str, decided: bool) -> str:
+    """The page's shape with whether its Decisions tab exists: the tab, its styles and its script are drawn
+    only once there is a decision, so the first one changes which cards the page has — a reload, as a file
+    appearing is — where every later one only moves the band and the count the poll already swaps."""
+    return f"{made_of}|{'d' if decided else ''}"
+
+
 def passage(board: Any, found: list, rows: list[dict[str, str]], fleet: dict, flags: dict[str, bool],
-            listed: dict[str, Any]) -> str:
+            listed: dict[str, Any], decided: bool) -> str:
     return voyage_payload(found, flags["launchable"], any(one.state == "working" for one in found),
-                          flags["castable"], flags["stoppable"], flags["drawable"], board.made_of(rows, fleet)[1],
-                          flags["modelable"], waiting=listed, draftable=flags["draftable"])
+                          flags["castable"], flags["stoppable"], flags["drawable"],
+                          shaped(board.made_of(rows, fleet)[1], decided), flags["modelable"], waiting=listed,
+                          draftable=flags["draftable"])
 
 
 def voyage_json(board: Any) -> str:
     found, rows, _, fleet, _, kept = parts(board)
     flags = able(board, rows, fleet)
-    return passage(board, found, rows, fleet, flags, waiting(board, fleet, flags, rows))
+    return passage(board, found, rows, fleet, flags, waiting(board, fleet, flags, rows),
+                   bool(decisions_polled(board.root)[0]))
 
 
 def lit_rows(board: Any, kept: Read) -> list[dict[str, str]]:
@@ -102,7 +111,7 @@ def live_json(board: Any) -> str:
              "fleet": machinery(kept, rows, flags["stoppable"])}
     if cards:  # the tab exists only once there is a decision; the first one is a change of the page's shape
         drawn["decisions"] = cards
-    return json.dumps({"passage": json.loads(passage(board, found, kept.rows, fleet, flags, listed)),
+    return json.dumps({"passage": json.loads(passage(board, found, kept.rows, fleet, flags, listed, bool(cards))),
                        "waiting": listed, "decisions": unread, "model": model_said(kept.rows),
                        "bands": {name: {"said": signature(html), "html": html} for name, html in drawn.items()}})
 
@@ -116,6 +125,8 @@ def voyage(board: Any) -> str:
     flags = able(board, kept.rows, fleet)
     listed = waiting(board, fleet, flags, kept.rows)
     feature, made_of = board.made_of(rows, fleet)
+    decided = decision_tab(root, band)
+    made_of = shaped(made_of, bool(decided[0]))
     xml, note = model_xml(root, states_of(rows))
     running = bool(board.fitting and not board.fitting.said()["done"])
     adopting = adoption_card(root, running)
@@ -129,7 +140,7 @@ def voyage(board: Any) -> str:
                        flags["modelable"], try_card(root, seat), look_html(rows, folds, kept.trunk),
                        films_card(films, rows, fleet.get("demo_due_in"))
                        + feedback_card(root, rows, fleet, board.triaging(), trunk_head(root)),
-                       decision_tab(root, band), points=kept.points, adopting=adopting,
+                       decided, points=kept.points, adopting=adopting,
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
                        draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed,
                        captains=strip_html(root, kept.rows, set(listed["slices"])))

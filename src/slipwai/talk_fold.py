@@ -167,36 +167,54 @@ def fold(home: Path) -> dict[str, Any]:
         line, tone = says(receipt, how)
         steer = receipt["kind"] if receipt["kind"] in STEER_SAID else ""
         text = (STEER_SAID[steer] + (f": {receipt['text']}" if receipt["text"] else "")) if steer else receipt["text"]
-        found.append({"kind": "said", "t": receipt["t"], "id": receipt["id"], "who": who(message) if message else
+        found.append({"kind": "said", "t": receipt["t"], "order": (0, sent_at(home, receipt["id"]), receipt["id"]),
+                      "id": receipt["id"], "who": who(message) if message else
                       "A file in its inbox", "text": text, "steer": steer, "state": receipt["state"],
                       "line": line, "tone": tone, "reply": receipt["reply"], "of": str(message.get("of", "")),
                       "held": bool(receipt["why"])})
-    for one in lines:
+    for index, one in enumerate(lines):
         kind = one.get("kind")
         if kind == "ask":
             ident = str(one.get("id", ""))
             given = answer_of(lines, ident)
             yours = answered_by_you.get(ident)
-            found.append({"kind": "ask", "t": str(one.get("t", "")), "id": ident, "what": str(one.get("what", "")),
+            found.append({"kind": "ask", "t": str(one.get("t", "")), "order": (1, index, ""), "id": ident,
+                          "what": str(one.get("what", "")),
                           "text": str(one.get("text", "")),
                           "options": [str(o) for o in one.get("options") or [] if isinstance(o, str | int | float)],
                           "answer": str(given.get("text", "")) if given else "",
                           "by": str(given.get("by", "")) if given else "",
+                          # Who asked: a captain's own ask (`by: captain`) waits on a person whatever the run.
+                          "asker": str(one.get("by", "")),
                           "yours": str(yours.get("id")) if yours else ""})
         elif kind in ("paused", "resumed", "stopped"):
             by = str(one.get("by", ""))
             named = "you" if by == talk.PERSON else f"its {by.removeprefix('captain:')} captain" \
                 if by.startswith("captain:") else by or "the captain"
             why = str(one.get("why", ""))
-            found.append({"kind": "note", "t": str(one.get("t", "")), "by": by,
+            found.append({"kind": "note", "t": str(one.get("t", "")), "order": (1, index, ""), "by": by,
                           "text": f"{kind.capitalize()} by {named}" + (f": {why}" if why else "")})
-    found.sort(key=lambda one: one["t"])
+    # By the second first, then in the order things happened within it: the messages as they were sent, ahead
+    # of the thread's lines of that second, which are in the order its one writer appended them. By the second
+    # alone, with ids that are random, two turns of one second drew in either order and "the newest" was a guess.
+    found.sort(key=lambda one: (one["t"], one["order"]))
     halt, by, why, since = talk.hold(home, lines)
     return {"turns": found, "how": how, "halted": halt, "by": by, "why": why, "since": since, "heard": heard(lines),
             "merged": any(one.get("kind") == "merged" for one in lines)}
 
 
 STEER_SAID = {"pause": "Pause", "resume": "Resume", "stop": "Stop", "withdraw": "Withdraw"}
+
+
+def sent_at(home: Path, ident: str) -> int:
+    """When a message's file was written, to the nanosecond, wherever it now lies — waiting, or moved aside once
+    handled, which keeps the instant: the order a sender placed messages in within one second. 0 where none is."""
+    for folder in (Path(home) / "inbox", Path(home) / "inbox" / talk.DONE):
+        try:
+            return (folder / f"{ident}.json").stat().st_mtime_ns
+        except (OSError, ValueError):
+            continue
+    return 0
 
 
 def heard(lines: list[dict[str, Any]]) -> int:
@@ -275,6 +293,8 @@ def person_answers(root: Path) -> bool:
 
 
 def open_asks(folded: dict[str, Any]) -> list[dict[str, Any]]:
-    """The product questions a slice asked that nothing has answered and no person has answered yet."""
+    """The questions nothing has answered and no person has answered yet. A captain's own `ask` is one; a slice's
+    mid-turn question is not, today: its driver answers it at once — declined, or by its captain — and writes
+    the `answer` beside the `ask`, since decision 12's five minutes held for a person are not built."""
     return [one for one in folded["turns"] if one["kind"] == "ask" and one["what"] == "question"
             and not one["answer"] and not one["yours"]]

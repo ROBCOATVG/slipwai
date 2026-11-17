@@ -14,8 +14,8 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 560 — a paused slice as queued with the time it lifts, beside the fold, the model, the mock-ups and the
-# screenshots one voyage is read from, and the
+# budget: 570 — a paused slice as queued with the time it lifts, and the park its card answers, beside the fold,
+# the model, the mock-ups and the screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
 # and a slice claimed and waiting for a slot, queued apart from the ones at work
@@ -135,7 +135,19 @@ def held_on(owner: Fairway, slice_id: str) -> dict[str, str]:
     own = held_slices(owner.parks).get(slice_id, "")
     asked = [f'{e.fields.get("id", "")}: {e.fields.get("what", "")}' for e in owner.asked
              if str(e.fields.get("slice", "")) == slice_id]
-    return {"park": own or owner.parked, "asked": "\n".join(asked), "aim": slice_id if own else ""}
+    return {"park": own or owner.parked, "asked": "\n".join(asked), "aim": slice_id if own else "",
+            "park_of": park_of(owner, slice_id)}
+
+
+def park_of(owner: Fairway, slice_id: str) -> str:
+    """What an answer from this slice's card carries in its `of` — `park:<instant>` of the park it answers,
+    as the same park's row under "From the streams" carries (`talk_placed.key_of`) — so the card's answer and
+    the row's are one answer, shown on both, and neither offers a second box. The slice's own park, named in
+    its field or at the head of its `why`, as the row aims (`talk_placed.aim_of`); `''` for a park of the
+    whole stream, whose row's answer goes to the captain where the card's goes to the slice."""
+    mine = [e for e in owner.parks if str(e.fields.get("slice") or "") == slice_id
+            or (not e.fields.get("slice") and str(e.fields.get("why", "")).startswith(f"{slice_id}: "))]
+    return f"park:{mine[-1].t}" if mine else ""
 
 
 #: The next feedback points the last clearance query answered with, by project: `folded` fills it and

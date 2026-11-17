@@ -179,6 +179,27 @@ class RulesTest(HelmBase):
 
     def test_a_slice_s_session_setting_eval_gains_nothing(self) -> None:
         helm = self.helm(None, bound=0.3)
+        # The evals' door is `SLIPWAI_EVAL=1` in a project carrying their marker, in `orders.py` as in
+        # `captain_agent.evaluate` (whole-branch review, L8): another value, or no marker, is a session with no key.
+        marker = self.root / ".slipwai-eval"
+        opened = self.run_dir / "events" / "ORD" / "e0.json"  # an eval's one event: its stream is its folder
+        opened.parent.mkdir(parents=True, exist_ok=True)
+        opened.write_text(json.dumps({"v": 1, "id": "e0", "t": "2026-01-01T00:00:00Z", "kind": "stuck",
+                                      "may": ["none"]}), encoding="utf-8")
+        for value, marked, refused in (("yes", True, True), ("1", False, True), ("1", True, False)):
+            if marked:
+                marker.write_text("", encoding="utf-8")
+            else:
+                marker.unlink(missing_ok=True)
+            done = subprocess.run([sys.executable, str(self.root / "scripts/agents/orders.py"), "none", "--why", "x"],
+                                  cwd=self.root, capture_output=True, text=True, check=False,
+                                  env={**{k: v for k, v in os.environ.items() if not k.startswith("SLIPWAI_CAPTAIN")},
+                                       "SLIPWAI_EVAL": value, "SLIPWAI_CAPTAIN_WAIT": "0"})
+            self.assertEqual("was not handed the captain's key" in done.stderr, refused, (value, marked, done.stderr))
+        self.assertEqual(len(list(self.folder().glob("*.json"))), 1, "the evals' own project alone wrote one")
+        opened.unlink()
+        for path in self.folder().glob("*.json"):
+            path.unlink()
 
         def act(held: dict, env: dict) -> None:
             done = subprocess.run([sys.executable, str(self.root / "scripts/agents/orders.py"), "start", "ORD-02"],
@@ -194,6 +215,56 @@ class RulesTest(HelmBase):
         written = [json.loads(path.read_text(encoding="utf-8")) for path in self.folder().glob("*.json")
                    if not path.name.endswith(".result.json")]
         self.assertEqual([one["sig"] for one in written], [""])
+
+
+class QuotingTest(HelmBase):
+    """The captain session's policy reads an order command as a shell would (whole-branch review, H1)."""
+
+    def command(self, rest: str) -> dict:
+        agent = loaded(self.root, "captain_agent")
+        return {"rawInput": {"command": f"{agent.order_command()} {rest}"}}
+
+    def test_prose_with_ordinary_punctuation_is_allowed_inside_single_quotes(self) -> None:
+        agent = loaded(self.root, "captain_agent")
+        for prose in ("the third run failed the same way; a person should read the demo log",
+                      "the gate said `make demo` failed", "it costs $0.01", "draft -> sent", "yes|no",
+                      "a & b < c > d", "line one\nline two", "(a) [b] *c? #d"):
+            with self.subTest(prose=prose):
+                quoted = "'" + prose.replace("'", "'\\''") + "'"
+                self.assertTrue(agent.ordering(self.command(f"park ORD-01 --why {quoted} --event e1")))
+                self.assertEqual(agent.tokens(f"x --why {quoted}"), ["x", "--why", prose])
+        self.assertEqual(agent.tokens("x 'it'\\''s here'"), ["x", "it's here"], "the brief's apostrophe")
+        self.assertEqual(agent.tokens('x "a plain \\"double\\" quote"'), ["x", 'a plain "double" quote'])
+
+    def test_what_a_shell_would_run_as_more_than_one_order_is_refused_with_the_rule(self) -> None:
+        agent = loaded(self.root, "captain_agent")
+        for rest, rule in (("none --why x ; rm -rf x", "a `;` outside quotes"),
+                           ("none --why x && rm -rf x", "an `&` outside quotes"),
+                           ('none --why "$(rm -rf x)"', "a `$` inside double quotes"),
+                           ('none --why "`rm -rf x`"', "a backtick inside double quotes"),
+                           ("none --why x\nrm -rf x", "a new line outside quotes"),
+                           ("none --why x | sh", "a `|` outside quotes"),
+                           ("none --why $HOME", "a `$` outside quotes"),
+                           ("none --why x # --event e", "a `#` outside quotes"),
+                           ("none --why 'never closed", "a single quote that is never closed"),
+                           ('none --why "x\\\ny"', "a line continued inside double quotes")):
+            with self.subTest(rest=rest):
+                self.assertFalse(agent.ordering(self.command(rest)))
+                self.assertTrue(agent.refusal(self.command(rest)).startswith(rule), agent.refusal(self.command(rest)))
+        own = self.root / "scripts/agents/orders.py"
+        self.assertIn("the order command as it was handed",
+                      agent.refusal({"rawInput": {"command": f"python3 {own} none"}}))
+        self.assertIn("the order command as it was handed",
+                      agent.refusal({"rawInput": {"command": f"{sys.executable} scripts/agents/orders.py none"}}))
+
+    def test_a_refused_command_is_said_with_the_rule_that_refused_it(self) -> None:
+        agent = loaded(self.root, "captain_agent")
+        options = [{"optionId": "y", "kind": "allow_once"}, {"optionId": "n", "kind": "reject_once"}]
+        self.assertEqual(agent.permit({"kind": "execute", **self.command("none --why 'a; b'")}, options), "y")
+        self.assertEqual(agent.permit({"kind": "execute", **self.command("none --why a; b")}, options), "n")
+        said = agent.Runner("ORD", self.run_dir, agent.settings({}), (["x"], None)).refusals()
+        self.assertIn("for a `;` outside quotes", said)
+        self.assertIn("prose in single quotes", said)
 
 
 if __name__ == "__main__":

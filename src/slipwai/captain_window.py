@@ -137,8 +137,9 @@ def decided_html(root: Path, fairway: str) -> str:
 def talk_parts(root: Path, fairway: str) -> tuple[list[dict[str, Any]], dict[str, str], int]:
     """The captain's own words, from its `say` and `ask` orders; beside each of a person's messages, where it
     went; and how many lines speak to a person beyond the thread's."""
-    extra = [{"kind": "agent", "t": one["t"], "who": f"Captain · {fairway}" + (" asks" if one["verb"] == "ask" else ""),
-              "text": one["text"]} for one in said_to_you(root, fairway)]
+    # Its asks are drawn once, from its thread, where each has its options and a box to answer it in.
+    extra = [{"kind": "agent", "t": one["t"], "who": f"Captain · {fairway}", "text": one["text"]}
+             for one in said_to_you(root, fairway) if one["verb"] == "say"]
     went = routes(root, fairway)
     sent = {ident: f"went to {', '.join(named)}" for ident, named in went.items() if named}
     return extra, sent, len(extra)

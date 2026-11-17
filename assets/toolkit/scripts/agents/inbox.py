@@ -126,7 +126,11 @@ def unread(written: list[dict]) -> list[dict]:
     a captain claiming work again after a `told` sent while the fairway was parked, answers it too — the
     board's `Fairway.unanswered` reads it the same way, because nothing wrote the receipt and every `go` a
     person sent stayed owed for ever."""
-    receipts = {str(line.get("told")) for line in written if line.get("kind") in ("read", "told-met")}
+    # A `read` the captain program wrote for words its captain acted on names the `told` by its inbox id as well,
+    # and is that `told`'s alone: an instant can be shared by two lines in one second.
+    receipts = {str(line.get("told")) for line in written
+                if line.get("kind") in ("read", "told-met") and not line.get("inbox")}
+    answered = {str(line.get("inbox")) for line in written if line.get("kind") == "read" and line.get("inbox")}
     found: list[dict] = []
     parked = False
     for index, line in enumerate(written):
@@ -135,7 +139,7 @@ def unread(written: list[dict]) -> list[dict]:
             parked = True
         elif kind == "claimed":
             parked = False
-        if kind != "told" or str(line.get("t")) in receipts:
+        if kind != "told" or str(line.get("t")) in receipts or str(line.get("inbox") or "-") in answered:
             continue
         if line.get("needs"):
             found.append(line)  # open until trunk has the last need, whatever happens in the stream meanwhile
@@ -157,7 +161,7 @@ def unreviewed(written: list[dict]) -> list[dict]:
     those held hr-test-2 over its ceiling on five answers its owner had typed, and nothing on the board could
     write the receipt that would have let it go on. The board's *Mark read* writes the receipt for the rest.
     """
-    receipts = {str(line.get("told")) for line in written if line.get("kind") == "read"}
+    receipts = {str(line.get("told")) for line in written if line.get("kind") == "read" and not line.get("inbox")}
     return [line for line in written if line.get("kind") == "decision" and line.get("decided_by") != "human"
             and str(line.get("t")) not in receipts]
 

@@ -35,7 +35,8 @@ class Project(unittest.TestCase):
         self.tree = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tree, True)
         (self.tree / "scripts/agents").mkdir(parents=True)
-        shutil.copy(ROOT / "assets/toolkit/scripts/agents/inbox.py", self.tree / "scripts/agents/inbox.py")
+        for name in ("inbox.py", "logs.py"):  # it imports the logs module carried beside it
+            shutil.copy(ROOT / "assets/toolkit/scripts/agents" / name, self.tree / "scripts/agents" / name)
         (self.tree / "project.json").write_text("{}", encoding="utf-8")
         (self.tree / ".slipwai/logs/ordering").mkdir(parents=True)
         spec = importlib.util.spec_from_file_location("inbox", self.tree / "scripts/agents/inbox.py")
@@ -96,6 +97,15 @@ class InboxTest(Project):
         self.write([first, second, self.read_of(first)])
         unread = self.inbox.owed("ORD", NOW)["unread"]
         self.assertEqual([line["message"] for line in unread], ["two"])
+
+    def test_a_read_naming_an_inbox_id_settles_that_told_alone_and_no_line_sharing_its_second(self) -> None:
+        """Whole-branch review, M6: the captain program's receipt for words its captain acted on."""
+        first, second = {**self.told(10, "one"), "inbox": "m-1"}, {**self.told(10, "two"), "inbox": "m-2"}
+        decided = self.decision(10)
+        self.write([decided, first, second, {**self.read_of(first), "inbox": "m-1"}])
+        state = self.inbox.owed("ORD", NOW)
+        self.assertEqual([line["message"] for line in state["unread"]], ["two"])
+        self.assertEqual(len(state["unreviewed"]), 1, "a decision in the same second is not read by it")
 
     def test_a_message_inside_its_bound_does_not_force_a_boundary(self) -> None:
         self.write([self.told(5)])

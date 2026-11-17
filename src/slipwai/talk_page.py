@@ -11,6 +11,7 @@ typing in it and nothing in it is focused: the box is never redrawn, an answer h
 is not thrown away, a card a person opened stays open, and the turns stay where they were scrolled — at the
 foot when they were at the foot. Every word is escaped here: a message's text is whatever a person typed.
 """
+# budget: 360 — an ask drawn three ways, a captain's own among them, with the box and buttons each one needs
 from __future__ import annotations
 
 import hashlib
@@ -226,17 +227,19 @@ def ask_html(one: dict[str, Any], name: str, asks_you: bool, mine: dict[str, dic
         sent = mine.get(one["yours"], {})
         return (f'{done}<span class="chose">Your answer: {esc(sent.get("text", ""))}</span>'
                 f'<span class="small">{esc(sent.get("line", ""))}</span></div>')
+    captains = one.get("asker") == "captain"  # put to a person whatever the run: no skipper answers a captain
     if kind == "permission":
         under = '<span class="small">Its captain rules on this; nothing here waits on you.</span>'
-    elif not asks_you:
+    elif not asks_you and not captains:
         under = ('<span class="small">This fleet is cruising, so it answers product questions itself — the '
                  "stage's recommendation or the skipper — and nothing waits on you.</span>")
     else:
         picks = "".join(f'<button type="button" data-ask-pick="{esc(option)}">{esc(option)}</button>'
                         for option in one["options"])
-        under = (f'<span class="small">Waiting on you: this run is not cruising, so a person answers its product '
-                 f"questions."
-                 f'</span><span class="ans">{f"<span class=buttons>{picks}</span>" if picks else ""}'
+        why = "only a person decides what its captain asks" if captains else "this run is not cruising, so a " \
+            "person answers its product questions"
+        under = (f'<span class="small">Waiting on you: {why}.</span>'
+                 f'<span class="ans">{f"<span class=buttons>{picks}</span>" if picks else ""}'
                  f'<textarea rows="2" aria-label="Your answer to {esc(name)}"></textarea>'
                  f'<span class="buttons"><button type="button" class="allow" data-ask-send>Answer</button></span>'
                  f"</span>")

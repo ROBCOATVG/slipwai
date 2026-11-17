@@ -271,6 +271,25 @@ class OnePollTest(BoardTest):
         self.assertNotEqual(after["bands"]["decisions"]["said"], found["bands"]["decisions"]["said"])
         self.assertEqual(after["bands"]["expect"]["said"], found["bands"]["expect"]["said"])
 
+    def test_a_project_s_first_decision_changes_the_page_s_shape_so_an_open_window_draws_its_tab(self) -> None:
+        page = self.get("/voyage")[1]
+        self.assertNotIn('id="decisions"', page)
+        drawn = re.search(r'data-shape="([^"]*)"', page)
+        assert drawn is not None
+        self.assertEqual(json.loads(self.get("/live.json")[1])["passage"]["shape"], drawn.group(1),
+                         "nothing has changed yet, so nothing reloads")
+        book = self.root / "specs/ordering/decisions.md"
+        book.parent.mkdir(parents=True, exist_ok=True)
+        book.write_text("## D1 — Does a settlement keep its answer?\n- **Stage:** plan · **Slice:** L05 · "
+                        "**When:** 2026-11-11T10:00:00Z · **Stream:** ORD\n- **Decision:** (a).\n"
+                        "- **Status:** awaiting human confirmation\n\n", encoding="utf-8")
+        found = json.loads(self.get("/live.json")[1])
+        self.assertNotEqual(found["passage"]["shape"], drawn.group(1), "the tab is not on the page: a reload draws it")
+        again = self.get("/voyage")[1]
+        self.assertIn('id="decisions"', again)
+        self.assertIn(f'data-shape="{found["passage"]["shape"]}"', again, "and once drawn, it does not reload again")
+        self.assertEqual(json.loads(self.get("/voyage.json")[1])["shape"], found["passage"]["shape"])
+
     def test_a_note_landing_moves_its_band_and_no_other(self) -> None:
         before = json.loads(self.get("/live.json")[1])["bands"]
         self.deck("ORD", logs.entry("told", fairway="ORD", message="a note for you"))

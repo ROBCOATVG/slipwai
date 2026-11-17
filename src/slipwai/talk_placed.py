@@ -24,6 +24,14 @@ from .logs import run_dir
 from .process_alive import alive
 
 SLICE = re.compile(r"([A-Za-z0-9_.-]{1,40}): ")
+#: What a slice's id may be: the conversation folder it names (`talk_said.SLICE`).
+SLICE_ID = re.compile(r"[A-Za-z0-9_.-]{1,40}")
+
+
+def slice_named(named: str) -> str:
+    """A `slice` field as a slice's id, or `''` where it holds anything else (`"the chart"`): what is about no
+    slice goes to the stream's captain, which a field no conversation could be named by would otherwise refuse."""
+    return named if SLICE_ID.fullmatch(named) else ""
 
 
 def running(root: Path) -> bool:
@@ -40,7 +48,7 @@ def running(root: Path) -> bool:
 
 def aim_of(row: dict[str, Any]) -> str:
     """The slice a row is about: its own field, or the name a park's `why` starts with; `''` for the stream."""
-    named = str(row.get("slice") or "")
+    named = slice_named(str(row.get("slice") or ""))
     if named:
         return named
     found = SLICE.match(str(row.get("what") or row.get("why") or ""))

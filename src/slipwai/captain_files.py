@@ -65,7 +65,8 @@ def orders(root: Path, fairway: str) -> list[dict[str, Any]]:
                       "verb": str(held.get("verb") or held.get("kind") or held.get("order") or ""),
                       "slice": str(held.get("slice", "")), "text": text_of(held), "of": str(held.get("of", "")),
                       "event": str(held.get("event", "")), "result": outcome(result),
-                      "why": str(result.get("why", ""))})
+                      "why": str(result.get("why", "")), "carried": str(result.get("carried", "")),
+                      "carried_why": str(result.get("carried_why", ""))})
     return sorted(found, key=lambda one: (one["t"], one["id"]))
 
 
@@ -122,8 +123,13 @@ def decided_today(root: Path, fairway: str) -> list[dict[str, str]]:
         said += f": {one['text']}" if one["text"] else ""
         refused = f"refused: {one['why']}" if one["why"] else "refused"
         after = {"done": "done", "refused": refused}.get(one["result"], "")
-        lines.append({"t": one["t"], "text": said, "after": after or "waiting for the program",
-                      "tone": "bad" if one["result"] == "refused" else "good" if one["result"] == "done" else "wait"})
+        tone = "bad" if one["result"] == "refused" else "good" if one["result"] == "done" else "wait"
+        # `done` is the program accepting it; a start or a park it carries out later says what became of it.
+        if one["result"] == "done" and one["carried"] == "accepted":
+            after, tone = "accepted, not carried out yet", "wait"
+        elif one["result"] == "done" and one["carried"] == "not carried out":
+            after, tone = f"accepted, and not carried out: {one['carried_why']}".rstrip(": "), "bad"
+        lines.append({"t": one["t"], "text": said, "after": after or "waiting for the program", "tone": tone})
     for one in events(root, fairway):
         if today(one["t"]) and one["by"] == "rule":
             what = f"{one['kind']} · {one['slice']}" if one["slice"] else one["kind"]

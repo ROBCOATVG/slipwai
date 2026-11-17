@@ -29,7 +29,7 @@ from typing import Any
 from . import talk
 from .deck import entries, feature_of, streams
 from .logs import run_dir
-from .talk_placed import said
+from .talk_placed import said, slice_named
 
 #: Where the board keeps the little it records about conversations, under the run folder: what a person has
 #: seen, and each "Tell every captain".
@@ -114,7 +114,7 @@ def asked_by(root: Path, fairway: str, question: str) -> str:
     asked = [e for e in found if e.kind == "question" and str(e.fields.get("id", "")) == question]
     if not asked:
         raise ValueError(f"{fairway} has asked no question {question}")
-    return str(asked[-1].fields.get("slice") or "")
+    return slice_named(str(asked[-1].fields.get("slice") or ""))
 
 
 def answer(root: Path, fairway: str, question: str, message: str, replaces: str = "") -> str:
@@ -144,12 +144,21 @@ def every_stream(root: Path) -> list[str]:
 
 #: How many "Tell every captain" the board keeps: the file is cut back to these on each write.
 KEEP_TOLD = 10
+#: Bytes a message's own fields take beside its words — id, instant, kind, sender, signature — allowed for when
+#: a tell is measured against the one limit, `talk.LARGEST`.
+ROOM = 1024
 
 
 def tell_every_captain(root: Path, message: str) -> dict[str, Any]:
     """One message placed in each captain's inbox, and the board's note of which id went to which."""
     if not message.strip():
         raise ValueError("a message needs something to say")
+    # Refused before any captain is told, by the limit `talk.send` holds a message to, with room for the fields
+    # beside the words: one refused part way would be a tell some captains had and the board kept no note of.
+    size = len(json.dumps(message, ensure_ascii=False).encode("utf-8")) + ROOM
+    if size > talk.LARGEST:
+        raise ValueError(f"this message is {size:,} bytes, and a message may be {talk.LARGEST:,}: say it shorter, "
+                         f"or put what is long in a file and say where it is")
     every = every_stream(root)
     if not every:
         raise ValueError("no stream has a log here yet, so there is no captain to tell")
@@ -167,15 +176,18 @@ def tell_every_captain(root: Path, message: str) -> dict[str, Any]:
 
 
 def told_all(root: Path, keep: int = 3) -> list[dict[str, Any]]:
-    """The last few "Tell every captain", newest first, read from the file's tail; a line that is not one
-    is passed over."""
-    try:
-        with told_all_path(root).open("rb") as held:
-            size = held.seek(0, 2)
-            held.seek(max(0, size - 64 * 1024))
-            lines = held.read().decode("utf-8", errors="replace").splitlines()
-    except OSError:
+    """The last few "Tell every captain", newest first, read from the file's tail in whole lines; a line that
+    is not one is passed over. The tail is as long as the records kept can be, each a message of at most
+    `talk.LARGEST` and its ids: read shorter, a long tell was a half line, passed over — and dropped from the
+    file by the next tell, which keeps what this returns."""
+    window = KEEP_TOLD * 2 * talk.LARGEST
+    got = talk.read_bytes(told_all_path(root), window, -window)
+    if got is None:
         return []
+    held, size = got
+    if size > len(held):
+        held = held.split(b"\n", 1)[1] if b"\n" in held else b""  # the cut fell inside a line: never half of one
+    lines = held.decode("utf-8", errors="replace").splitlines()
     found = []
     for line in lines:
         try:

@@ -212,6 +212,22 @@ class RouteTest(BoardTest):
         self.assertTrue(all(one["from"] == "person" and talk.genuine(place, one) for one in self.inbox()))
         self.assertEqual([e for e in self.read("ORD") if e.kind == "told"], [], "and no deck line for any of it")
 
+    def test_interrupt_now_on_a_captain_s_queued_message_keeps_it_the_captain_s_and_changes_only_its_mode(self) -> None:
+        place = talk.place(logs.run_dir(self.root), "ORD", "ORD-01")
+        routed = talk.send(place, "say", "from your captain", by="captain:ORD", of="20261116T000000Z-abc123",
+                           via="captain:ORD", quote="mind the rounding", quote_from="person")
+        code, said = self.post("/talk/interrupt", {"fairway": "ORD", "slice": "ORD-01", "id": routed["id"]})
+        self.assertEqual(code, 200, said)
+        again = [one for one in self.inbox() if one["kind"] == "say" and one["id"] != routed["id"]]
+        self.assertEqual(len(again), 1)
+        kept = ("from", "via", "of", "quote", "quote_from", "text")
+        self.assertEqual({name: again[0].get(name) for name in kept}, {name: routed.get(name) for name in kept})
+        self.assertEqual(again[0]["mode"], "interrupt")
+        self.assertTrue(talk.genuine(place, again[0]))
+        withdrawal = next(one for one in self.inbox() if one["kind"] == "withdraw")
+        self.assertEqual((withdrawal["from"], withdrawal["of"]), ("person", routed["id"]),
+                         "the withdrawal is the person's own act, on the captain's message as it is")
+
     def test_send_again_places_the_same_words_and_a_wrong_kind_is_refused(self) -> None:
         place = talk.place(logs.run_dir(self.root), "ORD", "ORD-01")
         lost = talk.send(place, "say", "are you there?")

@@ -539,16 +539,26 @@ class Drive:
                 if self.home is None:
                     return False  # one prompt, and closed
                 self.cond.wait(LOOK)
-        if self.pausing:
-            ident, by, why = self.pausing
-            talk.note(self.home, "paused", by=by, why=why or None)
-            self.halted, self.halted_by = ("paused", by, why), ident
-            return False
+            if self.pausing:
+                self.paused_now()
+                return False
         if messages:
             self.deliver(messages[0])
         else:
             self.captain_turn(self.prompts.popleft())
         return True
+
+    def paused_now(self) -> None:
+        """A pause heard and not yet in force is in force now: at the end of the turn it waited for, or however
+        else that turn ended — a bound that cancelled it among them, after which the captain reads the hold
+        here (`captain.halted`) before it would run the slice again."""
+        with self.cond:
+            if self.pausing is None or self.home is None:
+                return
+            ident, by, why = self.pausing
+            self.pausing = None
+            talk.note(self.home, "paused", by=by, why=why or None)
+            self.halted, self.halted_by = ("paused", by, why), ident
 
     def turn(self, text: str, about: str) -> str:
         self.text, self.turning = "", True

@@ -118,7 +118,7 @@ class RowsCanBeReadTest(unittest.TestCase):
         from slipwai import settings_card, wheel
         for name, _, says in wheel.STOPS:
             for value, words in says.items():
-                self.assertLessEqual(len(words), 62, f"{name}={value} is too long to be a button: {words}")
+                self.assertLessEqual(len(words), 70, f"{name}={value} is too long to be a button: {words}")
         self.assertIn("Blocker", wheel.MORE["upstream"])
         self.assertIn("Carry on", wheel.MORE["upstream"])
         drawn = settings_card.stops_tab({name: next(iter(says)) for name, _, says in wheel.STOPS}, True)

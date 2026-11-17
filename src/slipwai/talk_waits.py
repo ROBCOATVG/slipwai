@@ -3,8 +3,9 @@
 Two things a conversation can hold a person up with, and one it never does. A product question a slice
 asked is *Holding work up* where the project says a person answers them, and nothing at all where the
 skipper does (the skipper's answer is in the thread, and in the decision log). A slice a person paused is
-*When you have time* — it will not move until they resume it — and one its captain paused is neither: the
-captain resumes what it paused. A message nobody has read is a marker on a card, never a count.
+*When you have time* — it will not move until they resume it — and so is one its captain paused: no timer and
+no rule lifts a captain's pause (`docs/captain-agent-plan.md`, decision 17a), so unless the captain resumes it,
+a person is the one who will. A message nobody has read is a marker on a card, never a count.
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from urllib.parse import quote
 from . import talk
 from .fleet_page import first_sentence
 from .logs import run_dir
-from .talk_fold import last, open_asks, person_answers, placed_for, seen, turns, unseen
+from .talk_fold import clock, last, open_asks, person_answers, placed_for, seen, turns, unseen
 
 IN_FLIGHT = ("working", "queued", "waiting")
 
@@ -64,7 +65,8 @@ def summaries(root: Path, rows: list[dict[str, str]]) -> dict[str, dict[str, Any
                 and not one["steer"] and one["state"] == "queued"]
         found[slice_id] = {"last": last(folded), "new": unseen(root, fairway, slice_id, folded["heard"], kept),
                            "ask": waiting[0] if waiting else None, "halted": folded["halted"],
-                           "by": folded["by"], "how": folded["how"],
+                           "by": folded["by"], "how": folded["how"], "since": folded["since"],
+                           "why": folded["why"],
                            # The person's newest message still waiting: on a parked slice, their answer.
                            "answer": {"id": mine[-1]["id"], "text": mine[-1]["text"], "t": mine[-1]["t"],
                                       "line": mine[-1]["line"], "tone": mine[-1]["tone"],
@@ -88,4 +90,23 @@ def items(root: Path, rows: list[dict[str, str]]) -> tuple[list[dict[str, Any]],
         if folded["halted"] == "paused" and folded["by"] == talk.PERSON:
             later.append({"n": 1, "href": window(row["fairway"], slice_id),
                           "text": f"{slice_id} is paused by you: resume it when you are ready"})
+        elif folded["halted"] == "paused":
+            later.append({"n": 1, "href": window(row["fairway"], slice_id),
+                          "text": f"{slice_id} is paused by {holder(folded['by'])}, and no rule lifts it: "
+                                  f"resume it when you are ready"})
     return holding, later
+
+
+def holder(by: str) -> str:
+    """Who holds a slice, as the board says it: `you`, or its captain as `captain:<stream>`."""
+    return "you" if by == talk.PERSON else by or "its captain"
+
+
+def held_line(found: dict[str, Any]) -> str:
+    """A held slice's card line — who holds it and since when — from its conversation's summary; nothing where
+    nothing holds it. A person's pause is a hold from the moment it is heard, before its turn has ended."""
+    how = str(found.get("halted") or "")
+    if how not in ("paused", "stopped"):
+        return ""
+    since = clock(str(found.get("since") or ""))
+    return f"{how.capitalize()} by {holder(str(found.get('by') or ''))}" + (f" since {since}" if since else "")

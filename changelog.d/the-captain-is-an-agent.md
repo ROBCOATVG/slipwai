@@ -50,8 +50,16 @@ stream runs on the program alone for the rest of that run: every event still ope
 message the captain had not answered is marked unaddressed, `captain.json` beside its events says
 `"agent": false` with why and when, and the deck log gets one `noted` line. `noted` is a new deck kind: what
 the program says about its captain — that it failed, or that its session was refused commands (one line an
-event, counted) — for a person to read; nothing waits on it, so it never parks a stream. The agent is tried
-again when the captain is next started. A message over 1 MB is refused when it is sent, saying so.
+event, counted) — for a person to read; nothing waits on it, so it never parks a stream, and it never counts
+as a slice's progress, so it never keeps a silent stage alive. The agent is tried again when the captain is
+next started. The board says so: the stream's button on the captains strip and its captain's window say it is
+running on the program alone, and why, and the window lists the `noted` lines as news.
+
+**A held slice is in sight.** A slice paused or stopped by a person, or paused by its captain, says on its card
+who holds it and since when — a person's pause from the moment it is heard — and a slice its captain paused
+is listed under *When you have time* beside the ones a person paused, since no timer and no rule lifts it. A
+captain's park of a stuck slice is written with the cause `other`; it was written with a cause no reader
+takes, which ended the captain's turn. A message over 1 MB is refused when it is sent, saying so.
 
 Also: a person's pause or stop now stands through anyone else's stop until a person resumes it; a message
 already handled keeps its receipt after the conversation key is made again, and a queued one says the key
@@ -59,9 +67,18 @@ changed, with its text; the key's file mode is not asked on Windows; a resume wi
 without a failure; the reaper reads `ps` in the C locale and checks its captain by identity; a stop of the
 fleet is never taken for a fault and carried on past; a file in the run folder — nested past any parser, of
 the wrong types, a link, or a pipe — is never what stops or hangs a captain; and a slice that merges while a
-person's pause stands is no longer left paused.
+person's pause stands is no longer left paused; and a conversation's thread longer than one read (8 MB) is
+read to its end, so a pause written last is never missed.
 
-**Catch-up:** the captain agent is off in an existing project until you turn it on: add `"captain":
+**Catch-up:** update the app first, then run `slipwai migrate`, then restart the harbourmaster (stop the fleet
+and start it again): the deck log gains the kinds `dispatched` and `noted`, which a board, a `slipwai` command
+or a harbourmaster from before this upgrade refuses to read, so a stream's log would read as broken to them.
+What already guards it: once `migrate` has recorded this release in `project.json`, the project's own
+`fleet.py` refuses a start, a relight or a tell asked by an older app (`app_too_old`, which reads the
+`SLIPWAI_APP_VERSION` the app passes), and an older app's board says on every page that it is older and
+changes nothing. Neither covers a harbourmaster already running from before the upgrade, which keeps the old
+reader until it is restarted, nor a `slipwai` command from an older install run at a terminal, which passes
+no version; those two are on you. The captain agent is off in an existing project until you turn it on: add `"captain":
 {"agent": true, "bound": 60}` to `harbour.json` (`"answers": true` to let it answer a slice's questions,
 `"per_hour"` to change its ceiling) and restart the fleet; it runs only where your harness has a proven launch
 over the Agent Client Protocol. A newly generated project has it on. A `harbour.json` written by an earlier

@@ -131,6 +131,8 @@ SKIPPER_BRIEF = ROOT / f"agents/{SKIPPER}.md"
 HEARTBEAT = 60.0
 #: How often the deck log is re-read while `/sail` runs. The log is the only progress signal there is.
 POLL = 2.0
+#: Deck kinds that are never a slice's progress: what the captain program says about its own agent.
+NOT_PROGRESS = ("noted",)
 #: How often a turn with room to spare asks clearance again when nothing has woken it. A sibling's
 #: `mark-set` clears a slice without ending anything, so it wakes nobody; asking at every poll would be
 #: the chart parsed and trunk's history read every two seconds for an answer that changes by the minute.
@@ -794,10 +796,13 @@ def mine(found: list[logs.Entry], slice_id: str) -> list[logs.Entry]:
     With siblings in flight a line naming no slice is nobody's in particular, so it counts for none of them:
     a session that stopped writing is not kept alive by a sibling's heartbeat, which is the one mistake a
     shared log invites and the reason every line that matters carries `slice`.
+
+    A line the captain program writes about its own agent (`noted`) is nobody's work, alone or not: counted,
+    a session that had stopped writing would be kept alive by the program saying its agent failed.
     """
     alone = len(FLIGHT) <= 1
-    return [e for e in found if str(e.fields.get("slice", "")) == slice_id
-            or (alone and not e.fields.get("slice"))]
+    return [e for e in found if e.kind not in NOT_PROGRESS and (str(e.fields.get("slice", "")) == slice_id
+                                                                or (alone and not e.fields.get("slice")))]
 
 
 def watched(process: subprocess.Popen | drive.Drive, feature: str, fairway: str, slice_id: str, bound: float,
@@ -2609,9 +2614,11 @@ def sail_out(feature: str, fairway: str, first: list[str], fresh: bool) -> list[
             held = FLIGHT.pop(slice_id, None) or {}
             waiting = str(held.get("waiting") or "")
             how = ended(held, done, talk.halted(conversation(fairway, slice_id)))
+            # A captain's park is `other` in the deck log's closed set of causes: no rule clears it, and a cause
+            # the set has not got is a line every reader refuses, so writing it raised here and ended the turn.
             line = (let_go(feature, fairway, slice_id, *held["halted"]) if how == "held" else
                     finished(feature, fairway, slice_id, False, str(held["parking"]), since, alone and not threads,
-                             carried={"cause": "captain"}) if how == "parked" else
+                             carried={"cause": "other"}) if how == "parked" else
                     let_go(feature, fairway, slice_id, *held["halted"]) if held.get("halted") else
                     finished(feature, fairway, slice_id, done, fault, since, alone and not threads, waiting,
                              held.get("park") or {}))

@@ -104,6 +104,9 @@ class TheCasesOnFile(unittest.TestCase):
                 self.assertRegex(feature, r"^001-(project-[a-z]|synthetic)$")
                 self.assertRegex(case["source"], r"^(a recorded run of project-[a-z], |made up, not recorded: )")
                 self.assertEqual(set(re.findall(r"specs/(\d{3}-[\w-]+)/", text)) - {feature}, set())
+                # A folder above a project's apps is the project's own name: only a neutral one stands there.
+                self.assertEqual({one for one in re.findall(r"([\w.-]+)/apps/", text)
+                                  if not re.fullmatch(r"project-[a-z][\w-]*", one)}, set())
                 self.assertNotIn("what happened next", case["label"].get("note", ""))
 
 

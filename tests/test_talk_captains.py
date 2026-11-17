@@ -185,9 +185,11 @@ class PausedTest(unittest.TestCase):
         found = waiting(SimpleNamespace(root=self.root, fitting=None), {}, {}, [row("ORD-01", "queued")])
         return [one["text"] for one in found["later"]]
 
-    def test_a_slice_a_person_paused_waits_until_they_have_time_and_one_its_captain_paused_does_not(self) -> None:
+    def test_a_slice_a_person_paused_waits_until_they_have_time_and_so_does_one_its_captain_paused(self) -> None:
+        # Decision 17a amends 11: no rule lifts a captain's pause, so a person has to see it.
         talk.note(self.home, "paused", by="captain:ORD", why="trunk is red")
-        self.assertEqual(self.later(), [])
+        self.assertEqual(self.later(), ["ORD-01 is paused by captain:ORD, and no rule lifts it: resume it when you "
+                                        "are ready"])
         talk.note(self.home, "resumed", by="captain:ORD")
         talk.note(self.home, "paused", by="person", why="lunch")
         self.assertEqual(self.later(), ["ORD-01 is paused by you: resume it when you are ready"])

@@ -9,7 +9,7 @@ So this is the one reading, in two groups. *Holding work up*: a slice parked on 
 stage has put up, the one button the run cannot pass without, and a stream's log nobody can read (its
 captain stops at every start until a person repairs the line), and a slice's product question where the
 project says a person answers them. *When you have time*: a capability with something to look at, a feedback
-proposal waiting for Confirm, and a slice a person paused (never one its captain paused). A note nobody has
+proposal waiting for Confirm, and a slice a person or its captain paused (no rule lifts either). A note nobody has
 read and a slice paused until a set time are not on it: neither holds anything up, and neither needs a
 person to move. Each item links to where it is acted on, and the column draws exactly the slices this names.
 """
@@ -120,7 +120,7 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     if said:
         holding.append({"n": 1, "text": said, "href": where})
     # A product question a slice asked a person, where the project says a person answers them, and a slice a
-    # person paused — never one its captain paused, which its captain resumes (`talk_waits`).
+    # person or its captain paused, since no rule lifts a pause (`talk_waits`).
     asked_you, paused_by_you = talk_items(root or board.root, rows or [])
     holding += asked_you
     # A capability on film that nobody has opened or said anything about, and one owed a person's verdict

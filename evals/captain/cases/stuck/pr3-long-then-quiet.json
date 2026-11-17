@@ -276,7 +276,7 @@
      "stage": "drive",
      "agent": "ac92138",
      "kind": "ran",
-     "what": "cd <path> && ls recap/apps/project-b-api/node_modules 2>&1",
+     "what": "cd <path> && ls project-b/apps/project-b-api/node_modules 2>&1",
      "role": "sail-implement-shipwright"
     },
     {
@@ -284,7 +284,7 @@
      "stage": "drive",
      "agent": "ac92138",
      "kind": "failed",
-     "what": "cd <path> && ls recap/apps/project-b-api/node_modules 2>&1",
+     "what": "cd <path> && ls project-b/apps/project-b-api/node_modules 2>&1",
      "role": "sail-implement-shipwright",
      "said": "Exit code 1"
     },

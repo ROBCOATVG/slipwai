@@ -14,12 +14,14 @@ from typing import Any
 
 from .live_page import window_address
 from .page_shell import esc
-from .talk_waits import IN_FLIGHT, summaries
+from .talk_waits import IN_FLIGHT, held_line, summaries
 
 STYLE = """
 .slice .talk-new{font-size:.78rem;line-height:1.4;padding:4px 8px;border-radius:6px;background:var(--teal-soft);
   color:var(--ink);overflow-wrap:anywhere}
 .slice .talk-new b{color:var(--teal);font-weight:600}
+.slice .held-by{font-size:.78rem;line-height:1.4;padding:4px 8px;border-radius:6px;border:1px solid var(--brass);
+  background:var(--brass-soft);color:var(--ink);overflow-wrap:anywhere}
 .slice .talk-card{display:grid;gap:6px;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--rule-2)}
 .slice .talk-card .last{display:grid;gap:2px;padding:8px;border-radius:6px;border:1px solid var(--rule);
   background:var(--ground);font-size:.8rem;overflow-wrap:anywhere}
@@ -77,6 +79,13 @@ def marker_html(row: dict[str, str]) -> str:
         return ""
     who = f"{said['who']}: " if said.get("who") else ""
     return f'<span class="talk-new"><b>New · </b>{esc(who)}{esc(said.get("text", ""))}</span>'
+
+
+def held_html(row: dict[str, str]) -> str:
+    """On a closed card: who holds the slice and since when, where a person paused or stopped it or its captain
+    paused it — none of which any rule lifts, so the card is where it must be seen."""
+    said = held_line(held(row))
+    return f'<span class="held-by">{esc(said)}</span>' if said else ""
 
 
 def card_html(row: dict[str, str]) -> str:

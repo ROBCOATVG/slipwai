@@ -36,8 +36,8 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 590 — the conversation's whole format in one place, both runtimes' copy: the one reader for the run
-# folder, the inbox and its signing,
+# budget: 610 — the conversation's whole format in one place, both runtimes' copy: the one reader for the run
+# folder, the inbox and its signing, the thread read to its end and who holds a slice since when,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
 # and the fold into receipts for every kind, which a reader and the writer must not disagree on
 from __future__ import annotations
@@ -413,7 +413,11 @@ def reject(home: Path, path: Path, why: str = "it is not a message this reads") 
 
 def thread(home: Path) -> list[dict[str, Any]]:
     """The thread's lines, oldest first, read from where the last read of it ended; a torn last line is left
-    for the next read, never raised."""
+    for the next read, never raised.
+
+    Read on, `THREAD_READ` at a time, until the end the first read found: a hold is the thread's last word
+    about it, and a read that stopped short of the end would miss the pause a person made last. The end is
+    the one the first read saw, so a thread still being written cannot keep a reader here."""
     path = Path(home) / "thread.jsonl"
     with WRITING:
         offset, lines, rest = READ.get(path, (0, [], b""))
@@ -421,12 +425,18 @@ def thread(home: Path) -> list[dict[str, Any]]:
         if got is not None and got[1] < offset:  # cut back or replaced: read it whole again
             offset, lines, rest = 0, [], b""
             got = read_bytes(path, THREAD_READ)
-        if got is None:
-            return list(lines)
-        *whole, rest = (rest + got[0]).split(b"\n")
-        rest = rest if len(rest) <= LARGEST else b""  # a line longer than any message is not one
-        lines = [*lines, *json_lines(b"\n".join(whole))]
-        READ[path] = (offset + len(got[0]), lines, rest)
+        end = got[1] if got is not None else offset
+        while got is not None:
+            *whole, rest = (rest + got[0]).split(b"\n")
+            rest = rest if len(rest) <= LARGEST else b""  # a line longer than any message is not one
+            lines = [*lines, *json_lines(b"\n".join(whole))]
+            offset += len(got[0])
+            READ[path] = (offset, lines, rest)
+            if not got[0] or offset >= end:
+                break
+            got = read_bytes(path, THREAD_READ, offset)
+            if got is not None and got[1] < offset:  # cut back while it was read: the next call starts again
+                break
         return list(lines)
 
 
@@ -475,27 +485,33 @@ def queued(home: Path, lines: list[dict[str, Any]] | None = None) -> list[dict[s
 def halted(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, str, str]:
     """(`paused` or `stopped` or `''`, by, why): the last word on the thread about holding the slice. A stop
     holds it only where a person made it; any other stop put it back in the queue."""
-    last: tuple[str, str, str] = ("", "", "")
+    return hold(home, lines)[:3]
+
+
+def hold(home: Path, lines: list[dict[str, Any]] | None = None) -> tuple[str, str, str, str]:
+    """`halted`, and since when: the instant the hold standing now was first heard — a person's `pausing`
+    where the turn has not yet ended, kept when its `paused` follows. What the board's card says."""
+    last: tuple[str, str, str, str] = ("", "", "", "")
     for one in thread(home) if lines is None else lines:
-        kind, by = one.get("kind"), str(one.get("by", ""))
+        kind, by, t = one.get("kind"), str(one.get("by", "")), str(one.get("t", ""))
         # A hold a person placed stands until a person lifts it, whatever anyone else says meanwhile: a
         # captain's stop or pause on top of it is not a second hold, and its stop does not hand the slice
         # back to the queue. A merge ends it as well, since a merged slice is held by nothing.
         person_holds = last[1] == PERSON
         if kind == "pausing" and by == PERSON:
             # A person's pause holds from the moment it is heard, whatever then ends the turn: it is the hold.
-            last = ("paused", by, str(one.get("why", "")))
+            last = ("paused", by, str(one.get("why", "")), last[3] if last[:2] == ("paused", by) else t)
         elif kind == "pausing":
             continue  # anyone else's is only asked for until its turn ends and it is `paused`
         elif kind == "resumed":
             if not person_holds or by in (PERSON, "merge"):
-                last = ("", "", "")
+                last = ("", "", "", "")
         elif kind in ("paused", "stopped") and person_holds and by != PERSON:
             continue
         elif kind == "stopped" and by != PERSON:
-            last = ("", "", "")
+            last = ("", "", "", "")
         elif kind in ("paused", "stopped"):
-            last = (str(kind), by, str(one.get("why", "")))
+            last = (str(kind), by, str(one.get("why", "")), last[3] if last[:2] == (kind, by) else t)
     return last
 
 

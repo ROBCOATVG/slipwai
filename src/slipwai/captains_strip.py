@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from . import talk
+from .captain_decisions import status
 from .captain_files import routed, said_to_you
 from .page_shell import esc
 from .talk_card import SCRIPT as CARD_SCRIPT
@@ -37,6 +38,7 @@ STYLE = CARD_STYLE + """
 #captains a.cap b{font-weight:600;font-size:.88rem}#captains a.cap b i{font-style:normal;font-weight:400;
   font-size:.78rem;color:var(--teal)}
 #captains a.cap span{font-size:.8rem;color:var(--ink-2)}
+#captains a.cap span.alone{color:var(--brass);overflow-wrap:anywhere}
 #captains .row>details,#captains .row>button{flex:0 0 auto}
 #captains summary,#captains button.ask-console{list-style:none;min-height:56px;display:flex;align-items:center;
   padding:0 16px;border-radius:8px;border:1px solid var(--teal);color:var(--teal);cursor:pointer;font:inherit;
@@ -90,6 +92,16 @@ def state(rows: list[dict[str, str]], fairway: str, held: set[str]) -> str:
     return " · ".join(parts)
 
 
+def alone(root: Path, fairway: str) -> str:
+    """Under a stream's button, where its captain program said its agent is off or failed: that the stream is
+    running on the program alone, and why."""
+    said = status(root, fairway)
+    if not said or said.get("agent") is not False:
+        return ""
+    why = str(said.get("why") or "")
+    return f'<span class="alone">Running on the program alone{f": {esc(why)}" if why else ""}</span>'
+
+
 def heard(root: Path, fairway: str) -> int:
     """How many lines of a captain's conversation speak to a person: its thread's and its own words."""
     return thread_heard(talk.thread(home(root, fairway))) + len(said_to_you(root, fairway))
@@ -126,7 +138,7 @@ def strip_html(root: Path, rows: list[dict[str, str]], held: set[str]) -> str:
         mark = " <i>· new</i>" if fresh else ""
         buttons += (f'<a class="cap{" new" if fresh else ""}" href="{esc(captain_window(fairway))}" target="_blank" '
                     f'rel="noopener"><b>Captain · {esc(fairway)}{mark}</b>'
-                    f"<span>{esc(state(rows, fairway, held))}</span></a>")
+                    f"<span>{esc(state(rows, fairway, held))}</span>{alone(root, fairway)}</a>")
     records = told_all(root)
     live = running(root)
     told = "".join(told_lines(root, one, live) for one in records)

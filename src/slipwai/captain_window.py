@@ -7,7 +7,9 @@ closed in its place (`captain_files`), and its conversation is `talk/<stream>/_c
 receipts a slice's has — beside each message, the slices its captain sent it on to.
 
 A project whose captain is the program alone has a window too, saying so, with its slices still listed: the
-program starts slices in chart order, retries by its fixed rule and parks what it cannot decide.
+program starts slices in chart order, retries by its fixed rule and parks what it cannot decide. So does one
+whose agent is off or failed (`captain.json` says `agent: false`, why and when), plainly and at the top, and
+what the program noted about its agent (the deck's `noted` lines) is listed as news, never as owed an answer.
 The captain's whole log, deck and harbour lines with its output, stays in its log window (`captain_page`).
 """
 from __future__ import annotations
@@ -18,8 +20,9 @@ from typing import Any
 from urllib.parse import quote
 
 from .board_read import read
+from .captain_decisions import status
 from .captain_files import agent, decided_today, routes, said_to_you
-from .deck import feature_of
+from .deck import entries, feature_of
 from .live_page import window_address
 from .page_shell import document, esc
 from .slice_card import chip_of, step_now
@@ -47,6 +50,9 @@ STYLE = TALK_STYLE + """
 .decided small{display:block;color:var(--ink-3)}.decided small.bad{color:var(--critical)}
 .decided small.wait{color:var(--brass)}
 .program{border-left:3px solid var(--rule);padding:4px 0 4px 10px;color:var(--ink-2);font-size:.86rem;margin:0}
+.alone{border-left:3px solid var(--brass);padding:4px 0 4px 10px;font-size:.86rem;margin:0 0 10px;
+  overflow-wrap:anywhere}
+.cap-win h3{font-size:.9rem;margin:14px 0 4px}
 """
 
 #: What a stream's captain is, where no agent is in it.
@@ -82,14 +88,50 @@ def slices_html(rows: list[dict[str, str]], fairway: str) -> str:
     return f'<div class="card"><h2>Its slices</h2>{listed}{tail}</div>'
 
 
+def alone_html(root: Path, fairway: str) -> str:
+    """Where the stream's captain program said its agent is off or has failed (`captain.json`, `agent: false`):
+    that the stream runs on the program alone, since when and why, said plainly at the top."""
+    said = status(root, fairway)
+    if not said or said.get("agent") is not False:
+        return ""
+    since = clock(str(said.get("t") or ""))
+    why = str(said.get("why") or "its captain program did not say why")
+    return (f'<p class="alone"><b>This stream is running on the program alone{f" since {esc(since)}" if since else ""}'
+            f"</b>: {esc(why)}. It starts slices in chart order, retries by its fixed rule and parks what it cannot "
+            f"decide; the next start of the fleet tries the captain agent again.</p>")
+
+
+#: How many of the program's notes about its agent the window shows: the newest, which say where it stands.
+NOTES = 5
+
+
+def noted_html(root: Path, fairway: str) -> str:
+    """What the captain program noted about its own agent (the deck's `noted` lines), newest first: news for a
+    person to read, never something waiting on them, so it carries no button and no count."""
+    found, _fault = entries(root, fairway)
+    notes = [one for one in found if one.kind == "noted"][-NOTES:]
+    if not notes:
+        return ""
+    lines = "".join(f'<li><span class="t">{esc(clock(one.t))}</span><span>{esc(str(one.fields.get("what", "")))}'
+                    f"</span></li>" for one in reversed(notes))
+    return (f'<h3>Noted by the captain program</h3><p class="empty">For your information: nothing here waits on '
+            f'you.</p><ul class="decided noted">{lines}</ul>')
+
+
 def decided_html(root: Path, fairway: str) -> str:
-    if not agent(root, fairway):
-        return f'<div class="card"><h2>What it decided today</h2><p class="program">{esc(PROGRAM)}</p></div>'
+    alone, noted = alone_html(root, fairway), noted_html(root, fairway)
     lines = "".join(f'<li><span class="t">{esc(clock(one["t"]))}</span><span>{esc(one["text"])}'
                     f'<small class="{esc(one["tone"])}">{esc(one["after"])}</small></span></li>'
                     for one in decided_today(root, fairway))
+    # What the captain program said when it started is the word on it: `harbour.json` asking for an agent
+    # is not one running where the harness has no launch over the protocol. The file is read only before then.
+    said = status(root, fairway)
+    if (said.get("agent") is not True) if said else not agent(root, fairway):
+        earlier = f'<ul class="decided">{lines}</ul>' if lines else ""
+        return (f'<div class="card"><h2>What it decided today</h2>{alone}<p class="program">{esc(PROGRAM)}</p>'
+                f"{earlier}{noted}</div>")
     shown = f'<ul class="decided">{lines}</ul>' if lines else '<p class="empty">Nothing yet today.</p>'
-    return f'<div class="card"><h2>What it decided today</h2>{shown}</div>'
+    return f'<div class="card"><h2>What it decided today</h2>{alone}{shown}{noted}</div>'
 
 
 def talk_parts(root: Path, fairway: str) -> tuple[list[dict[str, Any]], dict[str, str], int]:

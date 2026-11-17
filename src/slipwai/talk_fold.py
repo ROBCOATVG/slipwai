@@ -191,8 +191,8 @@ def fold(home: Path) -> dict[str, Any]:
             found.append({"kind": "note", "t": str(one.get("t", "")), "by": by,
                           "text": f"{kind.capitalize()} by {named}" + (f": {why}" if why else "")})
     found.sort(key=lambda one: one["t"])
-    halt, by, why = talk.halted(home, lines)
-    return {"turns": found, "how": how, "halted": halt, "by": by, "why": why, "heard": heard(lines),
+    halt, by, why, since = talk.hold(home, lines)
+    return {"turns": found, "how": how, "halted": halt, "by": by, "why": why, "since": since, "heard": heard(lines),
             "merged": any(one.get("kind") == "merged" for one in lines)}
 
 

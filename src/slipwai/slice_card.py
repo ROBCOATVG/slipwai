@@ -27,7 +27,7 @@ from .page_shell import esc
 from .slice_rungs import AHEAD, COUNTED, instant
 from .talk_card import card_html as talk_html
 from .talk_card import fields as talk_fields
-from .talk_card import held, marker_html
+from .talk_card import held, held_html, marker_html
 from .talk_marks import placed_html
 
 #: The steps a chip word says no more than: `Implementing` on Build is Build.
@@ -215,7 +215,7 @@ def summary_html(row: dict[str, str]) -> str:
     spent = in_stage(row) if row["state"] == "working" else ""
     spent = f'<span class="for">{esc(spent)}</span>' if spent else ""
     cap = f'<span class="live-cap">{esc(row["live"])}</span>' if row.get("live") else ""
-    return f"<summary><b>{esc(name)}</b>{shown}{spent}{strip}{cap}{marker_html(row)}</summary>"
+    return f"<summary><b>{esc(name)}</b>{shown}{spent}{strip}{cap}{held_html(row)}{marker_html(row)}</summary>"
 
 
 def now_html(row: dict[str, str]) -> str:

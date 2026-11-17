@@ -146,9 +146,10 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 951 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
+# budget: 957 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
 # by a conversation keeps Model again away, and a verdict is refused while a turn is about to change the
-# pages (ten lines, against the 940 that was).
+# pages, and Continue the build gives one answer with Model again on a storyboard changed since its verdict
+# (fifteen lines, against the 940 that was).
 # The cross-site guard and the app-version guard (2.1) on every change and page, one server
 # and every route the board answers, the need tick and the timeline among them, each a few lines handing off to a page
 # module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
@@ -520,6 +521,11 @@ class Bridge(BaseHTTPRequestHandler):
         outside = outside_session(self.root)
         if outside:
             return f"{outside['lines'][0]} Continue the build waits for it to finish."
+        # One answer with Model again, which a changed storyboard holds back as well.
+        gone = [one.parent.parent.name for one in storyboards(self.root)
+                if withdrawn(self.root, one.parent.parent.name)]
+        if gone:
+            return f"the storyboard for {gone[0]} has changed since its verdict: approve or disapprove it again first"
         if profile_of(self.root) == EVENT_PROFILE and not modelled(self.root):
             return ("nothing is modelled yet: on the event-modelling profile the chart is drawn from the model, "
                     "which approving the storyboard starts and Model again starts again")

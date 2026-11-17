@@ -199,8 +199,8 @@ class StageTalkTest(Talking):
         self.assertNotIn("— approved", verdicts)
         self.assertEqual(unjudged(self.root), FEATURE, "the storyboard waits on a verdict again")
         page = self.get("/voyage")[1]
-        self.assertIn("Changed in the conversation since your verdict, so not approved: Basket — Empty; Total — "
-                      "Shown.", page)
+        self.assertIn("Changed since your verdict, so not approved: Basket — Empty (in the conversation); Total — "
+                      "Shown (in the conversation).", page)
         self.assertIn('data-verdict="approved">Approve storyboard', page, "and the buttons are back")
         record_verdict(self.root, FEATURE, "approved")
         self.assertEqual(unjudged(self.root), "", "and a verdict given again stands")

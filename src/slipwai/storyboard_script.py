@@ -25,6 +25,9 @@ details.findings li button{margin-left:8px;font-size:.76rem;padding:2px 8px}
 #storyboard-talk .turn.person.undelivered{background:var(--paper);color:var(--brass);border:1px dashed var(--brass)}
 #storyboard-talk .turn.person.undelivered::after{content:" · not delivered: say it again";font-size:.76rem}
 #storyboard-talk .turn.person button{margin-left:8px;font-size:.76rem;padding:2px 8px}
+#storyboard-talk .turn.person.discarded{background:var(--paper);color:var(--ink-3);border-color:var(--rule);
+  text-decoration:line-through}
+#storyboard-talk .turn.person.discarded::after{content:" · discarded";font-size:.76rem;text-decoration:none}
 #storyboard-talk .turn.agent{justify-self:start;background:var(--paper)}
 #storyboard-talk .turn.error{justify-self:start;border-color:var(--brass);color:var(--brass)}
 p.held{border-left:3px solid var(--brass);padding-left:10px;color:var(--ink-2);font-size:.88rem}
@@ -81,6 +84,7 @@ SCRIPT = """
   const log = card && card.querySelector('.log'), input = card && card.querySelector('input');
   const go = card && card.querySelector('button.go'), stop = card && card.querySelector('button.stop');
   const held = card && card.querySelector('p.held'), carry = card && card.querySelector('[data-carry-on]');
+  const unkept = card && card.querySelector('p.unkept');
   let at = 0, busy = false, timer = null, wrote = false, polling = false;
   const reply = (id, body) => post('/stage/answer', {id, ...body});
   const draw = turn => {
@@ -95,22 +99,29 @@ SCRIPT = """
   const frames = () => document.querySelectorAll('#mockups iframe').forEach(one => { one.src = one.src; });
   // Kept and not yet said: dashed and "queued" while a run of the stage will say it, and "not delivered" with
   // a Say it now where nothing will — after a Stop, or a restart. Never a promise the board will not keep.
+  // Each with Say it now and Discard: it is never said but by the first, and the second keeps it, marked, and
+  // lets it hold nothing.
+  const act = (label, where, body) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'install';
+    button.textContent = label;
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const answer = await post(where, body);
+      if (!answer.ok) draw({role: 'agent', kind: 'error', text: await answer.text()});
+      poll();
+    });
+    return button;
+  };
   const mark = said => log.querySelectorAll('.turn.person[data-talk]').forEach(one => {
     const id = one.dataset.talk, stuck = said.undelivered.find(kept => kept.id === id);
     one.classList.toggle('queued', said.queued_ids.includes(id));
     one.classList.toggle('undelivered', Boolean(stuck));
-    let now = one.querySelector('button');
-    if (stuck && !now) {
-      now = document.createElement('button'); now.type = 'button'; now.className = 'install';
-      now.textContent = 'Say it now';
-      now.addEventListener('click', async () => {
-        now.disabled = true;
-        const answer = await post('/stage/say', {command, message: stuck.text, resend: id});
-        if (!answer.ok) draw({role: 'agent', kind: 'error', text: await answer.text()});
-        poll();
-      });
-      one.appendChild(now);
-    } else if (!stuck && now) now.remove();
+    one.classList.toggle('discarded', said.discarded_ids.includes(id));
+    const had = one.querySelectorAll('button');
+    if (stuck && !had.length) {
+      one.append(act('Say it now', '/stage/say', {command, message: stuck.text, resend: id}),
+                 act('Discard', '/stage/discard', {command, id}));
+    } else if (!stuck) had.forEach(button => button.remove());
   });
   const once = async () => {
     const said = await (await fetch('/stage/talk.json?command=' + command + '&since=' + at)).json();
@@ -129,6 +140,9 @@ SCRIPT = """
       if (was && !busy && wrote) { frames(); wrote = false; }
       go.textContent = busy || said.running ? 'Queue it' : 'Say';
       stop.hidden = !busy;
+      // Said before anybody types: where what is said here could not be kept out of the project's commits.
+      unkept.textContent = said.unkept; unkept.hidden = !said.unkept;
+      input.disabled = go.disabled = Boolean(said.unkept);
     }
     return busy || said.running;
   };

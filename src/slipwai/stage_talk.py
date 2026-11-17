@@ -55,15 +55,22 @@ def home(root: Path, command: str) -> Path:
     return run_dir(root) / KEPT / command
 
 
-#: Per project: whether git ignores the run folder, asked of git once.
-_IGNORED: dict[Path, bool] = {}
+#: Per project and per state of its ignore files: whether git ignores the run folder.
+_IGNORED: dict[tuple, bool] = {}
 
 
 def ignored(root: Path) -> bool:
     """Whether what is written under the run folder stays out of the project's commits. A project still on
     the 2.0 layout keeps its run state in `.slipwai/`, which nothing may say is ignored; a person's words
-    written there would go out with the next commit. Not a repository is nothing to commit into."""
-    key = Path(root).resolve()
+    written there would go out with the next commit. Not a repository is nothing to commit into. Asked of git
+    again whenever an ignore file changes, so `slipwai migrate` is the remedy without restarting the board."""
+    stamps = []
+    for name in (".gitignore", ".git/info/exclude"):
+        try:
+            stamps.append((root / name).stat().st_mtime_ns)
+        except OSError:
+            stamps.append(0)
+    key = (Path(root).resolve(), run_dir(root).name, *stamps)
     if key not in _IGNORED:
         probe = run_dir(root) / KEPT / "talk.jsonl"
         try:
@@ -89,7 +96,7 @@ def add(root: Path, command: str, turn: dict[str, Any]) -> None:
     torn is given the newline it lacks first, so the torn line is lost and this one is not. A turn that cannot
     be written is let go of rather than raised: it was said on the page already, and a stage that stopped for
     a full disk would be the conversation lost twice."""
-    if turn.get("kind") not in KINDS and turn.get("kind") != "delivered":
+    if turn.get("kind") not in KINDS and turn.get("kind") not in ("delivered", "discarded"):
         return
     if not ignored(root):
         return
@@ -133,14 +140,34 @@ def turns(root: Path, command: str) -> list[dict[str, Any]]:
             continue
         if not isinstance(turn, dict):
             continue
-        if turn.get("kind") == "delivered":
+        if turn.get("kind") in ("delivered", "discarded"):  # what became of a message kept for later
             ids = set(turn.get("ids") or [])
             for one in found:
                 if one.get("id") in ids:
                     one.pop("queued", None)
+                    if turn["kind"] == "discarded":
+                        one["discarded"] = True
             continue
         found.append(turn)
     return found
+
+
+def discard(root: Path, command: str, ident: str) -> bool:
+    """A message kept and not delivered, let go of by the person: kept in the conversation, marked discarded,
+    and holding nothing — not Approve, not Carry on. False where there is no such message."""
+    if not any(one.get("id") == ident for one in undelivered(root, command)):
+        return False
+    add(root, command, {"kind": "discarded", "ids": [ident]})
+    return True
+
+
+def waiting_anywhere(root: Path) -> list[str]:
+    """Every message, to any stage, kept and not yet said or discarded."""
+    try:
+        commands = [one.name for one in (run_dir(root) / KEPT).iterdir() if known(one.name)]
+    except OSError:
+        return []
+    return [one["text"] for command in commands for one in undelivered(root, command)]
 
 
 def undelivered(root: Path, command: str) -> list[dict[str, Any]]:

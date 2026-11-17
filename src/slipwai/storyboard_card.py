@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from . import stage_talk
-from .drawn import decided_states, withdrawn
+from .drawn import decided_states, withdrawn_parts
 from .init_run import outside_session, resumed
 from .page_shell import esc
 from .passage import surface_pages
@@ -78,7 +78,9 @@ def payload(board: Any, command: str, since: int) -> dict[str, Any]:
             "thinking": bool(busy and stage.agent is not None and stage.agent.thinking),
             "queued_ids": [one["id"] for one in kept if one["id"] in going],
             "undelivered": [{"id": one["id"], "text": one["text"]} for one in kept if one["id"] not in going],
-            "held": why, "carry": bool(advancing(root) and stage_talk.held(root))}
+            "held": why, "carry": bool(advancing(root) and stage_talk.held(root)),
+            "discarded_ids": [one["id"] for one in turns if one.get("discarded")],
+            "unkept": stage_talk.unignored(root)}
 
 
 def verdict_refused(board: Any) -> str:
@@ -142,7 +144,8 @@ def talk_card() -> str:
             '<p class="empty">Ask about a finding, ask to see or change a state, or answer one of its questions: '
             "the session that drew it answers, and writes down what you decide. Talking never approves anything "
             "— Approve and Disapprove are the verdicts — and a page changed here waits on yours again.</p>"
-            '<p class="held" hidden></p><div class="log turns" role="log" aria-live="polite"></div>'
+            '<p class="held" hidden></p><p class="unkept held" hidden></p>'
+            '<div class="log turns" role="log" aria-live="polite"></div>'
             '<form class="ask"><input placeholder="Ask about it, or say what to change…" autocomplete="off" '
             'aria-label="Say something about the storyboard"><button class="go" type="submit">Say</button>'
             '<button class="stop" type="button" hidden>Stop</button>'
@@ -206,9 +209,12 @@ def verdict_form(root: Path, feature: str) -> str:
     text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
     parked = next((line.split("parked:", 1)[1].strip()
                    for line in text.splitlines() if "— parked:" in line), "")
-    gone = withdrawn(root, feature)
+    seen, since = withdrawn_parts(root, feature)
+    gone = [*seen, *since]
     if gone:
-        note = ("Changed in the conversation since your verdict, so not approved: " + "; ".join(gone)
+        # "In the conversation" only where the board saw the turn change the page.
+        said = [*(f"{one} (in the conversation)" for one in seen), *since]
+        note = ("Changed since your verdict, so not approved: " + "; ".join(said)
                 + ". Approve or disapprove the storyboard again.")
     elif parked:
         note = (f"Disapproved: {parked}. It is being drawn again from that, and the new drawing waits on a "

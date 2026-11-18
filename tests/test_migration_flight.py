@@ -22,9 +22,7 @@ def script(relative: str):
     spec = importlib.util.spec_from_file_location("migration_script", ROOT / "assets/toolkit/scripts" / relative)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
-    # Registered before it runs: on Python 3.11 `@dataclass` resolves a class's annotations through
-    # `sys.modules[__module__]`, and a script loaded without this fails there with `AttributeError`.
-    sys.modules[spec.name] = module
+    sys.modules[spec.name] = module  # before it runs: 3.11's `@dataclass` reads `sys.modules[__module__]`
     spec.loader.exec_module(module)
     return module
 

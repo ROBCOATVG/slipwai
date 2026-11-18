@@ -186,11 +186,14 @@ def move(root: Path, to: str, why: str, today: date | None = None) -> list[Path]
     if before == after:
         raise Refused(f"the product is already {after}")
     ordered: dict = {}
+    # Where `metadata` writes it — after `shape`, or after `target` where there is no shape — so the next
+    # migration's replay puts it on the same line. Anywhere else, git merged the two and the key was there twice.
+    beside = "shape" if "shape" in document else "target"
     for key, value in document.items():
         if key == "state":
             continue
         ordered[key] = value
-        if key == "target":
+        if key == beside:
             ordered["state"] = after
     ordered.setdefault("state", after)
     path.write_text(json.dumps(ordered, indent=2) + "\n", encoding="utf-8")

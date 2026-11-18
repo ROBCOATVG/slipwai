@@ -9,6 +9,7 @@ so every line after it would have missed the gate.
 from __future__ import annotations
 
 import importlib.util
+import json
 import shlex
 import shutil
 import subprocess
@@ -66,6 +67,61 @@ class BerthTest(unittest.TestCase):
         self.assertEqual((berth / ".env").read_text(encoding="utf-8"), "SECRET=1\n")
         status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
         self.assertEqual(status.stdout.strip(), "", "nothing the berth was given shows up as a change")
+
+    def migrated(self, version: str, also: str = "") -> None:
+        """Trunk as `slipwai migrate` leaves it: the generator moved on, and a script with it."""
+        (self.root / "project.json").write_text(json.dumps({"generator": {"updatedWith": version}}),
+                                                encoding="utf-8")
+        (self.root / "scripts/agents/benchmark.py").write_text(f"WALKS = '{version}'\n", encoding="utf-8")
+        if also:
+            (self.root / also).write_text("trunk's\n", encoding="utf-8")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", f"Migrate to {version}")
+
+    def test_a_berth_cut_before_a_migration_takes_it_before_its_next_session(self) -> None:
+        self.migrated("1")
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        (berth / "work.txt").write_text("the slice's own\n", encoding="utf-8")
+        git(berth, "add", "-A")
+        git(berth, "commit", "-q", "-m", "L01 T001")
+        (berth / "half.txt").write_text("not committed yet\n", encoding="utf-8")
+        self.migrated("2")
+        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                    "GIT_COMMITTER_EMAIL": "t@t"}
+        with mock.patch.dict("os.environ", identity):
+            said = self.module.caught_up(self.root, berth, "main")
+            self.assertIn("has taken it from main", said)
+            self.assertEqual((berth / "scripts/agents/benchmark.py").read_text(encoding="utf-8"), "WALKS = '2'\n")
+            self.assertTrue((berth / "work.txt").is_file() and (berth / "half.txt").is_file())
+            self.assertEqual(self.module.caught_up(self.root, berth, "main"), "", "once, not at every session")
+
+    def test_a_sibling_s_merge_is_not_a_migration_and_is_left_for_the_slice_s_own_merge(self) -> None:
+        self.migrated("1")
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        (self.root / "sibling.txt").write_text("L02\n", encoding="utf-8")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", "L02 merged")
+        self.assertEqual(self.module.caught_up(self.root, berth, "main"), "")
+        self.assertFalse((berth / "sibling.txt").exists())
+        self.assertEqual(self.module.caught_up(self.root, self.root, "main"), "", "the checkout is trunk")
+
+    def test_a_migration_that_will_not_merge_is_walked_away_from_and_said(self) -> None:
+        self.migrated("1", also="shared.txt")
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        (berth / "shared.txt").write_text("the slice's\n", encoding="utf-8")
+        git(berth, "add", "-A")
+        git(berth, "commit", "-q", "-m", "L01 T001")
+        (self.root / "shared.txt").write_text("trunk's, again\n", encoding="utf-8")
+        self.migrated("2")
+        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                    "GIT_COMMITTER_EMAIL": "t@t"}
+        with mock.patch.dict("os.environ", identity):
+            said = self.module.caught_up(self.root, berth, "main")
+        self.assertIn("could not take it from main", said)
+        self.assertIn("until it merges", said)
+        self.assertEqual((berth / "shared.txt").read_text(encoding="utf-8"), "the slice's\n")
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
+        self.assertEqual(status.stdout.strip(), "", "no merge is left in progress under the next session")
 
     def test_a_merged_berth_s_containers_and_its_branch_go_with_it(self) -> None:
         """lean-coffee-club's MT1 merged, its worktree went, and its database and sign-in server ran on."""

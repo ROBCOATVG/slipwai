@@ -1380,9 +1380,9 @@ def cause_for(why: str) -> str:
 def refurnish(slice_id: str, berth: Path | None) -> None:
     """Bring the berth's projections up to its tree before a session starts in it.
 
-    A berth was furnished once, when it was made, and its slice rebases onto trunk many times after: a
-    toolkit upgrade that lands on trunk changes the canonical agent files, the berth's ignored projection
-    keeps the old ones, and `check-agents` refuses the slice — which a session may not fix, because
+    A berth was furnished once, when it was made, and a migration can land on trunk while its slice is in
+    flight: `moorings.caught_up` merges it in here, the canonical agent files change, the berth's ignored
+    projection keeps the old ones, and `check-agents` refuses the slice — which a session may not fix, because
     `make agents` writes a control file. hr-test-2's L04 parked on exactly that after a migration, for a
     person to run one command. Projecting again is idempotent and takes seconds.
     """
@@ -1390,7 +1390,9 @@ def refurnish(slice_id: str, berth: Path | None) -> None:
         return
     # And its deck logs, for the same reason: a migration moves the project's, and a link made before it
     # reaches a folder that is gone. A session may not mend that either.
-    for said in (moorings.linked(ROOT, berth), moorings.furnished(ROOT, berth)):
+    # First, because the projection below is of whatever tree the merge leaves.
+    for said in (moorings.caught_up(ROOT, berth, clearance.trunk()), moorings.linked(ROOT, berth),
+                 moorings.furnished(ROOT, berth)):
         if said:
             print(f"captain: {slice_id}: {said}", flush=True)
 

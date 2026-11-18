@@ -245,9 +245,14 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
 SENT = [0]
 
 
+#: How far apart two stamps are at least: NTFS keeps a file's time in 100 ns units, so stamps a nanosecond apart
+#: were rounded into one and tied again. A microsecond survives that and is nothing on any other clock.
+APART = 1_000
+
+
 def instant() -> int:
-    """Now in nanoseconds, and never the same as or earlier than the last message this process sent."""
-    stamp = max(time.time_ns(), SENT[0] + 1)
+    """Now in nanoseconds, and at least `APART` later than the last message this process sent."""
+    stamp = max(time.time_ns(), SENT[0] + APART)
     SENT[0] = stamp
     return stamp
 

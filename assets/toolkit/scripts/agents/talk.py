@@ -36,11 +36,12 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 630 — the conversation's whole format in one place, both runtimes' copy: the one reader for the run
+# budget: 642 — the conversation's whole format in one place, both runtimes' copy: the one reader for the run
 # folder, the inbox and its signing, the thread read to its end and who holds a slice since when,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
 # the fold into receipts for every kind, which a reader and the writer must not disagree on, and the instant
-# each message is stamped with, which orders one second's messages wherever the file clock is coarse
+# each message is stamped with, which orders one second's messages wherever the file clock is coarse,
+# and the id each is written under, which no two of a conversation may share
 from __future__ import annotations
 
 import hashlib
@@ -73,6 +74,8 @@ DONE = "done"
 SIGNED = ("id", "t", "from", "kind", "text", "mode", "of", "via")
 #: The shortest key believed: a file emptied or cut short makes every message unsigned, so it is made again.
 KEY_BYTES = 32
+#: The random half of an id. Three bytes met themselves once in 170 threads of 450 messages of one second.
+ID_BYTES = 8
 UNSIGNED = "it is not signed by the board or the fleet for this slice"
 #: Why a message signed before the key was made again cannot be delivered, said with its text kept.
 REKEYED = "the board's key changed before this was delivered: send it again"
@@ -197,6 +200,15 @@ def genuine(home: Path, message: dict[str, Any]) -> bool:
         return False  # a signature or a field no signature could have been made over: a file, not a message
 
 
+def fresh_id(home: Path, t: str) -> str:
+    """An id no waiting or handled message here holds: a second under one replaced it, or read as a replay."""
+    box, stem = home / "inbox", t.replace("-", "").replace(":", "")
+    while True:
+        made = f"{stem}-{secrets.token_hex(ID_BYTES)}"
+        if not (box / f"{made}.json").exists() and not (box / DONE / f"{made}.json").exists():
+            return made
+
+
 def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PERSON, of: str = "",
          via: str = "", quote: str = "", quote_from: str = "") -> dict[str, Any]:
     """Drop one thing into a conversation's inbox, signed and whole: written aside and renamed into place.
@@ -212,8 +224,8 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
     if kind == "withdraw" and not of:
         raise ValueError("a withdrawal names the message it takes back")
     t = now()
-    message: dict[str, Any] = {"v": V, "id": f"{t.replace('-', '').replace(':', '')}-{secrets.token_hex(3)}",
-                               "t": t, "from": by, "kind": kind, "text": text.strip(), "mode": mode}
+    message: dict[str, Any] = {"v": V, "id": fresh_id(Path(home), t), "t": t, "from": by, "kind": kind,
+                               "text": text.strip(), "mode": mode}
     if of:
         message["of"] = of
     if via:

@@ -42,10 +42,10 @@ the storyboard starts step 7.
    lists every decision that the document did not settle under `## Assumptions`.
 4. Read the specification. On the board, press **Open specs/&lt;feature&gt;/spec.md**.
 
-A further feature goes to `/sail`. `/sail` writes a record under `docs/intake/` and asks whether the idea
-is really a new feature. Spec Kit then assesses it. A specification is written only after a yes and a go.
-On the board, the **Next features** card has the button **Continue the next feature** for the earliest
-idea that is waiting.
+A further feature goes to `/sail`, or to **Hand over a further feature** on the board's **Next features**
+card. Either writes a record under `docs/intake/`; `/sail` then asks whether the idea is really a new
+feature, and on the board that yes is the button **Continue the next feature**, for the earliest idea that
+is waiting. Spec Kit then assesses it. A specification is written only after a yes and a go.
 
 ## Step 5: the storyboard
 

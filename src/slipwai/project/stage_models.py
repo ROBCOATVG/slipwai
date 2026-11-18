@@ -110,13 +110,16 @@ STAGES: tuple[Stage, ...] = (
     Stage("chart", "strong", title="Chart"),
     Stage("split", "strong", title="Split"),
     Stage("example-map", "strong", title="Example map"),
-    # Both `/gaps` passes share this row; only the one after implementation is delegated, and it reads.
-    Stage("gaps-lookout", "strong", writes=NONE, commands=READ_ONLY, title="Slice gaps"),
+    # Both `/gaps` passes share this row; only the one after implementation is delegated, and it reads. On the
+    # fast role since 2026-11-18: the delegated pass traces a diff against criteria already written down, which
+    # is the input fully on paper that `fast` is for, and the pass before planning runs on the host whatever
+    # this says.
+    Stage("gaps-lookout", "fast", writes=NONE, commands=READ_ONLY, title="Slice gaps"),
     Stage("release-constraint", "strong", title="Release constraint"),
     Stage("plan", "strong", title="Plan and tasks"),
     Stage("tasks-quartermaster", "fast", writes=TASKS, commands=TASK_COMMAND, title="Plan and tasks"),
     Stage("implement-shipwright", "fast", writes=MANIFEST, commands=ANY, title="Implementation"),
-    # Convergence is the capability's first gate since 2026-10-17, and per slice only under `open`.
+    # Convergence is the capability's first gate since 2026-10-17, and per slice only where the project reads each slice.
     Stage("converge-navigator", "strong", writes=MANIFEST, commands=ANY, title="Capability gates"),
     Stage("demo", "strong", title="Demo"),
     # `writes=NONE` is the whole of it: a reviewer that can write is one that edits, and then nobody has
@@ -137,7 +140,10 @@ STAGES: tuple[Stage, ...] = (
     # the benchmark records their cost. Deciding has a role of its own so a project can put a bigger model on
     # deciding than on driving without moving every judgement stage with it.
     Stage("decide-skipper", DECIDE, writes=NONE, commands=READ_ONLY),
-    Stage("demo-hand", "strong", writes=REPORT, commands=ANY),
+    # On the fast role since 2026-11-18. The hand walks examples that are written down and reads screens against
+    # drawings that are approved; lean-coffee-club's MT1 paid the host's model for five walks, each a browser
+    # and a fresh context. A project that wants a bigger model on the walk gives this row another role.
+    Stage("demo-hand", "fast", writes=REPORT, commands=ANY),
     # The bosun gets a blocked run moving — a stub behind a port, a narrower reading, a repaired checkout — so
     # it writes the files its brief names, on the skipper's role: unblocking is judgement, not typing.
     Stage("unblock-bosun", DECIDE, writes=MANIFEST, commands=ANY),

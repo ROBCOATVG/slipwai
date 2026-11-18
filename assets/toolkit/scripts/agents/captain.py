@@ -543,6 +543,41 @@ def sail_command(slice_id: str, fairway: str, retry: str = "", berth: Path | Non
         said
 
 
+#: How many times one slice may end a run at a handover before its runs are counted as attempts again: the
+#: two the prompt names, and one over for a slice that re-entered above its plan.
+HANDOVERS = 3
+#: What a dispatched session is told about where its turn ends. A person's own `/sail` is told nothing of the
+#: kind and runs the ladder through.
+HANDOVER_NOTE = (
+    "\n\n**This session is one part of the slice, and it ends at a handover.** There are two: once `tasks.md` "
+    "is written and committed, and once the implementation is committed with its review findings closed. At "
+    "each, close the stage's `benchmark.py` bracket, commit, say which rung is next, and end the turn — the "
+    "captain starts the next part at once, in a new session that re-enters the ladder from the slice's files. "
+    "So what the next part needs is written into the slice — `plan.md`, `tasks.md`, the review's notes — and "
+    "never left in this conversation. A session that begins past the second handover runs to the slice's gate. "
+    "Read what a rung needs and no more: a requirement, a decision or a rung of `commands/sail.md` is found by "
+    "its id or its heading with a search and read as that passage, or asked of a delegate that answers in a "
+    "paragraph — a whole specification read into this session is paid for again on every call after it.")
+
+
+def stages_closed(slice_id: str, feature: str) -> int:
+    """How many stages this slice's benchmark record holds that were ended by the session that opened them."""
+    held = FLIGHT.get(slice_id, {}).get("berth")
+    where = held if isinstance(held, Path) else ROOT
+    record = talk.read_json(where / f"specs/{feature}/slices/{slice_id}/benchmark.json")
+    stages = record.get("stages") if isinstance(record, dict) else None
+    return sum(1 for one in stages if isinstance(one, dict) and "ended" in one and not one.get("cut_off")) \
+        if isinstance(stages, list) else 0
+
+
+def handed_over(slice_id: str, wrote: list[logs.Entry], before: int, after: int) -> bool:
+    """Whether a run that finished ended at a handover rather than short of its gate: it closed a stage, and
+    wrote no demo, no park and no question for its slice. The stage is the evidence — a run that says it
+    handed over and closed nothing is a run that did nothing, and costs what any such run costs."""
+    mine = [e for e in wrote if str(e.fields.get("slice", "")) == slice_id]
+    return after > before and not any(e.kind in ("demo", "parked", "question") for e in mine)
+
+
 def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "",
                 berth: Path | None = None, told: list[dict] | None = None) -> str:
     """What the ladder's session is asked, whichever way it is started: `/sail <slice> fairway=<name>`, the
@@ -560,6 +595,7 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
         prompt += (f"\n\nAnother slice is waiting on this fairway's own code, which no other fairway and no "
                    f"mender may change: {asked}. Where it fits beside this slice's work, land it on this "
                    f"branch as a commit of its own; where it does not, leave it and say so in a `told`.")
+    prompt += HANDOVER_NOTE
     if retry:
         prompt += (f"\n\nThe last run of this slice did not close its gate: {retry}. Re-enter at the first "
                    f"incomplete stage and close what it left.")
@@ -627,9 +663,9 @@ def starter(slice_id: str, fairway: str, retry: str = "",
     watch below drives the same way, or one of the installed harness's print mode. `SLIPWAI_SAIL` wins over
     both: it is the suite's fake and the way a command the registry does not know is pointed at.
 
-    **Over the protocol the slice's driver is held open**: a drive still up from this slice's last run is
-    given the prompt rather than a second agent started cold, and a new one loads the session the last one
-    closed with. **In print mode what was said to the slice is handed to it here**, in the prompt, and its
+    **Over the protocol each run of the ladder is a new session**, which reads the slice from its files: a
+    drive still up from this slice's last run is closed first. The one exception is a turn cut short for a
+    message, which carries on in the session it was in (`carry`, set by `through_its_gate`). **In print mode what was said to the slice is handed to it here**, in the prompt, and its
     receipt written as the session starts: the lesser form, with no interrupt, because a session in print
     mode cannot be spoken to while it runs."""
     # A slice whose agent could not be started over the protocol runs in print mode from then on (`dispatch`).
@@ -658,15 +694,21 @@ def starter(slice_id: str, fairway: str, retry: str = "",
 
     def held() -> drive.Drive:
         open_already = FLIGHT.get(slice_id, {}).get("driver")
+        carried = bool(FLIGHT.get(slice_id, {}).pop("carry", False))
         if isinstance(open_already, drive.Drive) and open_already.alive:
-            open_already.prompt(prompt)
-            return open_already
-        _, feature = clearance.chart()
-        record = (berth or ROOT) / f"specs/{feature}/slices/{slice_id}/benchmark.json"
+            if carried:
+                open_already.prompt(prompt)
+                return open_already
+            close_driver(slice_id)
+        # Every run of the ladder is a session of its own. `/sail` re-enters from the slice's files, which is
+        # what makes that safe, and the conversation it would otherwise load is the dear part of a slice:
+        # lean-coffee-club's MT1 was resumed the next morning at 390,000 tokens of context and read all of
+        # it again on each of 156 calls, ending at 740,000 — more spent re-reading the day before than on
+        # everything it wrote. Only a turn cut short for a message carries on in the session it was in.
         return drive.Drive(launch, berth or ROOT, environment, prompt, model=sail_model(),
                            kept=logs.run_dir(berth or ROOT) / "acp" / slice_id, conversation=home,
                            activity=logs.run_dir(ROOT) / "activity" / fairway / f"{slice_id}.jsonl",
-                           fresh=drive.reviewing(record), harness_key=str((row or {}).get("key") or ""))
+                           fresh=True, harness_key=str((row or {}).get("key") or ""))
     return held
 
 
@@ -992,7 +1034,7 @@ def landed_talk(fairway: str, slice_id: str) -> None:
 
 
 def close_driver(slice_id: str) -> None:
-    """Close the slice's driver, which saves its session for the next one to load."""
+    """Close the slice's driver. Its session is saved, for a message said to the slice between runs."""
     held = FLIGHT.get(slice_id, {}).pop("driver", None)
     if isinstance(held, drive.Drive):
         held.end()
@@ -1213,8 +1255,16 @@ def dispatch(slice_id: str, feature: str, fairway: str, retry: str = "",
         raise Spent(f"{slice_id} has had {ceiling()} runs since a person last said anything to it, which is every "
                     f"run `attempts` allows between them: it waits for a person, whoever asks for another")
     note = {"why": "", "free": free}
+    closed = stages_closed(slice_id, feature)
     try:
-        return ran(slice_id, feature, fairway, retry, note)
+        finished, why, wrote = ran(slice_id, feature, fairway, retry, note)
+        flying = FLIGHT.setdefault(slice_id, {})
+        if (finished and not note["free"] and int(flying.get("handovers", 0)) < HANDOVERS  # type: ignore[call-overload]
+                and handed_over(slice_id, wrote, closed, stages_closed(slice_id, feature))):
+            note["free"] = "it ended at a handover"
+            flying["handover"] = True
+            flying["handovers"] = int(flying.get("handovers", 0)) + 1  # type: ignore[call-overload]
+        return finished, why, wrote
     finally:
         if note.get("started"):
             costless = note["free"] or ("a stop of the fleet" if STOP.is_set() else "")
@@ -1593,6 +1643,7 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             # only where the message was a person's; a captain's message that commits buys no free run.
             costless = "a person's message committed after its run" if person else ""
             retry = "a message committed to the slice after its demo; close the gate again on this head"
+            FLIGHT.setdefault(slice_id, {})["carry"] = True
             print(f"captain: {slice_id}: a message's turn committed after the run; its gate is read again", flush=True)
             continue
         if FLIGHT.get(slice_id, {}).pop("interrupted", False):
@@ -1604,7 +1655,14 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             if not missing and verdict == ACCEPTED and not unseeded(fresh, slice_id, feature):
                 return True, ""
             retry = "a person interrupted it to say something, and was answered; carry on from where it was"
+            FLIGHT.setdefault(slice_id, {})["carry"] = True
             print(f"captain: {slice_id} was interrupted by a message; carrying on, no attempt spent", flush=True)
+            continue
+        if FLIGHT.get(slice_id, {}).pop("handover", False) and not landed_already(slice_id, feature, fairway):
+            # The session ended where it was asked to, with a stage closed: the next part of the slice, in a
+            # new session, at no attempt's cost. `dispatch` counts them, so a slice cannot hand over for ever.
+            retry = ""
+            print(f"captain: {slice_id} ended a part at a handover; starting the next in a new session", flush=True)
             continue
         tried += 1
         own = own_parks(fresh, fairway, slice_id)

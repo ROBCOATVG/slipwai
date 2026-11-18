@@ -8,7 +8,7 @@ The brief hands you a capability: every slice under it, merged, and the diff sin
 at the ladder's *Capability gates* rung. Read every slice's plan, tasks and examples together and judge the
 whole diff against the specification's requirements: what each slice built alone can still disagree between
 them. The verdict goes in the capability's `gates.md` under `## Convergence`, and what it still owes goes
-there as tasks for the capability's follow-up slice. Under the `open` release mode the brief may hand you one
+there as tasks for the capability's follow-up slice. Where the project reads each slice the brief may hand you one
 slice instead, with its own `tasks.md` and diff, and then the verdict and the tasks are that slice's.
 Everything below holds for both; "the slice" below means whichever you were handed.
 

@@ -311,7 +311,7 @@ asked rather than skipped.
 - **The demo.** The hand walks those states when it walks the capability's examples, and the person's demo of
   the capability walks them again as one flow.
 - **`web-interface-guidelines`.** In the design review of any capability that builds one of these surfaces —
-  of each slice that does, under the `open` release mode.
+  of each slice that does, where the project reads each slice.
 
 ## When to run it again
 

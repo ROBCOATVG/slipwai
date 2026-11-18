@@ -10,7 +10,7 @@ the gaps pass before planning: run them in order, write the slice's `mark-set` l
 settles each contract produces them — `python3 scripts/agents/deck_line.py mark-set --slice <id> --mark
 <mark>`, never by appending to the log — and return at the last of them — the plan is not yours. `implement`
 enters at the plan and runs tasks and implementation to the examples proven — each example in `examples.md`
-recorded against the test that proves it (under the `open` release mode, converge first, as *Implementation*
+recorded against the test that proves it (where the project reads each slice, converge first, as *Implementation*
 says); convergence is otherwise the capability's, not yours. The example map and the marks are already
 there, so read them and do not redo them. `whole` is both, in order. Whichever
 band, **strictly sequential inside the slice**: its backend and its frontend are not two agents, and a
@@ -30,8 +30,9 @@ them `specs/<feature>/people/`, one file per person your story signs in as — i
 canvas regenerated from it, the code and tests of the service that owns it, the context's events module
 *additively*, new timestamped migrations and the composition root. The shared-surface rule in
 `commands/sail.md` is exact and `{{make}} check-slice-scope` holds it on your branch; `Makefile`,
-`project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/`, the realm files under `docker/`
-and the other docs are not a slice's to write, and needing one is a stop rather than a small exception: a
+`project.json`, the workspace's root manifests and locks, `scripts/`, `skills/`, `agents/`, the local services'
+files under `docker/` and the other docs are not a slice's to write — the manifest and lock of the service
+that owns the slice are its code, and are — and needing one is a stop rather than a small exception: a
 `told` with `needs`, one per thing that has to land on trunk, each with a `check` where trunk can prove it,
 so the harbourmaster ticks it and the board shows it under *Waiting on you* rather than as a note.
 

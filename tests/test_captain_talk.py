@@ -3,7 +3,7 @@
 Over the stand-in agent (`SLIPWAI_ACP`): a turn cancelled for a person's message costs no attempt; a
 person's stop holds the slice across the captain's turns until a person resumes it, which starts a fresh
 session; a pause lets the turn finish and gives the slot back, and a resume carries the slice on in its
-saved session; a message turn that hangs is held to the stage bound and parks the slice as silence does.
+session of its own; a message turn that hangs is held to the stage bound and parks the slice as silence does.
 In print mode (`SLIPWAI_SAIL`): a message waits for the slice's next dispatch and goes into its prompt, and
 stays queued where no session started; one sent to a slice after its park is the person's answer to it,
 and one sent before is not.
@@ -105,7 +105,7 @@ class HeldCaptainTest(Fixture):
         self.assertEqual([one["loaded"] for one in talk.thread(self.home) if one["kind"] == "session"],
                          [False, False], "a resume after a stop starts a fresh session")
 
-    def test_a_paused_slice_gives_its_slot_back_and_resumes_on_its_saved_session(self) -> None:
+    def test_a_paused_slice_gives_its_slot_back_and_resumes_in_a_session_of_its_own(self) -> None:
         self.grant("ORD-01")
         self.grant("ORD-02")  # set ready by the mark ORD-01 sets before it pauses, and merged meanwhile
         (self.root / ".dawdle").write_text("", encoding="utf-8")
@@ -125,7 +125,8 @@ class HeldCaptainTest(Fixture):
         said = self.finished(self.over())
         self.assertIn("ORD-01 is through its gate and merged", said)
         opened = [one["loaded"] for one in talk.thread(self.home) if one["kind"] == "session"]
-        self.assertEqual(opened, [False, True], "carried on in the session it closed with")
+        self.assertEqual(opened, [False, False], "a resumed slice reads itself from its files, not from a "
+                                                 "conversation that is paid for again on every call")
 
     def test_a_message_turn_that_hangs_is_held_to_the_stage_bound(self) -> None:
         self.budget(minutes=0.1, attempts=0)  # six seconds of silence ends a stage

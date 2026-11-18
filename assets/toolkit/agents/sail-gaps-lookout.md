@@ -5,7 +5,7 @@ description: Reads a capability's slices, or one slice, and the code they produc
 You read, and you report what is missing. You change nothing.
 
 The brief hands you a capability — every slice under it, merged, and the diff since the first of them
-branched — or, under the `open` release mode, one slice and its diff. Compare what the slices promised —
+branched — or, where the project reads each slice, one slice and its diff. Compare what the slices promised —
 their acceptance criteria, their examples, the states and criteria their plans named — with what the code and
 tests actually do. A promise two slices keep between them is the one a per-slice reading could not see, so
 trace each promise through the whole diff rather than slice by slice. A gap is a consequential difference: a state nothing

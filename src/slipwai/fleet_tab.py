@@ -27,6 +27,7 @@ STYLE = """
 .tile.red{border-color:var(--critical)}.tile.red b{color:var(--critical)}.tile.green b{color:var(--teal)}
 .tile .bar{height:6px;border-radius:3px;background:var(--rule-2);overflow:hidden;display:block}
 .tile .bar i{display:block;height:100%;background:var(--teal)}.tile .bar i.over{background:var(--critical)}
+.tile .made{font-size:.74rem;overflow-wrap:anywhere}
 .procs-list{display:grid;font-size:.86rem;overflow-x:auto}
 .proc-row{display:grid;grid-template-columns:minmax(150px,.9fr) minmax(110px,.6fr) minmax(0,2fr) auto;gap:10px;
   align-items:center;min-height:44px;border-top:1px solid var(--rule-2);padding:4px 0}
@@ -53,18 +54,49 @@ def sessions_tile(fleet: dict[str, Any], rows: list[dict[str, str]]) -> str:
 
 
 def tokens_tile(fleet: dict[str, Any]) -> str:
-    """Today's tokens against the day's budget, in thousands, as the harbour counts them."""
+    """Today's work tokens against the day's budget, in thousands, as the harbour paces by them — and under
+    them what the day was made of: each model's tokens by kind, and an estimate in money where `harbour.json`
+    prices every model that ran. Work tokens are a pace and not a cost (`spend.py`), so the tile says which
+    it is showing rather than calling it "tokens"."""
     bunker = fleet.get("bunker") or {}
     today, allowed = bunker.get("today"), bunker.get("allowed")
     spent = f"{today:,}k" if isinstance(today, int) else "none recorded"
+    made = made_of(bunker)
     if isinstance(allowed, int | float) and not isinstance(allowed, bool) and allowed > 0:
         share, spent = (today or 0) / allowed, f"{today or 0:,}k"
         bar = (f'<span class="bar"><i class="{"over" if share > 1 else ""}" '
                f'style="width:{min(100, round(100 * share))}%"></i></span>')
-        return (f'<div class="tile"><span>Tokens today</span><b>{esc(spent)} of {esc(f"{allowed:,}")}k</b>'
-                f"{bar}</div>")
-    return (f'<div class="tile"><span>Tokens today</span><b>{esc(spent)}</b><span>no budget a day is set'
-            f"</span></div>")
+        return (f'<div class="tile"><span>Work tokens today</span><b>{esc(spent)} of {esc(f"{allowed:,}")}k</b>'
+                f"{bar}{made}</div>")
+    return (f'<div class="tile"><span>Work tokens today</span><b>{esc(spent)}</b><span>no budget a day is set'
+            f"</span>{made}</div>")
+
+
+def made_of(bunker: dict[str, Any]) -> str:
+    """Each model's day, said in a line — output, uncached input, read from cache, written to cache — and the
+    estimate, or why there is none."""
+    models = bunker.get("models") if isinstance(bunker.get("models"), dict) else {}
+    if not models:
+        return ""
+    lines = [f'<span class="made">{esc(model)}: {esc(scaled(kinds.get("output")))} out · '
+             f'{esc(scaled(kinds.get("input")))} in · {esc(scaled(kinds.get("cache_read")))} read from cache · '
+             f'{esc(scaled(kinds.get("cache_creation")))} written to cache</span>'
+             for model, kinds in sorted(models.items()) if isinstance(kinds, dict)]
+    estimate, unpriced = bunker.get("cost"), bunker.get("unpriced") or []
+    if isinstance(estimate, int | float) and not isinstance(estimate, bool):
+        lines.append(f'<span class="made">about ${estimate:,.2f} at the prices in harbour.json</span>')
+    elif unpriced:
+        lines.append(f'<span class="made">no estimate: harbour.json has no <code>prices</code> for '
+                     f'{esc(", ".join(str(one) for one in unpriced))}</span>')
+    return "".join(lines)
+
+
+def scaled(value: object) -> str:
+    """A count as a person reads it: `57.1M`, `299k`, `503`."""
+    count = int(value) if isinstance(value, int | float) and not isinstance(value, bool) else 0
+    if count >= 1_000_000:
+        return f"{count / 1_000_000:.1f}M"
+    return f"{count / 1000:,.0f}k" if count >= 1000 else str(count)
 
 
 def trunk_tile(trunk: dict[str, str], now: datetime | None = None) -> str:

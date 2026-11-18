@@ -69,6 +69,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "stuck", "captain_decisions",
        # Where the product is and how dark a merge is: the release modes rebuilt so something reads them.
        "release_state", "cli_release_state",
+       # What the harbour has spent, read from the stages' own records rather than a log field nobody wrote.
+       "spend",
        # Talking to the fleet from the board: the windows, the strip, and every message placed in an inbox.
        "talk_said", "talk_fold", "captain_files", "talk_page", "talk_waits", "talk_card", "captain_window",
        "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",

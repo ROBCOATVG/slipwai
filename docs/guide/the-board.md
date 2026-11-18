@@ -364,7 +364,7 @@ turn it on.
 ### Fleet
 
 The Fleet tab is the machinery: **Sessions** in use against the slots, and which slice takes the next one;
-**Tokens today** against the budget a day; **Trunk**, green or red with why; and one row per process (the
+**Work tokens today** against the budget a day (uncached input plus output, the pace the bunker holds the fleet to), with each model's day underneath by kind and, where `harbour.json` has `prices` for every model that ran, an estimate in money; **Trunk**, green or red with why; and one row per process (the
 harbourmaster and each captain) with its state and its last line. **Open log ↗** on a captain's row opens that
 captain's own window, described below. **Stop the fleet** and the settings are here too.
 

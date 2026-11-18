@@ -19,12 +19,14 @@ attack. **The showing is per slice and the readings are per capability**: a slic
 Try it following trunk are what make each observable reachable the moment it merges, and these readings are
 what make the whole fit to accept; neither stands in for the other (feedback-points plan, D1). Convergence is not one of them since 2026-10-17: it is the
 first capability gate, because what it asks — does the code do what the specification requires — has its
-answer only once the slices that share the requirement are all built. **Under the `open` release mode four
-readings do not wait**: where a merge reaches the actor at once, code nobody has looked at would be in front
-of somebody before the capability is whole, so converge, the gaps trace, the design review and the hand's walk
-run per slice where they used to, and a slice that widened authorisation, identity or money is attacked
-before its push. The capability still runs converge, the adversary pass and mutation over the whole, in every
-mode — the adversary pass, as always, only where a slice widened something.
+answer only once the slices that share the requirement are all built. **No release mode reads each slice** since 2026-11-18: `open` did, because its merges are
+visible, but `open` is what a pre-launch product merges under and nobody is using one of those — the
+protection was for users the state says do not exist yet, and it made the earliest stage of a product the
+dearest to build. A project whose merges do reach somebody at once asks for it, `"readings": "slice"` in
+`harbour.json`, and then converge, the gaps trace, the design review and the hand's walk run per slice and a
+slice that widened authorisation, identity or money is attacked before its push — except a slice that only
+shows. The capability runs converge, the adversary pass and mutation over the whole either way, the adversary
+pass, as always, only where a slice widened something.
 """
 from __future__ import annotations
 
@@ -36,30 +38,37 @@ RECORD = "specs/<feature>/capabilities/<capability>/"
 GATES_FILE = RECORD + "gates.md"
 #: The readings, in the order they run: each one's fixes are code the next one should see.
 GATES = ("converge", "gaps", "design review", "adversary", "mutation", "the hand's walk")
-#: The readings that run per slice under the `open` release mode, where a merge reaches the actor at once.
+#: The readings that run per slice where `harbour.json` says `"readings": "slice"`.
 OPEN_PER_SLICE = ("converge", "gaps", "design review", "the hand's walk")
-#: The readings that run over the whole capability in every release mode, `open` included.
+#: The readings that run over the whole capability whatever `readings` says.
 EVERY_MODE = ("converge", "adversary", "mutation")
 #: What a slice's row in the adversary log is headed, so `check-decisions` reads it as that slice's row.
 TRIGGER_ROW = "## <slice-id> · <commit> · <date> · trigger record"
 #: What the capability's row is headed when no slice widened anything and nothing was attacked.
 SKIP_ROW = "## <capability> · <commit> · <date> · skipped: no slice widened a trigger"
 
-OPEN_MODE = """**Under the `open` release mode four of the gates do not wait for the capability.** Where a
-   merge reaches the actor at once — a push to `main` deploys production and nothing holds this slice back (no
-   flag seeded off, no keystone left out), which is the case the push check stops for where this page has
-   one — converge, the gaps trace, the design review and the hand's walk run per slice, over the slice's diff
-   and examples, where they used to: converge and then `/gaps` at the end of *Implementation*, the design
+OPEN_MODE = """**Nothing is read per slice unless the project asks for it.** The six gates above run once, over the
+   whole capability, in every release mode — `open` among them. A pre-launch product merges visible and to
+   nobody: no one uses it yet, trunk is the team's own demo, and a capability is read whole before anybody is
+   asked to accept it. lean-coffee-club read every slice because its merges were visible, and its first
+   screen was converged, attacked and walked five times before a second slice existed to stand beside it.
+   **A project reads each slice by saying so** — `"readings": "slice"` in `harbour.json`, for a product whose
+   merges do reach somebody at once with nothing holding a slice back. Then four of the gates do not wait:
+   converge, the gaps trace, the design review and the hand's walk run per slice, over the slice's diff
+   and examples: converge and then `/gaps` at the end of *Implementation*, the design
    review after it, the hand at the *Demo* rung, each recorded in the slice's own folder. The *Attack
    surface* rung also attacks a slice whose record has the authorisation, identity or money trigger
-   `widened`, before its push; nothing else is attacked per slice. Converge, the adversary pass and mutation
-   still run here, over the whole capability, in every mode: what slices get wrong between them is something
-   no slice's own pass could read. Read the mode once, at the merge rung, as the merge does."""
+   `widened`, before its push; nothing else is attacked per slice. **A slice that only shows takes none of
+   the four** even then: its pattern is `state-view`, or on the standard profile its split row names no
+   command, and its diff adds no command, no event, no route that writes and no migration. Converge, the
+   adversary pass and mutation still run here, over the whole capability: what slices get wrong between
+   them is something no slice's own pass could read. Read `readings` once, at the slice's *Implementation*
+   rung, and say in `tasks.md` which it was; absent, it is `capability`."""
 
 
 def open_mode_note(where: str) -> str:
-    """One sentence for a per-slice rung that keeps its old work under `open`, naming what it keeps."""
-    return f"""Under the `open` release mode (*Capability gates* says when that is), {where}."""
+    """One sentence for a per-slice rung that keeps its old work where the project reads each slice, naming what it keeps."""
+    return f"""Where the project reads each slice (`"readings": "slice"` in `harbour.json`; *Capability gates* says what that is for), {where}."""
 
 
 def capability_gates_stage(web: bool) -> str:
@@ -102,7 +111,7 @@ def capability_gates_stage(web: bool) -> str:
       `specs/<feature>/adversary-log.md` is headed by the capability rather than a slice. It attacks every
       seam the slices widened, alone and together — a seam one slice opened and the next one reached. Where
       no slice widened anything, the gate writes a skip row naming the trigger records it relied on, and the
-      skip clears it. A seam a slice's own pass already attacked under `open` is cited rather than probed
+      skip clears it. A seam a slice's own pass already attacked where the project reads each slice is cited rather than probed
       again, unless a later slice changed it.
    5. **Mutation** — `/mutation` over every production file the capability's slices changed, bounded by the
       `mutation-shipworm` budget in `harbour.json`: a run that reaches the budget is killed, its process tree

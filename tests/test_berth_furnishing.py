@@ -17,6 +17,7 @@ import types
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 from test_harness import loaded
@@ -65,6 +66,46 @@ class BerthTest(unittest.TestCase):
         self.assertEqual((berth / ".env").read_text(encoding="utf-8"), "SECRET=1\n")
         status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
         self.assertEqual(status.stdout.strip(), "", "nothing the berth was given shows up as a change")
+
+    def test_a_merged_berth_s_containers_and_its_branch_go_with_it(self) -> None:
+        """lean-coffee-club's MT1 merged, its worktree went, and its database and sign-in server ran on."""
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        forge = self.home / "forge.git"
+        git(self.home, "init", "-q", "--bare", str(forge))
+        git(self.root, "remote", "add", "origin", str(forge))
+        git(self.root, "push", "-q", "origin", "slice/L01")
+        git(self.root, "fetch", "-q", "origin")
+        asked: list[list[str]] = []
+        real = subprocess.run
+
+        def docker(argv: list[str], **given: Any) -> Any:
+            if argv[0] != "docker":
+                return real(argv, **given)
+            asked.append(argv)
+            listing = argv[1] == "ps"
+            named = any(one.startswith("name=") for one in argv)
+            return subprocess.CompletedProcess(argv, 0, ("aaa\nbbb\n" if named else "bbb\nccc\n") if listing
+                                               else "aaa\nbbb\nccc\n", "")
+
+        with mock.patch.object(self.module.shutil, "which", return_value="/usr/bin/docker"), \
+                mock.patch.object(self.module.subprocess, "run", docker):
+            said = self.module.leave(self.root, berth)
+        self.assertFalse(berth.exists())
+        self.assertIn("3 container(s)", said)
+        self.assertIn(f"name=^/?{berth.name.lower()}-", asked[1], "the hyphen keeps -l01- from taking -l010-")
+        self.assertEqual(asked[-1], ["docker", "rm", "--force", "--volumes", "aaa", "bbb", "ccc"])
+        branches = subprocess.run(["git", "branch", "--list", "slice/L01"], cwd=self.root, capture_output=True,
+                                  text=True).stdout
+        self.assertEqual(branches.strip(), "", "the forge holds the branch, so the local one went")
+
+    def test_a_berth_that_was_kept_keeps_what_it_is_running_and_its_branch(self) -> None:
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        (berth / "half-written.txt").write_text("somebody's\n", encoding="utf-8")
+        with mock.patch.object(self.module, "stop_services") as stopped:
+            said = self.module.leave(self.root, berth)
+        self.assertIn("was kept", said)
+        stopped.assert_not_called()
+        self.assertTrue(berth.exists())
 
     def test_a_sibling_s_half_made_worktree_is_waited_out_and_not_parked_on(self) -> None:
         """Windows CI parked L03 on `failed to read .git/worktrees/<L04>/commondir`: L04's berth was being

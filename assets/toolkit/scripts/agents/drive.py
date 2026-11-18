@@ -512,14 +512,15 @@ class Drive:
             (self.home / AGENT_PID).write_text(said, encoding="utf-8")
 
     def open(self) -> None:
-        """Load the session this slice closed with, where the agent can, the stage is not a review and it was
-        the same harness; a new one otherwise. The thread says which."""
+        """A new session where the drive was asked for one (`fresh`) — every run of the ladder is — and
+        otherwise the session this slice closed with, where the agent can load it and it was the same
+        harness. The thread says which."""
         if self.home is None:
             self.session.new()
             return
         saved = {} if self.fresh else talk.saved_session(self.home)
         ident = str(saved.get("id") or "")
-        loaded, why = False, ("a stage that reviews starts fresh" if self.fresh else "nothing was saved")
+        loaded, why = False, ("this run reads the slice from its files" if self.fresh else "nothing was saved")
         if ident and str(saved.get("harness") or "") != self.harness_key:
             why = f"it was saved under another harness ({saved.get('harness') or 'none named'})"
         elif ident and not self.session.agent.load_session:

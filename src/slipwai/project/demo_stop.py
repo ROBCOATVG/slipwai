@@ -53,7 +53,7 @@ the slice needs something those do not cover, the baseline stylesheet and design
 rather than bypassed. A screen still on browser defaults is a reason not to demo yet: the actor is being asked
 whether the thing works, and an unstyled page answers a different question first. `tasks.md`'s
 `## Design review` in each slice's `tasks.md` holds a `Designed:` line for every screen it changed, and the
-capability's `gates.md` a `Reviewed:` line for each — under the `open` release mode the slice's own
+capability's `gates.md` a `Reviewed:` line for each — where the project reads each slice the slice's own
 `## Design review` holds both — the review read from screenshots against `skills/web-interface-guidelines` and
 every finding fixed or given its reason. A screen missing either line goes back to the rung that writes it
 rather than to the actor. Record both checks with the others, naming the screens, where their styles came

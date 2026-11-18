@@ -490,18 +490,66 @@ def parse_signals(arguments: list[str]) -> dict[str, Any]:
     return signals
 
 
-def start(directory: Path, stage: str) -> None:
+#: How many times one slice, or one capability, is walked where `harbour.json` names no `walks`: the walk, and
+#: one more to see that what it sent back was put right.
+WALKS = 2
+#: The stages that are a walk, under either name a record may hold.
+WALKED = ("demo", "demo-hand", "hand")
+
+
+def walks_allowed(config: Path | None = None) -> int:
+    """`walks` in `harbour.json`, or `WALKS`; never below one."""
+    try:
+        held = json.loads((config or HARBOUR).read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return WALKS
+    named = held.get("walks") if isinstance(held, dict) else None
+    return max(1, named) if isinstance(named, int) and not isinstance(named, bool) else WALKS
+
+
+def walked(record: dict[str, Any]) -> int:
+    """How many walks this record holds, open or ended."""
+    return sum(1 for entry in record.get("stages", []) if str(entry.get("stage", "")) in WALKED)
+
+
+def walk_refused(record: dict[str, Any], stage: str, critical: str) -> str | None:
+    """Why another walk may not start, or None where it may.
+
+    lean-coffee-club's MT1 was walked five times in fifty minutes for where a message bar sat, whether a
+    refusal had a Dismiss and where the focus went: four rounds of fix and walk again, each a browser, a
+    delegate and the whole session's context read once more, for findings none of which stopped anybody
+    setting up a meeting. A walk that finds something is worth one more to see it put right, and after that
+    what is left is either critical — and says so, in words, on the record — or it is a task.
+    """
+    if stage not in WALKED or critical:
+        return None
+    held, allowed = walked(record), walks_allowed()
+    if held < allowed:
+        return None
+    return (f"this has been walked {held} time(s), which is what `walks` in harbour.json allows ({allowed}). Do not "
+            "walk it again: fix what the last walk found where a test can prove the fix, write the rest into the "
+            "fairway's careen as tasks, and record the verdict as `accepted` with `--stowed <how many>` "
+            "(scripts/agents/deck_line.py demo). Only a critical finding earns another walk — an example that "
+            "fails, something that stops the actor finishing, data lost or shown to the wrong person — and then "
+            f"it is said here: `benchmark.py start <dir> {stage} critical=\"<what is critical>\"`")
+
+
+def start(directory: Path, stage: str, critical: str = "") -> None:
     """Open an entry — after closing any this record still has open, as cut off: the stages of one record run one
     after another, so an entry still open at the next `start` was left by a session that ended without ending it,
     and a second one stacked on top would leave the first open for good with its hours uncounted."""
     record = load(directory)
+    refused = walk_refused(record, stage, critical)
+    if refused:
+        raise RuntimeError(refused)
     for index, entry in enumerate(record["stages"]):
         if "ended" not in entry:
             cut_off_entry(directory / RECORD, index, entry, f"a new `{stage}` entry started while it was open")
             print(f"benchmark: {record.get('slice') or '(feature)'} {entry['stage']}: cut off — {entry['cut_off']}")
     mark = cursor()
     record["stages"].append({"stage": stage, "started": now(), "planned": planned(stage),
-                             "tasks": {"start": task_counts(directory)}, "cursor": mark})
+                             "tasks": {"start": task_counts(directory)}, "cursor": mark,
+                             **({"critical": critical} if critical else {})})
     save(directory, record)
     where = f"usage from {mark['source']}" if mark.get("source") else f"no usage: {mark.get('reason')}"
     print(f"benchmark: {stage} started ({(directory / RECORD).relative_to(ROOT)}; {where})")
@@ -553,6 +601,13 @@ def end(directory: Path, stage: str, arguments: list[str], clock: Callable[[], s
             file=sys.stderr,
         )
     print(f"benchmark: {summary_line(entry)}")
+    if stage in WALKED and signals.get("outcome") in ("behaviour", "implementation"):
+        held, allowed = walked(record), walks_allowed()
+        left = allowed - held
+        print(f"benchmark: walk {held} of {allowed}: " + (
+            f"{left} more may follow once what it found is put right" if left > 0 else
+            "no further walk unless a finding is critical — fix what a test can prove, stow the rest to the "
+            "careen, and record `accepted` with `--stowed <how many>`"), file=sys.stderr)
 
 
 def summary_line(entry: dict[str, Any]) -> str:
@@ -1156,9 +1211,13 @@ def main() -> None:
     if len(rest) < 2:
         raise RuntimeError(f"{command} takes <dir> <stage>")
     if command == "start":
-        if rest[2:]:
-            raise RuntimeError("start takes no signals; pass them to end")
-        start(directory, rest[1])
+        critical = [one.split("=", 1)[1].strip() for one in rest[2:] if one.startswith("critical=")]
+        if len(critical) != len(rest[2:]) or (critical and rest[1] not in WALKED):
+            raise RuntimeError("start takes no signals; pass them to end. (A walk past `walks` takes "
+                               "critical=\"<what is critical>\", and nothing else does.)")
+        if critical and not critical[0]:
+            raise RuntimeError("critical= takes what is critical, in words")
+        start(directory, rest[1], critical[0] if critical else "")
         told("stage", f"{rest[1]} started")
     else:
         end(directory, rest[1], rest[2:])

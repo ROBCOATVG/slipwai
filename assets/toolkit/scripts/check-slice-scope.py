@@ -26,7 +26,10 @@ What a slice's change may contain — everything since the branch left `main`, c
   written there at `Proposed`, by `/cruise` or by the slice's own planning. New files only — an ADR that exists
   is never edited; superseding one is the host's, on `main`;
 - **code and tests of the service that owns it** — `service` in its model block, or any service where the
-  model names none — and, where the block names a `context`, nothing under another context's directory in
+  model names none — its own build manifest and lock among them: a dependency or a build step the slice
+  needs is added where the service declares them, in the same change as the code that uses it, and is
+  never handed back (lean-coffee-club's SI1 handed back a line of its own service's `pom.xml`, which this
+  gate would have let it write, and nobody landed it) — and, where the block names a `context`, nothing under another context's directory in
   `domain/` or `application/`. A browser app is open to every slice: a white box is one screen;
 - **the context's events module additively**: a line may be added, none removed. It is the contract;
 - **its own flag's declaration**, `infra/service/flags.auto.tfvars`, additively and seeded `off`: a key, a
@@ -52,7 +55,7 @@ Refused, each with what to do instead: the canonical slot at the feature root (`
 `research.md`, `data-model.md`, `quickstart.md`, `tasks.md` — links into `slices/<id>/`, never committed;
 a regular file there is a record about to be lost, on every branch), another slice's directory or model
 block, another context's code, an edited or deleted migration, a numbered new migration, and anything else
-in the repository — `Makefile`, `project.json`, package manifests and locks, `scripts/`, `skills/`,
+in the repository — `Makefile`, `project.json`, the workspace's root manifests and locks, `docker/`, `scripts/`, `skills/`,
 `commands/`, `agents/`, CI, the docs other than the model and its canvas — which is the host's: landed on `main`
 before the fan-out, or handed back as the question it is. A refusal is a hand-back, not something to work around.
 

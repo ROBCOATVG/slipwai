@@ -132,7 +132,7 @@ For one small vertical slice:
    nothing — then `make verify`, and merge.
 9. Once a capability's last slice has merged, run its gates once: converge over its diff, `/gaps`, the design
    review from screenshots, one adversary pass where any slice widened a trigger, `/mutation`, and the hand's
-   walk of every example. Then the person's demo. Under the `open` release mode converge, the gaps trace, the
+   walk of every example. Then the person's demo. Where the project reads each slice converge, the gaps trace, the
    design review and the walk run per slice as well, after step 5, and a slice that widened authorisation,
    identity or money is attacked before its push; the capability's converge, adversary pass and mutation
    still run.

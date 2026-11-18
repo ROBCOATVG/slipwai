@@ -18,6 +18,7 @@ from .errors import GenerationError
 from .layout import layout_of
 from .logs import Entry, entry
 from .migration_merge import Tree, git
+from .migration_slices import NAMES_FROM, modelled_only, named, names_file, stored_names
 
 
 class YAMLReader(Protocol):
@@ -25,22 +26,6 @@ class YAMLReader(Protocol):
 
 
 STATE = ".slipwai/migration.json"
-#: Where a crossing records the event names the project already had in a log, which `check-model`'s two
-#: naming rules then ask nothing of: a stored event cannot be renamed. Written once, here, and read by
-#: `scripts/event-model/check.py` and `held-names.ts`, which spell the same path.
-NAMES_FROM = ".specify/event-names-from.json"
-#: The statuses that say a slice's events may already be written: built, or recorded from code that exists.
-#: A slice that is only modelled or planned has raised nothing, so its events can still be renamed and the
-#: rules hold them — the stricter of the two readings issue 95 left open.
-WRITTEN = frozenset({"implemented", "observed"})
-#: What a slice's id looks like where a split writes one: `S38`, `ORD-01`, `CL2`. Read only out of the first
-#: column of a split's slice table and never out of its prose — a split quotes scenario, requirement and
-#: rule ids (`CS-3`, `FR-006`, `V-10`) in the very same shape, and nothing but where it stands says which a
-#: token is.
-SLICE = re.compile(r"(?<![\w-])[A-Z][A-Z0-9]*-?\d+(?![\w-])")
-#: A run of slices in one cell, `S38–S41` or `L02 to L23`: an en dash, an em dash or the word, never a
-#: hyphen, which is inside ids like `ORD-01`. The spelling `clearance.py` reads the same table with.
-RUN = re.compile(r"(?<![\w-])([A-Z][A-Z0-9]*?-?)(\d+)\s*(?:–|—|\bto\b)\s*\1?(\d+)(?![\w-])")
 #: What a fairway or a feature may be called: one path component, on every platform and in a git ref.
 NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*")
 #: What version 1's runner — version 1's own word for what a captain replaced — left behind. All three
@@ -52,60 +37,6 @@ NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*")
 LEGACY_LOG = "specs/cruise-log.jsonl"
 LEGACY_GIVEN = ".specify/cruise-told.jsonl"
 LEGACY_QUEUED = ".specify/cruise-inbox.jsonl"
-
-
-def named(split: str, known: Collection[str] = ()) -> list[str]:
-    """The slices a split names: the first column of its `## Slice graph` table, and nothing else it says.
-
-    The whole text used to be searched for anything shaped like an id, and a split's notes are full of
-    those: one project's crossing listed `CS-3`, `FR-006`, `R-11` and `V-10` as slices to place, none of
-    which is a slice, so its confirmation could never succeed and nothing could be claimed (issue 95). A
-    row's first cell is the one place the split says "this is a slice". It may name one, several, or a run
-    (`S38–S41`); `known` are ids already established as slices — the model's — which are recognised however
-    they are spelled, since the model admits a lower-case id this shape does not.
-
-    A split written before the slice graph existed has no such table, and falls back to the first column
-    of any table headed `Slice` — the split candidates. One with neither names nothing here, and its slices
-    are the directories under `slices/`.
-    """
-    graph: list[str] = []
-    headed: list[str] = []
-    inside = columns = False
-    for line in split.splitlines():
-        text = line.strip()
-        if text.startswith("#"):
-            inside, columns = text.lstrip("#").strip().lower() == "slice graph", False
-            continue
-        if not text.startswith("|"):
-            columns = False
-            continue
-        cell = text.strip("|").split("|")[0].strip()
-        if cell.strip("`* ").lower() == "slice":
-            columns = True
-        elif not set(cell) <= set("-: "):
-            if inside:
-                graph.append(cell)
-            elif columns:
-                headed.append(cell)
-    found: list[str] = []
-    for cell in graph or headed:
-        for prefix, low, high in RUN.findall(cell):
-            found += [f"{prefix}{number:0{len(low)}d}" for number in range(int(low), int(high) + 1)]
-        found += SLICE.findall(cell)
-        found += [slice_id for slice_id in known
-                  if re.search(rf"(?<![\w-]){re.escape(slice_id)}(?![\w-])", cell)]
-    return sorted(set(found))
-
-
-def stored_names(slices: list[dict]) -> list[str]:
-    """The names of the events these slices may already have written, sorted and once each.
-
-    Read after the statuses are reconciled, so a slice trunk proves shipped counts whatever its field said.
-    """
-    return sorted({frame["name"] for item in slices if item.get("status") in WRITTEN
-                   for frame in item.get("frames") or []
-                   if isinstance(frame, dict) and frame.get("type") == "evt"
-                   and isinstance(frame.get("name"), str) and frame["name"]})
 
 
 def json_bytes(value: object) -> bytes:
@@ -350,15 +281,10 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
                        {path.name for path in (feature / "slices").glob("*") if path.is_dir()})
         local = [dict(item) for item in items if str(item["id"]) in found]
         if modelled:
-            # The model is what a slice is here: `make chart` renders the chart from it and `check-chart`
-            # refuses one that disagrees. A slice only the split holds has no frames, the model's grammar
-            # admits none without, and so no chart could ever carry it — listing it as `unplaced` asked a
-            # person for a placement that cannot be made.
-            held = {str(item["id"]) for item in local}
-            missing = [slice_id for slice_id in found if slice_id not in held]
+            # The model is what a slice is here; what only the split or a directory names is said, not charted.
+            found, missing = modelled_only(found, {str(item["id"]) for item in local})
             if missing:
                 flight.unmodelled[name] = missing
-            found = [slice_id for slice_id in found if slice_id in held]
         else:
             local = []
             for slice_id in found:
@@ -406,18 +332,10 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
                     original.setdefault("capability", item["capability"])
     if items:
         flight.files[model_path.relative_to(root).as_posix()] = model_bytes(model_path, model)
-    # Never rewritten: the names are the crossing's, and a later run that listed the model again would
-    # forgive every name added under the rules since. And not written for a project with nothing in a log —
-    # no file is how the gate knows to hold every name.
+    # Once: a later run that listed the model again would forgive every name added under the rules since.
     names = stored_names(items)
     if names and not (root / NAMES_FROM).exists():
-        flight.kept = names
-        flight.files[NAMES_FROM] = json_bytes({
-            "events": names,
-            "why": "Events the model's implemented slices held when slipwai migrate crossed this project from "
-                   "version 1. A stored event cannot be renamed, so scripts/event-model/check.py does not ask "
-                   "event-is-not-crud or event-is-not-negative of these names; every event named since is "
-                   "held to both. Written once; leave it as it is."})
+        flight.kept, flight.files[NAMES_FROM] = names, names_file(names)
     # Version 1 ran one loop over the whole project, so its messages and its stop belong to the `main`
     # fairway, beside the records frozen there. Carried whether or not any feature has a split: they are
     # the project's loop's, not any feature's, and the crossing is the moment that loop stops running —

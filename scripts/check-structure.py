@@ -123,7 +123,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "adopt_report",
                   "add_service", "adopt",
                   "migration_legacy", "migration_flight", "migration_settings", "migration_claims",
-                  "migration_sentence", "migration_crossing", "migration_result", "migration_merge",
+                  "migration_sentence", "migration_slices", "migration_crossing", "migration_result", "migration_merge",
                   "migration_renames",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.

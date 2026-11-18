@@ -24,12 +24,13 @@ from .layout import layout_of
 from .logs import Entry, deck_path
 from .manifest import apps_from_manifest
 from .migration_claims import ahead, prepare, update
-from .migration_flight import NAMES_FROM, Flight, read
+from .migration_flight import Flight, read
 from .migration_legacy import runtime
 from .migration_merge import Tree, git, install, merge, modes, tracked, validate
 from .migration_renames import moved, renamed, table
 from .migration_result import Migration
 from .migration_settings import settings
+from .migration_slices import kept_section, unmodelled_section
 from .replay import Replay, replay
 from .survey import survey
 from .versions import parse
@@ -154,18 +155,7 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             f"Run `{command}`. Place every `unplaced` slice in a named context on its chart; "
             "on the standard profile run `/chart`. Confirm the chart with "
             f"`{command} --confirm`, then run `make verify`.\n\n"
-            # A slice only a split or a `slices/` directory names, on the profile where the chart is rendered
-            # from the model. Said here instead of listed as `unplaced`: nothing could have placed it, so
-            # listing it held the confirmation above open for ever (issue 95).
-            + ("## Slices the model does not hold\n\n"
-               "Each of these has a row in a split's slice graph or a directory under `slices/`, and no "
-               "slice in the event model. The chart is rendered from the model, so none of them is on it, "
-               "none is `unplaced`, and the confirmation above does not wait for them. Where one is work "
-               "still to do, model it — a slice needs at least one frame — and `make chart` charts it; "
-               "where one is not a slice at all, there is nothing to do.\n\n"
-               + "".join(f"- `{feature}`: {', '.join(f'`{slice_id}`' for slice_id in names)}\n"
-                         for feature, names in sorted(flight.unmodelled.items())) + "\n"
-               if flight.unmodelled else "") +
+            + unmodelled_section(flight.unmodelled) +
             "## Installed base\n\n"
             f"The base was reconstructed by installed slipwai {used}; the project recorded {recorded}. "
             "Snapshot fallbacks use the nearest available stable release below the snapshot.\n\n"
@@ -175,16 +165,7 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             "under `fairways/main/<feature>/`; ADRs retain their paths and numbers. Implementation "
             "was reconciled upward from trunk's slice merges: a slice trunk could not prove keeps the "
             "status the model recorded for it.\n\n" +
-            # The names `check-model`'s naming rules will not ask about, said where the person reads what
-            # the crossing did: an exemption nobody was told of is one nobody can check.
-            ("## Event names kept\n\n"
-             "These events belong to slices that were `implemented` at this crossing, so they may already "
-             "be in a log, and a stored event cannot be renamed. `make check-model` does not ask "
-             "`event-is-not-crud` or `event-is-not-negative` of them; it holds every event named from here "
-             f"on to both. The list is `{NAMES_FROM}`, written once: take a name out of it when the event "
-             "it names is retired, and never add one to pass the gate.\n\n"
-             + ", ".join(f"`{name}`" for name in flight.kept) + "\n\n"
-             if flight.kept else "") +
+            kept_section(flight.kept) +
             # What the crossing would have done to `infra/` and did not. Named rather than silently skipped:
             # a person who upgrades and later finds the factory's stack has moved on should find out here,
             # with the list in front of them, rather than from a plan that proposes to replace a database.

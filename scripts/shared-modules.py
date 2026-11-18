@@ -37,6 +37,8 @@ SHARED = {
     # Where the product is and how dark a merge is: `slipwai release-state` in the keel, and in a project
     # the release stage, `check-slice-scope`'s keystone and a person moving the state.
     "src/slipwai/release_state.py": "assets/toolkit/scripts/agents/release_state.py",
+    # What the harbour has spent, from the stages' own records: the board's tile and the harbourmaster's bunker.
+    "src/slipwai/spend.py": "assets/toolkit/scripts/agents/spend.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

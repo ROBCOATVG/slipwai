@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,9 @@ def script(relative: str):
     spec = importlib.util.spec_from_file_location("migration_script", ROOT / "assets/toolkit/scripts" / relative)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
+    # Registered before it runs: on Python 3.11 `@dataclass` resolves a class's annotations through
+    # `sys.modules[__module__]`, and a script loaded without this fails there with `AttributeError`.
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 

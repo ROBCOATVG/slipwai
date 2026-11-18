@@ -35,6 +35,7 @@ Standalone and dependency-free: this runs inside a generated project, which has 
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -183,6 +184,46 @@ def furnished(root: Path, berth: Path) -> str:
             faults.append(f"the agent projection failed in {berth}: {said[-1] if said else 'no output'}")
     faults += skills_carried(root, berth)
     return "; ".join(faults)
+
+
+def generator(where: Path, ref: str) -> str:
+    """What `project.json` at this commit says the project was generated and last migrated with, as one string."""
+    shown = git(where, "show", f"{ref}:project.json")
+    if shown.returncode != 0:
+        return ""
+    try:
+        return json.dumps(json.loads(shown.stdout).get("generator", {}), sort_keys=True)
+    except (ValueError, AttributeError):
+        return ""
+
+
+def caught_up(root: Path, berth: Path, trunk: str) -> str:
+    """Merge trunk into a berth cut before the project's last migration; say what happened, or nothing.
+
+    A berth meets trunk when its slice merges and not before, so a slice in flight when `slipwai migrate`
+    landed kept the scripts and the ladder it was cut with for the rest of its life. lean-coffee-club was
+    migrated on 2026-11-18 to bound its demo walks and stop reading each slice; the one slice cut after it
+    had both, and the four already in flight had neither until a person merged trunk into each by hand.
+    Only a migration is taken — trunk's `generator` in `project.json` differing from the berth's — and never
+    a sibling's work, which the slice meets at its merge as it always has. A merge, not a rebase: the
+    branch has been pushed, and the harbourmaster rebases it when it lands. One that will not go in is
+    walked away from and the slice runs on what it has, because a session is about to start in this tree.
+    """
+    if not trunk or berth.resolve() == root.resolve():
+        return ""
+    wanted, held = generator(berth, trunk), generator(berth, "HEAD")
+    if not wanted or wanted == held:
+        return ""
+    if git(berth, "merge-base", "--is-ancestor", trunk, "HEAD").returncode == 0:
+        return ""
+    merged = git(berth, "merge", "--no-edit", trunk)
+    if merged.returncode == 0:
+        return f"{berth.name} was cut before the project's last migration and has taken it from {trunk}"
+    said = (merged.stderr or merged.stdout).strip().splitlines()
+    if git(berth, "rev-parse", "--verify", "--quiet", "MERGE_HEAD").returncode == 0:
+        git(berth, "merge", "--abort")
+    return (f"{berth.name} was cut before the project's last migration and could not take it from {trunk} "
+            f"({said[-1] if said else 'git refused'}); it runs on the version it was cut with until it merges")
 
 
 def skills_carried(root: Path, berth: Path) -> list[str]:

@@ -66,6 +66,7 @@
 # why: 2026-11-18 e4c300a544886a35 Windows work for the captain-agent stream, macOS and Linux unchanged: the captain's named command is split as drive.words already split a slice's (backslashes kept only on Windows); a print-mode program is looked up on PATH only on Windows, where an npm .cmd shim is not found by a bare name; drive.alive asks the process handle only on Windows, where os.kill(pid, 0) is a Ctrl-C; drive.end_group and the captain's timed-out command end the tree with taskkill /T only on Windows and keep killpg elsewhere; captain_orders.unreadable compares against os.sep, which is / on macOS and Linux; check-dispatch prints its project paths with as_posix, the same text off Windows; the pruner's check-ignore is NUL-separated, the same answer off Windows.
 # why: 2026-11-18 df30366479d37207 Windows work, macOS and Linux unchanged: talk.send stamps each message file's mtime with an instant later than the last this process sent, which off Windows is the clock's own, so the order fold draws is the same; drive.end_group's Windows branch always passes taskkill /F, and the POSIX branch is unchanged.
 # why: 2026-11-18 75b2fb6d165c2ced Windows work, macOS and Linux unchanged: talk.instant spaces two stamps of one process a microsecond apart instead of a nanosecond, because NTFS keeps file times in 100 ns units; off Windows a stamp is still the clock's own, and the order fold draws is the same.
+# why: 2026-11-18 2463382b32e22043 Same on every platform: release_state.move writes state after shape where there is one, the line metadata writes it on, so a migration merges it rather than keeping it twice; nothing it reads changes.
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -136,10 +137,6 @@
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  standard-postgres-toy-serve  scripts/check-chart.py
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-memory-none  scripts/event-model/drawio.test.ts
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-postgres-toy-serve  scripts/event-model/drawio.test.ts
-4599614e1e084590d134c180b3ed2c9ce263c3fab018c0914f068a42e5206589  event-modelling-memory-none  scripts/agents/release_state.py
-4599614e1e084590d134c180b3ed2c9ce263c3fab018c0914f068a42e5206589  event-modelling-postgres-toy-serve  scripts/agents/release_state.py
-4599614e1e084590d134c180b3ed2c9ce263c3fab018c0914f068a42e5206589  standard-memory-none  scripts/agents/release_state.py
-4599614e1e084590d134c180b3ed2c9ce263c3fab018c0914f068a42e5206589  standard-postgres-toy-serve  scripts/agents/release_state.py
 4b15c5d768f4263f0ecfe51d8cd2fab545720ce41ffae2993195b9db83163031  event-modelling-memory-none  scripts/agents/claims.py
 4b15c5d768f4263f0ecfe51d8cd2fab545720ce41ffae2993195b9db83163031  event-modelling-postgres-toy-serve  scripts/agents/claims.py
 4b15c5d768f4263f0ecfe51d8cd2fab545720ce41ffae2993195b9db83163031  standard-memory-none  scripts/agents/claims.py
@@ -282,6 +279,10 @@
 9d85a3f4bb66e76e12aaa443ee3f2e47c1ab104ade852b128dfb74e208462dfa  event-modelling-postgres-toy-serve  scripts/event-model/workspace.ts
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-memory-none  scripts/event-model/readme.ts
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-postgres-toy-serve  scripts/event-model/readme.ts
+a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  event-modelling-memory-none  scripts/agents/release_state.py
+a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  event-modelling-postgres-toy-serve  scripts/agents/release_state.py
+a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  standard-memory-none  scripts/agents/release_state.py
+a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  standard-postgres-toy-serve  scripts/agents/release_state.py
 a68155a17300e6a1a8021939a91e3ce86eb725d77c7bf6304849236040f8f800  event-modelling-memory-none  scripts/event-model/seams.py
 a68155a17300e6a1a8021939a91e3ce86eb725d77c7bf6304849236040f8f800  event-modelling-postgres-toy-serve  scripts/event-model/seams.py
 a685f15d1e33f81839fe0073823d0131f76679140af7acf1177f1f3296d5caa1  event-modelling-memory-none  scripts/agents/project.py

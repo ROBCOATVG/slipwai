@@ -79,7 +79,8 @@ class ProjectTest(unittest.TestCase):
                                      date(2026, 11, 17))
         document = json.loads((self.root / "project.json").read_text())
         self.assertEqual(document["state"], "pre-launch")
-        self.assertEqual(list(document)[:4], ["schema", "name", "target", "state"])
+        self.assertEqual(list(document)[:5], ["schema", "name", "target", "shape", "state"],
+                         "where metadata writes it, so a migration's merge has one line to agree on")
         adr = self.root / "docs/adr/0002-the-product-is-pre-launch.md"
         self.assertEqual(written, [self.root / "project.json", adr])
         text = adr.read_text()

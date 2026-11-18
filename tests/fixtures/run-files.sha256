@@ -69,6 +69,7 @@
 # why: 2026-11-18 2463382b32e22043 Same on every platform: release_state.move writes state after shape where there is one, the line metadata writes it on, so a migration merges it rather than keeping it twice; nothing it reads changes.
 # why: 2026-11-18 87deb35d58df59e6 check-migration.py --confirm passes once no slice on the chart is unplaced, and says rather than refuses a listed name the chart lacks; check-model's two naming rules pass the event names .specify/event-names-from.json lists, read by check.py and the new held-names.ts. No other behaviour moves on macOS or Linux
 # why: 2026-11-18 5ee271d0234d973a Same on every platform: the harbourmaster's spent_today adds the work tokens of stages that ended today, read from each slice's benchmark.json on trunk and in every berth by scripts/agents/spend.py, a new standard-library module that finds the berths in git's own worktree files and starts no process; nothing it starts, signals or writes changes.
+# why: 2026-11-18 e36ed1264e72144b talk.py draws a message id of eight random bytes instead of three, and again where a waiting or handled message already has it. Behaviour changes on purpose and the same on every platform: two messages of one second no longer share a file
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -110,10 +111,6 @@
 2fa8a7283fed86e800037c66c80efd62b71d6ebf6e6f290a58e075960bba595e  event-modelling-postgres-toy-serve  scripts/check-dispatch.py
 2fa8a7283fed86e800037c66c80efd62b71d6ebf6e6f290a58e075960bba595e  standard-memory-none  scripts/check-dispatch.py
 2fa8a7283fed86e800037c66c80efd62b71d6ebf6e6f290a58e075960bba595e  standard-postgres-toy-serve  scripts/check-dispatch.py
-31b0e4d2c33454ff1788381ef05547d25c56da3558594833b728fbfed31b1af9  event-modelling-memory-none  scripts/agents/talk.py
-31b0e4d2c33454ff1788381ef05547d25c56da3558594833b728fbfed31b1af9  event-modelling-postgres-toy-serve  scripts/agents/talk.py
-31b0e4d2c33454ff1788381ef05547d25c56da3558594833b728fbfed31b1af9  standard-memory-none  scripts/agents/talk.py
-31b0e4d2c33454ff1788381ef05547d25c56da3558594833b728fbfed31b1af9  standard-postgres-toy-serve  scripts/agents/talk.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  event-modelling-memory-none  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  event-modelling-postgres-toy-serve  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  standard-memory-none  scripts/check-imports.py
@@ -313,6 +310,10 @@ b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-memor
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-postgres-toy-serve  scripts/agents/capabilities.py
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-memory-none  scripts/event-model/render-drawio.ts
 b8b854af4e716ea6a24110f9dff47aa27dc2d98d711382f8be68af744edc7551  event-modelling-postgres-toy-serve  scripts/event-model/render-drawio.ts
+baefd7f0003692d98628eb1b47b4db6f42c2b7313cbc7e9580ed2203bdef150e  event-modelling-memory-none  scripts/agents/talk.py
+baefd7f0003692d98628eb1b47b4db6f42c2b7313cbc7e9580ed2203bdef150e  event-modelling-postgres-toy-serve  scripts/agents/talk.py
+baefd7f0003692d98628eb1b47b4db6f42c2b7313cbc7e9580ed2203bdef150e  standard-memory-none  scripts/agents/talk.py
+baefd7f0003692d98628eb1b47b4db6f42c2b7313cbc7e9580ed2203bdef150e  standard-postgres-toy-serve  scripts/agents/talk.py
 bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  event-modelling-memory-none  scripts/agents/captain_rules.py
 bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  event-modelling-postgres-toy-serve  scripts/agents/captain_rules.py
 bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  standard-memory-none  scripts/agents/captain_rules.py

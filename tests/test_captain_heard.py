@@ -46,8 +46,12 @@ class HeardTest(Abreast):
     def end_captains(self) -> None:
         """The captains the harbourmaster lit in this throwaway project, which nothing else will end."""
         for path in (self.run_dir / "running").glob("captain-*.pid"):
-            with contextlib.suppress(OSError, ValueError):
-                os.killpg(int(path.read_text(encoding="utf-8").strip()), signal.SIGKILL)
+            with contextlib.suppress(OSError, ValueError, subprocess.SubprocessError):
+                pid = int(path.read_text(encoding="utf-8").strip())
+                if os.name == "nt":  # no process groups: the tree by its root, as `taskkill` ends one
+                    subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True, check=False)
+                else:
+                    os.killpg(pid, signal.SIGKILL)
 
     def sail_on(self, until: Callable[[], bool], timeout: float = 150) -> str:
         """The harbourmaster, passing every second and lighting the captains its plan wants, until `until`."""

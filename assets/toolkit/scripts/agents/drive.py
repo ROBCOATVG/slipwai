@@ -41,6 +41,7 @@ harness's row, any other value the command that starts an agent (the suite's sta
 from __future__ import annotations
 
 import atexit
+import contextlib
 import json
 import os
 import secrets
@@ -89,14 +90,17 @@ AGENT_PID = "agent.pid"
 LIVE: set[Drive] = set()
 
 
-def end_group(pid: int) -> None:
-    """End an agent and everything it started: it runs in a process group of its own."""
-    group = getattr(os, "killpg", None)
+def end_group(pid: int, hard: bool = False) -> None:
+    """End an agent and everything it started: it runs in a process group of its own. Windows has no groups,
+    and ending the root alone left what it started running, holding its folder: there the tree is ended by
+    its root, as `taskkill /T` ends one and as `harness.py` ends a session's."""
+    if os.name == "nt":  # pragma: no cover - the other platform's branch
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            subprocess.run(["taskkill", "/T", *(["/F"] if hard else []), "/PID", str(pid)],
+                           capture_output=True, check=False, timeout=10)
+        return
     try:
-        if group is not None:
-            group(pid, signal.SIGTERM)
-        else:  # pragma: no cover - the other platform's branch
-            os.kill(pid, signal.SIGTERM)
+        os.killpg(pid, signal.SIGKILL if hard else signal.SIGTERM)
     except (OSError, ProcessLookupError):
         pass
 
@@ -111,6 +115,24 @@ def end_all() -> None:
 
 
 def alive(pid: int) -> bool:
+    """Whether that process is still running. Asked, never acted on: on Windows `os.kill(pid, 0)` is not a
+    question but a Ctrl-C or `TerminateProcess` (`fleet.alive` says how that was learned), so there the
+    process handle is asked instead, exactly as `fleet.alive` asks it."""
+    if sys.platform == "win32":  # pragma: no cover - the other platform's branch
+        import ctypes  # noqa: PLC0415 - only this branch needs it
+
+        query_limited_information, still_active = 0x1000, 259
+        kernel = ctypes.windll.kernel32
+        handle = kernel.OpenProcess(query_limited_information, False, pid)
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if not kernel.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return False
+            return code.value == still_active
+        finally:
+            kernel.CloseHandle(handle)
     try:
         os.kill(pid, 0)
     except (OSError, ProcessLookupError):
@@ -181,6 +203,12 @@ def switched_on() -> bool:
     return setting() == "protocol"
 
 
+def words(named: str) -> list[str]:
+    """A command a person named in the environment, as its words. A Windows path is backslashes, which POSIX
+    splitting reads as escapes and drops, so there they are kept as written; elsewhere the split is POSIX's."""
+    return shlex.split(named.replace("\\", "\\\\") if os.name == "nt" else named)
+
+
 def acp_launch(row: dict[str, Any] | None) -> list[str]:
     """The argv that starts this harness as an agent on this machine, or nothing where the registry records
     no launch row for it or the machine lacks what the row needs (`npx`, or the binary on PATH)."""
@@ -244,9 +272,7 @@ def protocol() -> tuple[list[str], dict[str, Any] | None, str] | None:
         # print mode, exactly as before `auto` was: a project is never switched by migrating.
         return proven() if chosen == "auto" else None
     if named.lower() not in ON:
-        # A Windows path is backslashes, which POSIX splitting reads as escapes and drops: kept as written.
-        words = shlex.split(named.replace("\\", "\\\\") if os.name == "nt" else named)
-        return words, None, f"{VARIABLE}: {named}, over the Agent Client Protocol"
+        return words(named), None, f"{VARIABLE}: {named}, over the Agent Client Protocol"
     rows = harness.registry()
     for key in harness.installed_keys():
         argv = acp_launch(rows.get(key))

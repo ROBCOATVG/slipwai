@@ -34,7 +34,6 @@ import argparse
 import json
 import os
 import shlex
-import signal
 import subprocess
 import sys
 import time
@@ -118,7 +117,7 @@ def launch() -> tuple[list[str], dict[str, Any] | None] | str:
     command) — or why it cannot be, in which case the stream has no captain agent."""
     named = command()
     if named:
-        return shlex.split(named), None
+        return drive.words(named), None
     try:
         if os.environ.get(COMMAND, "").strip().lower() in drive.ON:
             rows = harness.registry()
@@ -462,15 +461,14 @@ def evaluate(event: Path, bound: float) -> dict[str, Any]:
            order_door.EVENTS: str(event.parent), order_door.ORDERS: str(orders), "SLIPWAI_STAGE": "captain",
            "SLIPWAI_CAPTAIN_ORDERS_PY": str(ORDERS), "SLIPWAI_CAPTAIN_WAIT": "0"}
     began = time.monotonic()
-    child = subprocess.Popen([*shlex.split(named), str(event)], cwd=ROOT, env=env, stdin=subprocess.DEVNULL,
+    child = subprocess.Popen([*drive.words(named), str(event)], cwd=ROOT, env=env, stdin=subprocess.DEVNULL,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=os.name != "nt")
     timed_out = False
     try:
         child.wait(timeout=bound)
     except subprocess.TimeoutExpired:
         timed_out = True
-        if os.name != "nt":
-            os.killpg(child.pid, signal.SIGKILL)
+        drive.end_group(child.pid, hard=True)  # the command and all it started, on every platform
         child.kill()
         child.wait()
     after = sorted(path.stem for path in orders.glob("*.json")

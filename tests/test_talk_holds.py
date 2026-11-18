@@ -98,7 +98,8 @@ class KeyTest(unittest.TestCase):
         path.parent.mkdir(parents=True)
         path.write_bytes(os.urandom(talk.KEY_BYTES))
         os.chmod(path, 0o644)
-        self.assertIn("can be read by others", talk.key_trouble(path))
+        if os.name != "nt":  # where there are modes, an open one is refused
+            self.assertIn("can be read by others", talk.key_trouble(path))
         with mock.patch.object(talk.os, "name", "nt"):
             self.assertEqual(talk.key_trouble(path), "")
 

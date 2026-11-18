@@ -138,6 +138,7 @@ class GuardTest(unittest.TestCase):
             record.write_text(body, encoding="utf-8")
             self.assertFalse(self.drive.reviewing(record))
 
+    @unittest.skipIf(os.name == "nt", "`identity` reads `ps`, and is empty on Windows, where nothing is reaped on its strength")
     def test_an_agent_a_dead_captain_left_is_ended_by_the_next(self) -> None:
         agent = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True)
         self.addCleanup(agent.kill)

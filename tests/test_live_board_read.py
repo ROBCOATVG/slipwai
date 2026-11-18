@@ -11,6 +11,7 @@ import json
 import tempfile
 import threading
 import time
+import os
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -152,6 +153,7 @@ class NoReloadTest(BoardTest):
 
 
 class LoginKeptTest(unittest.TestCase):
+    @unittest.skipIf(os.name == "nt", "a login shell is never asked on Windows (`from_login`), so there is nothing to keep")
     def test_the_login_shell_is_asked_again_after_a_few_minutes_and_after_a_read_that_faults(self) -> None:
         from slipwai import shell_environment as shell
 

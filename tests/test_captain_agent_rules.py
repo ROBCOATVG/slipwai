@@ -29,6 +29,8 @@ class RulesTest(AgentBase):
         spec = importlib.util.spec_from_file_location(f"captain_{self.root.name}", self.script)
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
+        # Registered before it runs: on Python 3.11 `@dataclass` looks its module up by name.
+        sys.modules[spec.name] = module
         sys.dont_write_bytecode = True
         spec.loader.exec_module(module)
         return module

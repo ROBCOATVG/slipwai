@@ -23,6 +23,7 @@ import sys
 import tempfile
 import threading
 import time
+import unittest
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -72,6 +73,7 @@ class ReaderTest(HelmBase):
         activity.write_text("[" * 200000 + "\n" + odd, encoding="utf-8")
         self.assertEqual(stuck.stuck(stuck.tail_lines(activity), "ORD-01"), [])
 
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "a named pipe is POSIX's; Windows has none to plant")
     def test_a_pipe_and_a_link_are_refused_and_nothing_waits(self) -> None:
         reader = loaded(self.root, "talk")
         pipe, link = self.root / "pipe.json", self.root / "link.json"

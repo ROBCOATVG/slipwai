@@ -77,7 +77,8 @@ class FilmVerbTest(unittest.TestCase):
 
         started = film("start", "001-demo", "bring-it")
         self.assertEqual(started.returncode, 0, started.stderr)
-        self.assertTrue(started.stdout.strip().endswith("walks/001-demo/bring-it/film.webm"))
+        # A real path the recorder writes to: the platform's own, so compared as a path.
+        self.assertTrue(Path(started.stdout.strip()).as_posix().endswith("walks/001-demo/bring-it/film.webm"))
         self.assertNotEqual(film("chapter", "001-demo", "bring-it", "--slice", "GN1").returncode, 0,
                             "a chapter with nothing to say is refused")
         said = film("chapter", "001-demo", "bring-it", "--slice", "GN1", "--example", "2", "--says", "Dev signs in.")

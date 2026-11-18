@@ -18,6 +18,7 @@ import signal
 import subprocess
 import sys
 import time
+import unittest
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -137,6 +138,7 @@ class FolderTest(AgentBase):
         os.mkfifo(run / "activity/ORD/ORD-01.jsonl")  # the slice in flight's, read at every look for it stuck
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
 
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "a named pipe is POSIX's; Windows has none to plant")
     def test_planted_files_never_stop_the_program_with_an_agent_or_without(self) -> None:
         for agent in (True, False):
             with self.subTest(agent=agent):

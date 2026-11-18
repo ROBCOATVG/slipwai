@@ -146,10 +146,17 @@ def command_captain(command: str) -> Captain:
 
 
 def end_group(child: subprocess.Popen[bytes]) -> None:
-    """Kill the command's whole process group: it and everything it started."""
-    if os.name != "nt":
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            os.killpg(child.pid, signal.SIGKILL)
+    """Kill the command's whole process group: it and everything it started. Windows has no groups: there a
+    command still running is ended with its tree (`taskkill /T`), and what one that already exited left
+    behind cannot be found again without a job object, so it is not looked for."""
+    if os.name == "nt":
+        if child.poll() is None:
+            with contextlib.suppress(OSError, subprocess.SubprocessError):
+                subprocess.run(["taskkill", "/T", "/F", "/PID", str(child.pid)], capture_output=True, check=False,
+                               timeout=10)
+        return
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.killpg(child.pid, signal.SIGKILL)
 
 
 def named(captain: str | None, brief: str, model: str | None) -> tuple[Captain, str]:

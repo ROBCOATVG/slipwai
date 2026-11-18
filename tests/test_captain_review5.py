@@ -16,9 +16,11 @@ F. A message routed once is not routed again by a captain started afresh.
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import sys
 import time
+import unittest
 from typing import Any
 
 import checkout_packages  # noqa: F401
@@ -90,6 +92,7 @@ class FolderTest(AgentBase):
             (run / "orders/ORD" / ("x" * 245 + ".json")).write_text("{}", encoding="utf-8")
         self.refused_not_failed(self.plant_then_sail(plant))
 
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "a named pipe is POSIX's; Windows has none to plant")
     def test_a_pipe_named_like_an_order(self) -> None:
         def plant(run: Any) -> None:
             (run / "orders/ORD").mkdir(parents=True, exist_ok=True)
@@ -215,7 +218,8 @@ class CommandTest(HelmBase):
         held = {"id": "e1", "kind": "stuck", "may": ["none"]}
         self.assertIn(agent.order_command(), agent.prompt("ORD", self.root / "e.json", self.root / "s.json", held))
         own = self.root / "scripts/agents/orders.py"
-        self.assertTrue(agent.ordering({"rawInput": {"command": f"{sys.executable} {own} none --why x"}}))
+        handed = shlex.join([sys.executable, str(own)])  # as the prompt hands it: quoted
+        self.assertTrue(agent.ordering({"rawInput": {"command": f"{handed} none --why x"}}))
         options = [{"optionId": "y", "kind": "allow_once"}, {"optionId": "n", "kind": "reject_once"}]
         for _ in range(2):
             agent.permit({"kind": "execute", "rawInput": {"command": f"python3 {own} none --why x"}}, options)

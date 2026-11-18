@@ -210,6 +210,15 @@ def prompt_for(harness: dict[str, Any] | None, command: str, file: Path, argumen
     return f"Run the /{command} command: read {where} and follow it exactly as written{tail}."
 
 
+def program(argv: list[str]) -> list[str]:
+    """A print-mode command with its program found the way a shell finds it. On Windows a harness npm installed
+    is a `.cmd` shim, and a process started by a bare name is looked for as an `.exe` alone, so `claude` would
+    not start: there the name is looked up on PATH first. Elsewhere the argv is left exactly as it was."""
+    if os.name != "nt" or not argv or os.sep in argv[0] or "/" in argv[0]:
+        return argv
+    return [shutil.which(argv[0]) or argv[0], *argv[1:]]
+
+
 def child_environment(harness: dict[str, Any] | None) -> dict[str, str]:
     """What a session runs under: this environment, plus what the row's `headless.env` sets — Claude Code's
     wait ceiling, which otherwise ends a print session while its delegates still run — and minus every

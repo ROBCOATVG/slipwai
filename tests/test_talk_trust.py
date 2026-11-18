@@ -57,6 +57,7 @@ class TrustTest(unittest.TestCase):
         talk.note(self.home, "merged")
         self.assertEqual(self.state(self.home, said["id"])["why"], "this slice has merged")
 
+    @unittest.skipIf(os.name == "nt", "Windows has no mode bits; talk.key_trouble does not ask for them there")
     def test_the_key_is_private_from_its_first_byte_and_made_again_where_it_was_emptied(self) -> None:
         self.assertEqual(talk.ready(self.folder), "")
         path = self.folder / "talk" / ".key"
@@ -67,6 +68,7 @@ class TrustTest(unittest.TestCase):
         self.assertEqual(talk.ready(self.folder), "")
         self.assertEqual(len(path.read_bytes()), talk.KEY_BYTES, "and is made again")
 
+    @unittest.skipIf(os.name == "nt", "Windows has no mode bits; talk.key_trouble does not ask for them there")
     def test_a_key_somebody_else_wrote_is_said_and_never_used(self) -> None:
         path = self.folder / "talk" / ".key"
         path.parent.mkdir(parents=True)

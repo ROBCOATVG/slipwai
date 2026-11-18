@@ -39,7 +39,10 @@ def clock(stamp: str) -> str:
         when = datetime.fromisoformat(stamp.replace("Z", "+00:00")).astimezone()
     except ValueError:
         return ""
-    return when.strftime("%H:%M" if when.date() == datetime.now().astimezone().date() else "%-d %b %H:%M")
+    # `%-d` is glibc and BSD only: Windows refuses it, so the day is written without the platform.
+    if when.date() == datetime.now().astimezone().date():
+        return when.strftime("%H:%M")
+    return f"{when.day} {when:%b %H:%M}"
 
 
 def held_open(lines: list[dict[str, Any]]) -> str:

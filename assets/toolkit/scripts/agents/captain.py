@@ -539,7 +539,7 @@ def sail_command(slice_id: str, fairway: str, retry: str = "", berth: Path | Non
     template, _ = harness.template(chosen)
     prompt = sail_prompt(chosen, slice_id, fairway, retry, berth, told)
     line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
-    return shlex.split(line), {**harness.child_environment(chosen), **naming(slice_id, fairway, retry, berth, told)}, \
+    return harness.program(shlex.split(line)), {**harness.child_environment(chosen), **naming(slice_id, fairway, retry, berth, told)}, \
         said
 
 
@@ -1395,7 +1395,7 @@ def skipper_command(slice_id: str, feature: str, fairway: str, asked: list[logs.
     template, _ = harness.template(chosen)
     prompt = skipper_prompt(slice_id, feature, fairway, asked, berth)
     line = template.replace("{prompt}", shlex.quote(prompt)) + harness.model_flags(chosen, sail_model())
-    return shlex.split(line), {**harness.child_environment(chosen), **told}
+    return harness.program(shlex.split(line)), {**harness.child_environment(chosen), **told}
 
 
 def skipper_prompt(slice_id: str, feature: str, fairway: str, asked: list[logs.Entry],

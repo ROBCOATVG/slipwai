@@ -98,6 +98,9 @@ class SettingTest(Fixture):
                            ("standin", f'touch "{self.root / "print-ran"}"')):
             (bin_dir / name).write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
             os.chmod(bin_dir / name, 0o755)
+        if os.name == "nt":  # what PATH finds there: a `.cmd` beside each, as npm installs a harness
+            (bin_dir / "standin-acp.cmd").write_text(f'@"{sys.executable}" "{AGENT}" %*\r\n', encoding="utf-8")
+            (bin_dir / "standin.cmd").write_text(f'@type nul > "{self.root / "print-ran"}"\r\n', encoding="utf-8")
         self.path = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
         self.home = talk.place(self.root / ".slipwai", "ORD", "ORD-01")
 

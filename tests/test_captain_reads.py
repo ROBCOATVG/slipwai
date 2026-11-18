@@ -79,7 +79,8 @@ class SliceReadTest(HelmBase):
 
     def test_the_rule_s_refusal_says_the_true_reason(self) -> None:
         self.assertIn("secret by its name", self.why("read", str(self.project / ".slipwai/run/talk/.KEY")))
-        self.assertIn("outside the project", self.why("read", "/etc/hosts"))
+        # A file that exists on every platform and is no part of the project: `/etc/hosts` is not on Windows.
+        self.assertIn("outside the project", self.why("read", str(Path(__file__).resolve())))
         self.assertIn("under .slipwai/", self.why("read", str(self.project / ".slipwai/run/orders/ORD/x.json")))
         self.assertIn("only a read", self.why("edit", str(self.project / "docs/README.md")))
 

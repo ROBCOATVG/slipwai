@@ -128,7 +128,8 @@ def clock(at: float) -> str:
     if not at:
         return ""
     when = datetime.fromtimestamp(at)
-    return when.strftime("%H:%M" if when.date() == datetime.now().date() else "%-d %b %H:%M")
+    # `%-d` is glibc and BSD only: Windows refuses it, so the day is written without the platform.
+    return when.strftime("%H:%M") if when.date() == datetime.now().date() else f"{when.day} {when:%b %H:%M}"
 
 
 def standing(row: dict[str, str], step: str) -> str:

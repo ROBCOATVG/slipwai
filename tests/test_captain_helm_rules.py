@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -171,10 +172,11 @@ class RulesTest(HelmBase):
     def test_only_the_project_s_own_orders_script_may_be_run(self) -> None:
         agent = loaded(self.root, "captain_agent")
         own = self.root / "scripts/agents/orders.py"
-        self.assertTrue(agent.ordering({"rawInput": {"command": f"{sys.executable} {own} say --text hi"}}))
+        handed = shlex.join([sys.executable, str(own)])  # as the prompt hands it: quoted
+        self.assertTrue(agent.ordering({"rawInput": {"command": f"{handed} say --text hi"}}))
         berth = self.root.parent / "berth/scripts/agents/orders.py"
         self.assertFalse(agent.ordering({"rawInput": {"command": f"{sys.executable} {berth} say --text hi"}}))
-        keyed = f"{sys.executable} {own} say --text $SLIPWAI_CAPTAIN_KEY"
+        keyed = f"{shlex.join([sys.executable, str(own)])} say --text $SLIPWAI_CAPTAIN_KEY"
         self.assertFalse(agent.ordering({"rawInput": {"command": keyed}}))
 
     def test_a_slice_s_session_setting_eval_gains_nothing(self) -> None:
@@ -253,7 +255,7 @@ class QuotingTest(HelmBase):
                 self.assertTrue(agent.refusal(self.command(rest)).startswith(rule), agent.refusal(self.command(rest)))
         own = self.root / "scripts/agents/orders.py"
         self.assertIn("the order command as it was handed",
-                      agent.refusal({"rawInput": {"command": f"python3 {own} none"}}))
+                      agent.refusal({"rawInput": {"command": f"python3 {shlex.quote(str(own))} none"}}))
         self.assertIn("the order command as it was handed",
                       agent.refusal({"rawInput": {"command": f"{sys.executable} scripts/agents/orders.py none"}}))
 

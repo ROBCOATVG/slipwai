@@ -431,6 +431,8 @@ def loaded_inbox(root: Path):  # noqa: ANN201 — the project's own carried modu
         spec = importlib.util.spec_from_file_location(f"inbox_{root.name}", root / "scripts/agents/inbox.py")
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
+        # Registered before it runs: on Python 3.11 `@dataclass` looks its module up by name.
+        sys.modules[spec.name] = module
         spec.loader.exec_module(module)
         return module
     finally:

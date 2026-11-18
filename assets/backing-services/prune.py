@@ -676,13 +676,15 @@ def ignored(root: Path, paths: list[Path]) -> set[Path]:
         return set()
     relative = {path.relative_to(root).as_posix(): path for path in paths if path.is_relative_to(root)}
     try:
-        result = subprocess.run(["git", "-C", str(root), "check-ignore", "--stdin"],
-                                input="\n".join(relative) + "\n", capture_output=True, text=True, check=False)
+        # NUL-separated both ways: in text mode Windows writes `\r\n`, and git then looked up `target\r`.
+        result = subprocess.run(["git", "-C", str(root), "check-ignore", "-z", "--stdin"],
+                                input="\0".join(relative).encode("utf-8") + b"\0", capture_output=True, check=False)
     except OSError:
         return set()
     if result.returncode not in (0, 1):  # 128: not a repository, or git could not answer
         return set()
-    return {relative[line] for line in result.stdout.splitlines() if line in relative}
+    said = result.stdout.decode("utf-8", errors="replace").split("\0")
+    return {relative[line] for line in said if line in relative}
 
 
 def features_present(root: Path, services: list[tuple[str, str]]) -> set[str]:

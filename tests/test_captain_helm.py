@@ -30,6 +30,8 @@ def loaded(root: Path, name: str) -> Any:
     spec = importlib.util.spec_from_file_location(f"{name}_{root.name}", root / "scripts/agents" / f"{name}.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    # Registered before it runs: on Python 3.11 `@dataclass` looks its module up by name.
+    sys.modules[spec.name] = module
     sys.dont_write_bytecode = True
     spec.loader.exec_module(module)
     return module

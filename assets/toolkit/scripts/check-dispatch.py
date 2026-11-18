@@ -227,7 +227,7 @@ def main(argv: list[str]) -> int:
         # Said as what was found, because the two are different news: a project with no plan yet, and one
         # whose plans name no slice id this gate can read — the second is a gate that holds nothing while
         # the project believes it is held.
-        read = [str(path.relative_to(ROOT)) for path in [*sorted(SPECS.glob("*/chart.yaml")), MODEL]
+        read = [path.relative_to(ROOT).as_posix() for path in [*sorted(SPECS.glob("*/chart.yaml")), MODEL]
                 if path.is_file()]
         if read:
             print(f"check-dispatch: no slice id shaped like SB7 or MTG-01 in {', '.join(read)}, so no plan "

@@ -18,6 +18,7 @@ What is proved, by finding:
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -207,11 +208,12 @@ class RulesTest(HelmBase):
     def test_the_captain_runs_only_its_own_orders_script_under_this_interpreter(self) -> None:
         agent = loaded(self.root, "captain_agent")
         own = self.root / "scripts/agents/orders.py"
-        self.assertTrue(agent.ordering({"rawInput": {"command": f"{sys.executable} {own} none --why x"}}))
+        handed = shlex.join([sys.executable, str(own)])  # as the prompt hands it: quoted
+        self.assertTrue(agent.ordering({"rawInput": {"command": f"{handed} none --why x"}}))
         evil = self.root / "python-evil"
         evil.write_text("", encoding="utf-8")
         self.assertFalse(agent.ordering({"rawInput": {"command": f"{evil} {own} none --why x"}}))
-        self.assertFalse(agent.ordering({"title": f"{sys.executable} {own} none", "rawInput": {"cmd": "rm -rf /"}}))
+        self.assertFalse(agent.ordering({"title": f"{handed} none", "rawInput": {"cmd": "rm -rf /"}}))
 
     def test_a_headless_bound_left_in_an_older_harbour_json_is_read_by_nothing(self) -> None:
         agent = loaded(self.root, "captain_agent")

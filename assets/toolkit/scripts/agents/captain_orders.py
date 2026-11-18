@@ -14,6 +14,7 @@ Standalone and dependency-free: this runs inside a generated project, which has 
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from collections.abc import Callable
@@ -124,7 +125,10 @@ def unreadable(place: str, project: Path, base: Path, open_under: tuple[Path, ..
     secret = next((part for part in inside.parts if SECRET.search(part)), "")
     if secret:
         return f"`{secret}` is a secret by its name"
-    opened = any(str(real).lower().startswith(str(Path(one).resolve()).lower().rstrip("/") + "/") for one in open_under)
+    # By this platform's separator: a resolved path on Windows is backslashes, and a `/` here never matched,
+    # so the captain was refused its own events there.
+    opened = any(str(real).lower().startswith(str(Path(one).resolve()).lower().rstrip("/\\") + os.sep)
+                 for one in open_under)
     if inside.parts and inside.parts[0].lower() in CLOSED and not opened:
         return f"it is under {inside.parts[0]}/, which holds the run's keys, conversations and history"
     return ""

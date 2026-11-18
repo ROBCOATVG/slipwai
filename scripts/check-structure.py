@@ -74,7 +74,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                     "stuck",
                     # Where the product is and how dark a merge is, carried into every project so the
                     # release stage, the slice gate and `slipwai release-state` read one table.
-                    "release_state")),
+                    "release_state",
+                    # What the harbour has spent, from the stages' own records: the board and the bunker.
+                    "spend")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.
@@ -152,6 +154,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # that server has, which is a window each: every route beside it is a fold of files on disk.
               "page_shell", "seats", "console", "console_page", "attention",
               # The conversation that writes a brief before a project exists, on the console's shape.
+              # And a page of the board's as one file to send: the prototype's, and a storyboard's.
+              "page_copy",
               "brief_faults", "brief_session", "brief_page",
               # The Agent Client Protocol's client half: the session behind the board's conversations, what
               # the board is set to run them on, and the page that sets it.

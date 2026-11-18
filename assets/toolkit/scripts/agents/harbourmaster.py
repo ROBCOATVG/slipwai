@@ -93,6 +93,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import berths  # noqa: E402
+import spend  # noqa: E402
 try:  # the capability hold reads the chart through it; a harbour without it holds nothing back on capabilities
     import capabilities  # noqa: E402
 except ImportError:  # pragma: no cover - a toolkit older than the capability hold
@@ -267,7 +268,8 @@ def rung() -> list[logs.Entry]:
 
 
 def spent_today() -> int:
-    """Thousands of input tokens the harbour has spent since midnight, from the lines that record it.
+    """Thousands of work tokens the harbour has spent since midnight (UTC): what the stages' own records say
+    (`spend.py`), and any line that carries `tokens`, though none is written.
 
     From the logs rather than from a counter: a counter is state kept somewhere other than where the work
     happened, which is the mistake this whole method is built around not making.
@@ -283,7 +285,7 @@ def spent_today() -> int:
             tokens = entry.fields.get("tokens")
             if entry.t[:10] == today and isinstance(tokens, int | float):
                 total += int(tokens)
-    return total
+    return total + (spend.spent(ROOT, today) or 0)
 
 
 def bank() -> list[logs.Entry]:

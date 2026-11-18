@@ -25,6 +25,9 @@ from .film import STYLE as FILM_STYLE
 from .fleet_page import STYLE as FLEET_STYLE
 from .fleet_tab import STYLE as MACHINERY_STYLE
 from .fleet_tab import fleet_sub
+from .intake_card import SCRIPT as INTAKE_SCRIPT
+from .intake_card import STYLE as INTAKE_STYLE
+from .intake_card import next_features
 from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
 from .passage import Stage, current
@@ -50,7 +53,7 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 
-# budget: 785 — (the storyboard, its verdict and its conversation went to `storyboard_card.py`)
+# budget: 780 — (the storyboard, its verdict and its conversation went to `storyboard_card.py`)
 # the one poll that keeps every band current, and the bands of one window, and who decided
 # each state the storyboard's note counts: where the project stands, what to expect of the stage it is on,
 # who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
@@ -64,6 +67,7 @@ from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 # and the Now strip and a slice's live caption, drawn by `live_page.py`
 # and the tabs the bands below the strip sit in, and the Feedback card in one of them (`feedback_card.py`)
 # and the decision log's tab, drawn by `decision_cards.py`
+# and the Next features tab, placed here and drawn by `intake_card.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -311,7 +315,6 @@ function paintPassage(found){
     if (event.target.id === 'draw') { event.target.disabled = true; send('/draw', {}); }
     if (event.target.id === 'draft') { event.target.disabled = true; send('/draft', {}); }
     if (event.target.id === 'model') { event.target.disabled = true; send('/model', {}); }
-    if (event.target.id === 'intake-go') { event.target.disabled = true; send('/intake', {}); }
     const answer = event.target.dataset && event.target.dataset.answer;
     if (answer) {
       const box = document.getElementById(event.target.dataset.box);
@@ -611,16 +614,6 @@ def screens_card(shots: list[dict[str, str]], mocks: list[dict[str, str]], app: 
     return f'<div class="card" id="built"><h2>Built screens · {len(shots)}</h2>{link}{blocks}</div>'
 
 
-def intake_card(found: list) -> str:
-    """Ideas handed to `/sail` that are not yet specified or killed, and the button that moves the earliest."""
-    pending = [one for one in found if one.state not in ("specified", "kill")]
-    if not pending:
-        return ""
-    rows = "".join(f"<p><b>{esc(one.slug)}</b> — {esc(one.state)}. {esc(one.detail)}</p>" for one in pending)
-    return (f'<div class="card" id="intake"><h2>Next features</h2>{rows}'
-            f'<div class="ask"><button class="go" id="intake-go">Continue the next feature</button></div></div>')
-
-
 def feedback_points_card(points: list[dict]) -> str:
     """The next three feedback points: the observables a person is asked to look at first, by what delaying
     their judgement would cost, each with the decisions it would let them test. From the project's own
@@ -729,15 +722,15 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("fleet", "Fleet", machinery),
             ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
                           f"{decisions[1]} unread</span>", decisions[0]),
-            ("next", "Next features", intake_card(ideas or []))]
+            ("next", "Next features", next_features(root, ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
-            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}</style>"
+            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}{INTAKE_STYLE}</style>"
             f"{where}{band('trunk', trunk)}{landed}{'' if adopting else band('expect', expect_card(found))}"
             f"{band('captains', captains)}"
             f"{tabs_html(tabs)}{console_card()}")
     script = SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT + (TRY_SCRIPT if trying else "") \
-        + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") \
+        + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") + INTAKE_SCRIPT \
         + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
     # picks it out by — in the dock, in a window switcher, across two runs open at once — is its title.

@@ -23,6 +23,12 @@ wall-clock time they run out as `SLIPWAI_BUDGET_ENDS`) so that it can plan to th
 is ended — it and every delegate it started — with what it drew left where it is and a line saying so. The
 minutes come from `harbour.json`, the file the captain reads its stage budgets from, and move with the
 telegraph's `stage_scale` the way those do.
+
+**It is handed what exists.** Before the session starts, `existing.py` lists what the project has already drawn
+or built — earlier features' mock-ups, the browser app's previews, routes and stylesheets, the model's `ui`
+frames — into `specs/<feature>/mockups/existing.md`, and the session is told where (`SLIPWAI_EXISTING`). A
+further feature is drawn into that flow and in that look; what the storyboard frames as built is not counted
+as drawn here, and is not put up for a verdict on the board.
 """
 from __future__ import annotations
 
@@ -37,6 +43,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import existing  # noqa: E402 — what the project has already drawn or built, listed for the session
 import harness  # noqa: E402
 
 ROOT = harness.ROOT
@@ -107,7 +114,9 @@ def drawn(feature: str) -> list[Path]:
     the pages inside the project the storyboard shows. Never the storyboard itself: counting it reported
     `drawn: 1 surface(s)` for a drawing the board then had nothing in to approve."""
     home = SPECS / feature / MOCKUPS
-    beside = sorted(page for page in home.glob("*.html") if page.name not in NOT_A_SURFACE)
+    kinds = existing.kinds(home)  # a page the storyboard frames as built is the project's, not this drawing's
+    beside = sorted(page for page in home.glob("*.html")
+                    if page.name not in NOT_A_SURFACE and kinds.get(page.resolve()) != "built")
     board = home / "storyboard.html"
     if beside or not board.is_file():
         return beside
@@ -115,9 +124,23 @@ def drawn(feature: str) -> list[Path]:
     for target in EMBEDDED.findall(board.read_text(encoding="utf-8", errors="replace")):
         page = (home / target).resolve()
         if page.is_file() and page.is_relative_to(ROOT.resolve()) and page.name not in NOT_A_SURFACE \
-                and page not in shown:
+                and page not in shown and kinds.get(page) != "built":
             shown.append(page)
     return shown
+
+
+def handed(feature: str) -> dict[str, str]:
+    """The list of what exists, written for the session, as the variable that tells it where. Empty where it
+    could not be written: the drawing still runs, and `/mockups` has the session make the list itself."""
+    try:
+        found = existing.listing(feature, ROOT)
+        path = existing.write(feature, ROOT).relative_to(ROOT).as_posix()
+    except (OSError, ValueError) as fault:
+        print(f"surfaces: note — what exists could not be listed ({fault}); the session lists it itself", flush=True)
+        return {}
+    print(f"surfaces: handed the drawing what exists ({path}) — {existing.STORYBOARD[found['storyboard']]}; "
+          f"look: {existing.LOOK[found['look']['follow']]}", flush=True)
+    return {"SLIPWAI_EXISTING": path}
 
 
 def touched(feature: str, since: float) -> bool:
@@ -220,7 +243,7 @@ def main(argv: list[str]) -> int:
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "surfaces",
                    "SLIPWAI_BUDGET_MINUTES": minutes, "SLIPWAI_BUDGET_ENDS": ends,
-                   **({"SLIPWAI_REDRAW": "1"} if redraw else {})}
+                   **({"SLIPWAI_REDRAW": "1"} if redraw else {}), **handed(feature)}
     PID.parent.mkdir(parents=True, exist_ok=True)
     PID.write_text(f"{os.getpid()}\n{started:.0f}\n{allowed:.0f}\n", encoding="utf-8")
     try:
@@ -244,6 +267,12 @@ def main(argv: list[str]) -> int:
     written = [path for path in drawn(feature) if path not in before]
     if not written and not drawn(feature):
         alone = (SPECS / feature / MOCKUPS / "storyboard.html").is_file()
+        if "built" in existing.kinds(SPECS / feature / MOCKUPS).values():
+            print(f"surfaces: the storyboard under specs/{feature}/{MOCKUPS}/ frames what is built and draws "
+                  f"nothing this feature changes or adds, so there is nothing new to approve; a feature with no "
+                  f"surface of its own is `surfaces: none`, which /mockups {feature} writes with you",
+                  file=sys.stderr)
+            return 1
         print(f"surfaces: the session ended with no surface pages under specs/{feature}/{MOCKUPS}/"
               + (" — a storyboard.html that neither has a page per surface beside it nor shows one, which is "
                  "nothing a person can approve" if alone else "") + f", so there is no storyboard to approve; Draw the storyboard again, and read its last "

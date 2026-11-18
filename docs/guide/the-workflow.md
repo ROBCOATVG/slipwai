@@ -42,10 +42,10 @@ the storyboard starts step 7.
    lists every decision that the document did not settle under `## Assumptions`.
 4. Read the specification. On the board, press **Open specs/&lt;feature&gt;/spec.md**.
 
-A further feature goes to `/sail`. `/sail` writes a record under `docs/intake/` and asks whether the idea
-is really a new feature. Spec Kit then assesses it. A specification is written only after a yes and a go.
-On the board, the **Next features** card has the button **Continue the next feature** for the earliest
-idea that is waiting.
+A further feature goes to `/sail`, or to **Hand over a further feature** on the board's **Next features**
+card. Either writes a record under `docs/intake/`; `/sail` then asks whether the idea is really a new
+feature, and on the board that yes is the button **Continue the next feature**, for the earliest idea that
+is waiting. Spec Kit then assesses it. A specification is written only after a yes and a go.
 
 ## Step 5: the storyboard
 
@@ -62,6 +62,38 @@ the standard profile it runs `make launch`. Disapproving starts nothing. The sto
 mock-up stage draws it again (`/mockups` in the agent).
 
 Both buttons lock when the storyboard has a verdict. To change a verdict, edit `mock-states.md`.
+
+### A further feature's storyboard
+
+A second feature is not drawn alone. Before it draws, the stage lists what the project already has into
+`specs/<feature>/mockups/existing.md` (`python3 scripts/agents/existing.py <feature>` prints the same list):
+
+- the surfaces of earlier features, and what was approved on each
+- the browser app's committed screen previews, its routes and its own stylesheets
+- the event model's screens (its `ui` frames) and whether each is built
+- `docs/design.md`, and anything under `docs/design/`
+
+The storyboard for the new feature then shows the product's flow with the new feature in it. Every surface
+on it is one of three kinds:
+
+| Kind | What you see | Are you asked? |
+|---|---|---|
+| **Built** | The real screen: the app's own preview, or an earlier feature's page, shown where it lies | No |
+| **Changed** | A built screen as this feature alters it, beside the original | Yes |
+| **New** | A screen this feature adds | Yes |
+
+**Approve storyboard** marks the changed and new states only. A built screen is not approved again, and
+`mock-states.md` says that it was shown and not asked about.
+
+New and changed screens use the app's own stylesheet and sit in its shell, so they look like screens of
+this product. A direction that you put under `docs/design/` still wins. The stage proposes a look of its
+own only in a project that has no browser app, no `docs/design/` and no earlier storyboard.
+
+A project that has built screens and no storyboard gets its first storyboard this way. That is the usual
+state of a project that crossed from version 1. The storyboard frames the part of the flow that the new
+feature touches and names the rest, each with a link to its preview.
+
+There is still one storyboard per feature. The newest one shows the whole flow as it will stand.
 
 This stop exists for a reason. A screen that nobody saw becomes a read model, a route and a set of tests.
 All three cost more to change than a drawing.

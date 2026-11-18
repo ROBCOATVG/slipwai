@@ -131,7 +131,8 @@ page shows a one-line strip when a card asks you something, and when the brief i
 
 Under the strip and the captains, the rest of the window is tabs: **Work** (with the count of what waits on
 you), **Feedback** (*Try it & feedback* once a slice has a story to try), **Screens**, **Model**, **Fleet**,
-**Decisions** (with the count nobody has read) and **Next features**. A tab with nothing in it is left out.
+**Decisions** (with the count nobody has read) and **Next features**. A tab with nothing in it is left out;
+**Next features** is there from the project's first specification on, with ideas waiting or without.
 
 The cards come in this order, from the top.
 
@@ -165,11 +166,27 @@ build**.
 
 ### Next features
 
-This card appears when an idea under `docs/intake/` is not yet specified or killed. **Continue the next
-feature** moves the earliest one:
+This card is there once the project has its first specification. It lists each idea under `docs/intake/`
+that is not yet specified or killed, or says that none is waiting. **Continue the next feature** moves the
+earliest one:
 
 - An idea that waits for confirmation: the board writes `docs/intake/<slug>/confirmed`.
 - An idea that waits for assessment: the board runs `make assess`.
+
+**Hand over a further feature** is how an idea starts from the board, as well as from `/sail`. It is a
+conversation with the agent the Settings tab names, and the head of the card says which agent and model it
+is on. Say what the feature is in the box, or **Attach a document**: Markdown or plain text, up to 256 KB,
+five to an idea. The browser reads the file and posts its text, because a page cannot hand over a path. The
+agent reads what you gave it and the project, asks what it needs to, and says when it is one clear idea.
+**Capture this idea** then writes `docs/intake/<slug>/brief.md` from your first words, with the documents
+beside it and, where you answered anything, `conversation.md`. Nothing is confirmed for you: the idea waits
+for **Continue the next feature**, as one from `/sail` does.
+
+The agent in this conversation can read the project and cannot change it: the board refuses every write or
+command it asks leave for, and the board itself writes the idea. **Start again** drops the conversation and
+what was attached. A conversation left open is kept under the run folder and picked up when the window is
+opened again, after a board restart too. What you have typed and not sent is never cleared by the window
+updating itself. With no agent the board can launch, the card says so; hand the feature to `/sail` instead.
 
 ### What to expect
 
@@ -201,6 +218,9 @@ This card appears when the design review has photographed screens. For each feat
 that were **Intended** beside the screens that were **Built**. **Open the running app** opens the app, when
 the project records where it runs.
 
+These photographs are also evidence for the next feature. The mock-up stage lists them, with the app's
+committed previews, when it works out which surfaces are built. See *Storyboard* below.
+
 ### Storyboard
 
 This card appears when the mock-up stage has drawn something. It shows the storyboard, or each mock-up
@@ -214,6 +234,23 @@ Under it is the verdict form:
 | **Disapprove**, with a reason in the box | The same file, with every drawn state `parked:` and your reason. A reason is required. Nothing else starts |
 
 Both buttons lock when the storyboard has a verdict. To change a verdict, edit `mock-states.md`.
+
+Where the storyboard says what each surface is, a list above the verdict form shows the three kinds apart:
+
+| Chip | Means | Verdict |
+|---|---|---|
+| **Built** | The project has it already. The storyboard frames the app's own preview, or an earlier feature's page | None. It is shown for the flow |
+| **Changed** | A built surface as this feature alters it | **Approve storyboard** marks its states |
+| **New** | A surface this feature adds | **Approve storyboard** marks its states |
+
+**Approve storyboard** then writes only the changed and new states as `approved`. For each built surface
+`mock-states.md` gets one line that says it was shown and that no verdict was asked. A later change to a
+built preview does not withdraw a verdict. A storyboard that frames only built surfaces has no verdict
+form, because nothing on it is new.
+
+The board serves a browser app's `screens/` and `src/styles/` directories to the storyboard, so that a
+built frame shows the real screen and a new surface can link the app's own stylesheet. It serves nothing
+else of the app.
 
 **Save a copy to send**, above the verdict form, downloads the storyboard as one file: every page it frames
 is inside it, and a page it only links to is drawn at the end. A strip at the top says it is a copy, when

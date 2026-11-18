@@ -15,10 +15,17 @@ stage called them.
 
 Everything this stage writes lives under `specs/<feature>/mockups/`.
 
+**A feature is drawn into the product, not beside it.** The storyboard stays one per feature — that is what
+`mock-states.md`, `check-surfaces` and the board's verdict are each held to, and a storyboard per project
+would make every one of them answer for surfaces no feature in front of them is building. So a reader sees
+one flow because **a further feature's storyboard frames what the project already has**, where it lies, and
+draws this feature's surfaces into it. The newest feature's storyboard is the flow as it will stand. Section 0
+is how the stage knows what the project has.
+
 **Typed by a person**, this file is the rules from here down, both halves of it, in the session you are in.
 
 **In a session dispatched by `scripts/agents/surfaces.py`** (`SLIPWAI_STAGE=surfaces` in the environment —
-the board's **Draw the storyboard** button, or `{{make}} surfaces`), **run sections 1 and 2 and stop at the
+the board's **Draw the storyboard** button, or `{{make}} surfaces`), **run sections 0, 1 and 2 and stop at the
 storyboard.** Nobody is in that session: there is no one to show a surface to, so the stop in section 2 is
 where it ends, and section 3 is not yours to write. Do not create `mock-states.md`, and do not mark a state
 `approved`, `parked` or `n/a` — a verdict is the one thing here that only a person can give, and a file of
@@ -75,11 +82,53 @@ rewrite them whenever a finding or a question is settled, in a conversation turn
 lines to tell whether a storyboard has anything left to discuss, and waits for the person where it cannot
 read them; a person judging the storyboard needs nothing from them.
 
+## 0. What exists
+
+**Before anything is researched or drawn, list what the project has.** Run
+
+```
+python3 scripts/agents/existing.py <feature> --write
+```
+
+which writes `specs/<feature>/mockups/existing.md` and prints it. In a session `surfaces.py` dispatched it has
+run already and `SLIPWAI_EXISTING` is the page's path; read that. It is not a hand-over and not a mock-up: it
+is the list of what to read first, each thing with where it is and what it is evidence of —
+
+1. **Earlier features' mock-ups** — `specs/*/mockups/`: each surface page, and what `mock-states.md` says of
+   each state.
+2. **The browser app**, where `project.json` records one: its committed screen previews under `screens/`,
+   one page per state, grouped by surface; the routes its source names; its own stylesheets under
+   `src/styles/`; the file its shell is in.
+3. **The event model's `ui` frames**, on the event-modelling profile, each with its slice and whether that
+   slice is `implemented`.
+4. **`docs/design.md`**, which says what this project's screens are made of, the design review's
+   photographs, and anything a person handed over under `docs/design/`.
+
+The page ends its opening with three lines the rest of this stage follows: whose **look** the drawing takes,
+what the **storyboard** is made from, and how a surface is **marked**. A first feature in a project with
+nothing built gets a short page saying so, and this stage runs as it always did.
+
+**Every surface on the storyboard is one of three things, and says which:**
+
+| | What it is | Where it is | A verdict? |
+|---|---|---|---|
+| `built` | the project's already: a committed preview, an earlier feature's surface | where it lies — never copied, never redrawn | no. It is shown for the flow |
+| `changed` | a built surface this feature alters: a new panel, a new state, a different step | a page of its own beside the storyboard, drawing **only the states this feature changes or adds** | yes |
+| `new` | a surface this feature adds | a page of its own beside the storyboard | yes |
+
+What counts as built is evidence the list gives, in this order: a committed preview, a `ui` frame whose slice
+is `implemented`, a design-review photograph, a route. A surface an earlier feature had approved and nothing
+has built yet is framed as `built` too — it is that feature's, settled there — and its cell says in words
+that it is approved and not yet built.
+
 ## 1. The researcher
 
 Delegate this half to a fresh context that may write under `specs/<feature>/mockups/` and nowhere else. Give
 it `specs/<feature>/spec.md`, the domain knowledge in `.specify/domain/`, **everything under `docs/design/`**,
-and the paths of any mock-ups a person has already put in the directory.
+the paths of any mock-ups a person has already put in the directory, and **`existing.md` from section 0, to
+read first**: before it answers anything about a surface it opens the previews and earlier surfaces that
+surface leads from and to, and the app's stylesheets, so that the note says of each surface which built
+screen leads to it, which built screen gains a panel or a state, and which it is — `changed` or `new`.
 
 `docs/design/` is what this project was handed rather than what it generated — a brand sheet, a stylesheet,
 wireframes somebody drew, a competitor teardown — carried in beside `docs/prd.md` at generation. Where it
@@ -121,7 +170,7 @@ Then one of two things, depending on what was in the directory.
   follows its look and layout; a surface page that says a state in words the prototype shows is reviewed
   against the prototype, not the words. It is not a surface: it has no state articles, the board asks for
   no verdict on it, and nothing is built from its code.
-- **The directory was empty.** Draft them: one static HTML file per surface, from the note. No framework and
+- **The directory was empty** — `existing.md` aside, which is this stage's own list. Draft them: one static HTML file per surface, from the note. No framework and
   no build step, because the point is a file a person opens in a browser and points at. Load
   `skills/frontend-design/SKILL.md` for this, read through *How much rigour a mock-up gets* below, which
   overrides it for this stage. Do **not** load `web-interface-guidelines`: it reviews browser UI *code*
@@ -138,9 +187,19 @@ Then one of two things, depending on what was in the directory.
   with the surfaces drawn inside it and no page to show is nothing anybody can approve, and the stage refuses it
   as nothing drawn.
 
-  **The first drawing is styled.** Where `docs/design/` held a direction, follow it, as above. Where it was
-  empty, set a short one before the first surface: a handful of tokens (a type scale, four to six colours, a
-  spacing step), one shared stylesheet every surface links — `specs/<feature>/mockups/mockups.css` — and
+  **The look is the real app's.** Where `docs/design/` held a direction, follow it, as above: what a person
+  handed over still wins. Otherwise, where `existing.md` says the look is the app's own, **every surface this
+  stage draws links the app's own stylesheets** — `<link rel="stylesheet"
+  href="../../../<app>/src/styles/tokens.css">` and the others it lists, by relative path, never a copy — and
+  **sits in the app's shell**: the same header, navigation and page frame the previews show, taken from a
+  preview's markup, so that a new surface reads as a screen of this product. Write no `mockups.css` of your
+  own beyond the few rules a new component needs, and write those in the app's tokens. Say in `research.md`
+  under `## Look` which files the drawing links. Where the list says an earlier feature's storyboard set the
+  look, link that feature's stylesheet the same way; a second proposed look in one project is two products.
+
+  **The first drawing is styled.** Only a project with none of those — no direction handed over, no browser
+  app, no earlier storyboard — proposes a look. There, set a short one before the first surface: a handful
+  of tokens (a type scale, four to six colours, a spacing step), one shared stylesheet every surface links — `specs/<feature>/mockups/mockups.css` — and
   only the few components these surfaces actually use. That is minutes of work, not a design system: no
   component sheet, no token documentation, no dark theme. Write it into `research.md` under `## Proposed
   look`, and say there that it is **a proposed look for reviewing the flow, not a brand** — a person who
@@ -180,7 +239,25 @@ question about flow, content or states, which are the only questions a person is
 
 Run `skills/storyboard/SKILL.md` over the directory: one page, the flow between the surfaces, a gap card for
 every surface the spec names and no file shows, and an audit checklist per mock-up. It embeds the surfaces
-(an `<iframe>` each) or links them; it does not render them to images, per the rules above. Then run
+(an `<iframe>` each) or links them; it does not render them to images, per the rules above.
+
+**It is the project's flow with this feature in it.** Where `existing.md` lists anything built or drawn, the
+storyboard's flow diagram is the flow as it stands with this feature's surfaces placed in it — which built
+screen leads to each, and where each leads back — and the page frames the built screens from the real thing:
+the app's own preview, or the earlier feature's page, by relative path where it lies
+(`../../../<app>/screens/<page>.html`, `../../<feature>/mockups/<page>.html`). Never a copy, never a redraw,
+never a picture. **Mark every frame and link that shows a surface**, on the `<iframe>` or `<a>` itself:
+`data-surface="built"`, `data-surface="changed"` or `data-surface="new"`. That mark is what the board reads to
+show the three apart and to ask a verdict on the last two only; a built frame without it is read as a mock-up
+somebody handed over, and put up for approval as if it were new.
+
+**Where the project has a storyboard, add to that flow; where it has none, this is the first, made from what
+exists.** A project that crossed from version 1 has dozens of built screens and no storyboard: draw the flow
+as it stands from the list, then this feature in its place. **Frame the part this feature touches and its
+neighbours** — each `changed` surface's built original beside it, each built screen that leads to or from a
+`changed` or `new` one, one frame per built surface in its ordinary state rather than one per state — and
+name the rest of the flow as boxes in the diagram, each linking its preview. Two hundred frames is not a
+storyboard, and the budget is the same fifteen minutes. Then run
 `skills/find-gaps/SKILL.md` over that page in its design-mock mode, writing each answer back as a state the
 mock-up has to show.
 
@@ -209,6 +286,15 @@ screen.
 A `parked` state carries the question it is waiting on and the inbox line that asked it. `n/a` carries its
 reason. A state with neither is not a decision, it is a blank.
 
+**Only `changed` and `new` surfaces have a block.** A `built` surface was shown for the flow and nobody was
+asked about it, so it has no `## Surface:` block and no state is marked for it: a state marked `approved` here
+is a state the split then has to deliver, and a built screen is delivered already. Ask a person about a
+`changed` surface's changed and added states, and about a `new` surface's states, and about nothing else. The
+board writes one line per built frame above the blocks — `<!-- built: <its title> — <its page> (…) -->` — so
+the file says what was shown; where you write the file by hand, write the same line. A slice that names a
+built surface is refused by `check-surfaces`: where this feature changes it, it is `changed`, with a page and
+a verdict of its own.
+
 **A feature with no surface at all** — a migration, an integration, a scheduled job — writes the whole file
 as `surfaces: none`, with the sentence saying why, and the stage closes. That is a valid answer and the
 commonest one on a back-end-only feature. It is written down so that the next reader knows the question was
@@ -231,3 +317,8 @@ asked rather than skipped.
 
 When the specification changes what a surface is for, or adds one. Not when a slice changes how a surface is
 built. A re-run reviews only the surfaces that moved, and leaves the rest of `mock-states.md` alone.
+
+**A further feature is not a re-run of an earlier feature's stage.** It runs the stage for itself, under its
+own `specs/<feature>/mockups/`, with the earlier features' surfaces and the built app framed in as `built`
+(section 0). The earlier feature's `mock-states.md` is not reopened and not copied: where the new feature
+alters one of its surfaces, that surface is `changed` here, and the verdict on the change is this feature's.

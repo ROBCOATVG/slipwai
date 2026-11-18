@@ -75,12 +75,13 @@ from .ground_card import record as record_ground
 from .harbour import config
 from .init_run import Fitting, kept_line, outside_session
 from .init_run import adopted as adopted_init
-from .init_run import assess as assess_idea
 from .init_run import cast_off as start_fleet
 from .init_run import draft as draft_specification
 from .init_run import draw as draw_surfaces
 from .init_run import start as fit_out
 from .init_run import stop as stop_fleet
+from .intake_card import route_get as intake_get
+from .intake_card import route_post as intake_post
 from .interview_form import drafts, form, from_query
 from .interview_form import page as interview
 from .interview_page import NO_INIT, destination, elected_in, remote_for, repository_for
@@ -109,7 +110,6 @@ from .passage import (
     surfaces,
 )
 from .post_guard import refusal as cross_site
-from .project.intake import ideas as intake_ideas
 from .seats import Bench, Outfit, Seat, parameter
 from .settings_page import route_get as settings_get
 from .settings_page import route_post as settings_post
@@ -146,13 +146,13 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 957 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
+# budget: 943 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
 # by a conversation keeps Model again away, and a verdict is refused while a turn is about to change the
 # pages, and Continue the build gives one answer with Model again on a storyboard changed since its verdict
 # (fifteen lines, against the 940 that was).
 # The cross-site guard and the app-version guard (2.1) on every change and page, one server
 # and every route the board answers, the need tick and the timeline among them, each a few lines handing off to a page
-# module. The intake route is the voyage button for a feature handed to /sail, and the captain routes are
+# module. The Next features tab's routes are `intake_card.py`'s, and the captain routes are
 # one fairway's log window and its poll. A stage kept from before a restart is offered and resumed here too.
 # Continue the build says which of its reasons holds it back, and a model that failed has a route back.
 # Raised from 975 for the remote: added when the project is made, and asked for before the fleet sails.
@@ -343,6 +343,8 @@ class Bridge(BaseHTTPRequestHandler):
         if self.controls and voyage_get(self, where, query):  # the Voyage and its one poll: `voyage_live.py`
             return
         if self.controls and talk_get(self, where, query):  # a conversation's poll, a captain's window
+            return
+        if self.controls and intake_get(self, where, query):  # the hand-over's poll: `intake_card.py`
             return
         # One captain's window, and its poll: `captain_page` says what it reads.
         if where in ("/captain", "/captain.json") and self.controls:
@@ -718,6 +720,8 @@ class Bridge(BaseHTTPRequestHandler):
                 return
             if talk_post(self, where, held):  # everything said to a slice or a captain: `talk_routes.py`
                 return
+            if intake_post(self, where, held):  # Next features, and a further feature handed over
+                return
             if where == "/generate/ask":
                 # The questions again, for the answers given so far: one of them decides what the next one
                 # offers, and which that is, is the catalogue's business and not the browser's.
@@ -826,24 +830,6 @@ class Bridge(BaseHTTPRequestHandler):
             # The one button between a specification a person has read and a storyboard they have not seen
             # yet. Half a stage: the drawing, which nobody has to be present for, and then the stop that is
             # the stage — which is why this ends with the strip amber rather than with a tick.
-            elif where == "/intake":
-                pending = [one for one in intake_ideas(self.root) if one.state not in ("specified", "kill")]
-                if not pending:
-                    raise ValueError("nothing waiting under docs/intake; hand the feature to /sail")
-                idea = pending[0]
-                if idea.state == "confirm":
-                    path = self.root / "docs/intake" / idea.slug / "confirmed"
-                    path.write_text("yes\nperson\n", encoding="utf-8")
-                    said = f"confirmed {idea.slug}"
-                elif idea.state in ("assessing", "go", "changed"):
-                    if self.fitting and not self.fitting.said()["done"]:
-                        raise ValueError("this board is already running something; wait for it to finish, "
-                                         f"then press Continue the next feature for {idea.slug}")
-                    self.fitting = assess_idea(self.root, idea.slug,
-                                               self.fitting.said()["lines"] if self.fitting else None)
-                    said = f"assessing {idea.slug}"
-                else:
-                    raise ValueError(f"{idea.slug} is {idea.state}; /sail is what moves an idea in that state")
             elif where == "/storyboard":
                 if refused := verdict_refused(self):  # not on pages a turn is about to change
                     raise ValueError(refused)

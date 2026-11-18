@@ -25,7 +25,14 @@ class YAMLReader(Protocol):
 
 
 STATE = ".slipwai/migration.json"
-SLICE = re.compile(r"\b[A-Z][A-Z0-9]*-\d+\b")
+#: What a slice's id looks like where a split writes one: `S38`, `ORD-01`, `CL2`. Read only out of the first
+#: column of a split's slice table and never out of its prose — a split quotes scenario, requirement and
+#: rule ids (`CS-3`, `FR-006`, `V-10`) in the very same shape, and nothing but where it stands says which a
+#: token is.
+SLICE = re.compile(r"(?<![\w-])[A-Z][A-Z0-9]*-?\d+(?![\w-])")
+#: A run of slices in one cell, `S38–S41` or `L02 to L23`: an en dash, an em dash or the word, never a
+#: hyphen, which is inside ids like `ORD-01`. The spelling `clearance.py` reads the same table with.
+RUN = re.compile(r"(?<![\w-])([A-Z][A-Z0-9]*?-?)(\d+)\s*(?:–|—|\bto\b)\s*\1?(\d+)(?![\w-])")
 #: What a fairway or a feature may be called: one path component, on every platform and in a git ref.
 NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*")
 #: What version 1's runner — version 1's own word for what a captain replaced — left behind. All three
@@ -37,6 +44,49 @@ NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*")
 LEGACY_LOG = "specs/cruise-log.jsonl"
 LEGACY_GIVEN = ".specify/cruise-told.jsonl"
 LEGACY_QUEUED = ".specify/cruise-inbox.jsonl"
+
+
+def named(split: str, known: Collection[str] = ()) -> list[str]:
+    """The slices a split names: the first column of its `## Slice graph` table, and nothing else it says.
+
+    The whole text used to be searched for anything shaped like an id, and a split's notes are full of
+    those: one project's crossing listed `CS-3`, `FR-006`, `R-11` and `V-10` as slices to place, none of
+    which is a slice, so its confirmation could never succeed and nothing could be claimed (issue 95). A
+    row's first cell is the one place the split says "this is a slice". It may name one, several, or a run
+    (`S38–S41`); `known` are ids already established as slices — the model's — which are recognised however
+    they are spelled, since the model admits a lower-case id this shape does not.
+
+    A split written before the slice graph existed has no such table, and falls back to the first column
+    of any table headed `Slice` — the split candidates. One with neither names nothing here, and its slices
+    are the directories under `slices/`.
+    """
+    graph: list[str] = []
+    headed: list[str] = []
+    inside = columns = False
+    for line in split.splitlines():
+        text = line.strip()
+        if text.startswith("#"):
+            inside, columns = text.lstrip("#").strip().lower() == "slice graph", False
+            continue
+        if not text.startswith("|"):
+            columns = False
+            continue
+        cell = text.strip("|").split("|")[0].strip()
+        if cell.strip("`* ").lower() == "slice":
+            columns = True
+        elif not set(cell) <= set("-: "):
+            if inside:
+                graph.append(cell)
+            elif columns:
+                headed.append(cell)
+    found: list[str] = []
+    for cell in graph or headed:
+        for prefix, low, high in RUN.findall(cell):
+            found += [f"{prefix}{number:0{len(low)}d}" for number in range(int(low), int(high) + 1)]
+        found += SLICE.findall(cell)
+        found += [slice_id for slice_id in known
+                  if re.search(rf"(?<![\w-]){re.escape(slice_id)}(?![\w-])", cell)]
+    return sorted(set(found))
 
 
 def json_bytes(value: object) -> bytes:
@@ -152,6 +202,10 @@ class Flight:
     files: Tree = field(default_factory=dict)
     logs: list[tuple[str, str, Entry]] = field(default_factory=list)
     features: dict[str, dict] = field(default_factory=dict)
+    #: Per feature, what its split or a `slices/` directory names that the model does not hold, on the
+    #: profile where the model is what a slice is. Named on the catch-up page and kept out of `unplaced`:
+    #: the chart is rendered from the model, so nothing a person does could ever place one of these.
+    unmodelled: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def counts(self) -> tuple[int, int]:
@@ -268,19 +322,28 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
         feature = split.parent
         name = identifier(feature.name)
         frozen(flight, feature)
-        found = sorted(set(SLICE.findall(split.read_text(encoding="utf-8"))) |
+        modelled = document["profile"] == "event-modelling"
+        found = sorted(set(named(split.read_text(encoding="utf-8"),
+                                 [str(item["id"]) for item in items] if modelled else ())) |
                        {path.name for path in (feature / "slices").glob("*") if path.is_dir()})
         local = [dict(item) for item in items if str(item["id"]) in found]
-        if document["profile"] != "event-modelling":
+        if modelled:
+            # The model is what a slice is here: `make chart` renders the chart from it and `check-chart`
+            # refuses one that disagrees. A slice only the split holds has no frames, the model's grammar
+            # admits none without, and so no chart could ever carry it — listing it as `unplaced` asked a
+            # person for a placement that cannot be made.
+            held = {str(item["id"]) for item in local}
+            missing = [slice_id for slice_id in found if slice_id not in held]
+            if missing:
+                flight.unmodelled[name] = missing
+            found = [slice_id for slice_id in found if slice_id in held]
+        else:
             local = []
             for slice_id in found:
                 plans = sorted((feature / "slices" / slice_id).glob("*plan*.md"))
                 text = "\n".join(path.read_text(encoding="utf-8") for path in plans)
                 local.append({"id": slice_id, "context": plan_context(text, contexts),
                               "capability": slice_id, "frames": [], "reads": []})
-        recorded = {str(item["id"]) for item in local}
-        local += [{"id": slice_id, "context": "unplaced", "capability": slice_id,
-                   "frames": [], "reads": []} for slice_id in found if slice_id not in recorded]
         for item in local:
             item["context"] = identifier(str(item.get("context") or "unplaced"))
             item.setdefault("capability", str(item.get("name") or item["id"]))

@@ -229,6 +229,16 @@ class CatchUpTest(unittest.TestCase):
         self.assertIn("releaseMode", page)
         self.assertNotIn("## What this crossing could not do", page)
 
+    def test_a_slice_the_model_does_not_hold_is_named_and_not_asked_to_be_placed(self) -> None:
+        document = {"name": "orders", "layout": {"delivery": "."}}
+        flight = Flight(features={"ordering": {"proposed": ["ordering", "billing"], "unplaced": []}},
+                        unmodelled={"ordering": ["S38", "S39", "W5"]})
+        page = catch_up("orders", "1.5.1", "1.5.1", flight, layout_of(document), {}, [])
+        self.assertIn("2 fairways proposed, 0 slices in `unplaced`", page)
+        self.assertIn("## Slices the model does not hold", page)
+        self.assertIn("- `ordering`: `S38`, `S39`, `W5`", page)
+        self.assertNotIn("## Slices the model does not hold", self.page([]))
+
     def test_what_the_crossing_could_not_write_is_said_on_the_page(self) -> None:
         page = self.page(["`project.json` conflicted, so releaseMode and state were not written."])
         self.assertIn("## What this crossing could not do", page)

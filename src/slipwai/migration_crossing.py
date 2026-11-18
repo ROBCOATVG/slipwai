@@ -154,6 +154,18 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             f"Run `{command}`. Place every `unplaced` slice in a named context on its chart; "
             "on the standard profile run `/chart`. Confirm the chart with "
             f"`{command} --confirm`, then run `make verify`.\n\n"
+            # A slice only a split or a `slices/` directory names, on the profile where the chart is rendered
+            # from the model. Said here instead of listed as `unplaced`: nothing could have placed it, so
+            # listing it held the confirmation above open for ever (issue 95).
+            + ("## Slices the model does not hold\n\n"
+               "Each of these has a row in a split's slice graph or a directory under `slices/`, and no "
+               "slice in the event model. The chart is rendered from the model, so none of them is on it, "
+               "none is `unplaced`, and the confirmation above does not wait for them. Where one is work "
+               "still to do, model it — a slice needs at least one frame — and `make chart` charts it; "
+               "where one is not a slice at all, there is nothing to do.\n\n"
+               + "".join(f"- `{feature}`: {', '.join(f'`{slice_id}`' for slice_id in names)}\n"
+                         for feature, names in sorted(flight.unmodelled.items())) + "\n"
+               if flight.unmodelled else "") +
             "## Installed base\n\n"
             f"The base was reconstructed by installed slipwai {used}; the project recorded {recorded}. "
             "Snapshot fallbacks use the nearest available stable release below the snapshot.\n\n"

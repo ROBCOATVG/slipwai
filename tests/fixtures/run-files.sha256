@@ -66,6 +66,7 @@
 # why: 2026-11-18 e4c300a544886a35 Windows work for the captain-agent stream, macOS and Linux unchanged: the captain's named command is split as drive.words already split a slice's (backslashes kept only on Windows); a print-mode program is looked up on PATH only on Windows, where an npm .cmd shim is not found by a bare name; drive.alive asks the process handle only on Windows, where os.kill(pid, 0) is a Ctrl-C; drive.end_group and the captain's timed-out command end the tree with taskkill /T only on Windows and keep killpg elsewhere; captain_orders.unreadable compares against os.sep, which is / on macOS and Linux; check-dispatch prints its project paths with as_posix, the same text off Windows; the pruner's check-ignore is NUL-separated, the same answer off Windows.
 # why: 2026-11-18 df30366479d37207 Windows work, macOS and Linux unchanged: talk.send stamps each message file's mtime with an instant later than the last this process sent, which off Windows is the clock's own, so the order fold draws is the same; drive.end_group's Windows branch always passes taskkill /F, and the POSIX branch is unchanged.
 # why: 2026-11-18 75b2fb6d165c2ced Windows work, macOS and Linux unchanged: talk.instant spaces two stamps of one process a microsecond apart instead of a nanosecond, because NTFS keeps file times in 100 ns units; off Windows a stamp is still the clock's own, and the order fold draws is the same.
+# why: 2026-11-18 3df0df4025a32ede check-migration.py --confirm passes once no slice on the chart is unplaced, and says rather than refuses a listed name the chart does not hold (issue 95); the same checks on macOS and Linux, with no path, shell or process handling touched
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -228,14 +229,14 @@
 73fa81ee42af50e2df6cedecc5428eaff9427c3bfd0ee0496dc1e5d6834b0934  event-modelling-postgres-toy-serve  scripts/extensions/guards.py
 73fa81ee42af50e2df6cedecc5428eaff9427c3bfd0ee0496dc1e5d6834b0934  standard-memory-none  scripts/extensions/guards.py
 73fa81ee42af50e2df6cedecc5428eaff9427c3bfd0ee0496dc1e5d6834b0934  standard-postgres-toy-serve  scripts/extensions/guards.py
-74ba4ce93d9a1845d349ba1dd8ed72bcede381837ae67bdd502dd39c52a1ff89  event-modelling-memory-none  scripts/check-migration.py
-74ba4ce93d9a1845d349ba1dd8ed72bcede381837ae67bdd502dd39c52a1ff89  event-modelling-postgres-toy-serve  scripts/check-migration.py
-74ba4ce93d9a1845d349ba1dd8ed72bcede381837ae67bdd502dd39c52a1ff89  standard-memory-none  scripts/check-migration.py
-74ba4ce93d9a1845d349ba1dd8ed72bcede381837ae67bdd502dd39c52a1ff89  standard-postgres-toy-serve  scripts/check-migration.py
 762a08440ba7fb5c244a034e9bd30923403ab585c05137b33a03ebff170f6bc7  event-modelling-memory-none  scripts/agents/clearance.py
 762a08440ba7fb5c244a034e9bd30923403ab585c05137b33a03ebff170f6bc7  event-modelling-postgres-toy-serve  scripts/agents/clearance.py
 762a08440ba7fb5c244a034e9bd30923403ab585c05137b33a03ebff170f6bc7  standard-memory-none  scripts/agents/clearance.py
 762a08440ba7fb5c244a034e9bd30923403ab585c05137b33a03ebff170f6bc7  standard-postgres-toy-serve  scripts/agents/clearance.py
+7a8864a5300387335abf23e3accd4f39baa059764abd05607dc2507823956099  event-modelling-memory-none  scripts/check-migration.py
+7a8864a5300387335abf23e3accd4f39baa059764abd05607dc2507823956099  event-modelling-postgres-toy-serve  scripts/check-migration.py
+7a8864a5300387335abf23e3accd4f39baa059764abd05607dc2507823956099  standard-memory-none  scripts/check-migration.py
+7a8864a5300387335abf23e3accd4f39baa059764abd05607dc2507823956099  standard-postgres-toy-serve  scripts/check-migration.py
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  event-modelling-memory-none  scripts/agents/session.py
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  event-modelling-postgres-toy-serve  scripts/agents/session.py
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  standard-memory-none  scripts/agents/session.py

@@ -13,7 +13,7 @@ import yaml  # type: ignore[import-untyped]
 
 from slipwai.assets import ROOT
 from slipwai.fleet import Fairway, inbox, state_of
-from slipwai.migration_flight import json_bytes, model_bytes, plan_context, read, shipped
+from slipwai.migration_flight import json_bytes, model_bytes, named, plan_context, read, shipped
 from slipwai.migration_settings import on_without_a_date, settings
 
 
@@ -79,7 +79,11 @@ class FlightTest(unittest.TestCase):
         self.root = Path(scratch.name)
         self.feature = self.root / "specs/ordering"
         (self.feature / "slices/ORD-01").mkdir(parents=True)
-        (self.feature / "story-split.md").write_text("ORD-01 ORD-02 ORD-03", encoding="utf-8")
+        # A slice graph, since issue 95: a split names its slices in that table's first column, and an id
+        # that merely appears in its prose is not one. This fixture was the three ids on one bare line.
+        (self.feature / "story-split.md").write_text(
+            "## Slice graph\n| Slice | depends_on |\n|---|---|\n| ORD-01 | — |\n| ORD-02 | ORD-01 |\n"
+            "| ORD-03 | ORD-01 |\n", encoding="utf-8")
         self.document = {"profile": "standard", "target": "none", "layout": {"delivery": "."},
                          "deployables": {"service": {"kind": "service", "path": "apps/service",
                                                      "contexts": ["ordering", "billing"]}}}
@@ -122,6 +126,104 @@ class FlightTest(unittest.TestCase):
             (self.feature / "chart.yaml").write_bytes(json_bytes(chart))
             self.assertEqual(confirmation.main(["--confirm"]), 0)
         self.assertIs(guard.cleared(chart, set(), "ORD-01"), True)
+
+    #: A version 1 split as one really read: ids of other things quoted in the notes, a run of slices the
+    #: model has no frames for, and a directory under `slices/` that is not a slice at all.
+    SPLIT = """# Split
+
+FR-006 is the requirement all of this serves, and V-10 the rule.
+
+## Slice graph
+| Slice | depends_on | parallel_ok_with | Notes |
+|---|---|---|---|
+| S1 | — | — | The walking skeleton |
+| S2 | S1 | any, **not S3** | CS-3 refuses a founder; see R-11 and FR-006 |
+| `S3` | S1 | W5 only | Shares a screen with S2 (V-10) |
+| S38–S40 | S1 | — | Hardening: no frames of their own, so CS-15 is proved elsewhere |
+
+## Parking Lot
+ORD-99 was dropped.
+"""
+
+    def split(self) -> None:
+        (self.feature / "story-split.md").write_text(self.SPLIT, encoding="utf-8")
+        for name in ("S1", "S2", "S38", "W5"):
+            (self.feature / "slices" / name).mkdir(parents=True, exist_ok=True)
+
+    def test_a_split_gives_only_the_slices_its_slice_graph_names_in_its_first_column(self) -> None:
+        """Issue 95: `CS-3`, `FR-006`, `R-11` and `V-10` were quoted in the notes and became slices nobody
+        could place, which left `--confirm` impossible and every fairway unclaimable."""
+        self.split()
+        with patch("slipwai.migration_flight.shipped", return_value=None):
+            flight = read(self.root, self.document, YAML())
+        chart = json.loads(flight.files["specs/ordering/chart.yaml"])
+        self.assertEqual(sorted(chart["slices"]),
+                         ["ORD-01", "S1", "S2", "S3", "S38", "S39", "S40", "W5"],
+                         "the first column and the slice directories, and nothing from the prose")
+
+    def test_a_split_older_than_the_slice_graph_names_its_slices_in_its_candidates_table(self) -> None:
+        candidates = ("PAY-9 is prose.\n\n## Split Candidates\n| Slice | Value |\n|---|---|\n"
+                      "| **PAY-1** pay by card | FR-2 |\n| PAY-2, PAY-3 | — |\n\n"
+                      "| Requirement | Slice |\n|---|---|\n| FR-7 | PAY-1 |\n")
+        self.assertEqual(named(candidates), ["PAY-1", "PAY-2", "PAY-3"])
+        self.assertEqual(named("PAY-1 and PAY-2, in a sentence."), [])
+
+    def test_a_run_keeps_its_padding_and_a_modelled_id_is_read_however_it_is_spelled(self) -> None:
+        graph = "## Slice graph\n| Slice | depends_on |\n|---|---|\n| L02–L04 | — |\n| place-order | L02 |\n"
+        self.assertEqual(named(graph), ["L02", "L03", "L04"])
+        self.assertEqual(named(graph, ["place-order", "order"]), ["L02", "L03", "L04", "place-order"])
+
+    def test_on_the_event_profile_the_model_says_what_a_slice_is(self) -> None:
+        """A split-only slice has no frames, the model's grammar admits no slice without one, and the chart
+        is rendered from the model — so it can never be placed. It is named, not left in `unplaced`."""
+        self.split()
+        self.document["profile"] = "event-modelling"
+        path = self.root / "docs/event-model/model.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(json_bytes({"slices": [
+            {"id": "S1", "context": "ordering", "status": "implemented"},
+            {"id": "S2", "context": "billing", "status": "planned"},
+            {"id": "S3", "status": "proposed"}]}))
+        with patch("slipwai.migration_flight.shipped", return_value=None):
+            flight = read(self.root, self.document, YAML())
+        chart = json.loads(flight.files["specs/ordering/chart.yaml"])
+        self.assertEqual(list(chart["slices"]), ["S1", "S2", "S3"])
+        self.assertEqual(flight.features["ordering"]["unplaced"], ["S3"],
+                         "a slice the model holds and gives no context is the only kind a person can place")
+        self.assertEqual(flight.unmodelled, {"ordering": ["ORD-01", "S38", "S39", "S40", "W5"]})
+
+    def test_confirmation_judges_the_chart_and_not_the_list_the_crossing_wrote(self) -> None:
+        """What a project that already crossed holds: a list of names its chart can never carry."""
+        import contextlib
+        import io
+        (self.root / ".slipwai").mkdir()
+        state: dict = {"v": 1, "features": {"ordering": {"proposed": ["ordering", "billing"],
+                                                   "unplaced": ["CS-3", "FR-006", "S38", "W5", "S2"]}}}
+        (self.root / ".slipwai/migration.json").write_bytes(json_bytes(state))
+        chart: dict = {"v": 1, "feature": "ordering",
+                 "fairways": {"ordering": {}, "billing": {}},
+                 "slices": {"S1": {"fairway": "ordering"}, "S2": {"fairway": "unplaced"}}}
+        (self.feature / "chart.yaml").write_bytes(json_bytes(chart))
+        confirmation = script("check-migration.py")
+        with patch.object(confirmation, "project_root", return_value=self.root):
+            said = io.StringIO()
+            with contextlib.redirect_stdout(said):
+                self.assertEqual(confirmation.main(["--confirm"]), 1, "a charted slice is still unplaced")
+            self.assertIn("S2", said.getvalue())
+            self.assertNotIn("FR-006", said.getvalue(), "a refusal names only what can be placed")
+            chart["slices"]["S2"]["fairway"] = "billing"
+            (self.feature / "chart.yaml").write_bytes(json_bytes(chart))
+            said = io.StringIO()
+            with contextlib.redirect_stdout(said):
+                self.assertEqual(confirmation.main(["--confirm"]), 0, said.getvalue())
+            for name in ("CS-3", "FR-006", "S38", "W5"):
+                self.assertIn(name, said.getvalue(), "what the chart does not hold is said, not refused")
+            self.assertNotIn("S2", said.getvalue())
+        written = json.loads((self.root / ".slipwai/migration.json").read_text(encoding="utf-8"))
+        self.assertEqual(written["features"]["ordering"], {"proposed": [], "unplaced": []})
+        self.assertIn("confirmed", written)
+        claims = script("agents/claims.py")
+        self.assertNotIn("confirmation", claims.take(self.root, "billing", "this-machine").why or "")
 
     def model(self, *slices: dict) -> dict:
         path = self.root / "docs/event-model/model.yaml"

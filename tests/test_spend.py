@@ -75,6 +75,8 @@ class ProjectTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, berth, True)
         self.record(berth, "S1", [planned, working, open_one])
         self.assertEqual([path.name for path in spend.checkouts(self.root)], [self.root.name, berth.name])
+        self.assertEqual({path.name for path in spend.checkouts(berth)}, {self.root.name, berth.name},
+                         "from a berth, the main checkout too")
         self.assertEqual(spend.spent(self.root, "2026-11-18"), 11, "4k on trunk and in the berth once, 7k more")
 
     def test_the_board_s_bunker_reads_the_records(self) -> None:

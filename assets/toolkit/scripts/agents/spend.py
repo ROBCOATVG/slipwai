@@ -27,7 +27,6 @@ Standard library only: `make shared` carries this module into every project, whe
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -63,19 +62,46 @@ def number(value: object) -> int:
 
 
 def checkouts(root: Path) -> list[Path]:
-    """The project's checkout and every berth git knows of, the project's own first."""
+    """The project's checkout and every berth git knows of, the project's own first. Read from the files git
+    keeps for each worktree (`<common dir>/worktrees/<name>/gitdir`, the path of that worktree's `.git`), not by
+    running `git worktree list`: the board folds this on every poll, and a process started each time made the
+    fold slow enough to lose its kept read to a person's action landing in between."""
     found = [Path(root)]
-    try:
-        listed = subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True,
-                                text=True, timeout=10, check=False)
-    except (OSError, subprocess.SubprocessError):
-        return found
-    for line in listed.stdout.splitlines() if listed.returncode == 0 else []:
-        if line.startswith("worktree "):
-            path = Path(line[len("worktree "):])
-            if path.resolve() != Path(root).resolve() and path.is_dir():
-                found.append(path)
+    common = common_dir(Path(root))
+    # Asked from a berth: the main checkout is the folder that holds the shared `.git`, listed by no file.
+    if common is not None and common.name == ".git" and common.parent.resolve() != Path(root).resolve():
+        found.append(common.parent)
+    listed = sorted((common / "worktrees").iterdir()) if common is not None and (common / "worktrees").is_dir() else []
+    for one in listed:
+        try:
+            pointer = Path((one / "gitdir").read_text(encoding="utf-8").strip())
+        except (OSError, UnicodeDecodeError):
+            continue
+        path = pointer.parent if pointer.name == ".git" else pointer
+        if path.is_dir() and path.resolve() != Path(root).resolve() and path not in found:
+            found.append(path)
     return found
+
+
+def common_dir(root: Path) -> Path | None:
+    """The repository's own folder: `.git` where it is one, or what a worktree's `.git` file points back to."""
+    dot = root / ".git"
+    if dot.is_dir():
+        return dot
+    try:
+        said = dot.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not said.startswith("gitdir:"):
+        return None
+    own = Path(said[len("gitdir:"):].strip())
+    own = own if own.is_absolute() else root / own
+    try:
+        back = (own / "commondir").read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return own
+    shared = Path(back)
+    return (shared if shared.is_absolute() else own / shared).resolve()
 
 
 def stages(root: Path) -> list[tuple[str, dict[str, Any]]]:

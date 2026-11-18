@@ -68,6 +68,7 @@
 # why: 2026-11-18 75b2fb6d165c2ced Windows work, macOS and Linux unchanged: talk.instant spaces two stamps of one process a microsecond apart instead of a nanosecond, because NTFS keeps file times in 100 ns units; off Windows a stamp is still the clock's own, and the order fold draws is the same.
 # why: 2026-11-18 2463382b32e22043 Same on every platform: release_state.move writes state after shape where there is one, the line metadata writes it on, so a migration merges it rather than keeping it twice; nothing it reads changes.
 # why: 2026-11-18 63ae9781ec87b067 Same on every platform: the harbourmaster's spent_today adds the work tokens of stages that ended today, read from each slice's benchmark.json on trunk and in every berth by scripts/agents/spend.py, a new standard-library module; nothing it starts, signals or writes changes.
+# why: 2026-11-18 010ac685c480a62d Same on every platform: the harbourmaster's spent_today adds the work tokens of stages that ended today, read from each slice's benchmark.json on trunk and in every berth by scripts/agents/spend.py, a new standard-library module that finds the berths in git's own worktree files and starts no process; nothing it starts, signals or writes changes.
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -385,10 +386,10 @@ e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  event-modellin
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  event-modelling-postgres-toy-serve  scripts/agents/orders.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  standard-memory-none  scripts/agents/orders.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  standard-postgres-toy-serve  scripts/agents/orders.py
-e5c7e3d14348c5777b5f97320e65aa960367f1d6523ea46de0a68f16af17313f  event-modelling-memory-none  scripts/agents/spend.py
-e5c7e3d14348c5777b5f97320e65aa960367f1d6523ea46de0a68f16af17313f  event-modelling-postgres-toy-serve  scripts/agents/spend.py
-e5c7e3d14348c5777b5f97320e65aa960367f1d6523ea46de0a68f16af17313f  standard-memory-none  scripts/agents/spend.py
-e5c7e3d14348c5777b5f97320e65aa960367f1d6523ea46de0a68f16af17313f  standard-postgres-toy-serve  scripts/agents/spend.py
+e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  event-modelling-memory-none  scripts/agents/spend.py
+e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  event-modelling-postgres-toy-serve  scripts/agents/spend.py
+e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  standard-memory-none  scripts/agents/spend.py
+e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  standard-postgres-toy-serve  scripts/agents/spend.py
 e9230f685030c27ff248f567a38df7341a28986c6d25c484bf614e2ce72ab9c7  event-modelling-memory-none  scripts/event-model/board-plan.test.ts
 e9230f685030c27ff248f567a38df7341a28986c6d25c484bf614e2ce72ab9c7  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.test.ts
 e9941bddb44f69f0112b69335097b0d1cf37a0911244bbe8ac2a717e272147be  event-modelling-memory-none  scripts/agents/travel.py

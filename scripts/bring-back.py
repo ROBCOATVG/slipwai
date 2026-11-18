@@ -117,6 +117,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "try_card",
        # And feedback from using it: version 1 had no built product on a board to say anything about.
        "feedback", "feedback_card",
+       # And a further feature handed over on it: version 1's only way in was `/sail` in a terminal.
+       "intake_document",
        # And the decision log: version 1 kept decisions in a file nobody was shown.
        "decision_entry", "decision_log", "decision_cards",
        # And the live strip: version 1's runner printed to a terminal, and nothing kept what it said.

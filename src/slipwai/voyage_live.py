@@ -13,9 +13,11 @@ own scripts, and a band here would be a second renderer of each to keep in step.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
+from . import page_copy
 from .adoption_card import adoption_card, strategy_dates
 from .board_read import Read, read
 from .captains_strip import strip_html
@@ -35,7 +37,7 @@ from .project.intake import ideas as intake_ideas
 from .seats import parameter
 from .settings_card import project_tabs, settings
 from .slice_card import lit
-from .storyboard_card import live
+from .storyboard_card import copy_said, live
 from .storyboard_card import payload as talk_payload
 from .trunk_card import band_html as trunk_band
 from .trunk_card import mend_card
@@ -43,7 +45,17 @@ from .trunk_remote import card as remote_card
 from .try_card import card as try_card
 from .try_card import payload as try_payload
 from .try_card import trunk_head
-from .voyage import counts, mockups, model_xml, running_app, screens, states_of
+from .voyage import (
+    counts,
+    design_file,
+    mockup_file,
+    mockup_where,
+    mockups,
+    model_xml,
+    running_app,
+    screens,
+    states_of,
+)
 from .voyage_page import band, expect_card, feedback_points_card, model_said, signature, work_card
 from .voyage_page import page as voyage_page
 from .voyage_page import payload as voyage_payload
@@ -180,6 +192,24 @@ def route_get(board: Any, where: str, query: str) -> bool:
                                                 int(since) if since.isdigit() else 0)), JSON)
     elif where == "/try.json":
         board.send(200, try_payload(board.root, board.named_seat()), JSON)
+    elif where.startswith(page_copy.ROUTE):
+        board.send(*storyboard_copy(board, where.removeprefix(page_copy.ROUTE)))
     else:
         return False
     return True
+
+
+def storyboard_copy(board: Any, where: str) -> tuple:
+    """A mock-up page as one file to send, from the window its address names: what `/mockups/` would have
+    served there, and reaching only what `/mockups/` serves."""
+    named, rest = mockup_where(where)
+    root = (board.bench.seat(named).root if named else board.root).resolve()
+    path = mockup_file(root, rest)
+    parts = path.relative_to(root).parts if path is not None and path.is_relative_to(root) else ()
+    if len(parts) != 4 or parts[0] != "specs" or path is None or path.suffix.lower() != ".html":
+        return 404, "No such mock-up page to copy.", "text/plain; charset=utf-8"
+
+    def allowed(one: Path) -> bool:
+        return one.is_relative_to(root) and design_file(root, one.relative_to(root).as_posix()) is not None
+
+    return (200, *page_copy.storyboard(path, allowed, parts[1], copy_said(root, parts[1])))

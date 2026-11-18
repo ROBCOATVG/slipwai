@@ -152,6 +152,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # that server has, which is a window each: every route beside it is a fold of files on disk.
               "page_shell", "seats", "console", "console_page", "attention",
               # The conversation that writes a brief before a project exists, on the console's shape.
+              # And a page of the board's as one file to send: the prototype's, and a storyboard's.
+              "page_copy",
               "brief_faults", "brief_session", "brief_page",
               # The Agent Client Protocol's client half: the session behind the board's conversations, what
               # the board is set to run them on, and the page that sets it.

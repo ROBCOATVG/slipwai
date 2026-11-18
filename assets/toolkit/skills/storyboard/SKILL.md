@@ -27,6 +27,25 @@ demonstrated. So in that stage, and only there:
   what *Style conventions* below asks for anyway.
 - **List in the audit checklists only what will run.** In that stage that is the questions a person
   answers about flow, content and states, not the impeccable pipeline, which is not part of it.
+- **Say which each surface is: built, changed or new.** A feature is drawn into the flow the project already
+  has, so the storyboard frames what is built — the browser app's own committed preview, an earlier
+  feature's surface page — from where it lies, and draws only what this feature changes or adds. The mark
+  goes on the element that shows the surface, and the cell's badge says the same in words:
+
+  ```html
+  <iframe data-surface="built" sandbox src="../../../apps/web/screens/deal-console-deals.html"></iframe>
+  <iframe data-surface="changed" sandbox src="deal-console.html"></iframe>
+  <a data-surface="new" href="export-pack.html" rel="noopener noreferrer">Open in new tab ↗</a>
+  ```
+
+  A `changed` surface sits beside the built original it changes, so the difference is what the eye lands
+  on; a built frame gets no audit checklist, because nobody is asked about it. In the flow diagram the three
+  have three colours and three glyphs — `BUILT`, `CHANGED`, `NEW` — beside the gap's. *When NOT to produce
+  one* says a fully built feature needs no storyboard; that is about a storyboard **of** built work. Framing
+  built screens **around** a feature that is not built yet is this stage's ordinary case.
+- **Use the app's own stylesheet where there is one.** *Style conventions* below already says to use the
+  project's tokens: where the project has a browser app, that is its `src/styles/`, linked by relative
+  path, for the storyboard's chrome and for every surface drawn.
 
 `commands/mockups.md` says the same in *How much rigour a mock-up gets*, and wins where the two differ.
 

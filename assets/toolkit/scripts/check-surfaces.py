@@ -19,6 +19,12 @@ nothing to find until somebody goes looking for a thing they remember agreeing t
 none` says the question was asked — a migration, an integration, a scheduled job — and every slice then
 leaves the column empty. A feature with no `mock-states.md` at all has not run the stage, which is the
 mock-up review rung's business rather than this gate's, so it passes here and says so.
+
+**A built surface has no verdict, and is owed none.** A further feature's storyboard frames what the project
+already has, marked `data-surface="built"`, so a reader sees one flow; the verdict covers what the feature
+changes and adds, and `mock-states.md` carries a `<!-- built: … -->` line for each built surface instead of a
+block. Nothing here asks after those. A slice that *names* one is still refused, and told why: it was shown,
+not put up for a verdict, so nothing about it was approved to build.
 """
 from __future__ import annotations
 
@@ -42,6 +48,8 @@ STATE = re.compile(r"^-\s*(?P<state>.+?)\s*—\s*(?P<verdict>approved|parked|n/a
 #: What a slice names in the split's *Surfaces and states* column: `<surface> · <state>`, several per cell
 #: separated by `;`. The middle dot is the separator everywhere else in this toolkit's tables.
 PAIR = re.compile(r"^(?P<surface>.+?)\s*·\s*(?P<state>.+?)$")
+#: A surface the storyboard framed as built, as the board writes it: its page's title, whole, and where it is.
+BUILT = re.compile(r"^<!-- built: (?P<title>.+) — (?P<page>\S+) \(", re.MULTILINE)
 NONE = "surfaces: none"
 FIX = "python3 scripts/check-surfaces.py"
 
@@ -69,6 +77,16 @@ def every_state(text: str) -> dict[str, dict[str, str]]:
         end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
         body = text[heading.end():end]
         found[heading.group("name")] = {s.group("state"): s.group("verdict") for s in STATE.finditer(body)}
+    return found
+
+
+def built(text: str) -> dict[str, str]:
+    """Every name a built surface answers to — its page's title, and each half of `<surface> — <state>` —
+    against the page that shows it. Only ever read to say why a slice may not name one."""
+    found: dict[str, str] = {}
+    for line in BUILT.finditer(text):
+        for name in (line.group("title"), *line.group("title").split(" — ")):
+            found.setdefault(name.strip(), line.group("page"))
     return found
 
 
@@ -106,12 +124,18 @@ def faults(states: str, split: str, where: str) -> list[str]:
                 f"{', '.join(f'{s} · {t}' for s, t in sorted(named))}. One of the two is wrong, and it is a "
                 f"question for the mock-up review rather than a thing to resolve here"] if named else []
     verdicts = every_state(states)
+    standing = built(states)
     found: list[str] = []
     claimed: dict[tuple[str, str], list[str]] = {}
     for slice_id, pairs in delivered(split).items():
         for surface, state in pairs:
             claimed.setdefault((surface, state), []).append(slice_id)
-            if surface not in allowed:
+            if surface not in allowed and surface in standing:
+                found.append(f"{where}: {slice_id} delivers `{surface} · {state}` and that surface is shown as "
+                             f"built ({standing[surface]}): it was framed for the flow and never put up for a "
+                             f"verdict. Where this feature changes it, draw the change as a page of its own, "
+                             f'mark it `data-surface="changed"` in the storyboard and get its verdict')
+            elif surface not in allowed:
                 found.append(f"{where}: {slice_id} delivers `{surface} · {state}` and no surface of that "
                              f"name is in mock-states.md. Nobody has seen it")
             elif state not in allowed[surface]:

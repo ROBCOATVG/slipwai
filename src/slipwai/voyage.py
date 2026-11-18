@@ -32,6 +32,7 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 
 from .assets import SLIPWAI
+from .drawn import app_look
 from .example_map_source import card_line
 from .fleet import Fairway, clearance_query, fairways, harbour_log
 from .fleet_record import clock_of
@@ -359,7 +360,7 @@ def mockup_file(root: Path, where: str) -> Path | None:
 
     A remainder that starts `specs/` or `docs/` is a path in the project, which is the form `mockup_href`
     writes; see `design_file` for what that form may reach."""
-    if where.partition("/")[0] in ("specs", "docs"):
+    if where.partition("/")[0] in ("specs", "docs") or design_file(root, where) is not None:
         return design_file(root, where)
     feature, _, name = where.partition("/")
     if not feature or not name or not name.strip("/"):
@@ -381,7 +382,8 @@ def design_file(root: Path, where: str) -> Path | None:
     The mock-up stage reads `docs/design/` and is told to follow it, so a storyboard links the stylesheet and
     the drawings there rather than copying them; refusing them is a storyboard with no styles and empty
     frames. Anything else in the project — its configuration, a slice's plan, the logs — stays refused, and
-    the test is on the resolved path, so neither `..` nor a symlink reaches past it.
+    the test is on the resolved path, so neither `..` nor a symlink reaches past it. A browser app's own
+    previews and stylesheets are served too (`drawn.app_look`): a further feature's storyboard frames them.
     """
     home = root.resolve()
     try:
@@ -394,7 +396,7 @@ def design_file(root: Path, where: str) -> Path | None:
     handed = len(parts) > 2 and parts[:2] == ("docs", "design")
     drawn = len(parts) > 3 and parts[0] == "specs" and parts[2] == MOCKUPS
     specified = len(parts) == 3 and parts[0] == "specs" and parts[2] == SPEC
-    return path if handed or drawn or specified else None
+    return path if handed or drawn or specified or app_look(home, path) else None
 
 
 def spec_file(root: Path, feature: str) -> Path | None:

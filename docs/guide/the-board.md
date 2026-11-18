@@ -201,6 +201,9 @@ This card appears when the design review has photographed screens. For each feat
 that were **Intended** beside the screens that were **Built**. **Open the running app** opens the app, when
 the project records where it runs.
 
+These photographs are also evidence for the next feature. The mock-up stage lists them, with the app's
+committed previews, when it works out which surfaces are built. See *Storyboard* below.
+
 ### Storyboard
 
 This card appears when the mock-up stage has drawn something. It shows the storyboard, or each mock-up
@@ -214,6 +217,23 @@ Under it is the verdict form:
 | **Disapprove**, with a reason in the box | The same file, with every drawn state `parked:` and your reason. A reason is required. Nothing else starts |
 
 Both buttons lock when the storyboard has a verdict. To change a verdict, edit `mock-states.md`.
+
+Where the storyboard says what each surface is, a list above the verdict form shows the three kinds apart:
+
+| Chip | Means | Verdict |
+|---|---|---|
+| **Built** | The project has it already. The storyboard frames the app's own preview, or an earlier feature's page | None. It is shown for the flow |
+| **Changed** | A built surface as this feature alters it | **Approve storyboard** marks its states |
+| **New** | A surface this feature adds | **Approve storyboard** marks its states |
+
+**Approve storyboard** then writes only the changed and new states as `approved`. For each built surface
+`mock-states.md` gets one line that says it was shown and that no verdict was asked. A later change to a
+built preview does not withdraw a verdict. A storyboard that frames only built surfaces has no verdict
+form, because nothing on it is new.
+
+The board serves a browser app's `screens/` and `src/styles/` directories to the storyboard, so that a
+built frame shows the real screen and a new surface can link the app's own stylesheet. It serves nothing
+else of the app.
 
 **Save a copy to send**, above the verdict form, downloads the storyboard as one file: every page it frames
 is inside it, and a page it only links to is drawn at the end. A strip at the top says it is a copy, when

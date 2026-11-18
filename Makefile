@@ -66,6 +66,8 @@ SLOW += test_captain_review7
 SLOW += test_captain_through
 # Node, once per case, reading the file `check.py` reads: the two model checkers held in step.
 SLOW += test_event_names_parity
+# The list of what exists, run as the command a project runs, and against a git checkout made for the case.
+SLOW += test_existing_surfaces
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

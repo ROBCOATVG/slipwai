@@ -15,6 +15,10 @@ details.findings ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:.8
 details.findings .where{font-size:.74rem;color:var(--ink-3);margin-right:6px}
 details.findings li button{margin-left:8px;font-size:.76rem;padding:2px 8px}
 .verdict-gone{color:var(--brass)}
+ul.kinds{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px;font-size:.86rem;color:var(--ink-2)}
+.chip.built{background:var(--rule-2);color:var(--ink-3)}
+.chip.changed{background:var(--brass-soft);color:var(--brass)}
+.chip.new{background:var(--teal-soft);color:var(--teal)}
 #storyboard-talk .log{max-height:min(28rem,55vh);min-height:3rem;overflow:auto;display:grid;gap:8px;
   align-content:start;padding:2px 2px 10px}
 #storyboard-talk .turn{max-width:min(46rem,92%);padding:8px 12px;border-radius:10px;border:1px solid var(--rule);

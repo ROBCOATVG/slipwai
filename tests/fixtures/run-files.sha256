@@ -71,7 +71,12 @@
 # why: 2026-11-18 5ee271d0234d973a Same on every platform: the harbourmaster's spent_today adds the work tokens of stages that ended today, read from each slice's benchmark.json on trunk and in every berth by scripts/agents/spend.py, a new standard-library module that finds the berths in git's own worktree files and starts no process; nothing it starts, signals or writes changes.
 # why: 2026-11-18 e36ed1264e72144b talk.py draws a message id of eight random bytes instead of three, and again where a waiting or handled message already has it. Behaviour changes on purpose and the same on every platform: two messages of one second no longer share a file
 # why: 2026-11-18 0958c5a878b59037 Behaviour changes on purpose and the same on every platform (issue 103): the captain starts every run of the ladder in a new session and counts a run that ended at a handover as no attempt; benchmark.py refuses a walk past walks in harbour.json unless it is opened with critical=; deck_line.py takes --stowed on an accepted demo; moorings.leave removes a merged berth's containers and local branch; the mender may land a need under docker/. drive.py and check-slice-scope.py change words only
+# why: 2026-11-18 5f427afbde97aeeb A further feature is drawn into the project's storyboard (#102): scripts/agents/existing.py is new and lists what the project has drawn or built; surfaces.py writes that list before the session and no longer counts a frame marked built as drawn; check-surfaces.py reads the built lines of mock-states.md to say why a slice may not name one. Each does the same on macOS and Linux
 
+05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
+05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
+05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  standard-memory-none  scripts/agents/existing.py
+05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  standard-postgres-toy-serve  scripts/agents/existing.py
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  standard-memory-none  .githooks/pre-push
@@ -163,10 +168,6 @@
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  event-modelling-postgres-toy-serve  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-memory-none  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-postgres-toy-serve  scripts/agents/run-state.py
-50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  event-modelling-memory-none  scripts/agents/surfaces.py
-50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
-50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  standard-memory-none  scripts/agents/surfaces.py
-50a40f493484dc982b26877ecf8b4f71af5ec539202d4182460edf026a8ad1e9  standard-postgres-toy-serve  scripts/agents/surfaces.py
 50bb18aea681affa77f7c5fb118d1eb2dcebd01a8e48c2e6703674c6734a2bf6  event-modelling-memory-none  scripts/agents/drive.py
 50bb18aea681affa77f7c5fb118d1eb2dcebd01a8e48c2e6703674c6734a2bf6  event-modelling-postgres-toy-serve  scripts/agents/drive.py
 50bb18aea681affa77f7c5fb118d1eb2dcebd01a8e48c2e6703674c6734a2bf6  standard-memory-none  scripts/agents/drive.py
@@ -181,6 +182,10 @@
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-postgres-toy-serve  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  standard-memory-none  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  standard-postgres-toy-serve  scripts/agents/command_text.py
+59375af7f81333047d9506a7919658d1ebb45e56d7c0eef9a57c82cef6aad0d6  event-modelling-memory-none  scripts/agents/surfaces.py
+59375af7f81333047d9506a7919658d1ebb45e56d7c0eef9a57c82cef6aad0d6  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
+59375af7f81333047d9506a7919658d1ebb45e56d7c0eef9a57c82cef6aad0d6  standard-memory-none  scripts/agents/surfaces.py
+59375af7f81333047d9506a7919658d1ebb45e56d7c0eef9a57c82cef6aad0d6  standard-postgres-toy-serve  scripts/agents/surfaces.py
 5dc2800a08a7c8c18f4cc22dba1582e85fdb191deda6f6ab8e376d573dc9af8d  event-modelling-memory-none  scripts/agents/try_it.py
 5dc2800a08a7c8c18f4cc22dba1582e85fdb191deda6f6ab8e376d573dc9af8d  event-modelling-postgres-toy-serve  scripts/agents/try_it.py
 5dc2800a08a7c8c18f4cc22dba1582e85fdb191deda6f6ab8e376d573dc9af8d  standard-memory-none  scripts/agents/try_it.py
@@ -319,6 +324,10 @@ bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  event-modellin
 bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  event-modelling-postgres-toy-serve  scripts/agents/captain_rules.py
 bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  standard-memory-none  scripts/agents/captain_rules.py
 bbef416195b1cf8bbf3f9b61634ff70c303913290348888eb3c2fbb9376399d2  standard-postgres-toy-serve  scripts/agents/captain_rules.py
+bf3f5167c763e97546e4d0cc4a237c992c64457ed6d1ffd1c8b230dfa4cfbc56  event-modelling-memory-none  scripts/check-surfaces.py
+bf3f5167c763e97546e4d0cc4a237c992c64457ed6d1ffd1c8b230dfa4cfbc56  event-modelling-postgres-toy-serve  scripts/check-surfaces.py
+bf3f5167c763e97546e4d0cc4a237c992c64457ed6d1ffd1c8b230dfa4cfbc56  standard-memory-none  scripts/check-surfaces.py
+bf3f5167c763e97546e4d0cc4a237c992c64457ed6d1ffd1c8b230dfa4cfbc56  standard-postgres-toy-serve  scripts/check-surfaces.py
 bf97d168e72d89ba00378a96231bcb6fd6b02643f0bb866ad0a5e120d938f5ec  event-modelling-memory-none  scripts/event-model/patch-mermaid-swimlanes.ts
 bf97d168e72d89ba00378a96231bcb6fd6b02643f0bb866ad0a5e120d938f5ec  event-modelling-postgres-toy-serve  scripts/event-model/patch-mermaid-swimlanes.ts
 c1b553eaae94bea81af7760499b59df823f0513728a97d467c432310d841d70b  standard-postgres-toy-serve  Makefile
@@ -372,10 +381,6 @@ d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  event-modellin
 d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  event-modelling-postgres-toy-serve  scripts/agents/assess.py
 d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  standard-memory-none  scripts/agents/assess.py
 d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  standard-postgres-toy-serve  scripts/agents/assess.py
-d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  event-modelling-memory-none  scripts/check-surfaces.py
-d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  event-modelling-postgres-toy-serve  scripts/check-surfaces.py
-d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  standard-memory-none  scripts/check-surfaces.py
-d929b3667e115b334a5d6b01a490898eb66bcf501e52c978409095410e132fd6  standard-postgres-toy-serve  scripts/check-surfaces.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  event-modelling-memory-none  scripts/agents/stuck.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  event-modelling-postgres-toy-serve  scripts/agents/stuck.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  standard-memory-none  scripts/agents/stuck.py

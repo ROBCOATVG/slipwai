@@ -271,7 +271,7 @@ class BudgetTest(unittest.TestCase):
         """The surfaces drawn inside the storyboard and no page each: the board reads a page per surface, so
         it offered Approve and then could not, and with something "drawn" it offered no redraw either."""
         home = self.tree / "specs/001-orders/mockups"
-        board = "import pathlib, sys; p = pathlib.Path(sys.argv[1]); p.mkdir(parents=True); " \
+        board = "import pathlib, sys; p = pathlib.Path(sys.argv[1]); p.mkdir(parents=True, exist_ok=True); " \
                 "(p / 'storyboard.html').write_text('<section>Basket</section>')"
         command = f"{shlex.quote(sys.executable)} -c {shlex.quote(board)} {shlex.quote(str(home))} {{prompt}}"
         harness = self.module.harness

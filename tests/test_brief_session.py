@@ -227,6 +227,23 @@ class SketchTest(unittest.TestCase):
         self.assertEqual(said["check"][0], "requirements document: prd.md, by name")
         self.assertIn("surfaces: 1, states: 1, each with a heading, 1 decided by a person", said["check"][1])
 
+    def test_the_agents_stream_is_read_as_utf8_whatever_the_platform_reads_by_default(self) -> None:
+        """Windows reads a pipe as cp1252, where byte 0x9D means nothing: a `❌` in a file the agent read
+        ended the reader mid-turn, the page showed the session stopped, and the agent was still running."""
+        script = self.area / "marks.py"
+        script.write_text(
+            "import json, sys\n"
+            "line = json.dumps({'type': 'assistant', 'message': {'content': [\n"
+            "    {'type': 'text', 'text': 'Anti-patterns: \\u274c none \\u201cquoted\\u201d'}]}}, ensure_ascii=False)\n"
+            "sys.stdout.buffer.write(line.encode('utf-8') + b'\\n')\n", encoding="utf-8")
+        self.sketch = Sketch("club-boats", [sys.executable, str(script)])
+        with mock.patch.object(brief_session.subprocess, "Popen", wraps=brief_session.subprocess.Popen) as opened:
+            self.sketch.ask("go")
+            said = self.settle()
+        self.assertEqual(said["turns"][-1]["text"], "Anti-patterns: ❌ none “quoted”")
+        self.assertEqual(opened.call_args.kwargs["encoding"], "utf-8")
+        self.assertTrue(self.sketch.begun, "the turn was heard to its end, so the next one resumes the session")
+
     def test_nothing_said_and_a_second_turn_under_way_are_refused(self) -> None:
         with self.assertRaises(ValueError):
             self.sketch.ask("   ")

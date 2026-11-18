@@ -64,6 +64,8 @@ SLOW += test_captain_agent test_captain_agent_parity test_captain_heard
 SLOW += test_captain_review7
 # Every order a captain gives, through the real captain program with the stand-in, a captain run per case.
 SLOW += test_captain_through
+# Node, once per case, reading the file `check.py` reads: the two model checkers held in step.
+SLOW += test_event_names_parity
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

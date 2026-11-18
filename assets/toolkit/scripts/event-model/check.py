@@ -40,6 +40,38 @@ MANIFEST = ROOT / "project.json"
 TOOLS = ROOT / ".delivery-tools"
 #: What an attribute may say it identifies: a kind, lower case, because it becomes a tag's key.
 IDENTIFIES = re.compile(r"[a-z][a-z0-9-]*")
+#: Where a project records the event names it already had when the two naming rules reached it: written
+#: once, by `slipwai migrate`, at the crossing from version 1, from the slices that were `implemented` then.
+#: A project without it was made under the rules, and every name it has is held to them. `held-names.ts`
+#: reads the same file for `validate.ts`, and spells the same path.
+NAMES_FROM = ".specify/event-names-from.json"
+
+
+def held_event_names() -> frozenset[str]:
+    """The event names `event-is-not-crud` and `event-is-not-negative` do not ask about, or none.
+
+    An event in a log keeps its name for as long as the log is kept: a stored event cannot be renamed, so
+    a rule that arrives after it was written has nothing to ask of it that the project could do. The file
+    lists those names and exempts exactly them, from exactly those two rules; a name added afterwards is
+    not in it and is held as any other.
+
+    **Absent is no exemption, and unreadable is a failure.** A file that will not parse, or holds anything
+    but a list of names, is not read as "nothing held" — that would fail every stored event with no word
+    about why — and never as "everything held".
+    """
+    path = ROOT / NAMES_FROM
+    if not path.is_file():
+        return frozenset()
+    shape = (f'it holds {{"events": ["<EventName>", ...]}}; restore it with '
+             f"`git checkout -- {NAMES_FROM}`, or correct it by hand")
+    try:
+        held = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        raise OSError(f"{NAMES_FROM} is not JSON; {shape}") from None
+    names = held.get("events") if isinstance(held, dict) else None
+    if not isinstance(names, list) or any(not isinstance(name, str) or not name for name in names):
+        raise OSError(f"{NAMES_FROM} names no list of events; {shape}")
+    return frozenset(names)
 
 
 def project_services() -> dict[str, list[str]]:
@@ -171,9 +203,11 @@ def validate(
     rungs: dict[str, bool] | None = None,
     publishes: dict[str, str] | None = None,
     generated: dict[str, bool] | None = None,
+    held_names: frozenset[str] | None = None,
 ) -> list[str]:
     if not isinstance(model, dict):
         return ["model root must be a mapping"]
+    held_names = held_event_names() if held_names is None else held_names
     services = project_services() if services is None else services
     rungs = project_rungs() if rungs is None else rungs
     publishes = project_publishes() if publishes is None else publishes
@@ -389,7 +423,7 @@ def validate(
         findings += rung.write_model_findings(
             slice_id, item, sourced, status in {"planned", "implemented"}
         )
-        findings += rung.naming_findings(slice_id, frames)
+        findings += rung.naming_findings(slice_id, frames, held_names)
         # Where the read model lives. This is the read side's version of the question `stream` asks on the
         # write side, and it is required from `planned` for the same reason: one fixes the consistency
         # boundary, the other fixes what a query costs, and both are decided once and paid for afterwards. A

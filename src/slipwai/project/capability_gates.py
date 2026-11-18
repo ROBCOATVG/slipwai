@@ -10,7 +10,7 @@ next slice was always going to fill. Mutation moved first, on 2026-10-14, for th
 followed it on 2026-10-17, from the warbook's feedback that they "should happen per stream PR point, not per
 slice". Version 2 has no stream pull request — the plan merges each slice to trunk and forbids integration
 branches — so the point is the capability: whole when its last slice has merged, which
-`scripts/agents/capabilities.py` already computes, and before the person's demo stop walks it.
+`scripts/agents/capabilities.py` already computes, and before the demo stop accepts it.
 
 What stays per slice is what only a slice can answer, scoped to what the slice added or changed: screen design
 for its own screens, one review of its own diff, its examples proven by its own tests, its story seeded green
@@ -86,7 +86,7 @@ def capability_gates_stage(web: bool) -> str:
     return f"""**Capability gates** — the slice's capability has a cleared `{GATES_FILE}`, or this slice says
    which capability it belongs to and that it is not that capability's last. The gates run **once per
    capability, not per slice**: on the capability's last slice's branch, before that slice merges, and before the
-   person's demo stop walks it. The harbourmaster refuses the merge that would make a capability whole until its
+   demo stop accepts it. The harbourmaster refuses the merge that would make a capability whole until its
    `{GATES_FILE}` says `Cleared:` on that branch, in every release mode — under `keystone` that merge is also the
    one that lights the entry point. A capability that is whole already with no cleared record
    (`python3 scripts/agents/capabilities.py` says *gates due*) has them run now, on trunk. In this order, each
@@ -110,13 +110,14 @@ def capability_gates_stage(web: bool) -> str:
       never a score. A score at or above the project's threshold is the gate; under it, the survivors are
       closed. Per slice it took hours apiece and was taken out of one loop by hand.
    6. **The hand's walk** — `sail-demo-hand` walks every example of every slice in the capability, in split
-      order, against the running app, and records its verdict in the capability's `demo-log.md`. This is the
-      walk the person's demo will repeat, so it is the one worth a browser.
+      order, against the running app, and records its verdict in the capability's `demo-log.md`. Its verdict
+      is the capability's acceptance under `demos: hand`, the default, and the reading a person accepts on
+      under `person`, so it is the one worth a browser.
 
-   Findings and open convergence tasks at or above the fairway's severity bar are fixed **before the person's
-   demo**, in a follow-up slice in the same fairway named for the capability, through failing tests like any
+   Findings and open convergence tasks at or above the fairway's severity bar are fixed **before the
+   capability is accepted**, in a follow-up slice in the same fairway named for the capability, through failing tests like any
    other work; those below it are stowed to the careen; an open `CRITICAL` is the next slice, whatever else is ready. When all six have
    run and nothing above the bar is open, the record's last line is `Cleared: <date> · <commit>`, and the
-   person's demo is due. Nothing is carried: a gap left here is a gap the next capability inherits.
+   demo stop is due. Nothing is carried: a gap left here is a gap the next capability inherits.
 
    {OPEN_MODE}"""

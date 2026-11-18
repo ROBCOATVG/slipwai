@@ -1,4 +1,4 @@
-"""What waits on the person: folded for the Voyage in `upstream`, and said by the strip and the switch every
+"""What waits on the person: folded for the Voyage in `on_you`, and said by the strip and the switch every
 served page carries from `attention`."""
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import checkout_packages  # noqa: F401
 
-from slipwai import page_shell, upstream
+from slipwai import on_you, page_shell
 
 
 class Stage:
@@ -25,6 +25,12 @@ def board(root: Path, turns: list[dict] | None = None, done: bool = True) -> Sim
     return SimpleNamespace(root=root, fitting=fitting if turns is not None else None)
 
 
+def said_of(board: SimpleNamespace, fleet: dict, able: dict, rows: list[dict] | None = None) -> dict:
+    """The strip's three words of the list: how many, the first, and where it is."""
+    found = on_you.waiting(board, fleet, able, rows)
+    return {key: found[key] for key in ("count", "text", "href")}
+
+
 class VoyageTest(unittest.TestCase):
     def setUp(self) -> None:
         self.held = TemporaryDirectory()
@@ -32,10 +38,10 @@ class VoyageTest(unittest.TestCase):
         self.addCleanup(self.held.cleanup)
 
     def test_nothing_offered_and_nothing_parked_is_no_wait(self) -> None:
-        self.assertEqual(upstream.on_voyage(board(self.root), {}, {}), {"count": 0, "text": "", "href": ""})
+        self.assertEqual(said_of(board(self.root), {}, {}), {"count": 0, "text": "", "href": ""})
 
     def test_a_specification_with_nothing_drawn_waits_to_be_read_and_drawn(self) -> None:
-        said = upstream.on_voyage(board(self.root), {}, {"drawable": True, "launchable": False})
+        said = said_of(board(self.root), {}, {"drawable": True, "launchable": False})
         self.assertEqual(said, {"count": 1, "text": "The specification is ready: read it, then draw the storyboard",
                                 "href": "#draw"})
 
@@ -44,28 +50,29 @@ class VoyageTest(unittest.TestCase):
         mockups.mkdir(parents=True)
         (self.root / "specs/001-demo/spec.md").write_text("# Demo\n", encoding="utf-8")
         (mockups / "discover.html").write_text("<p>drawn</p>", encoding="utf-8")
-        said = upstream.on_voyage(board(self.root), {}, {"drawable": True})
-        self.assertEqual(said["text"], "The storyboard for 001-demo is drawn: approve it or send it back")
-        self.assertEqual(said["href"], "#tab-screens")
+        said = said_of(board(self.root), {}, {"drawable": True})
+        self.assertEqual(said["text"], "The storyboard for 001-demo is ready to look at: approve it or send it back")
+        self.assertEqual(said["href"], "#mockups", "the storyboard's own card, inside the Screens tab")
         # Not while a stage of this board is still running: what it draws is not there to judge yet.
         running = board(self.root, [], done=False)
-        self.assertEqual(upstream.on_voyage(running, {}, {})["count"], 0)
+        self.assertEqual(said_of(running, {}, {})["count"], 0)
 
-    def test_cards_and_parks_are_counted_each_and_the_card_is_said_first(self) -> None:
+    def test_cards_and_parked_slices_are_counted_each_and_the_card_is_said_first(self) -> None:
         turns = [{"role": "agent", "kind": "permission", "text": "Write spec.md", "ask": {"id": "p1"}},
                  {"role": "agent", "kind": "question", "text": "Which zone?", "ask": {"id": "q2"}},
                  {"role": "agent", "kind": "answered", "text": "", "ask": {"id": "p1"}}]
         fleet = {"groups": [{"paused": "no"}, {"paused": "yes"}], "inbox": [{"kind": "question", "grouped": "no"}]}
-        said = upstream.on_voyage(board(self.root, turns), fleet, {"launchable": True})
-        self.assertEqual(said["count"], 4, "one open card, one park, one question, and the button")
+        rows = [{"slice": "L07", "state": "waiting", "park": "Which owner?"}, {"slice": "L08", "state": "queued"}]
+        said = said_of(board(self.root, turns), fleet, {"launchable": True}, rows)
+        self.assertEqual(said["count"], 3, "one open card, one slice parked on you, and the button")
         self.assertEqual(said["text"], "The agent asks you something")
         self.assertEqual(said["href"], "#stage-asks")
 
     def test_the_approved_storyboard_waits_on_the_build_then_the_split_waits_to_be_cast_off(self) -> None:
-        self.assertEqual(upstream.on_voyage(board(self.root), {}, {"launchable": True})["href"], "#launch")
-        self.assertEqual(upstream.on_voyage(board(self.root), {}, {"modelable": True, "launchable": True})["href"],
+        self.assertEqual(said_of(board(self.root), {}, {"launchable": True})["href"], "#launch")
+        self.assertEqual(said_of(board(self.root), {}, {"modelable": True, "launchable": True})["href"],
                          "#model")
-        self.assertEqual(upstream.on_voyage(board(self.root), {}, {"castable": True})["text"],
+        self.assertEqual(said_of(board(self.root), {}, {"castable": True})["text"],
                          "The chart is split: cast off the fleet")
 
 

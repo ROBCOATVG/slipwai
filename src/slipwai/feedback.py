@@ -15,8 +15,8 @@ confirms here, and confirming adds `confirmed` and `became`: what it was handed 
 
 - *scope* is captured as an intake idea, the same `docs/intake/<slug>/brief.md` `/sail` writes;
 - *note* goes under `## From feedback` in `docs/design.md`, which every slice with a screen reads first;
-- *defect*, *change* and *planned* are a `told` to the slice's stream, addressed to its captain and
-  written `by: feedback`. Addressed, so it is not a note under *Waiting on you*; not a person's, so it
+- *defect*, *change* and *planned* are a message in that slice's inbox, `from: feedback`, which its driver
+  delivers and receipts. Addressed, so it is not a note under *Waiting on you*; not a person's, so it
   clears no park — a confirmed defect in L18 must not read as the answer to L10's question. A change to a
   slice in flight says which a person chose: park it now with the change as the reason, or leave it alone
   until it has merged.
@@ -225,8 +225,8 @@ def note_design(root: Path, item: Item) -> str:
 def confirm(root: Path, number: str, rows: list[dict[str, str]], route: str = "", hold: str = "",
             slice_id: str = "") -> str:
     """Hand one item on, as triage proposed it or as the person routed it instead, and record which."""
-    from .deck import tell
     from .project.intake import capture as intake
+    from .talk_said import tell
 
     item = find(root, number)
     if item.state == "confirmed":
@@ -255,7 +255,11 @@ def confirm(root: Path, number: str, rows: list[dict[str, str]], route: str = ""
         fairway = row.get("fairway") or chart_fairway(root, item.fields.get("feature", ""), named)
         if not fairway:
             raise ValueError(f"{named} is on no stream's chart here, so no captain can be told")
-        tell(root, fairway, told_message(item, chosen, row.get("state", ""), hold), named, by="feedback")
+        # To the slice while it has a session to come, to its captain once it has merged: a merged slice's
+        # inbox is answered "merged" and nothing more, and what it says then is the captain's to carry.
+        merged = row.get("state") == "done"
+        tell(root, fairway, told_message(item, chosen, row.get("state", ""), hold), "" if merged else named,
+             by="feedback")
         became = f"told {fairway} about {named}" + (f" ({hold})" if hold else "")
     if route and route != item.fields.get("route"):
         item.fields["routed"] = route

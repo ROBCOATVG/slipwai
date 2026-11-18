@@ -1,11 +1,11 @@
-"""The console: a conversation with the harbourmaster, held on the board and read off the same logs it reads.
+"""The console, "Ask about this project": questions about the project, answered on the board from the logs.
 
 The harbourmaster is a process, not a person to talk to: it answers requests and writes lines, and has no
-inbox for a sentence. What a person wants to ask it is nearly always a question about those lines — why is
-this fairway parked, what is the fleet waiting on, what happened in the last hour — and a session that has
-read them can answer. So the console is one headless session of the project's coding agent, briefed as the
-harbourmaster (`agents/harbour-harbourmaster.md`, the same brief the role is run from) and given nothing to
-act with.
+inbox for a sentence. What a person wants to ask about is nearly always those lines — why is this fairway
+parked, what is the fleet waiting on, what happened in the last hour — and a session that has read them can
+answer. So the console is one session of the project's coding agent, handed the harbourmaster's brief
+(`agents/harbour-harbourmaster.md`) only to read the logs by, told that it is neither the harbourmaster nor any
+member of the fleet (`ROLE`, `system`), and given nothing to act with.
 
 **It can read and it cannot do.** The session's tools are `Read`, `Grep` and `Glob`, and no more: no shell,
 no editor, no web. The harbourmaster holds this machine's push and merge credentials, and a conversation that
@@ -62,9 +62,11 @@ KEPT = 400
 #: board's own folder and not loose in the tree.
 SESSION_KEPT = "console"
 
-ROLE = """You are answering a person at the bridge of this project's board, in a console. You are the
-harbourmaster, speaking in the first person and in plain words — say `waiting on you`, not `parked`, unless the
-person used the word first.
+ROLE = """You are answering a person at the bridge of this project's board, under "Ask about this project": you
+answer questions about this project from its logs and files. You are not the harbourmaster, nor a captain, a
+slice's session, the skipper or any other member of the fleet, and you do not speak as one: the harbourmaster's
+brief above, where there is one, is here to tell you what its log lines mean, not who you are. Speak in plain
+words — say `waiting on you`, not `parked`, unless the person used the word first.
 
 You can read and search files and nothing else. You cannot change anything, run anything, grant a request or
 clear a park, and you must not offer to. Everything you know is in this project: the logs under `.slipwai/run/logs/`
@@ -105,6 +107,17 @@ def brief(root: Path) -> str:
     return ""
 
 
+def system(root: Path) -> str:
+    """What the session is told before any question: the harbourmaster's brief, said to be a description of
+    another process — it opens "You are the harbourmaster", which this session is not — and then its own role."""
+    held = brief(root)
+    if not held:
+        return ROLE
+    return (f"The harbourmaster's brief follows, for what the harbour's and the streams' log lines mean. It "
+            f"describes the harbourmaster, a process, in its own second person; it does not describe you.\n\n"
+            f"{held}\n\n---\n\n{ROLE}")
+
+
 class Console:
     """One conversation: what has been said, whether an answer is being written, and the session behind it."""
 
@@ -141,11 +154,10 @@ class Console:
         found = shutil.which("claude", path=self.environment().get("PATH"))
         if not found:
             return None
-        system = f"{brief(self.root)}\n\n{ROLE}".strip()
         resume = ["--resume", self.session] if self.begun else ["--session-id", self.session]
         asked = f"{message}\n\n---\nThe board as it stands now, folded from the logs:\n{snapshot(self.root)}"
         return [found, "-p", asked, "--output-format", "stream-json", "--verbose", "--tools", TOOLS,
-                "--allowedTools", TOOLS, "--append-system-prompt", system, *resume]
+                "--allowedTools", TOOLS, "--append-system-prompt", system(self.root), *resume]
 
     def say(self, role: str, text: str, kind: str = "text", more: dict | None = None) -> None:
         with self.lock:
@@ -170,7 +182,7 @@ class Console:
             raise ValueError("ask something first")
         with self.lock:
             if self.busy:
-                raise Busy("the harbourmaster is still answering the last question")
+                raise Busy("Ask about this project is still answering the last question")
             self.busy = True
             if not self.session:
                 self.session = str(uuid.uuid4())
@@ -203,7 +215,7 @@ class Console:
             self.on = self.agent.named
             asked = f"{message}\n\n---\nThe board as it stands now, folded from the logs:\n{snapshot(self.root)}"
             if not (self.begun or loaded):
-                asked = f"{brief(self.root)}\n\n{ROLE}".strip() + f"\n\n---\n\n{asked}"
+                asked = f"{system(self.root)}\n\n---\n\n{asked}"
             stop = self.agent.turn(asked, LIMIT)
             self.begun = self.begun or stop != "fault"
         except Exception as fault:  # noqa: BLE001 — a console stuck on busy is one nobody can type in

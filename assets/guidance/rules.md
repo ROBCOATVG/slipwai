@@ -86,8 +86,15 @@
 - Read infra/SHAPE.md and infra/README.md before changing infrastructure. Shape convergence prepares only: retain the current database/state until verified cutover.
 <!-- end section -->
 <!-- section: flags -->
-- **A feature flag is what makes merging and releasing two decisions**, and here it is the only thing
-  that does: every commit that passes `verify` on `main` is applied to staging and then to production, with
+- **Whether a slice needs a flag at all follows from where the product is**, recorded as `state` in
+  `project.json` and printed by `python3 scripts/agents/release_state.py`. **Pre-launch** (nobody but the
+  team uses it) merges in the open: no flag, because there is nobody to hold anything back from. **Pilot**
+  merges dark by omission: a capability's entry point lands with its last slice, and no flag. **Live**, and
+  a project with no state recorded, merges behind flags as the rules below say. Moving the state is a
+  person's decision and an ADR (`release_state.py --set <state> --why '…'`), never a run's, and never a way to
+  make a slice easier.
+- **A feature flag is what makes merging and releasing two decisions**, and on a live product it is the only
+  thing that does: every commit that passes `verify` on `main` is applied to staging and then to production, with
   nobody in between. Unfinished work therefore ships **dark**. A flag is declared in
   `infra/service/flags.auto.tfvars` under the service that reads it, seeded `off`, in the same change as
   the code that reads it; it reaches that service as `FLAG_<KEY>` — `checkout-v2` is `FLAG_CHECKOUT_V2` —

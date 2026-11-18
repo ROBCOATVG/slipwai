@@ -19,7 +19,7 @@ from pathlib import Path
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest
 
-from slipwai import app_version
+from slipwai import app_version, logs, talk
 from slipwai.assets import TOOLKIT_ROOT, VERSION
 
 
@@ -72,6 +72,7 @@ class BoardRefusesTest(BoardTest):
         self.assertEqual(code, 409, said)
         self.assertIn("update the app", said)
         self.assertEqual([e for e in self.read("ORD") if e.kind == "told"], [])
+        self.assertEqual(talk.inbox(talk.place(logs.run_dir(self.root), "ORD")), [], "nothing placed either")
         code, page = self.get("/")
         self.assertEqual(code, 200)
         self.assertIn("app-version refused", page)
@@ -91,7 +92,7 @@ class FleetRefusesTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.root, True)
         (self.root / "scripts/agents").mkdir(parents=True)
         for name in ("fleet.py", "clearance.py", "logs.py", "berths.py", "abreast.py", "telegraph.py",
-                     "inbox.py", "ids.py"):
+                     "inbox.py", "ids.py", "talk.py"):
             shutil.copy(TOOLKIT_ROOT / "scripts/agents" / name, self.root / "scripts/agents" / name)
         stamp(self.root, "2.2.0")
 

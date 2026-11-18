@@ -30,6 +30,7 @@ from .migrate import merge_offered, refresh
 from .origin import Adoption, adoption_of
 from .project.adopted import OWN, WRITTEN, agents_block, gitignore_block
 from .project.gitignore import build_artifacts
+from .release_state import state_of
 from .replay import Replay, git, replay
 from .scaffold import NO_MAINTENANCE, project_files
 from .shell_environment import python3
@@ -107,7 +108,7 @@ def clashes(root: Path, document: dict, adoption: Adoption, layout: Layout) -> l
     # managed target today, so nothing differs yet — but a list of paths the move would write over that was
     # assembled for the wrong shape would name the wrong files the day it can.
     generated = project_files(str(document["name"]), document["profile"], document["target"], apps, AT_ROOT,
-                              adoption, recorded(document))
+                              adoption, recorded(document), state_of(document))
     listing = root / layout.under(WRITTEN)
     already = set(listing.read_text().split()) if listing.is_file() else set()
     found = []

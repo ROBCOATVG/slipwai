@@ -22,7 +22,7 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 565 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# budget: 580 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
@@ -158,6 +158,16 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # fifteen slices whose stories every one failed at their first call, each saying *this step records
     # 401*, because *one the service refuses is fixed here* was a sentence and not a line.
     "seeded": ("fairway", "slice", "records", "commit"),
+    # The captain ran a session of the ladder for this slice: one line a run, written when it ends, `free` where
+    # it cost no attempt (a person's interrupt or message, a harness that would not run it, a stop of the fleet).
+    # What bounds the runs a slice has between a person's words, whoever asked for them: the captain counts
+    # these before every run and parks the slice for a person past the ceiling.
+    "dispatched": ("fairway", "slice"),
+    # What the captain program says about its own captain agent — that it failed and the stream runs on the
+    # program alone, or that its session was refused commands — for a person to read. News, never something
+    # owed an answer: not a `told`, which a `read` answers, which clears a park, and which the wait bound and
+    # *Waiting on you* count until somebody does. Nothing counts a `noted`, so it can never hold a stream.
+    "noted": ("fairway", "what"),
 }
 
 #: Why a park stands, as one word a reader and a board can act on without parsing `why`. `limit`: the
@@ -414,7 +424,7 @@ def read(line: str, harbour: bool = False) -> Entry:
         raise Unreadable("an empty line")
     try:
         body = json.loads(text)
-    except ValueError as fault:
+    except (ValueError, RecursionError) as fault:
         raise Unreadable(f"not JSON: {fault}") from fault
     if not isinstance(body, dict):
         raise Unreadable("a line is one JSON object")
@@ -501,6 +511,14 @@ def fold(lines: list[str], harbour: bool = False) -> list[Entry]:
             # The rule alone sends a person through eleven hundred lines for the one that broke it.
             raise Unreadable(f"line {number}: {fault}") from fault
     return found
+
+
+def about(park: Entry, slice_id: str) -> bool:
+    """Whether a park is about this slice: it names it in its field, or — a park of the whole stream — opens
+    its why with the slice's whole id, as `L03: …` or `L03 is awaiting …` do and `L030: …` does not."""
+    if park.fields.get("slice"):
+        return str(park.fields["slice"]) == slice_id
+    return bool(slice_id) and re.match(rf"{re.escape(slice_id)}(?![\w-])", str(park.fields.get("why", ""))) is not None
 
 
 def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[Entry]:

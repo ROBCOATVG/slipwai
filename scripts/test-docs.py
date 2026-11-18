@@ -60,6 +60,7 @@ CONTEXT_DECISION = """# Decisions — booking
   | booking | booking | a hold is a party's · hold rules change with policy · the guest | BookingHeld | high |
   | availability | table | a table is covers · floor plans change with the room · the host | — | high |
 - **Decision:** two contexts, two fairways
+- **In short:** Holding a table and keeping the floor plan are built and changed apart, by two crews.
 - **Why:** the change and flow tests fail across the seam · **Read against:** the specification
 - **Decided by:** host (stage recommendation)
 - **Confidence:** high · **Would reverse if:** a hold had to read the floor plan to decide

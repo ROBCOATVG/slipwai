@@ -82,7 +82,7 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
         undated.extend(f"{name}: `{key}`" for key in on_without_a_date(path.read_text(encoding="utf-8")))
     if contested:
         mode = "open" if document.get("target") == "none" else "flagged"
-        state = "in-service" if ever_on else "slipway"
+        state = "live" if ever_on else "pre-launch"
         extra = (" and the release-mode row of the convergence map, so `docs/convergence.md` still reads as "
                  "it did" if document.get("origin") == "adopted" else "")
         notes.append(f"`project.json` conflicted, so this crossing could not write its releaseMode, its "
@@ -92,7 +92,7 @@ def settings(root: Path, document: dict, files: Tree, *, conflicts: Collection[s
     else:
         metadata = json.loads(files["project.json"])
         metadata["releaseMode"] = "open" if document.get("target") == "none" else "flagged"
-        metadata["state"] = "in-service" if ever_on else "slipway"
+        metadata["state"] = "live" if ever_on else "pre-launch"
         if document.get("origin") == "adopted":
             rows = [item for item in metadata.get("convergence", []) if item.get("axis") != "release-mode"]
             rows.append(row(BY_KEY["release-mode"], "recorded",

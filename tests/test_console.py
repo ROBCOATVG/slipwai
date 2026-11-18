@@ -206,6 +206,23 @@ class AgentCommandTest(unittest.TestCase):
             "---\ndescription: x\n---\nYou are the harbourmaster.\n", encoding="utf-8")
         self.assertEqual(console.brief(self.root), "You are the harbourmaster.")
 
+    def test_the_session_is_told_it_answers_about_the_project_and_is_no_member_of_the_fleet(self) -> None:
+        (self.root / "agents").mkdir()
+        (self.root / "agents/harbour-harbourmaster.md").write_text(
+            "---\ndescription: x\n---\nYou are the harbourmaster.\n", encoding="utf-8")
+        said = console.system(self.root)
+        self.assertIn("You are the harbourmaster.", said, "its brief is still how it reads the logs")
+        self.assertLess(said.index("it does not describe you"), said.index("You are the harbourmaster."))
+        self.assertIn("You are not the harbourmaster", said)
+        self.assertIn("any other member of the fleet", said)
+        self.assertIn("You cannot change anything", said)
+        self.assertNotIn("You are the\nharbourmaster", said)
+        self.assertNotIn("You are the harbourmaster, speaking", " ".join(said.split()))
+        self.assertEqual(console.system(Path(tempfile.mkdtemp())), console.ROLE, "a project with no brief")
+        self.stub()
+        argv = console.Console(self.root).argv("why is ORD parked?") or []
+        self.assertEqual(argv[argv.index("--append-system-prompt") + 1], said)
+
     def test_an_agent_only_the_login_shell_can_see_is_found(self) -> None:
         """Started at login, the board has `launchd`'s `PATH`, and `claude` is on the login shell's alone."""
         self.stub()

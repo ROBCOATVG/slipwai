@@ -1,0 +1,53 @@
+{
+ "synthetic": true,
+ "situation": "S1's gate failed on its first run: check-slice-scope refuses its change to `.env.example`, which is a shared file only a person may change.",
+ "source": "made up, not recorded: every recorded gate failure was already at the retry ceiling",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "attempts": {
+   "used": 1,
+   "allowed": 3
+  },
+  "gate": "S1: make verify stops at check-slice-scope: .env.example is not a slice's to write."
+ },
+ "event": {
+  "v": 1,
+  "id": "first-failure-host-file",
+  "t": "2026-11-20T10:30:00Z",
+  "kind": "gate-failed",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "park",
+    "slice": "S1"
+   },
+   {
+    "verb": "ask"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "retry",
+    "slice": "S1"
+   }
+  ],
+  "why": "No run of the slice can change a file the slice may not write; a person has to.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: the gate text names a file that check-slice-scope says is not a slice's to write."
+ }
+}

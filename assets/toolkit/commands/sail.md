@@ -205,8 +205,8 @@ When the tasks are done, go straight to the examples: record each of this slice'
 test that proves it, from the unpushed slice branch, and have the slice's diff reviewed once. **Nobody is
 stopped here, nothing converges, and no browser is opened.** Converge, the gaps trace, the design review,
 the adversary pass and the hand's walk are the capability's — *Capability gates*, once its last slice has
-merged — and the person's demo follows them, usually several slices later: the person, and the hand before
-them, are shown the whole thing rather than its instalments. Under the `open` release mode, where a merge
+merged — and the capability's acceptance follows them, usually several slices later: the hand's verdict,
+or a person's under `demos: person`, is given on the whole thing rather than its instalments. Under the `open` release mode, where a merge
 reaches the actor at once, the slice converges and is traced by `/gaps` at the end of *Implementation*, the
 hand walks its examples here as well and the push waits for its verdict, and a slice that widened
 authorisation, identity or money is attacked before its push; the capability's converge, adversary pass and
@@ -237,8 +237,8 @@ or money trigger `widened` is attacked here as well: close that adversary benchm
 are triaged, and implement confirmed defects through failing tests, each in an `implement` entry. Then run
 `make verify`. `commands/adversary.md` owns the trigger table and the decision, so do not make it here.
 **The capability gates are not run here**: converge over the capability's diff, gaps over it, the design review, the capability's adversary
-pass where a slice widened a trigger, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the person's demo
-stop walks it (*What the demo stop has to contain*) — the *Capability gates* rung says what this slice
+pass where a slice widened a trigger, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the demo
+stop accepts it (*What the demo stop has to contain*) — the *Capability gates* rung says what this slice
 records meanwhile, and what the last slice of a capability starts. The order holds when they run: the
 adversary pass adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
 unavailable input.
@@ -313,7 +313,8 @@ colour: *blocked* (which marks, and who owes each); *migration-evidence-required
 marks were logged, or a crossing's hold still stands — *Migrated prerequisites* below); *awaiting-decision*
 (a `question` line stands open against it, or its fairway is parked, and which siblings the answer would
 unblock); *preparation-ready*; *implementation-ready*; *running* (claimed, and in which band); *awaiting-demo*
-(its capability is due a person's demo); *done* (merged). A slice with no clearance is not a stop — it is a
+(its capability is due a person's demo, which only `demos: person` in `.specify/cruise.json` makes); *done*
+(merged). A slice with no clearance is not a stop — it is a
 slice whose turn has not come. Name what it waits on and take a cleared one. A mark the chart declares that
 *no slice sets* is a different thing and is a stop for the host: `make check-chart` refuses that chart, and
 the sentence clearance prints says so.
@@ -461,8 +462,9 @@ commits first (and, under the `open` release mode, have the hand walk it there).
 pushed a lock ref from `main`; leave the increment commits local until every example is proven. Then: bring
 the code index up to the tree if the project has adopted one, `{{make}} verify` green, then push the slice's
 commits and merge into `main` in split order — never in finishing order. That is the first implementation
-push, and it is what starts CI. A slice whose capability is whole runs that capability's gates next, and the
-capability is *awaiting-demo* once they clear; its siblings are not. The composition root and the cumulative
+push, and it is what starts CI. A slice whose capability is whole runs that capability's gates next; once they
+clear the hand's verdict accepts the capability, or, under `demos: person`, the capability is *awaiting-demo*
+for a person; its siblings are not. The composition root and the cumulative
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
 regenerate the Mermaid diagrams (`{{make}} model`) after a merge, never in a branch, and the canvas
 (`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its

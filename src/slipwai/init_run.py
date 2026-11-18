@@ -30,13 +30,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import harness_cli
+from . import harness_cli, step_record
+from .drawn import surface_pages
 from .logs import run_dir
 from .process_alive import alive
 from .session_log import Folder
 from .shell_environment import login_environment
 
-# budget: 690 — one runner for every child the board starts, and the file check an exit code does not make:
+# budget: 768 — one runner for every child the board starts, and the file check an exit code does not make:
+# and what a person says to a stage while it runs, kept for the end of its turn and said then, beside the reply,
+# never after a Stop; and a stage resumed with its own after-check, and a failure before it; and how each step
+# ended, written down for a board that advances (`step_record`), and a drawing that drew nothing said as such;
 # assessment of a feature, and runs of steps that go on
 # and an adopted repository's ./init
 # through: `./init`, the draft, the surfaces, the launch and the fleet's cast-off and stop. Each is four
@@ -152,6 +156,8 @@ class Step:
     #: specification — which ends the step failed, or nothing where all is well. A child's exit code is
     #: the child's word; the file is the board's.
     check: Callable[[], str] | None = None
+    #: What the step is about — the feature a drawing draws — for the record of how it ended (`step_record`).
+    about: str = ""
 
 
 def init_step(where: Path, harness: str, repository: str | None,
@@ -293,6 +299,11 @@ class Fitting:
         self.began = time.monotonic()
         self.stopped: float | None = None
         self.stage: Any = None  # the stage over the protocol running now, for its cards on the board
+        #: A turn of conversation under way rather than the stage's own run; and a later stage's failure this run
+        #: was swapped in over to talk to an earlier one, which stays that stage's own: `(step, code)`.
+        self.talking: bool = False
+        self.about = ""  # what the step that ran last was about, for the record of how it ended
+        self.earlier: tuple[str, int] | None = None
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
@@ -364,6 +375,7 @@ class Fitting:
             self.stop(0)
             return
         self.run_steps(self.steps)
+        self.drained()
 
     def run_steps(self, steps: list[Step], final: bool = True, announced: bool = True) -> int:
         """`steps` run in order, ending at the first that fails; the exit status. With `final` the last one's end
@@ -391,6 +403,9 @@ class Fitting:
             if not code and step.check and (left := step.check()):
                 self.say(left)
                 code = 1
+            # How it ended, written down before it is said: what a board advancing by itself presses past.
+            self.about = step.about or (first_feature(self.where) if step.key == "surfaces" else "")
+            step_record.ended(self.where, step.key, self.about, code)
             ends = bool(code) and step.stops
             self.say(step.ended(code), code=(code or failed) if ends or last else None)
             if ends:
@@ -405,18 +420,62 @@ class Fitting:
         with self.lock:
             if self.stage is None or self.code is None or not self.stage.done:
                 return False
-            self.code, self.stopped, self.began = None, None, time.monotonic()
-        self.say(f"› {message}")
-        self.thread = threading.Thread(target=self.followed, args=(message,), daemon=True)
-        self.thread.start()
+            self.code, self.stopped, self.began, self.talking = None, None, time.monotonic(), True
+        self.followed_in(message, kept=False)
         return True
 
-    def followed(self, message: str) -> None:
-        code = self.stage.follow(self, message)
+    def tell(self, message: str, resend: str = "") -> str:
+        """Something said to the stage whatever it is doing: a turn now where it has ended, `said`; kept for
+        the end of its turn where it has not, `queued` — never refused, and never dropped. `resend` is the id
+        of a message kept but not delivered — after a Stop, or a restart — said again under its own id."""
+        with self.lock:
+            if self.stage is None:
+                return ""
+            going = self.code is None or not self.stage.done
+            if resend:
+                self.stage.requeue(resend, message)
+            elif going:
+                self.stage.queued(message)  # under the lock the run's end takes the queue under
+        if going:
+            self.say(f"› {message} (queued: said to the stage when its turn ends)")
+            return "queued"
+        if resend:
+            self.drained(asked=True)
+            return "said"
+        return "said" if self.reply(message) else self.tell(message)
+
+    def drained(self, asked: bool = False) -> None:
+        """What was queued while the stage ran, said now that its turn has ended, as one turn — unless the turn
+        ended because the person pressed Stop: a Stop starts nothing, and what was queued waits for their
+        word (`asked`) to be said."""
+        with self.lock:
+            if self.stage is None or not self.stage.queue or self.code is None:
+                return
+            if self.stage.cancelled and not asked:
+                self.stage.queue = []  # kept in the file as not delivered, and said only by Say it now
+                return
+            message = self.stage.waiting()
+            self.code, self.stopped, self.began, self.talking = None, None, time.monotonic(), True
+        self.followed_in(message, kept=True)
+
+    def followed_in(self, message: str, kept: bool) -> None:
+        self.say(f"› {message}")
+        self.thread = threading.Thread(target=self.followed, args=(message, kept), daemon=True)
+        self.thread.start()
+
+    def followed(self, message: str, kept: bool = False) -> None:
+        """A reply's turn to its end. Its outcome is what the stage's own after-check says of the project now,
+        which the turn runs again: a draft that stopped short and was finished by a reply has ended well, as
+        it always had. Whether the board may move on from it is the hold's business, not this code's."""
+        code = self.stage.follow(self, message, kept)
+        with self.lock:
+            self.talking = False
+        step_record.ended(self.where, self.step, self.about, code)  # the stage's outcome is the reply's now
         if code:
             self.say("The reply stopped short; its lines above say where.", code=code)
         else:
             self.stop(0)
+        self.drained()
 
     def say(self, line: str, code: int | None = None) -> None:
         with self.lock:
@@ -448,7 +507,7 @@ class Fitting:
                     "seconds": round((self.stopped or time.monotonic()) - self.began, 1),
                     "done": self.code is not None, "code": self.code,
                     # A stage over the protocol keeps its session, so what it said can be answered.
-                    "talk": self.stage is not None}
+                    "talk": self.stage is not None, "talking": self.talking}
 
 
 def start(where: Path, harness: str | None = None, said: list[str] | None = None,
@@ -482,15 +541,15 @@ def stage_step(where: Path, command: str, argument: str, argv: list[str], announ
     from .stage_session import StageSession, launchable  # noqa: PLC0415 — the edge tier, reached from here only
 
     if launchable(where) is None:
-        return Step(argv, announced, ended, key, check=held.get("after"))
+        return Step(argv, announced, ended, key, check=held.get("after"), about=argument)
     words = prompt() if callable(prompt) else prompt
     if prompt is not None and not words:
-        return Step(argv, announced, ended, key, check=held.get("after"))
+        return Step(argv, announced, ended, key, check=held.get("after"), about=argument)
     session = StageSession(where, command, argument, limit=limit, prompt=words or "", **held)
     if done:
         def ended(code: int) -> str:
             return done if code == 0 else undone
-    return Step([], over, ended, key, session=session.run)
+    return Step([], over, ended, key, session=session.run, about=argument)
 
 
 def draft_step(where: Path) -> Step:
@@ -591,6 +650,17 @@ def triaged(code: int) -> str:
     return f"`make triage` exited {code}. Its last lines say why; Triage on the Feedback card tries again."
 
 
+def undrawn(where: Path, feature: str) -> str:
+    """What a drawing that drew nothing a person can approve says: no surface page, or a storyboard that shows
+    none. A real failure, and nothing to do with the counts its note declares, which never fail a drawing."""
+    home = where / "specs" / feature / "mockups"
+    if feature and home.is_dir() and surface_pages(home):
+        return ""
+    return (f"The session ended with no surface page under specs/{feature}/mockups/ — "
+            + ("a storyboard.html that shows no page per surface, " if (home / "storyboard.html").is_file() else "")
+            + "so there is nothing to approve; Draw the storyboard again, and read its lines above.")
+
+
 def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
     """The surfaces drawn, in the background: what the board's Draw the storyboard button starts.
 
@@ -598,8 +668,9 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     draws the first specification, and the storyboard turned down may not be that one.
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
-    step = stage_step(where, "mockups", feature or first_feature(where), argv, DRAWING, DRAWING_ACP, drew,
-                      "surfaces", limit=900.0, pid="surfaces.pid", stage="",
+    named = feature or first_feature(where)
+    step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP, drew,
+                      "surfaces", limit=900.0, pid="surfaces.pid", stage="", after=lambda: undrawn(where, named),
                       done="The surfaces are drawn. The storyboard is below: open it, then Approve or "
                            "Disapprove it on this page. That verdict is what the model and the chart read.",
                       undone="The drawing stopped short; nothing was approved. Its lines above say where.")
@@ -617,14 +688,21 @@ def kept_line(command: str) -> str:
     return f"The {command} stage's session is kept from an earlier run of this board. Reply to carry it on."
 
 
-def resumed(where: Path, command: str) -> Fitting:
-    """A stage's kept session, after the board that ran it was restarted: an ended run with that stage in it,
-    which is what a reply carries on. Its one line is the one the card showed before there was a run."""
+def resumed(where: Path, command: str, said: list[str] | None = None,
+            earlier: tuple[str, int] | None = None) -> Fitting:
+    """A stage's kept session, after the board that ran it was restarted or another stage has run since: an
+    ended run with that stage in it, which is what a reply carries on. Its line is the one the card showed
+    before there was a run, after whatever the receipt already said. `earlier` is a failure of the run this
+    replaces, kept as that stage's own; the draft's after-check comes with it, so a reply is judged as the
+    draft was. What was said and never delivered stays so, shown with Say it now: it is never said unasked."""
     from .stage_session import StageSession  # noqa: PLC0415 — the edge tier, reached from here only
 
     fitting = Fitting(where, [])
-    fitting.lines = [kept_line(command)]
-    fitting.stage = StageSession(where, command, **RESUMED.get(command, {}))
+    fitting.lines = [*(said or []), kept_line(command)]
+    fitting.earlier = earlier
+    checks = {"draft": lambda: "" if any((where / "specs").glob("*/spec.md")) else
+              "The session ended without a specification under specs/."}
+    fitting.stage = StageSession(where, command, after=checks.get(command), **RESUMED.get(command, {}))
     fitting.stage.done = True
     fitting.stop(0)
     return fitting

@@ -1,0 +1,92 @@
+{
+ "synthetic": true,
+ "situation": "S1 is claimed, but its session's process is gone: nothing has been written for forty minutes and the process the driver started is not running.",
+ "source": "made up, not recorded: neither run recorded a session that died mid-turn",
+ "snapshot": {
+  "feature": "001-synthetic",
+  "fairway": "stream-s",
+  "harbour": [],
+  "slices": {
+   "S1": "claimed, in flight",
+   "S2": "merged"
+  },
+  "deck": [
+   {
+    "t": "2026-11-20T10:00:00Z",
+    "kind": "claimed",
+    "slice": "S1"
+   }
+  ],
+  "sessions": {
+   "S1": {
+    "pid": 48211,
+    "alive": false,
+    "since": "2026-11-20T10:05:00Z"
+   }
+  },
+  "activity": {
+   "S1": [
+    {
+     "t": "2026-11-20T10:04:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "ran",
+     "what": "Run the unit tests"
+    },
+    {
+     "t": "2026-11-20T10:05:00Z",
+     "stage": "implement",
+     "agent": "session",
+     "kind": "edit",
+     "what": "edit src/tables/book.ts"
+    }
+   ]
+  },
+  "warnings": {
+   "S1": [
+    {
+     "kind": "quiet",
+     "level": "red",
+     "said": "nothing for 40m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "session-process-gone",
+  "t": "2026-11-20T10:45:00Z",
+  "kind": "stuck",
+  "slice": "S1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "stop",
+    "slice": "S1"
+   },
+   {
+    "verb": "park",
+    "slice": "S1"
+   },
+   {
+    "verb": "ask"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": [
+     "message",
+     "interrupt"
+    ],
+    "slice": "S1"
+   },
+   {
+    "verb": "none"
+   }
+  ],
+  "why": "A session that is not running cannot be nudged; give its slot back and say why.",
+  "signed_off": "",
+  "note": "Synthetic: made up because neither recorded run had a moment like it, and labelled from what the snapshot shows, for a person to confirm or correct. Rests on: `sessions` says S1's process is not alive, and the activity log stopped forty minutes ago."
+ }
+}

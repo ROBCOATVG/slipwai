@@ -155,6 +155,37 @@ def retire(feature: str, said: str) -> None:
     (home / "mock-states.md").unlink(missing_ok=True)
 
 
+#: The two counts `/mockups` has the drawing declare in its research note, read as the board reads them: what is
+#: around them — a list marker, bold, backticks, a quote, a table's bar, case, a full stop — is forgiven.
+DECLARED = re.compile(r"(blockers|questions)[ \t]+open[ \t]*[:|=][ \t]*(.*)$", re.IGNORECASE)
+LEAD = re.compile(r"^[\s>|+-]*(?:\d{1,3}[.)]\s+)?")
+COUNT = re.compile(r"(\d{1,5})[ \t]*[.!]?[ \t]*(?:\([^)]*\))?[ \t]*[.!]?")
+
+
+def declared(feature: str) -> bool:
+    """Whether the drawing said, as whole numbers that agree wherever it said them, how many Blockers and
+    questions are left open — the board's own reading (`slipwai.review_reading.declared`), carried here to say
+    a note. A line counts only where it begins with the words, after its markers."""
+    try:
+        text = (SPECS / feature / MOCKUPS / "research.md").read_text(encoding="utf-8", errors="replace")[:524288]
+    except OSError:
+        return False
+    found: dict[str, set[int]] = {"blockers": set(), "questions": set()}
+    for line in text.replace("\r", "").splitlines():
+        line = re.sub(r"[*_`]", "", line)
+        for part in re.split(r"[,;]\s+(?=(?:blockers|questions)\s+open\b)", line, flags=re.IGNORECASE):
+            said = DECLARED.match(LEAD.sub("", part, count=1).strip())
+            if not said:
+                continue
+            value = said.group(2).strip().rstrip("|").strip()
+            whole = COUNT.fullmatch(value)
+            if whole:
+                found[said.group(1).lower()].add(int(whole.group(1)))
+            elif value.lower() != "n":
+                return False
+    return all(len(values) == 1 for values in found.values())
+
+
 def main(argv: list[str]) -> int:
     specs = specifications()
     if not specs:
@@ -225,6 +256,12 @@ def main(argv: list[str]) -> int:
                   f"above", file=sys.stderr)
             return 1
         retire(feature, redraw)
+    if not declared(feature):
+        # A note, never a failure: the drawing is there to look at and approve whatever its note says. Only a
+        # board set to advance by itself waits on the two lines, and says so there.
+        print(f"surfaces: note — specs/{feature}/{MOCKUPS}/research.md does not say `Blockers open: N` and "
+              f"`Questions open: N` with numbers, so a board set to advance by itself will wait for you on this "
+              f"storyboard", flush=True)
     print(f"drawn: {len(drawn(feature))} surface(s) under specs/{feature}/{MOCKUPS}/ — open the storyboard, "
           f"then /mockups {feature} in the agent walks you through approving each state")
     return 0

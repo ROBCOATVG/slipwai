@@ -321,7 +321,7 @@ def walks_of(root: Path, seat: str = "") -> list[dict]:
     home = run_dir(root) / "walks"
     found = []
     for path in sorted(home.glob("*/*/*")) if home.is_dir() else []:
-        if path.suffix.lower() not in VIDEOS or not path.is_file():
+        if path.suffix.lower() not in VIDEOS or not path.is_file() or path.name == "film.webm":  # `film.py`'s
             continue
         feature, slice_id = path.parent.parent.name, path.parent.name
         where = "/".join(quote(part, safe="") for part in (feature, slice_id, path.name))

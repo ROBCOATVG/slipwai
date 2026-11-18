@@ -656,13 +656,35 @@ def project_web_apps(root: Path) -> list[str]:
 
 
 def features_installed(root: Path, services: list[tuple[str, str]]) -> set[str]:
-    """Which features have their own files on disk, whether or not the choice is still open."""
+    """Which features have their own files on disk, whether or not the choice is still open.
+
+    A path git ignores is not a feature's file, whatever it matches: it is what a build or a run left. A Java
+    service's `target/` matched the SQLite and external-identity patterns after one `make verify`, so a
+    replay read both as installed, kept their blocks, and `slipwai migrate` offered lean-coffee-club a
+    SQLite driver and a customers realm it never chose.
+    """
     web = project_web_apps(root)
-    return {
-        feature
-        for feature in FEATURES
-        if any(path.exists() for path in owned_paths(root, feature, services, web))
-    }
+    owned = {feature: [path for path in owned_paths(root, feature, services, web) if path.exists()]
+             for feature in FEATURES}
+    left = ignored(root, [path for paths in owned.values() for path in paths])
+    return {feature for feature, paths in owned.items() if any(path not in left for path in paths)}
+
+
+def ignored(root: Path, paths: list[Path]) -> set[Path]:
+    """The paths among these that git ignores here; none where this is not a repository or git cannot say."""
+    if not paths:
+        return set()
+    relative = {path.relative_to(root).as_posix(): path for path in paths if path.is_relative_to(root)}
+    try:
+        # NUL-separated both ways: in text mode Windows writes `\r\n`, and git then looked up `target\r`.
+        result = subprocess.run(["git", "-C", str(root), "check-ignore", "-z", "--stdin"],
+                                input="\0".join(relative).encode("utf-8") + b"\0", capture_output=True, check=False)
+    except OSError:
+        return set()
+    if result.returncode not in (0, 1):  # 128: not a repository, or git could not answer
+        return set()
+    said = result.stdout.decode("utf-8", errors="replace").split("\0")
+    return {relative[line] for line in said if line in relative}
 
 
 def features_present(root: Path, services: list[tuple[str, str]]) -> set[str]:

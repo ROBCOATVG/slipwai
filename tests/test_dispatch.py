@@ -79,6 +79,12 @@ class Naming(unittest.TestCase):
         """Conservative where the shape is not the project's: a miss costs less than a wrong refusal."""
         self.assertEqual(gate.named("The Windows gate runs the loop suite alone first"), [])
 
+    def test_a_hyphenated_id_is_a_claim_only_where_the_plans_name_them_so(self) -> None:
+        """`MTG-01` is lean-coffee-club's slice; in a project of `SB7`s the same shape is `UTF-8`."""
+        self.assertEqual(gate.named("MTG-01 MTG-02-MTG-03: start a meeting", True), ["MTG-01", "MTG-02", "MTG-03"])
+        self.assertEqual(gate.named("UTF-8: read the file as text"), [])
+        self.assertEqual(gate.named("036 SB4-SB7 browser: bounded losses", True), ["SB4", "SB7"])
+
 
 class Fixture(unittest.TestCase):
     """A real repository with a chart, a ledger, and commits whose subjects are the ones that shipped."""
@@ -186,6 +192,29 @@ class Fixture(unittest.TestCase):
         self.commit("036 UI9: one-list and both-lists play")
         done = self.run_gate()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("nothing to hold", done.stdout)
+
+    def test_a_plan_of_hyphenated_ids_is_a_plan(self) -> None:
+        """lean-coffee-club's chart names `MTG-01`…`MTG-68`, and the hook said it had no plan at all: the
+        pattern read only letters-then-digits, so it found no id, and held nothing while saying why wrongly."""
+        self.chart(["MTG-01", "MTG-02"])
+        self.ledger(["MTG-01"])
+        self.commit("MTG-01: start a meeting")
+        self.assertEqual(self.run_gate().returncode, 0)
+        self.commit("MTG-02: invite someone")
+        done = self.run_gate()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("MTG-02", done.stderr)
+        self.assertIn("make dispatch", done.stderr)
+
+    def test_plans_that_name_no_id_are_named_as_read_not_as_absent(self) -> None:
+        """A model that ships empty is a plan file with no slice in it yet, which is not "no event model"."""
+        self.chart([])
+        shutil.rmtree(self.root / "specs/036-shared/slices")
+        self.commit("036 UI9: one-list and both-lists play")
+        done = self.run_gate()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("no slice id shaped like SB7 or MTG-01 in specs/036-shared/chart.yaml", done.stdout)
         self.assertIn("nothing to hold", done.stdout)
 
     def test_the_whole_push_is_judged_and_every_fault_named(self) -> None:

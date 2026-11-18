@@ -245,17 +245,12 @@ jobs:
             echo '<!doctype html><title>Event model</title><p>No slices yet — model your first workflow, then run <code>make model</code>.' > _site/index.html
           fi
 
-      # A downloadable copy of the site on the run. upload-artifact v4 speaks an artifact API that only
-      # github.com has and refuses to start anywhere else ("not currently supported on GHES"), Gitea
-      # included; Gitea implements the v3 protocol, so every other forge gets v3 of the same action.
+      # A downloadable copy of the site on the run, on GitHub only. There is no second step naming v3 for
+      # the forges v4 does not start on: GitHub resolves every action a job names before it runs a step, and
+      # fails the whole job for naming a refused version — the `if:` on that step never got a say, so every
+      # new project's trunk was red from its first push. Off GitHub the copy is the `pages` branch below.
       - uses: actions/upload-artifact@v4
         if: github.server_url == 'https://github.com'
-        with:
-          name: event-model
-          path: _site
-          retention-days: 90
-      - uses: actions/upload-artifact@v3
-        if: github.server_url != 'https://github.com'
         with:
           name: event-model
           path: _site

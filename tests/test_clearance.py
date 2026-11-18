@@ -167,14 +167,15 @@ class StateTest(unittest.TestCase):
         state, why = state_of("ORD-01", line("claimed", slice="ORD-01"), mark_set("OrderPlaced", "ORD-01"))
         self.assertEqual((state, "implementing" in why), ("running", True))
 
-    def test_a_slice_whose_capability_is_due_a_demo_is_awaiting_demo(self) -> None:
-        state, why = state_of("ORD-01", line("claimed", slice="ORD-01"), mark_set("OrderPlaced", "ORD-01"),
-                              line("demo-due", capability="place-an-order"))
+    def test_where_a_person_accepts_demos_a_slice_whose_capability_is_due_one_is_awaiting_demo(self) -> None:
+        """Under `demos: person`. Under `hand`, the default, nothing waits on a person: `test_demos`."""
+        owed = [line("claimed", slice="ORD-01"), mark_set("OrderPlaced", "ORD-01"),
+                line("demo-due", capability="place-an-order")]
+        state, why = chart.position(CHART, chart.folded(owed, "person"), "ORD-01")
         self.assertEqual(state, "awaiting-demo")
         self.assertIn("place-an-order", why)
-        state, _ = state_of("ORD-01", line("claimed", slice="ORD-01"), mark_set("OrderPlaced", "ORD-01"),
-                            line("demo-due", capability="place-an-order"),
-                            line("accepted", capability="place-an-order"))
+        state, _ = chart.position(CHART, chart.folded([*owed, line("accepted", capability="place-an-order")],
+                                                      "person"), "ORD-01")
         self.assertEqual(state, "running")
 
     def test_a_merged_slice_is_done(self) -> None:

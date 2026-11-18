@@ -41,6 +41,7 @@ from .design_docs import DESIGN, FACTS, briefed, domain_facts, handed_over, refe
 from .errors import GenerationError
 from .loaded_targets import answer
 from .preflight import check as check_requirements
+from .release_state import NEW_STATE
 from .services import FIRST_SERVICE, FIRST_WEB
 from .target_protocol import DEPLOYMENT_SHAPES
 from .targets import check_project_name, managed, offered_backends
@@ -295,7 +296,7 @@ def prd_files(args: Any, apps: list[Any]) -> tuple[dict[str, str] | None, dict[s
             if files is None:
                 from .scaffold import project_files
                 files = project_files(args.name, args.profile, args.target, apps,
-                                      shape=getattr(args, "shape", None))
+                                      shape=getattr(args, "shape", None), state=NEW_STATE)
             from .project.docs_index import docs_index
             files = {**files, **({FACTS: facts} if facts else {}),
                      "docs/README.md": docs_index(files, sorted(carry))}
@@ -311,7 +312,8 @@ def prd_files(args: Any, apps: list[Any]) -> tuple[dict[str, str] | None, dict[s
         raise GenerationError(f"--prd {path} is empty")
     if files is None:
         from .scaffold import project_files
-        files = project_files(args.name, args.profile, args.target, apps, shape=getattr(args, "shape", None))
+        files = project_files(args.name, args.profile, args.target, apps, shape=getattr(args, "shape", None),
+                              state=NEW_STATE)
     cited, text = referenced(path.resolve(), text, home)
     from .project.docs_index import docs_index
     files = {**files, PRD: text, **({FACTS: facts} if facts else {})}

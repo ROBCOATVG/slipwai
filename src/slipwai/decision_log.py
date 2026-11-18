@@ -16,6 +16,10 @@ it merges. And the deck's `question` line with the same `id` is the question a p
 here is what lets a stream parked at its decision ceiling go on. A decision taken before the fleet existed —
 in clarify, in the chart — has no deck line and holds nothing up; its receipt is kept beside the logs in
 `decisions-read.json`, so the log can still say which of those a person has read.
+
+**Confirm is a record, as a read is.** A person confirming an entry `awaiting human confirmation` is kept
+beside the logs in `decisions-confirmed.json`, with the read receipt; the board edits and commits nothing in
+the project — see `confirm`. The cards are drawn by `decision_cards.py`.
 """
 from __future__ import annotations
 
@@ -23,19 +27,22 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
+from .decision_entry import ID, SENTENCE, awaiting, is_id, parse
 from .deck import entries, mark_read, streams
 from .logs import logs_dir
-from .page_shell import esc
 
 #: Where a decision with no deck line is marked read: beside the logs, which Git already ignores.
 UPSTREAM_READ = "decisions-read.json"
-_HEAD = re.compile(r"^## (D\d+)\s*[—-]\s*(.*)$", re.MULTILINE)
-_FIELD = re.compile(r"\*\*([^*:]+):\*\*\s*(.*?)(?=\s+·\s+\*\*[^*:]+:\*\*|$)")
-_NUMBER = re.compile(r"^\s*(D\d+)\b")
+#: Where a person's Confirm is kept, beside the read receipts and for the same reason.
+CONFIRMED = "decisions-confirmed.json"
+_NUMBER = re.compile(rf"^\s*({ID})\b")
 #: The parts of an entry shown under its decision, in this order.
 SHOWN = ("Question", "Options", "Why", "Read against", "Confidence", "Would reverse if", "Written to", "Status")
+#: Which feature's record the entry was read from: a confirmation is kept against it.
+FROM = "_feature"
 
 
 @dataclass
@@ -53,20 +60,16 @@ class Decision:
     parts: dict[str, str] = field(default_factory=dict)
     read: bool = False
     yours: bool = False
+    sentence: str = ""
+    status: str = ""
+    capability: str = ""
+    feature: str = ""
+    confirmed: str = ""
 
-
-def parse(text: str) -> dict[str, dict[str, str]]:
-    """`decisions.md` as `D<n>` → its heading and each `**Label:** value`, several to a line where `·` joins them."""
-    found: dict[str, dict[str, str]] = {}
-    heads = list(_HEAD.finditer(text))
-    for index, head in enumerate(heads):
-        body = text[head.end():heads[index + 1].start() if index + 1 < len(heads) else len(text)]
-        parts = {"title": head.group(2).strip()}
-        for line in body.splitlines():
-            if line.lstrip().startswith("- "):
-                parts.update({label.strip(): value.strip() for label, value in _FIELD.findall(line)})
-        found[head.group(1)] = parts
-    return found
+    @property
+    def awaiting(self) -> bool:
+        """Awaiting a person: the entry says so and nobody has confirmed it on the board since."""
+        return awaiting(self.status) and not self.confirmed
 
 
 def checkouts(root: Path) -> list[Path]:
@@ -88,7 +91,20 @@ def written(root: Path) -> dict[str, dict[str, str]]:
             except (OSError, UnicodeDecodeError):
                 continue
             for number, parts in parse(text).items():
-                found.setdefault(number, parts)
+                found.setdefault(number, {**parts, FROM: path.parent.name})
+    return found
+
+
+def capabilities(root: Path) -> dict[str, str]:
+    """Each slice's capability, as the chart names it: `slices: <id>: capability: <name>`."""
+    found: dict[str, str] = {}
+    for chart in sorted(root.glob("specs/*/chart.yaml")):
+        current = ""
+        for line in chart.read_text(encoding="utf-8", errors="replace").splitlines():
+            if (named := re.match(r"^\s{2}([A-Za-z0-9_.-]+):\s*$", line)):
+                current = named.group(1)
+            elif current and (held := re.match(r"^\s{4}capability:\s*['\"]?([^'\"#]+?)['\"]?\s*$", line)):
+                found.setdefault(current, held.group(1))
     return found
 
 
@@ -100,41 +116,61 @@ def upstream_read(root: Path) -> set[str]:
     return {str(one) for one in held} if isinstance(held, list) else set()
 
 
+def _shown(entry: dict[str, str]) -> dict[str, str]:
+    return {key: entry[key] for key in SHOWN if entry.get(key)}
+
+
+def _slice(value: str) -> str:
+    return value.strip("— ").strip()
+
+
 def decisions(root: Path) -> list[Decision]:
     """Every decision, newest first."""
     book = written(root)
+    charted = capabilities(root)
+    sure = confirmations(root)
     used: set[str] = set()
     found: list[Decision] = []
     for feature, fairway in streams(root):
         lines, _ = entries(root, fairway, feature)
         asked = {str(e.fields.get("id")): str(e.fields.get("what", "")) for e in lines if e.kind == "question"}
-        receipts = {str(e.fields.get("told")) for e in lines if e.kind == "read"}
+        receipts = {str(e.fields.get("told")) for e in lines if e.kind == "read" and not e.fields.get("inbox")}
         for line in (e for e in lines if e.kind == "decision"):
             what, ident = str(line.fields.get("what", "")), str(line.fields.get("id", ""))
             named = _NUMBER.match(what)
             # The line's own `id` where its words do not open with the number: a launch's decisions carry
             # `id: D9` and a sentence, and read as "D9 (not in decisions.md)" beside the entry they were.
-            number = named.group(1) if named else (ident if re.fullmatch(r"D\d+", ident) else "")
+            number = named.group(1) if named else (ident if is_id(ident) else "")
             entry = book.get(number, {})
             used.add(number)
-            by = str(line.fields.get("decided_by", ""))
+            by = str(line.fields.get("decided_by", "")) or entry.get("Decided by", "")
             yours = by == "human"
-            parts = {key: entry[key] for key in SHOWN if entry.get(key)}
+            parts = _shown(entry)
             if ident in asked and "Question" not in parts:
                 parts["Question"] = asked[ident]
             title = entry.get("title") or asked.get(ident) or (f"{ident} (not in decisions.md)" if ident else what)
+            piece = str(line.fields.get("slice", "")) or _slice(entry.get("Slice", ""))
+            home = entry.get(FROM) or feature
             found.append(Decision(f"deck:{fairway}:{line.t}", number or ident, title,
-                                  entry.get("Decision") or what, line.t, str(line.fields.get("slice", "")), fairway,
-                                  "you" if yours else by or entry.get("Decided by", ""), parts,
-                                  yours or line.t in receipts, yours))
+                                  entry.get("Decision") or what, line.t, piece, fairway,
+                                  "you" if yours else by, parts, yours or line.t in receipts, yours,
+                                  entry.get(SENTENCE, ""), entry.get("Status", ""), charted.get(piece, ""),
+                                  home, sure.get(f"{home}/{number or ident}", "")))
     marked = upstream_read(root)
     for number, entry in book.items():
         if number in used:
             continue
-        parts = {key: entry[key] for key in SHOWN if entry.get(key)}
+        piece = _slice(entry.get("Slice", ""))
+        # A person's own answer is theirs whichever place it was read from. Only a deck line's `decided_by`
+        # was looked at, so an entry `Decided by: human` with no deck line — an answer given in a
+        # conversation and written straight into the record — was shown as somebody else's.
+        yours = entry.get("Decided by", "").strip() == "human"
         found.append(Decision(f"md:{number}", number, entry.get("title", ""), entry.get("Decision", ""),
-                              entry.get("When", ""), entry.get("Slice", "").strip("— ").strip(),
-                              entry.get("Stream", ""), entry.get("Decided by", ""), parts, number in marked))
+                              entry.get("When", ""), piece, entry.get("Stream", ""),
+                              "you" if yours else entry.get("Decided by", ""), _shown(entry),
+                              yours or number in marked, yours, entry.get(SENTENCE, ""), entry.get("Status", ""),
+                              charted.get(piece, ""), entry.get(FROM, ""),
+                              sure.get(f"{entry.get(FROM, '')}/{number}", "")))
     return sorted(found, key=lambda one: (one.when, one.number), reverse=True)
 
 
@@ -147,7 +183,7 @@ def mark(root: Path, keys: list[str]) -> str:
         if kind == "deck" and ":" in rest:
             fairway, _, stamp = rest.partition(":")
             by_stream.setdefault(fairway, []).append(stamp)
-        elif kind == "md" and re.fullmatch(r"D\d+", rest):
+        elif kind == "md" and is_id(rest):
             upstream.append(rest)
         else:
             raise ValueError(f"{key!r} names no decision")
@@ -162,105 +198,37 @@ def mark(root: Path, keys: list[str]) -> str:
     return "; ".join(said) or "nothing to mark"
 
 
-STYLE = """
-#decisions .bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:0 0 10px}
-#decisions .bar label{font-size:.86rem;color:var(--ink-2)}
-#decisions article{border:1px solid var(--rule);border-left:3px solid var(--brass);border-radius:8px;
-  padding:10px 14px;margin:10px 0;display:grid;gap:6px}
-#decisions article.read{border-left-color:var(--rule);opacity:.82}
-#decisions article.yours{border-left-color:var(--teal)}
-#decisions article[hidden]{display:none}
-#decisions .top{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;justify-content:space-between}
-#decisions .top h3{margin:0;font-size:.98rem;text-transform:none;letter-spacing:0;color:var(--ink)}
-#decisions .num{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);margin-right:6px}
-#decisions .meta{display:flex;flex-wrap:wrap;gap:6px;font-size:.76rem;color:var(--ink-3)}
-#decisions .meta span{border:1px solid var(--rule);border-radius:999px;padding:1px 8px}
-#decisions .answer{font-size:.92rem}
-#decisions dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:0;font-size:.86rem}
-#decisions dt{color:var(--ink-3)}
-#decisions dd{margin:0;color:var(--ink-2)}
-@media (max-width:620px){#decisions dl{grid-template-columns:1fr}#decisions dt{margin-top:4px}}
-"""
-
-SCRIPT = """
-// The decision log: filtered in place, and Mark read writes the receipt and greys the entry without a reload.
-(function(){
-  const log = document.getElementById('decisions');
-  if (!log) return;
-  const all = () => [...log.querySelectorAll('article')];
-  const filter = () => {
-    const unread = log.querySelector('[name=decisions-show]:checked').value === 'unread';
-    const slice = log.querySelector('select[name=decisions-slice]').value;
-    let shown = 0;
-    all().forEach(one => {
-      one.hidden = (unread && one.classList.contains('read')) || (slice && one.dataset.slice !== slice);
-      if (!one.hidden) shown += 1;
-    });
-    log.querySelector('.shown').textContent = shown ? ''
-      : 'Nothing here: every decision this filter shows has been read.';
-  };
-  const count = () => {
-    const left = all().filter(one => !one.classList.contains('read')).length;
-    document.querySelectorAll('[data-decisions-unread]').forEach(one => {
-      one.textContent = left ? left + ' unread' : ''; one.hidden = !left;
-    });
-  };
-  const read = async keys => {
-    const answer = await fetch('/decisions/read', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({keys})});
-    if (!answer.ok) { alert(await answer.text()); return; }
-    // A deck receipt is per instant, so every decision written in that second shares the key and is read with it.
-    const stamps = new Set(keys);
-    all().forEach(one => { if (stamps.has(one.dataset.key)) {
-      one.classList.add('read'); const b = one.querySelector('[data-decision-read]'); if (b) b.remove(); } });
-    count(); filter();
-  };
-  log.addEventListener('change', filter);
-  log.addEventListener('click', event => {
-    const one = event.target.closest('[data-decision-read]');
-    if (one) { one.disabled = true; read([one.dataset.decisionRead]); }
-    if (event.target.closest('[data-decisions-all]')) {
-      read(all().filter(a => !a.hidden && !a.classList.contains('read')).map(a => a.dataset.key));
-    }
-  });
-  filter(); count();
-})();
-"""
+def confirmations(root: Path) -> dict[str, str]:
+    """Every decision a person confirmed on the board, as `<feature>/<id>` → the instant they did."""
+    try:
+        held = json.loads((logs_dir(root) / CONFIRMED).read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        return {}
+    return {str(key): str(value) for key, value in held.items()} if isinstance(held, dict) else {}
 
 
-def entry_html(one: Decision) -> str:
-    # Yours and read, both: the filter, the count and Mark every one shown all read the `read` class, and an
-    # answer of your own without it was listed as unread and sent to a receipt the deck rightly refused.
-    kind = "yours read" if one.yours else "read" if one.read else "unread"
-    meta = [one.slice and f"Slice {one.slice}", one.parts.get("Stage") or "", one.when[:16].replace("T", " "),
-            f"Decided by {one.decided_by}" if one.decided_by else ""]
-    chips = "".join(f"<span>{esc(word)}</span>" for word in meta if word)
-    rows = "".join(f"<dt>{esc(label)}</dt><dd>{esc(one.parts[label])}</dd>" for label in SHOWN
-                   if one.parts.get(label) and not (label == "Question" and one.parts[label] == one.title))
-    button = ("" if one.read else f'<button type="button" class="go" data-decision-read="{esc(one.key)}">'
-              "Mark read</button>")
-    said = "Your answer" if one.yours else "Decision"
-    return (f'<article class="{kind}" data-key="{esc(one.key)}" data-slice="{esc(one.slice)}">'
-            f'<div class="top"><h3><span class="num">{esc(one.number)}</span>{esc(one.title)}</h3>{button}</div>'
-            f'<div class="meta">{chips}</div><div class="answer"><b>{said}:</b> {esc(one.decision)}</div>'
-            + (f"<details><summary>Question, options and why</summary><dl>{rows}</dl></details>" if rows else "")
-            + "</article>")
+def confirm(root: Path, key: str, now: datetime | None = None) -> str:
+    """A person confirms a decision that awaits them: a record beside the logs, and the read receipt.
 
-
-def card(root: Path) -> tuple[str, int]:
-    """The log as a card, and how many decisions in it nobody has read."""
-    found = decisions(root)
-    if not found:
-        return "", 0
-    unread = sum(1 for one in found if not one.read)
-    slices = sorted({one.slice for one in found if one.slice})
-    options = "".join(f'<option value="{esc(one)}">{esc(one)}</option>' for one in slices)
-    bar = ('<div class="bar"><label><input type="radio" name="decisions-show" value="unread" checked> Unread</label>'
-           '<label><input type="radio" name="decisions-show" value="all"> All</label>'
-           f'<label>Slice <select name="decisions-slice"><option value="">every slice</option>{options}</select>'
-           '</label><button type="button" class="install" data-decisions-all>Mark every one shown as read</button>'
-           "</div>")
-    return (f'<div class="card" id="decisions"><h2>Decisions · {len(found)}</h2>'
-            '<p class="empty">Every decision taken with nobody at the wheel, newest first. Reading one here is the '
-            "receipt the decision ceiling counts.</p>"
-            f'{bar}<p class="empty shown"></p>{"".join(entry_html(one) for one in found)}</div>', unread)
+    The record is `decisions-confirmed.json`, keyed `<feature>/<id>` with the instant, kept where
+    `decisions-read.json` is — which Git ignores — and read back by `decisions` so the card says the decision
+    is confirmed. Nothing in any checkout's working tree is touched and nothing is committed: the board does
+    not know whose name a commit would carry, a berth's `decisions.md` is its agent's while it works, and an
+    entry is the owning stream's to rewrite. `/cruise` already writes `confirmed by human <date>` into the
+    entry when its stream is told a person confirmed it; this does not tell it (a later stream carries the
+    board's messages to streams), so the record is what the board shows until the entry itself says so.
+    """
+    one = next((each for each in decisions(root) if each.key == key), None)
+    if one is None:
+        raise ValueError(f"{key!r} names no decision on this board")
+    if not one.awaiting:
+        raise ValueError(f"{one.number} is not awaiting confirmation; its status is {one.status or 'not written'}")
+    held = confirmations(root)
+    held[f"{one.feature}/{one.number}"] = (now or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    path = logs_dir(root) / CONFIRMED
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(held, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    said = f"{one.number} confirmed"
+    if not one.read:
+        said += "; " + mark(root, [key])
+    return said

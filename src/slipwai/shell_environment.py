@@ -22,7 +22,9 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Mapping, MutableMapping
+from contextvars import ContextVar
 from pathlib import Path
 
 #: Where the board puts a tool the machine did not have: `<key>/tool.json` names its `bin` directory.
@@ -76,22 +78,45 @@ def from_login(current: Mapping[str, str] | None = None, shell: str | None = Non
     command = shell or held.get("SHELL") or account_shell()
     if not command or os.name == "nt":
         return with_tools(held)
+    keep = KEEP_LOGIN.get() and current is None and shell is None
+    kept = ANSWERED.get(command) if keep else None
+    login = kept[1] if kept is not None and time.monotonic() - kept[0] < LOGIN_KEPT else None
+    if login is None:
+        login = login_of(command)
+        if login is None:
+            return with_tools(held)
+        if keep:
+            ANSWERED[command] = (time.monotonic(), login)
+    paths = [*login.get("PATH", "").split(os.pathsep), *held.get("PATH", "").split(os.pathsep)]
+    merged = {**login, **held}
+    merged["PATH"] = os.pathsep.join(dict.fromkeys(part for part in paths if part))
+    return with_tools(merged)
+
+
+#: Whether the login shell's answer may be kept. A board's fold sets it: every poll ran the project's scripts
+#: twice, each child asking a login shell first, and a profile seldom changes under a running board.
+KEEP_LOGIN: ContextVar[bool] = ContextVar("keep_login", default=False)
+#: The answers kept, by shell, with when each was asked. Kept a few minutes rather than for the board's life,
+#: and dropped by a read that faults: somebody who fixes their profile to cure a fault should see it cured.
+ANSWERED: dict[str, tuple[float, dict[str, str]]] = {}
+LOGIN_KEPT = 300.0
+
+
+def login_of(command: str) -> dict[str, str] | None:
+    """What one login shell exports, or None where it could not be asked or did not answer."""
     try:
         done = subprocess.run([command, "-ilc", "env -0"], capture_output=True, text=False, timeout=10,
                               stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired):
-        return with_tools(held)
+        return None
     if done.returncode != 0 or not done.stdout:
-        return with_tools(held)
+        return None
     login: dict[str, str] = {}
     for pair in done.stdout.split(b"\0"):
         name, _, value = pair.decode("utf-8", "replace").partition("=")
         if name and "\n" not in name:
             login[name] = value
-    paths = [*login.get("PATH", "").split(os.pathsep), *held.get("PATH", "").split(os.pathsep)]
-    merged = {**login, **held}
-    merged["PATH"] = os.pathsep.join(dict.fromkeys(part for part in paths if part))
-    return with_tools(merged)
+    return login
 
 
 def board_tools(home: Path | None = None, first: bool = False) -> list[str]:

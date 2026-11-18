@@ -1,0 +1,400 @@
+{
+ "situation": "LB6 has merged and freed the library stream's one slot. Eight slices are cleared.",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "library",
+  "slices": {
+   "LB1": "parked, answered and cleared: LB1: the harness would not run LB1: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+   "LB11": "parked, answered and cleared: LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB15": "parked, answered and cleared: LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB2": "parked, answered and cleared: LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB3": "merged",
+   "LB4": "parked, answered and cleared: LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB6": "merged",
+   "LB7": "parked, answered and cleared: LB7: the harness would not run LB7: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+   "LB8": "parked, answered and cleared: LB8: the harness would not run LB8: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+   "LB9": "parked, answered and cleared: LB9: the harness would not run LB9: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T16:40:06Z",
+    "kind": "told",
+    "slice": "LB1",
+    "by": "session",
+    "message": "Host, on main, from LB1's plan (research P-10): (1) CREDENTIALS_KEY (32 bytes base64, openssl rand -base64 32) documented in .env.example and set in make demo's environment - the Postgres credential store (ADR 0006, D41) is wired only when DATABASE_URL and CREDENTIALS_KEY are both set, else the in-memory one; (2) VITE_FLAG_AUDIOBOOKSHELF_COMPANION=off in .env.example; (3) merge slice/LB3 before slice/LB1 (split order already says so): LB1 carries LB3's authentication files byte-identical (authenticate port, bearer.ts, the userinfo adapter, clock, ids, their fakes, stub and tests) so the merge  …"
+   },
+   {
+    "t": "2026-10-21T16:40:27Z",
+    "kind": "claimed",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-21T16:40:33Z",
+    "kind": "parked",
+    "why": "LB1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-21T16:40:41Z",
+    "kind": "parked",
+    "why": "LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-21T16:40:44Z",
+    "kind": "claimed",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-21T16:40:44Z",
+    "kind": "claimed",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-21T16:40:58Z",
+    "kind": "parked",
+    "why": "LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-21T16:40:58Z",
+    "kind": "parked",
+    "why": "LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-21T16:41:13Z",
+    "kind": "claimed",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-21T16:41:26Z",
+    "kind": "parked",
+    "why": "LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-21T16:42:07Z",
+    "kind": "parked",
+    "why": "LB9: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T08:00:25Z",
+    "kind": "read",
+    "told": "2026-10-21T16:26:23Z"
+   },
+   {
+    "t": "2026-10-22T10:04:44Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and…",
+    "by": "person",
+    "slice": "LB8"
+   },
+   {
+    "t": "2026-10-22T10:04:48Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed o…",
+    "by": "person",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T10:04:59Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-22T10:05:01Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-22T10:05:02Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-22T10:05:04Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-22T10:05:05Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T10:05:15Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T11:01:06Z",
+    "kind": "request",
+    "slice": "LB3",
+    "id": "merge-LB3",
+    "what": "merge",
+    "detail": "Merge slice/LB3 at 42dd728 into main, first in the library's split order (LB6 asked to follow it). main (CU1, 74d388c..66ca1e3) is merged into the branch at dee6151, so git log HEAD..main is empty and the harbourmaster's rebase is a no-op; eight conflicts were taken both-sides (one shared store opener in main.ts, both route sets in the API document, both screens in the shell, the slice's 12/18px radii beside CU1's --target-min token, both trigger records, decisions D20-D22 and D31 in number order with D23-D26). make verify passed at 4e40fb2 on that tree on 2026-10-22: 381 service and 97 browse …"
+   },
+   {
+    "t": "2026-10-22T11:01:14Z",
+    "kind": "told",
+    "slice": "LB3",
+    "by": "session",
+    "message": "Host, on main, four things LB3's review left outside a slice branch: (1) .gitignore - AUDIO_DIR defaults to .audio and nothing ignores it (review #11), and __pycache__/ is still uncovered; (2) packages/api-client - export type { paths } from its index so apps/project-b-web/src/import-client.ts stops reaching into src/schema.ts by relative path (plan, Stubs and Deferrals); (3) docs/design.md - the AddBook paragraph on the Designed: line of slices/LB3/tasks.md is still only there; (4) D46 says the service's bearer check is LB3's bearerCheck(authenticate) over the userinfo adapter - CU1's composi …"
+   },
+   {
+    "t": "2026-10-22T11:03:56Z",
+    "kind": "read",
+    "told": "2026-10-22T10:22:15Z"
+   },
+   {
+    "t": "2026-10-22T11:05:46Z",
+    "kind": "mark-set",
+    "slice": "LB3",
+    "mark": "BookImported",
+    "contract": "docs/event-model/model.yaml#BookImported",
+    "examples": "specs/001-project-b/slices/LB3/examples.md",
+    "commit": "85d38c4",
+    "note": "re-asserted at the merge rung after the branch was rebased linearly onto main; first set 2026-10-21T13:49:15Z, implemented at e92df4d (4e40fb2 before the rebase)"
+   },
+   {
+    "t": "2026-10-22T11:05:46Z",
+    "kind": "request",
+    "slice": "LB3",
+    "id": "merge-LB3-85d38c4",
+    "what": "merge",
+    "detail": "Merge slice/LB3 at 85d38c4 into main, first in the library's split order (LB6 asked to follow it). The earlier ask (merge-LB3, 11:01Z) was refused because the branch carried a merge commit from main (dee6151) and the harbourmaster's plain rebase replays a non-linear history; the branch is now 56 linear commits on main 66ca1e3 - the 55 slice commits replayed, then one commit re-applying the eight both-sides resolutions - and git rebase main answers up to date. The tree is byte-identical to the one the full gate passed on before (tree aeef926), and make verify passed again on the rebased branch  …"
+   },
+   {
+    "t": "2026-10-22T11:06:19Z",
+    "kind": "merged",
+    "slice": "LB3",
+    "commit": "85d38c4"
+   },
+   {
+    "t": "2026-10-22T11:06:21Z",
+    "kind": "claimed",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T11:15:11Z",
+    "kind": "read",
+    "slice": "LB7",
+    "told": "2026-10-22T10:55:28Z"
+   },
+   {
+    "t": "2026-10-22T11:15:11Z",
+    "kind": "read",
+    "slice": "LB7",
+    "told": "2026-10-22T11:01:14Z"
+   },
+   {
+    "t": "2026-10-22T11:16:30Z",
+    "kind": "read",
+    "told": "2026-10-22T11:15:11Z"
+   },
+   {
+    "t": "2026-10-22T11:50:07Z",
+    "kind": "claimed",
+    "slice": "LB8"
+   },
+   {
+    "t": "2026-10-22T11:50:12Z",
+    "kind": "parked",
+    "why": "LB8: the harness would not run LB8: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB8",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:50:40Z",
+    "kind": "parked",
+    "why": "LB7: the harness would not run LB7: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB7",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:50:53Z",
+    "kind": "claimed",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T11:50:53Z",
+    "kind": "claimed",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-22T11:50:58Z",
+    "kind": "parked",
+    "why": "LB9: the harness would not run LB9: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB9",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T11:51:00Z",
+    "kind": "parked",
+    "why": "LB1: the harness would not run LB1: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent",
+    "slice": "LB1",
+    "cause": "limit",
+    "until": "2026-10-22T14:40:00Z"
+   },
+   {
+    "t": "2026-10-22T12:47:53Z",
+    "kind": "told",
+    "message": "For the captain, from feedback 0001, confirmed by a person: something a person missed while trying the app (paraphrased), already planned in LB13.",
+    "by": "feedback",
+    "slice": "LB13"
+   },
+   {
+    "t": "2026-10-22T12:52:37Z",
+    "kind": "told",
+    "message": "Have another go.",
+    "by": "person"
+   },
+   {
+    "t": "2026-10-22T13:07:47Z",
+    "kind": "read",
+    "slice": "LB6",
+    "told": "2026-10-22T12:52:37Z"
+   },
+   {
+    "t": "2026-10-22T13:07:47Z",
+    "kind": "mark-set",
+    "slice": "LB6",
+    "mark": "ListeningResumed",
+    "contract": "docs/event-model/model.yaml#ListeningResumed",
+    "examples": "specs/001-project-b/slices/LB6/examples.md",
+    "commit": "5b59265",
+    "note": "re-asserted at the merge rung after the branch was rebased linearly onto main; first set 2026-10-21T13:55:24Z, implemented at 7917590 (ae2841d before the rebase)"
+   },
+   {
+    "t": "2026-10-22T13:07:47Z",
+    "kind": "told",
+    "slice": "LB6",
+    "by": "session",
+    "message": "LB7 (abreast): slice/LB6 was rebased linearly onto main (LB3, CU4, CU7 landed) and its head moved from f95b437 to 5b59265 - every LB6 commit has a new hash (ae2841d is 7917590, 6dd2fc8 is 5b1434e). D53 rebased slice/LB7 onto f95b437; once LB6 is merged, rebase slice/LB7 onto main instead (git rebase --onto main f95b437 slice/LB7), where LB6's files are the same content at new hashes. The composition root now binds import and resumptions in one library registrar beside catchUp, and openapi.ts documents every route set together. Host: the pre-rebase head is kept as the local tag LB6-before-rebas …"
+   },
+   {
+    "t": "2026-10-22T13:07:47Z",
+    "kind": "request",
+    "slice": "LB6",
+    "id": "merge-LB6-5b59265",
+    "what": "merge",
+    "detail": "Merge slice/LB6 at 5b59265 into main, next in the library's split order after LB3 (merged 85d38c4). The earlier ask (merge-LB6-6dd2fc8, 10:55Z) was refused on a decisions.md conflict; the branch is now 24 linear commits on main 62c3103 - the 21 slice commits replayed, one commit re-applying the eight both-sides resolutions (composition root, API document and its writer, the library public module, the web shell and its test, decisions D20-D57 in number order, LB6's trigger record after LB3's), one naming the rebased hashes in the review, tasks and trigger records, one closing the benchmark - an …"
+   },
+   {
+    "t": "2026-10-22T13:08:17Z",
+    "kind": "merged",
+    "slice": "LB6",
+    "commit": "5b59265"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T11:51:07Z",
+    "kind": "park",
+    "why": "LB1: the harness would not run LB1: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T12:12:19Z",
+    "kind": "park",
+    "why": "LB6: the harness would not run LB6: it reported its session limit reached, lifting at 3:40pm local time. Paused until 15:40, no attempt spent"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:50:12Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:50:40Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:50:58Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T11:51:00Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T12:52:52Z",
+    "kind": "cleared",
+    "parked": "2026-10-22T12:12:08Z",
+    "what": "try again"
+   },
+   {
+    "t": "2026-10-22T13:01:57Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   },
+   {
+    "t": "2026-10-22T13:08:15Z",
+    "kind": "granted",
+    "request": "merge-LB6-5b59265",
+    "what": "merge",
+    "slice": "LB6",
+    "commit": "5b59265",
+    "ci": "unverified",
+    "waited_s": 5,
+    "attempt": 2,
+    "lock_s": 0,
+    "gate_s": 20
+   }
+  ],
+  "slots": 1
+ },
+ "event": {
+  "v": 1,
+  "id": "library-after-lb6",
+  "t": "2026-10-22T13:08:30Z",
+  "kind": "choose-next",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "start",
+    "within": [
+     "LB7",
+     "LB8"
+    ]
+   }
+  ],
+  "wrong": [],
+  "why": "LB7 and LB8 are the two the log shows furthest along: prepared, planned and tasked, and LB7 ran for forty minutes before the session limit.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the deck's LB7 and LB8 lines (prepared, planned and tasked; LB7 claimed at 11:06 and paused at 11:50); the other cleared slices show only exit-1 parks.  The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

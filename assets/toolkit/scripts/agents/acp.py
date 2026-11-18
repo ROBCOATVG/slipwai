@@ -19,13 +19,17 @@ that is not JSON, a response carrying `error`, a call that outlives its ceiling,
 agent's stderr tail, raised to the caller of the one call it broke and nothing else. A reader thread never
 raises past itself.
 """
+# budget: 420 — the session, its pipe, and each tool call as its updates said it, for a permission asked of it
 from __future__ import annotations
 
 import contextlib
 import itertools
 import json
+import os
 import subprocess
+import tempfile
 import threading
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -55,6 +59,31 @@ OnUpdate = Callable[[Update], None]
 OnPermission = Callable[[dict[str, Any], list[dict[str, Any]]], "str | None"]
 #: Given the question's params, the action (`accept`, `decline`, `cancel`) and the content for an accept.
 OnQuestion = Callable[[dict[str, Any]], "tuple[str, dict[str, Any] | None]"]
+
+
+
+#: How long before a package launch that fell over is tried the once more.
+AGAIN = 2.0
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows has no flock; its launches are not serialised
+    fcntl = None  # type: ignore[assignment]
+
+
+@contextlib.contextmanager
+def one_at_a_time(fetched: bool) -> Any:
+    """Hold this machine's one turn at launching an agent through the package runner, until it has shaken
+    hands. Launches that do not fetch anything are not made to queue."""
+    if not fetched or fcntl is None:
+        yield
+        return
+    who = getattr(os, "getuid", lambda: 0)()
+    with (Path(tempfile.gettempdir()) / f"slipwai-launch-{who}.lock").open("a", encoding="utf-8") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(held, fcntl.LOCK_UN)
 
 
 class Fault(RuntimeError):
@@ -130,6 +159,9 @@ class Session:
         self.ids = itertools.count(1)
         self.waiting: dict[int, tuple[threading.Event, dict[str, Any]]] = {}
         self.open: dict[Any, str] = {}  # the agent's own requests not yet answered, by id, with their method
+        #: Each tool call as its `tool_call` and `tool_call_update`s said it, by id: a permission asked of one may
+        #: carry less (no `kind`, no `rawInput`), and a policy decides on the whole of what is known.
+        self.calls: dict[str, dict[str, Any]] = {}
         self.lock = threading.Lock()  # over `waiting`, `open` and the write side of the pipe
         self.busy = False
         self.exited: int | None = None
@@ -140,8 +172,30 @@ class Session:
 
     def start(self, handshake: float | None = None) -> Agent:
         """Spawn the agent and shake hands. The agent's stderr goes to a log beside the session's id. A
-        launch over `npx` is given `FETCHING` for its handshake, since the first one fetches the package."""
-        waits = handshake if handshake is not None else (FETCHING if Path(self.argv[0]).name == "npx" else TIMEOUT)
+        launch over `npx` is given `FETCHING` for its handshake, since the first one fetches the package —
+        and is one at a time on this machine, tried once more where the package runner itself fell over:
+        two captains launching one agent in the same second met in npm's cache, and one of them lost."""
+        fetched = Path(self.argv[0]).name == "npx"
+        waits = handshake if handshake is not None else (FETCHING if fetched else TIMEOUT)
+        with one_at_a_time(fetched):
+            try:
+                said = self.shaken(waits)
+            except Fault:
+                if not fetched or self.exited is None:
+                    raise
+                time.sleep(AGAIN)
+                self.exited = None
+                said = self.shaken(waits)
+        if said.get("protocolVersion") != PROTOCOL:
+            raise Fault(f"the agent speaks protocol version {said.get('protocolVersion')!r}, not {PROTOCOL}")
+        able = said.get("agentCapabilities") or {}
+        info = said.get("agentInfo") or {}
+        self.agent = Agent(name=str(info.get("name") or self.argv[0]), version=str(info.get("version") or ""),
+                           load_session=bool(able.get("loadSession")), auth_methods=list(said.get("authMethods") or []))
+        return self.agent
+
+    def shaken(self, waits: float) -> dict[str, Any]:
+        """The agent spawned, its reader begun, and what it answered `initialize`."""
         self.log.parent.mkdir(parents=True, exist_ok=True)
         self.errors = self.log.open("a", encoding="utf-8")
         try:
@@ -152,16 +206,9 @@ class Session:
             self.errors.close()
             raise Fault(f"the agent could not be started: {fault}") from fault
         threading.Thread(target=self.read, daemon=True).start()
-        said = self.call("initialize", {"protocolVersion": PROTOCOL, "clientInfo": {"name": "slipwai", "version": "2"},
+        return self.call("initialize", {"protocolVersion": PROTOCOL, "clientInfo": {"name": "slipwai", "version": "2"},
                                         "clientCapabilities": {"fs": {"readTextFile": False, "writeTextFile": False},
                                                                "terminal": False, **TERMINAL_SIGN_IN}}, waits)
-        if said.get("protocolVersion") != PROTOCOL:
-            raise Fault(f"the agent speaks protocol version {said.get('protocolVersion')!r}, not {PROTOCOL}")
-        able = said.get("agentCapabilities") or {}
-        info = said.get("agentInfo") or {}
-        self.agent = Agent(name=str(info.get("name") or self.argv[0]), version=str(info.get("version") or ""),
-                           load_session=bool(able.get("loadSession")), auth_methods=list(said.get("authMethods") or []))
-        return self.agent
 
     def authenticate(self, method_id: str) -> dict[str, Any]:
         """Sign in by one of the methods the agent offered at `initialize`. An agent-type method is the
@@ -237,7 +284,9 @@ class Session:
                         self.open[message["id"]] = str(message.get("method"))
                     threading.Thread(target=self.serve, args=(message,), daemon=True).start()
                 elif message.get("method") == "session/update":
-                    self.on_update(dict((message.get("params") or {}).get("update") or {}))
+                    update = dict((message.get("params") or {}).get("update") or {})
+                    self.known(update)
+                    self.on_update(update)
         finally:
             if child is not None:
                 child.wait()
@@ -253,12 +302,27 @@ class Session:
                 box["gone"] = True
                 done.set()
 
+    def known(self, update: dict[str, Any]) -> None:
+        """Keep what an update says of a tool call, each field as it was last said."""
+        if update.get("sessionUpdate") in ("tool_call", "tool_call_update") and update.get("toolCallId"):
+            with self.lock:
+                held = self.calls.setdefault(str(update["toolCallId"]), {})
+                held.update({key: value for key, value in update.items()
+                             if key != "sessionUpdate" and value is not None})
+
+    def whole(self, call: Any) -> dict[str, Any]:
+        """A permission's tool call over what the session's updates already said of it: the request's own fields win."""
+        said = dict(call) if isinstance(call, dict) else {}
+        with self.lock:
+            known = dict(self.calls.get(str(said.get("toolCallId") or ""), {}))
+        return {**known, **{key: value for key, value in said.items() if value is not None}}
+
     def serve(self, message: dict[str, Any]) -> None:
         """One request from the agent: a permission, a question, or something this client does not offer."""
         number, method, params = message.get("id"), str(message.get("method")), dict(message.get("params") or {})
         try:
             if method == "session/request_permission":
-                chosen = self.on_permission(dict(params.get("toolCall") or {}), list(params.get("options") or []))
+                chosen = self.on_permission(self.whole(params.get("toolCall")), list(params.get("options") or []))
                 outcome = {"outcome": "cancelled"} if chosen is None else {"outcome": "selected", "optionId": chosen}
                 self.reply(number, {"outcome": outcome})
             elif method == "elicitation/create":
@@ -272,7 +336,7 @@ class Session:
     def gone(self) -> str:
         tail = ""
         with contextlib.suppress(OSError):
-            tail = "".join(self.log.read_text(encoding="utf-8").splitlines(keepends=True)[-5:]).strip()
+            tail = "".join(self.log.read_text(encoding="utf-8", errors="replace").splitlines(True)[-5:]).strip()
         status = f"exited {self.exited}" if self.exited is not None else "is not running"
         return f"the agent {status}" + (f"; the last it said: {tail}" if tail else "")
 

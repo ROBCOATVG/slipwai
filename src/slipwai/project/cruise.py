@@ -52,8 +52,9 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
      "who answers a product question: the host where the stage recommends an answer or a standing decision "
      "covers it and `sail-decide-skipper` otherwise, or `sail-decide-skipper` for every question"),
     ("release", ("flagged", "park"), "flagged",
-     "the release-constraint stage: every slice continues or opens a flag seeded off, so every merge is dark; "
-     "or park at the push and let a person say it is a release they want"),
+     "the release-constraint stage when the product is live (flagged mode): every slice continues or opens a "
+     "flag seeded off, so every merge is dark; or park at the push and let a person say it is a release they "
+     "want. Pre-launch and pilot products open no flag, whatever this says"),
     ("constitution", ("ratify", "park"), "ratify",
      "an unratified constitution: the skipper drafts and ratifies it, marked pending human review; or park"),
     ("hand", ("browser", "http", "cli"), "browser",
@@ -63,11 +64,19 @@ SETTINGS: tuple[tuple[str, tuple[str, ...] | str, object, str], ...] = (
      "at the catastrophic or when it fails; or a park at once"),
     ("upstream", ("park", "advance"), "park",
      "the steps above the chart — the drafted specification, the storyboard and the event model: stop at "
-     "each for a person, or have the board start the next one, and approve the storyboard, as each ends well"),
-    ("sessions", ("print", "protocol"), "print",
-     "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
-     "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
-     "launch row this machine can make, proven on Claude Code and OpenCode"),
+     "each for a person, or have the board start the next one, and approve the storyboard, as each ends well — "
+     "never past a storyboard whose review has a Blocker or an open question, nor after a person has said "
+     "something to a stage, until they press Carry on"),
+    ("sessions", ("auto", "print", "protocol"), "auto",
+     "how a captain starts a session: `auto`, over the Agent Client Protocol — which shows its work as it "
+     "goes, holds the session open and takes messages and a stop — where the harness's launch is marked "
+     "proven in the registry and this machine can make it, and the harness's print mode elsewhere; `print` "
+     "always; or `protocol` on any launch row this machine can make"),
+    # Who accepts a whole capability. The hand by default: its verdict at the walk is the acceptance, the
+    # capability's slices are done, and the film is an opportunity for a person to say what it showed.
+    ("demos", ("hand", "person"), "hand",
+     "who accepts a whole capability: the hand, whose verdict at its walk is the acceptance and whose film is "
+     "there for a person to comment on; or a person, who is asked to accept or say not yet"),
     # `stuck_after`, `max_iterations`, `max_hours` and `poll_minutes` were here until 7.7d and are not any
     # more: each was a budget on a loop that no longer exists. What bounds a run is the telegraph
     # (`harbour.json`), which is one lever rather than four numbers nobody set.

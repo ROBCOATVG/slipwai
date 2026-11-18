@@ -7,9 +7,9 @@ Two things are held here and they are the whole slice.
 is worse than no board. A tool that computed its own version of the board would be a second answer, and the
 one you were looking at would be whichever window you had open.
 
-**The one write is the bridge's own.** Answering a `told` goes through `bridge.tell`, so the line an agent
-writes into a stream's deck log is the line a person typing into the bridge would have written — same
-fields, same file, same reader at the other end.
+**The one write is the board's own.** `tell` goes through `talk_said.tell`, so what an agent places in an
+inbox is what a person typing on the board would have placed — signed the same, in the same inbox, with the
+same driver delivering it.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import logs, mcp
+from slipwai import logs, mcp, talk
 from slipwai.assets import VERSION
 from slipwai.cli_fleet import lines, stream_lines
 from slipwai.project.harbour import CONFIG, harbour_config
@@ -128,22 +128,29 @@ class SameFoldTest(Harbour):
 
 
 class TellTest(Harbour):
-    """The one write, and it is the bridge's."""
+    """The one write, and it is the board's: a message placed in an inbox, never a deck line."""
 
-    def test_the_line_is_the_one_the_bridge_would_have_written(self) -> None:
-        self.text("tell", fairway="ordering", message="use the minor unit")
+    def inbox(self, slice_id: str = talk.CAPTAIN) -> list[dict]:
+        return talk.inbox(talk.place(logs.run_dir(self.root), "ordering", slice_id))
+
+    def test_the_message_is_the_one_the_board_would_have_placed_in_the_captain_s_inbox(self) -> None:
+        said = self.text("tell", fairway="ordering", message="use the minor unit")
+        [sent] = self.inbox()
+        self.assertEqual((sent["kind"], sent["text"]), ("say", "use the minor unit"))
+        self.assertEqual(sent["from"], "person", "a person's message is the only kind that answers a park")
+        self.assertIn(sent["id"], said, "its id, to follow its receipt by")
         written = (logs.deck_path(self.root, "ordering", "ordering")).read_text(encoding="utf-8")
-        last = json.loads(written.splitlines()[-1])
-        self.assertEqual(last["kind"], "told")
-        self.assertEqual(last["fairway"], "ordering")
-        self.assertEqual(last["message"], "use the minor unit")
-        self.assertEqual(last["by"], "person", "a person's line is the only kind that answers a park")
+        self.assertNotIn('"told"', written)
 
-    def test_under_a_dispatched_session_the_line_is_the_session_s(self) -> None:
+    def test_a_slice_named_is_told_in_its_own_inbox(self) -> None:
+        self.text("tell", fairway="ordering", slice="S1", message="mind the rounding")
+        self.assertEqual([one["text"] for one in self.inbox("S1")], ["mind the rounding"])
+        self.assertEqual(self.inbox(), [])
+
+    def test_under_a_dispatched_session_the_message_is_the_session_s(self) -> None:
         with mock.patch.dict(os.environ, {"SLIPWAI_FAIRWAY": "ordering"}):
             self.text("tell", fairway="ordering", message="for the host: two gates are red")
-        written = (logs.deck_path(self.root, "ordering", "ordering")).read_text(encoding="utf-8")
-        self.assertEqual(json.loads(written.splitlines()[-1])["by"], "session")
+        self.assertEqual(self.inbox()[0]["from"], "session")
 
     def test_a_message_with_nothing_in_it_is_an_error_result_rather_than_a_line(self) -> None:
         found = self.call("tell", fairway="ordering", message="   ")

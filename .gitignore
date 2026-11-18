@@ -17,3 +17,6 @@ __pycache__/
 
 # Deck logs and the harbour log: synced through refs/slipwai/logs, never committed on main
 .slipwai/logs/
+
+# What an eval run of the captain wrote — its orders and its report — a person's to read, never committed
+/evals/captain/runs/

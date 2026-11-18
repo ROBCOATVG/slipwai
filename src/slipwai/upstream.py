@@ -11,6 +11,13 @@ stops here as it always did, so does a disapproved storyboard, and so does anyth
 running. What is decided is the one step the board would offer next — this reads the same `drawable` and
 `launchable` the buttons are shown by, so it cannot press one that is not there.
 
+**And only where there is nothing to discuss.** The first real run asked a question of a finished storyboard,
+the reply's turn ended well, and that end was read as the step's: the board approved forty-nine states
+straight past a review with fourteen Blockers, and started the model. A reply is not a step ending; a person's
+word to a stage holds the board until they say to carry on (`stage_talk`), and a storyboard whose review has
+a Blocker, whose research has a question open, or whose review cannot be read is left for the person, with
+the reason said in the stage card and under Waiting on you (`stopped`).
+
 **An approval given this way says so.** The storyboard's `mock-states.md` carries a line naming the setting,
 because the file is what the model and the chart read as a person's verdict, and one nobody gave has to be
 told apart from one somebody did.
@@ -24,10 +31,12 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from .fleet_page import plural, waiting_on_you
-from .init_run import draft, draw, outside_session
-from .passage import record_verdict, specifications, storyboards, surfaces
-from .stage_session import running
+from . import stage_talk, step_record
+from .drawn import withdrawn
+from .init_run import draft, draw, first_feature, outside_session
+from .logs import run_dir
+from .passage import disapproved, record_verdict, specifications, storyboards, surfaces
+from .review_reading import gate
 from .stage_steps import launch
 from .wheel import orders
 
@@ -48,13 +57,104 @@ def advancing(root: Path) -> bool:
 
 
 def unjudged(root: Path) -> str:
-    """The feature whose storyboard is drawn and has no verdict yet, or `""` where there is none."""
+    """The feature whose storyboard is drawn and has no verdict yet, or one a conversation has withdrawn part
+    of by changing its pages, or `""` where there is none."""
     judged = {path.parent.parent.name for path in storyboards(root)}
     for spec in specifications(root):
         mockups = spec.parent / "mockups"
-        if spec.parent.name not in judged and mockups.is_dir() and next(mockups.glob("*.html"), None):
+        drawn = mockups.is_dir() and next(mockups.glob("*.html"), None)
+        if drawn and (spec.parent.name not in judged or withdrawn(root, spec.parent.name)):
             return spec.parent.name
     return ""
+
+
+#: Which stage a command's conversation is, said the way a person reads it.
+NAMED = {"mockups": "drawing", "model": "model", "draft": "draft", "launch": "launch", "assess": "assessment"}
+
+
+def stopped(root: Path) -> tuple[str, str]:
+    """Why the board, set to advance, will not press the next button by itself, and where on the page to go
+    about it; `("", "")` where nothing holds it, and always on a project left at `park`.
+
+    A person's word holds it — anything said to a stage, answered or queued, until they press Carry on or
+    give the verdict the step waits for. And a storyboard is never approved past a review with a Blocker, a
+    question only the person can answer, or a review that cannot be read."""
+    if not advancing(root):
+        return "", ""
+    held = stage_talk.held(root)
+    if held:
+        named = " and ".join(f"the {NAMED.get(one, one)} stage" for one in held)
+        queued = any(stage_talk.undelivered(root, one) for one in held)
+        return (f"You said something to {named}{', and it waits to be said' if queued else ''}: the board does "
+                "not move on by itself until you press Carry on" + (", or approve or disapprove the storyboard"
+                                                                    if "mockups" in held else ""),
+                "#storyboard-talk" if "mockups" in held else "#fitting")
+    # Not while the drawing is still under way: what it has written so far is not yet the storyboard.
+    waiting = unjudged(root) if outside_session(root) is None else ""
+    if waiting and (gone := withdrawn(root, waiting)):  # the board never writes its approval over a verdict
+        return (f"The storyboard for {waiting} has changed since its verdict ({'; '.join(gone)}): the board does "
+                "not approve over a verdict a person gave, so approve or disapprove it yourself", "#mockups")
+    if waiting and (unseen := unrecorded(root, waiting)):
+        return unseen, "#mockups"
+    why = gate(root, waiting) if waiting else ""
+    if why:
+        return (f"The storyboard for {waiting} waits for you rather than being approved by the board: {why}",
+                "#mockups")
+    return "", ""
+
+
+def unrecorded(root: Path, feature: str) -> str:
+    """Why the board cannot press past the drawing of `feature`: it has no record of that drawing ending well.
+    A pid file whose process is gone, with no record after it, is a drawing interrupted — the board or the
+    drawing stopped before it ended — and what is on disk is half a storyboard. Nothing where it ended well."""
+    seen = step_record.record(root, "surfaces")
+    marker = run_dir(root) / "surfaces.pid"
+    try:
+        began = marker.stat().st_mtime
+    except OSError:
+        began = None
+    if began is not None and outside_session(root) is None and (seen is None or seen["t"] < began):
+        return (f"The drawing of {feature} was interrupted — the board or the drawing stopped before it ended — so "
+                "what is drawn may be half a storyboard, and the board will not approve it by itself: draw it "
+                "again, or look at it and approve or disapprove it yourself")
+    if seen is None or seen.get("feature") != feature:
+        return (f"The board has no record of the drawing of {feature} ending — it was drawn before this build, by "
+                "hand, or in another window — so it will not approve it by itself: approve or disapprove it "
+                "yourself, once, and the board goes on from there")
+    if seen.get("code"):
+        return (f"The drawing of {feature} ended short (exit {seen['code']}), and the board does not approve what a "
+                "step that ended short left: draw it again, or approve or disapprove it yourself")
+    return ""
+
+
+def held_by(board: Any) -> tuple[str, str]:
+    """`stopped`, and what the board's own run says besides: a step that ended short — the stage's own, a reply
+    stopped or broken, or a later stage's failure a conversation with an earlier one was swapped in over — is
+    a stop too, and Carry on does not lift it. Said, so that pressing Carry on and seeing nothing happen never
+    happens without a reason on the page."""
+    why = stopped(board.root)
+    if why[0] or not advancing(board.root):
+        return why
+    running = board.fitting
+    said = running.said(10 ** 9) if running is not None else None
+    if said and said["done"] and said["code"]:
+        return (f"The last step on this board ({said['step'] or 'a reply'}) ended short, and the board does not "
+                "move on from a step that did: its lines on the stage card say where, and its button tries again",
+                "#fitting")
+    if running is not None and getattr(running, "earlier", None):
+        step, code = running.earlier
+        return (f"`{step}` ended short (exit {code}) before this conversation, and the board does not move on from "
+                "it: its button on the strip tries again", "#fitting")
+    feature = drawing_of(board.root)
+    if board.drawable() and step_record.repeated(board.root, "draw", feature):
+        return (f"The board drew {feature or 'the storyboard'} by itself and nothing has changed since, so it will "
+                "not draw it again by itself: Draw the storyboard tries again", "#fitting")
+    return "", ""
+
+
+def drawing_of(root: Path) -> str:
+    """The feature a press of Draw the storyboard draws: the one turned down, else the first specification."""
+    return disapproved(root) or first_feature(root)
 
 
 def next_step(root: Path, idle: bool, drawable: bool, launchable: bool) -> str:
@@ -85,18 +185,31 @@ def advance(board: Any) -> None:
         return  # another window's poll is already pressing it
     try:
         running = board.fitting
+        # Anything a person has said, and a storyboard with something in it to discuss, is a stop: `stopped`
+        # says which, and the page says it where the person is looking.
+        if advancing(board.root) and stopped(board.root)[0]:
+            return
         # The draft is not a step a person holds off: a document with no specification is drafted the
         # moment the board sees it, once. What a draft that drafted nothing leaves is the button, and a line.
         if board.draftable() and not board.drafted:
             board.drafted = True
             board.fitting = draft(board.root, running.said()["lines"] if running else None)
             return
-        done = not running or (running.said()["done"] and not running.said()["code"])
+        done = not running or (running.said()["done"] and not running.said()["code"]
+                                    and not getattr(running, "earlier", None))
         step = next_step(board.root, done and not outside_session(board.root), board.drawable(), board.launchable())
         lines = running.said()["lines"] if running else None
+        name, about = (step.split() + ["", ""])[:2]
+        about = drawing_of(board.root) if name == "draw" else about
+        # Never the same press for the same feature twice in a row with nothing changed: a drawing that drew
+        # nothing is not drawn again on every poll. `held_by` says so on the page.
+        if not step or step_record.repeated(board.root, name, about):
+            return
+        step_record.pressed(board.root, name, about)
         if step == "draw":
             board.fitting = draw(board.root, lines)
-        elif step.startswith("approve "):
+        elif step.startswith("approve ") and not (board.root / "specs" / step.split()[1] / "mockups" /
+                                                  "mock-states.md").exists():  # never over a person's verdict
             board.after_storyboard(record_verdict(board.root, step.split()[1], "approved", by=APPROVED_BY))
         elif step == "launch":
             board.launched = True
@@ -104,48 +217,3 @@ def advance(board: Any) -> None:
     finally:
         PRESSING.release()
 
-
-def open_asks(board: Any) -> int:
-    """The cards a running stage has put up and nobody has answered."""
-    session = running(board)
-    if session is None:
-        return 0
-    turns = session.said(0)["turns"]
-    asked = {t["ask"]["id"] for t in turns if t.get("kind") in ("permission", "question") and t.get("ask")}
-    answered = {t["ask"]["id"] for t in turns if t.get("kind") == "answered" and t.get("ask")}
-    return len(asked - answered)
-
-
-def on_voyage(board: Any, fleet: dict[str, Any], able: dict[str, bool]) -> dict[str, Any]:
-    """What the Voyage waits on a person for: one count, and the first thing in its own words with the way
-    to it. `able` is the flags that show the strip's buttons, so the words here and the button there agree.
-
-    A question on a card and a slice parked on somebody are counted each; a button the page is offering is
-    one thing, whichever it is, because the stages come one at a time. A stage still running offers no
-    button and is not a wait, which is what `able` already says.
-    """
-    held: list[tuple[int, str, str]] = []
-    asked = open_asks(board)
-    if asked:
-        held.append((asked, "The agent asks you something" if asked == 1 else f"The agent asks you {asked} things",
-                     "#stage-asks"))
-    on_you = waiting_on_you(fleet)
-    if on_you:
-        held.append((on_you, f"{plural(on_you, 'slice')} waiting on you", "#tab-work"))
-    fitting = getattr(board, "fitting", None)
-    approving = unjudged(board.root) if fitting is None or fitting.said()["done"] else ""
-    if approving:
-        held.append((1, f"The storyboard for {approving} is drawn: approve it or send it back", "#tab-screens"))
-    elif able.get("draftable"):
-        held.append((1, "The draft ended without a specification: draft it again", "#draft"))
-    elif able.get("drawable"):
-        held.append((1, "The specification is ready: read it, then draw the storyboard", "#draw"))
-    elif able.get("modelable"):
-        held.append((1, "The storyboard is approved: model it", "#model"))
-    elif able.get("launchable"):
-        held.append((1, "The storyboard is approved: continue the build", "#launch"))
-    elif able.get("castable"):
-        held.append((1, "The chart is split: cast off the fleet", "#cast-off"))
-    if not held:
-        return {"count": 0, "text": "", "href": ""}
-    return {"count": sum(n for n, _, _ in held), "text": held[0][1], "href": held[0][2]}

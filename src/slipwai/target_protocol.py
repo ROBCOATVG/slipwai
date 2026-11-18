@@ -17,6 +17,7 @@ answering them replaces a branch rather than adding one:
 - `pipeline` — the parts of the deploy workflow that are this cloud's: the CLI a runner may not ship, how a
   job becomes the deploy identity, how it signs in to the registry, and what the stacks read out of the
   environment. The job's *shape* stays the keel's, so a target supplies parts and never rewrites the promise.
+  Optionally `configured`: the repository variable whose emptiness means the cloud is not set up yet.
 - `readme_words` — the nouns the README's *Production* section is written round.
 - `agent_rules` — the paragraph an agent is held to about how this project reaches production.
 - `add_commands` — what `add-service` and `add-frontend` say afterwards about the destination.
@@ -36,6 +37,7 @@ shape without the catalog, the selection or any part of a project being read.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
@@ -118,6 +120,19 @@ KEYS: dict[str, tuple[str, ...]] = {
     FLAG_TRANSPORTS.name: ("default",),
 }
 
+#: What a dict-shaped member may also hold, read by the keel where it is there and never owed. Absent, the
+#: keel does exactly what it did before the key existed, which is what makes adding one a MINOR.
+#:
+#: `pipeline`'s `configured` is the name of the one repository variable `make bootstrap` writes that proves
+#: the forge has been pointed at this cloud. The deploy pipeline is skipped whole while it is empty, so a
+#: project pushed before its cloud is ready reads *skipped* rather than red on every trunk push.
+OPTIONAL_KEYS: dict[str, tuple[str, ...]] = {
+    PIPELINE.name: ("configured",),
+}
+#: What a forge variable's name may be: the one shape GitHub and Gitea both accept, and the shape every
+#: variable `make bootstrap` writes already has.
+VARIABLE_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
 
 def required() -> tuple[TargetMember[Any], ...]:
     """The members a managed target owes, in the protocol's order."""
@@ -195,6 +210,10 @@ def key_faults(said: str, member: TargetMember[Any], value: object) -> list[str]
     if missing := [key for key in wanted if key not in value]:
         return [f"{said} answers {member.name} without {', '.join(missing)}, which the keel reads by name: "
                 f"it holds {', '.join(wanted)}"]
+    configured = value.get("configured") if member is PIPELINE else None
+    if configured is not None and not (isinstance(configured, str) and VARIABLE_NAME.match(configured)):
+        return [f"{said} answers pipeline's configured with {configured!r}, where the keel wants the name of "
+                f"the repository variable `make bootstrap` writes, such as AZURE_CLIENT_ID"]
     return []
 
 

@@ -49,6 +49,32 @@ a `## Redrawn` section to `research.md` saying what changed and which part of th
 answers. Leave `mock-states.md` alone: `surfaces.py` retires it to
 `disapproved.md` once the redraw lands, so the new storyboard waits on a verdict of its own.
 
+**When the person talks to that session afterwards.** The board keeps the drawing's session, and what a
+person types under the storyboard comes to it as one more turn, followed by a line beginning *The board
+started this turn*. Answer in that turn. A change they ask for is made there and then, in place and under
+the same file name, as a redraw would make it; the board withdraws any verdict on a page that changed, so
+leave `mock-states.md` alone. A decision they make — an answer to one of `research.md`'s `## Questions`, how
+a finding in the review is settled — is written down in the same turn: the next entry of
+`specs/<feature>/decisions.md`, in the shape `commands/cruise.md` shows, with `Decided by: human`, and the
+question or the finding marked `— answered (D<n>)` where it was written, and the two counts below rewritten.
+Saying it is not recording it. A verdict is still not yours: `approved`, `parked` and `n/a` are given on the
+board.
+
+**What is left to discuss, declared.** Begin `research.md` with these two lines, as plain text — no bold, no
+list marker:
+
+```
+Blockers open: pending
+Questions open: pending
+```
+
+Only when the review is finished, replace `pending` with the counts in figures: `Blockers open`, the Blocker
+findings nobody has settled; `Questions open`, the questions under `## Questions` nobody has answered; `0`
+where there are none. Until then `pending` tells the board the review is not finished. Keep the counts true:
+rewrite them whenever a finding or a question is settled, in a conversation turn as much as in the drawing. A board set to advance by itself reads these two
+lines to tell whether a storyboard has anything left to discuss, and waits for the person where it cannot
+read them; a person judging the storyboard needs nothing from them.
+
 ## 1. The researcher
 
 Delegate this half to a fresh context that may write under `specs/<feature>/mockups/` and nowhere else. Give
@@ -83,11 +109,13 @@ old code, the old app's look is the direction to follow.
 
 It writes `specs/<feature>/mockups/research.md` in that shape, one section per surface, each naming what it
 drew on. Questions the spec does not answer go under `## Questions` and the stage copies them to the inbox.
+It opens with the two lines above, `Blockers open: N` and `Questions open: N`.
 
 Then one of two things, depending on what was in the directory.
 
 - **A person handed over mock-ups.** Review each against the note. One finding list per mock-up, in the
-  shape the `/gaps` stage uses, so one triage reads both. Do not redraw them.
+  shape the `/gaps` stage uses, so one triage reads both, in `specs/<feature>/mockups/review.md`. Do not
+  redraw them.
 - **A person handed over a prototype** (`docs/design/prototype/index.html`): the drawing they approved by
   playing it. The storyboard embeds it first, as the thing to play, and every surface drawn or reviewed
   follows its look and layout; a surface page that says a state in words the prototype shows is reviewed

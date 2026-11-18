@@ -1297,8 +1297,9 @@ def told_after_parks() -> list[logs.Entry]:
     The answer waits and clears the park once the backlog is read. A park the captain wrote at the ceiling
     itself is `cleared_for_review`'s, whatever anybody says.
 
-    **Aimed, where it says a slice.** A `told` naming a `slice` clears only that slice's park; one naming
-    none is for the stream, and clears every park open in it, as before.
+    **Aimed, where it says a slice.** A `told` naming a `slice` clears the park about that slice — its own,
+    or the whole stream's where its why opens with that slice — never a sibling's nor one about the stream;
+    one naming none is for the stream, and clears every park open in it.
 
     Every deck log whole, not the lines new this pass: a park can be older than the cursor, and a receipt
     already written drops that park from `open_parks`, so a second pass writes nothing.
@@ -1319,12 +1320,22 @@ def told_after_parks() -> list[logs.Entry]:
         for park in parks:
             # A message aimed at one slice — the box on its red card — answers that slice's park and no
             # other: three slices parked on three different questions are three answers, not one.
-            after = [e for e in told if e.t > park.t
-                     and (not e.fields.get("slice") or e.fields.get("slice") == park.fields.get("slice"))]
+            # A park of the whole stream written about one slice — its why opens `L03: …` — is answered by a
+            # person's word to that slice as well as to the stream; one about the stream, only by the stream's.
+            after = [e for e in told if e.t > park.t and aimed(e, park)]
             if after:
                 found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                         what=str(after[-1].fields.get("message", "")).strip() or "told"))
     return found
+
+
+def aimed(told: logs.Entry, park: logs.Entry) -> bool:
+    """Whether a person's `told` answers this park: the stream's word answers any; a word to a slice answers the
+    park about that slice — naming it, or a park of the whole stream whose why opens with it — and no other."""
+    named = str(told.fields.get("slice", ""))
+    if not named:
+        return True
+    return logs.about(park, named)
 
 
 def cleared_for_review() -> list[logs.Entry]:

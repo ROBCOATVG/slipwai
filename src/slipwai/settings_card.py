@@ -23,7 +23,7 @@ from .dials import dials as dials_of
 from .fleet import NOTHING
 from .page_shell import PLAIN, esc
 from .telegraph import MEANS, POSITIONS, SETTINGS
-from .wheel import ASKS, STOPS, known, orders
+from .wheel import MORE, STOPS, asks, known, orders
 
 #: The dial's positions as a person reads them, and the plain names of the numbers under them. `PLAIN` is
 #: the board's, because the same names label the fine tune and the fold; this holds only the dial.
@@ -41,9 +41,13 @@ STYLE = """
 .settings .panel>:first-child{margin-top:0}
 .settings .panel .empty{margin:0 0 12px}
 .settings .dials{display:grid;gap:12px}
-.settings .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center}
-.settings .row small{grid-column:1 / -1;color:var(--ink-3);font-size:.76rem;margin-top:-4px}
-.settings .row .dial{margin:0}
+/* The name keeps a width of its own and the choices wrap beside it: a choice as wide as its words would take
+   the whole row and leave the name a column of syllables. */
+.settings .row{display:grid;grid-template-columns:minmax(9rem,15rem) minmax(0,1fr);gap:6px 14px;align-items:center}
+.settings .row small{grid-column:1 / -1;color:var(--ink-3);font-size:.76rem;margin-top:-2px;line-height:1.4}
+.settings .row .dial{margin:0;justify-content:flex-end}
+.settings .row .dial button,.settings .row .dial span{white-space:normal;text-align:left;max-width:100%}
+.settings .panels{padding-bottom:3.5rem}
 .settings .where{font-family:var(--mono);font-size:.74rem;color:var(--ink-3);
   margin:14px 0 0;padding-top:10px;border-top:1px solid var(--rule-2)}
 .settings .dial .now.asks{background:var(--brass);border-color:var(--brass)}
@@ -55,7 +59,7 @@ STYLE = """
 .settings .stages .fell{color:var(--ink-3)}
 .settings .stages .key{font-family:var(--mono);font-style:normal;
   font-size:.74rem;color:var(--ink-3)}
-@media (max-width:600px){.settings .row{grid-template-columns:1fr}}
+@media (max-width:700px){.settings .row{grid-template-columns:1fr}.settings .row .dial{justify-content:flex-start}}
 """
 
 
@@ -68,7 +72,8 @@ def rules(keys: list[str]) -> str:
         f"#tab-{key}:checked~.panels>[data-panel={key}]{{display:block}}" for key in keys)
 
 
-def row(panel: str, one: Dial, values: tuple[str, ...], now: str, controls: bool, asks: str = "") -> str:
+def row(panel: str, one: Dial, values: tuple[str, ...], now: str, controls: bool, asks: str = "",
+        more: str = "") -> str:
     """One setting, with its values as a dial: the one it is on said, the rest pressable.
 
     `asks` is the value that means a person is asked, where the setting has one. It is drawn amber, which
@@ -80,7 +85,8 @@ def row(panel: str, one: Dial, values: tuple[str, ...], now: str, controls: bool
         else f'<button data-dial="{esc(panel)}" data-key="{esc(one.key)}" data-value="{esc(value)}">'
              f"{esc(one.says.get(value, value))}</button>"
         for value in values if value == now or controls)
-    return f'<div class="row"><b>{esc(one.title)}</b><div class="dial">{dial}</div></div>'
+    under = f"<small>{esc(more)}</small>" if more else ""
+    return f'<div class="row"><b>{esc(one.title)}</b><div class="dial">{dial}</div>{under}</div>'
 
 
 def panel(name: str, title: str, note: str, rows: str, where: str = "") -> str:
@@ -137,8 +143,8 @@ def stops_tab(answers: dict[str, str], controls: bool) -> tuple[str, str, str] |
     if not answers:
         return None
     rows = "".join(row("cruise", Dial(name, title, says), known(name), answers.get(name, ""), controls,
-                       ASKS) for name, title, says in STOPS)
-    asked = [title.lower() for name, title, _ in STOPS if answers.get(name) == ASKS]
+                       asks(name), MORE.get(name, "")) for name, title, says in STOPS)
+    asked = [title.lower() for name, title, _ in STOPS if answers.get(name) == asks(name)]
     note = (WHEEL + " " + (f"This run stops for you at: {', '.join(asked)}."
                            if asked else "Nothing here stops for you: this run answers every one itself."))
     return ("answers", "Who answers",

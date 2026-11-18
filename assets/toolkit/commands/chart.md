@@ -97,8 +97,8 @@ put it to the person.
 
 **Pass one always writes its context answer as the next entry of `specs/<feature>/decisions.md`**, whether
 it found several contexts or one — the shape `commands/cruise.md` shows and `make check-decisions` holds
-(Question, Options, Decision, Why with Read against, Decided by, Confidence with Would reverse if, Written
-to, Status). Head it `## D<n> — Which bounded contexts does <feature> touch?`, and put the seam table
+(Question, Options, Decision, In short, Why with Read against, Decided by, Confidence with Would reverse if,
+Written to, Status). Head it `## D<n> — Which bounded contexts does <feature> touch?`, and put the seam table
 under its `Options` line, indented two spaces so it stays inside the entry: candidate, entities it owns,
 the Language · Change · Flow evidence with file and line, what crosses, confidence. One context is an
 answer and the one that most needs its table: one fairway is one captain taking every slice in turn.
@@ -155,6 +155,21 @@ The split fills in, per slice:
   here and will not reliably be later. `check-chart` refuses a slice without one.
 - `sets` — the marks this slice publishes, from the `marks` block. One mark has exactly one setter.
 - `steers_by` — the marks it builds against, which some other slice sets.
+
+**When the product is in pilot**, the split writes one more file. Check with `python3
+scripts/agents/release_state.py`; under any other mode, skip this. Pilot merges in **keystone** mode: a
+capability's slices land unreachable, and its entry point — the route, menu item or command a pilot user
+reaches it by — is wired by its last slice. Write `specs/<feature>/keystones.yaml` beside the chart, one line
+per capability that has an entry, naming the entry's files as globs:
+
+```yaml
+place-an-order: [apps/web/src/routes/orders/**, apps/web/src/menu.tsx]
+```
+
+The last slice of each capability in the chart's order is the one that wires it, and `make
+check-slice-scope` refuses the entry to every other slice. The file is the host's, like the chart. A
+pre-launch product merges every slice visible and needs no file; a live one holds a capability behind a
+flag instead.
 
 ## The shape
 

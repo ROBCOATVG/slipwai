@@ -17,8 +17,9 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 635 — every column of the board folded from the logs, an instant read in either shape it is
-# written, including what waits on a person: a park,
+# budget: 660 — the clearance answers one read of the board shares, a `read` tied to its `told` by inbox id,
+# and today's tokens; every column of the
+# board folded from the logs, an instant read in either shape it is written, including what waits on a person: a park,
 # a deck log nobody can read, a last-seen age said in the unit a person reads it in,
 # a told, the decisions nobody has read, a question a headless stage posted and nobody has answered, and the
 # capabilities whole and owed their gates
@@ -33,12 +34,14 @@ import ast
 import json
 import re
 import subprocess
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from .deck import recent, said
+from .demos import on_board
 from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name through this module
     FEED,
     GROUPED,
@@ -66,6 +69,7 @@ from .logs import (
     unmerged,
 )
 from .shell_environment import login_environment, project_python
+from .talk_placed import placed
 from .timeline import spans
 
 
@@ -189,7 +193,7 @@ class Fairway:
     def unreviewed(self) -> list[Entry]:
         """Every `decision` a person has not read: no `read` names its instant, and no person took it. The
         rule `inbox.py` holds the ceiling to, so what the board offers to mark read is what the ceiling counts."""
-        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
+        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read" and not e.fields.get("inbox")}
         return [e for e in self.entries if e.kind == "decision" and e.fields.get("decided_by") != "human"
                 and e.t not in receipts]
 
@@ -202,7 +206,9 @@ class Fairway:
         me` a person ever sent stayed under *Waiting on you* — and turned the Slices step red with "make
         cruise-tell answers a park" while the fleet ran and nothing was parked.
         """
-        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read"}
+        # A `read` naming an inbox id is that `told`'s alone (`inbox.unread`), never another line's in its second.
+        receipts = {str(e.fields["told"]) for e in self.entries if e.kind == "read" and not e.fields.get("inbox")}
+        answered = {str(e.fields["inbox"]) for e in self.entries if e.kind == "read" and e.fields.get("inbox")}
         # A hand-back with needs is answered by trunk, not by a reading: the harbourmaster's `told-met`.
         receipts |= {str(e.fields.get("told", "")) for e in self.receipts
                      if e.kind == "told-met" and str(e.fields.get("fairway", "")) == self.name}
@@ -216,7 +222,8 @@ class Fairway:
                 parked = True
             elif entry.kind == "claimed":
                 parked = False
-            if entry.kind != "told" or entry.t in receipts or for_someone_else(entry):
+            if entry.kind != "told" or entry.t in receipts or for_someone_else(entry) or \
+                    str(entry.fields.get("inbox") or "-") in answered:
                 continue
             if again[index][0] != index:
                 continue
@@ -357,10 +364,13 @@ def feed(found: list[Fairway], harbour: list[Entry], limit: int = FEED) -> list[
     return sorted(lines)[-limit:]
 
 
-def spent(found: list[Fairway]) -> int | None:
-    """Thousands of input tokens the whole harbour has recorded, or None where nothing records any."""
-    counted = [one.tokens for one in found if one.tokens is not None]
-    return sum(counted) if counted else None
+def spent(found: list[Fairway], day: datetime | None = None) -> int | None:
+    """Thousands of input tokens the whole harbour has recorded — on `day`'s date only, where given, which is
+    what a budget per day is held against — or None where nothing records any."""
+    on = day.astimezone(UTC).strftime("%Y-%m-%d") if day is not None else ""
+    counted = [e.fields["tokens"] for one in found for e in one.entries
+               if isinstance(e.fields.get("tokens"), int | float) and e.t.startswith(on)]
+    return int(sum(counted)) if counted else None
 
 
 def pressure(config: dict, harbour: list[Entry]) -> dict[str, object]:
@@ -513,6 +523,11 @@ def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[
     return feature, {str(f): [str(s) for s in ids] for f, ids in ready.items()}, ""
 
 
+#: The answers the clearance script has given inside one read of the board, by feature. `board_read` opens
+#: one around its fold, so the columns and the berths ask the project's script once between them, not twice.
+ASKED: ContextVar[dict[str, tuple[str, dict, str]] | None] = ContextVar("asked", default=None)
+
+
 def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
     """Read the project's existing clearance rule through its offline JSON port, never duplicate it: the
     whole answer — the ready set, every slice's state, the schedule — and a fault where it could not be."""
@@ -520,7 +535,17 @@ def clearance_query(root: Path, feature: str = "") -> tuple[str, dict, str]:
               if not feature or path.parent.name == feature]
     if not charts:
         return feature, {}, ""
-    feature = charts[0].parent.name
+    feature, memo = charts[0].parent.name, ASKED.get()
+    if memo is not None and feature in memo:
+        return memo[feature]
+    found = asked_of(root, feature)
+    if memo is not None:
+        memo[feature] = found
+    return found
+
+
+def asked_of(root: Path, feature: str) -> tuple[str, dict, str]:
+    """One run of the project's clearance script for one charted feature."""
     try:
         manifest = json.loads((root / "project.json").read_text(encoding="utf-8"))
         delivery = str((manifest.get("layout") or {}).get("delivery") or ".")
@@ -598,9 +623,9 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         if fault:
             clearance_faults.add(feature)
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
-    accepted = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "accepted"]
-    due = [str(e.fields["capability"]) for one in found for e in one.entries if e.kind == "demo-due"]
-    waiting = inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)
+    demos, accepted, due_in = on_board(root, [(one.name, one.entries) for one in found])
+    # Each park and question with the slice it is about and any answer a person has placed: `talk_placed`.
+    waiting = placed(root, inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults))
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same
@@ -610,17 +635,19 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         "processes": processes(root, found, now),
         "timeline": spans(found, now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if now else ""),
         # The acceptance facts, for the voyage's last stage: a demo owed is a capability due and not yet
-        # accepted, and accepted is the only line a capability ends on.
-        "accepted": sorted(set(accepted)),
+        # accepted, and accepted is the only line a capability ends on. Who accepts is `demos` (`demos.py`):
+        # under `hand`, the default, nothing is ever owed a person.
+        "demos": demos,
+        "accepted": accepted,
         "gates_owed": gates_owed(root),
-        "demo_due": sorted(set(due) - set(accepted)),
-        "demo_due_in": {str(e.fields["capability"]): one.name for one in found for e in one.entries  # whose
-                        if e.kind == "demo-due" and str(e.fields["capability"]) not in accepted},
+        "demo_due": sorted(due_in),
+        "demo_due_in": due_in,  # each against the fairway whose log said it
         # Each stream's own lines, said rather than printed. The board answers "is anything stuck"; the
         # next question is always "what has this one been doing", and that is forty lines of one file.
         "streams": {one.name: recent(root, one.name)[0] for one in found},
         "pressure": pressure(held, harbour),
-        "bunker": {"spent": spent(found), "allowed": held.get("bunker_per_day", NOTHING)},
+        "bunker": {"spent": spent(found), "allowed": held.get("bunker_per_day", NOTHING),
+                   "today": spent(found, now or datetime.now(UTC))},
         "inbox": waiting,
         "feed": feed(found, harbour),
         "unreadable": faults,

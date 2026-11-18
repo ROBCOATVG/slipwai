@@ -38,7 +38,7 @@ class DeckLineTest(unittest.TestCase):
         self.tree = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.tree, True)
         (self.tree / "scripts/agents").mkdir(parents=True)
-        for name in ("deck_line.py", "clearance.py", "logs.py"):
+        for name in ("deck_line.py", "clearance.py", "logs.py", "capabilities.py"):
             shutil.copy(AGENTS / name, self.tree / "scripts/agents" / name)
         (self.tree / "project.json").write_text("{}", encoding="utf-8")
         (self.tree / "specs/001-club").mkdir(parents=True)

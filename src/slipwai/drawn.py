@@ -9,8 +9,10 @@ way: two readings of "drawn" were once a storyboard the board offered to approve
 """
 from __future__ import annotations
 
+import hashlib
 import html
 import re
+import time
 from pathlib import Path
 
 _FEATURE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
@@ -130,10 +132,138 @@ def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by:
     lines: list[str] = [by, ""] if by else []
     # The same pages `drawn_states` reads, with who decided each state kept: the refusals above are its.
     drawn_states(root, feature)
-    for name, states in (decided_states(page) for page in surface_pages(root / "specs" / feature / "mockups")):
+    for page in surface_pages(root / "specs" / feature / "mockups"):
+        name, states = decided_states(page)
+        # Which page, and what it said, when the verdict was given: a page that says something else since —
+        # changed in a conversation, by hand, or gone — is a page nobody has given this verdict on.
+        lines.append(f"<!-- page: {where_in(root, page)} {digest(page)} -->")
         lines.append(f"## Surface: {name}")
         mark = "approved" if verdict == "approved" else f"parked: {why}"
         lines.extend(f"- {state} — {mark}{decided(who)}" for state, who in states)
         lines.append("")
     (root / "specs" / feature / "mockups" / "mock-states.md").write_text("\n".join(lines), encoding="utf-8")
     return "approved" if verdict == "approved" else "disapproved"
+
+
+# A verdict stands for the pages it was given on. `record_verdict` writes, above each surface's block, the page
+# and a digest of what it said; a page that no longer says that is a verdict nobody gave. A conversation that
+# changes a page takes its block out and leaves a `withdrawn` line in its place, once per page; a page changed
+# any other way is read as withdrawn all the same. `storyboard.html` is the flow between the surfaces, not one:
+# a change to it withdraws nothing.
+PAGE = re.compile(r"^<!-- page: (?P<path>\S+) (?P<digest>[0-9a-f]{8,40}) -->$")
+WITHDRAWN = re.compile(r"^<!-- withdrawn: (?P<surface>.+?) — (?P<states>.*?) \((?:page (?P<path>\S+); )?changed ",
+                       re.MULTILINE)
+STATE_LINE = re.compile(r"^-\s*(?P<state>.+?)\s*—\s*(?:approved|parked|n/a)\b")
+
+
+def where_in(root: Path, page: Path) -> str:
+    try:
+        return page.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return page.as_posix()
+
+
+def digest(page: Path, raw: bool = False) -> str:
+    """What a page says, as a short digest — of its lines with their endings and trailing spaces let go of, so a
+    page saved with CRLF or a newline more says what it said. `raw` is the bytes as they are, which a verdict
+    recorded before this reading carries."""
+    try:
+        data = page.read_bytes()
+    except OSError:
+        return "0" * 16
+    if not raw:
+        lines = data.decode("utf-8", "replace").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        data = "\n".join(line.rstrip() for line in lines).strip("\n").encode("utf-8")
+    return hashlib.sha1(data).hexdigest()[:16]
+
+
+def fingerprints(root: Path) -> dict[str, str]:
+    """Every surface page of every feature, by its path in the project, with a digest of what it says now:
+    taken before a conversation turn and again after it, so what the turn changed is known by its pages."""
+    specs = root / "specs"
+    homes = sorted(specs.glob("*/mockups")) if specs.is_dir() else []
+    return {where_in(root, page): digest(page) for home in homes for page in surface_pages(home)}
+
+
+def blocks(text: str) -> list[dict]:
+    """`mock-states.md` as its surface blocks: the name, the page and digest written above it (where the verdict
+    carried one), the states, and the lines it spans."""
+    found: list[dict] = []
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if not line.startswith("## Surface: "):
+            continue
+        above = PAGE.match(lines[index - 1]) if index else None
+        end = next((at for at in range(index + 1, len(lines)) if lines[at].startswith(("## ", "<!-- page: "))),
+                   len(lines))
+        states = [match.group("state") for match in map(STATE_LINE.match, lines[index:end]) if match]
+        found.append({"name": line.removeprefix("## Surface: ").strip(), "states": states,
+                      "path": above.group("path") if above else "", "digest": above.group("digest") if above else "",
+                      "start": index - 1 if above else index, "end": end})
+    return found
+
+
+def stale(root: Path, block: dict) -> bool:
+    """Whether a block's page no longer says what it said when the verdict was given — or is gone."""
+    page = root / block["path"]
+    return bool(block["path"]) and block["digest"] not in (digest(page), digest(page, raw=True))
+
+
+def withdraw(root: Path, before: dict[str, str]) -> list[str]:
+    """After a conversation turn: every verdict on a page that changed — in the turn, or since the verdict — is
+    taken out of its feature's `mock-states.md` and said there as withdrawn, once, so the file approves nothing
+    nobody has seen. A verdict written before pages were recorded beside it is matched by its surface's name,
+    where exactly one page has that name. Answers `<surface> — <states>` for each, for the board to say which."""
+    after = fingerprints(root)
+    changed = {path for path, one in after.items() if before.get(path) != one}
+    said: list[str] = []
+    for verdicts in sorted((root / "specs").glob("*/mockups/mock-states.md")) if (root / "specs").is_dir() else []:
+        try:
+            text = verdicts.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if "surfaces: none" in text:
+            continue
+        pages = [(where_in(root, page), decided_states(page)[0]) for page in surface_pages(verdicts.parent)]
+        titles = [title for _, title in pages]
+        named = {title for path, title in pages if path in changed and titles.count(title) == 1}
+        dropping = [one for one in blocks(text) if stale(root, one) or (not one["path"] and one["name"] in named)]
+        if not dropping:
+            continue
+        lines, gone = text.splitlines(), {at for one in dropping for at in range(one["start"], one["end"])}
+        had = {(found.group("surface"), found.group("path") or "") for found in WITHDRAWN.finditer(text)}
+        when = time.strftime("%Y-%m-%d %H:%M")
+        # "In a conversation" only where the board saw the turn change the page; a change it did not see is not one.
+        marks = [f"<!-- withdrawn: {one['name']} — {', '.join(one['states'])} ("
+                 + (f"page {one['path']}; " if one["path"] else "") + "changed "
+                 + ("in a conversation " if one["path"] in changed or not one["path"] else "")
+                 + f"at {when}, after this verdict: approve or disapprove the storyboard again) -->"
+                 for one in dropping if (one["name"], one["path"]) not in had]
+        kept = [line for at, line in enumerate(lines) if at not in gone]
+        verdicts.write_text("\n".join([*marks, *kept]) + "\n", encoding="utf-8")
+        said += [f"{one['name']} — {', '.join(one['states'])}" for one in dropping]
+    return said
+
+
+def withdrawn_parts(root: Path, feature: str) -> tuple[list[str], list[str]]:
+    """The surfaces whose verdict no longer stands, `<surface> — <states>`, in two lists: those a conversation the
+    board saw changed, and those changed any other way — by hand, renamed, gone. Empty until something is judged."""
+    try:
+        text = (root / "specs" / feature / "mockups" / "mock-states.md").read_text(encoding="utf-8")
+    except OSError:
+        return [], []
+    seen: list[str] = []
+    since: list[str] = []
+    for found in WITHDRAWN.finditer(text):
+        line = text[found.start():text.find("\n", found.start())]
+        (seen if "changed in a conversation" in line else since).append(
+            f"{found.group('surface')} — {found.group('states')}")
+    since += [f"{one['name']} — {', '.join(one['states'])}" for one in blocks(text) if stale(root, one)]
+    return list(dict.fromkeys(seen)), [one for one in dict.fromkeys(since) if one not in seen]
+
+
+def withdrawn(root: Path, feature: str) -> list[str]:
+    """Every surface whose verdict no longer stands, however it changed (`withdrawn_parts`)."""
+    seen, since = withdrawn_parts(root, feature)
+    return [*seen, *since]
+

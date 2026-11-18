@@ -49,15 +49,42 @@ STOPS: tuple[tuple[str, str, dict[str, str]], ...] = (
     # Met first, but last here: it is the board's stop rather than the fleet's, and the four above are what
     # this card has always been read for.
     ("upstream", "The specification, storyboard and model",
-     {"park": "stop for me at each", "advance": "advance on their own"}),
+     {"park": "stop for me at each",
+      "advance": "advance on their own"}),
     # Not a stop either, but the one switch a person has over how a captain runs, and the card is the one
     # place on the board they set this file from.
     ("sessions", "A captain's session",
-     {"print": "the agent's print mode, as before",
-      "protocol": "over the Agent Client Protocol: its work shown as it goes, a stop that stops"}),
+     {"auto": "the protocol where proven, print mode elsewhere",
+      "print": "print mode, as before",
+      "protocol": "the protocol, always"}),
+    # Who accepts a whole capability. Not implied by any row above: `hand` in the file is how the walk is
+    # driven, and none of the others is about a demo. The hand's verdict is the acceptance unless this says
+    # a person's is.
+    ("demos", "A capability's demo",
+     {"hand": "the hand's verdict accepts it; the film is there when I have time",
+      "person": "wait for me to accept it"}),
 )
+#: What a row says under its choices, where the choices need more than a button holds. A button's words are
+#: what it is; a sentence that explains it goes here, or the row is a wall of buttons nobody can read.
+MORE = {
+    "upstream": "Advancing on their own, the board still waits for you on a storyboard whose drawing says a "
+                "Blocker or a question is open, or that it did not see end well, and after you say something to a "
+                "stage, until you press Carry on.",
+    "sessions": "The protocol is the Agent Client Protocol: a captain's work is shown as it goes and a stop "
+                "stops. Proven means this board has run that agent over it.",
+}
+#: What a stop reads as where the file says nothing and that is not the generator's default: `sessions` written
+#: before `auto` existed is print mode, which migrating never changes.
+ABSENT = {"sessions": "print"}
 #: The value that means a person is asked. A stop sitting on this is `/sail`'s answer to it.
 ASKS = "park"
+#: The stops whose asking value is a word of their own rather than `park`.
+ASKING = {"demos": "person"}
+
+
+def asks(name: str) -> str:
+    """The value of this stop that means a person is asked."""
+    return ASKING.get(name, ASKS)
 
 
 def known(name: str) -> tuple[str, ...]:
@@ -83,7 +110,7 @@ def orders(root: Path) -> dict[str, str]:
         return {}
     # A stop added after the file was written reads as its default, which is what the project's own script
     # takes it to be: the card then shows where it stands rather than a dial with nothing on.
-    later = {key: str(default) for key, _, default, _ in SETTINGS
+    later = {key: ABSENT.get(key, str(default)) for key, _, default, _ in SETTINGS
              if key not in held and any(key == name for name, _, _ in STOPS)}
     return later | {str(a): str(b) for a, b in held.items() if not str(a).startswith("_")}
 
@@ -91,7 +118,7 @@ def orders(root: Path) -> dict[str, str]:
 def asking(root: Path) -> list[str]:
     """Which stops this run will stop for a person at, in the order they are met."""
     held = orders(root)
-    return [title for name, title, _ in STOPS if held.get(name) == ASKS]
+    return [title for name, title, _ in STOPS if held.get(name) == asks(name)]
 
 
 def set_stop(root: Path, name: str, value: str) -> str:

@@ -15,9 +15,11 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 465 — the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
+# budget: 474 — and a reply said while the stage runs is queued, which the box says and does not wait on;
+# the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
 # each group carries its own heading, count and the rows under it, so the page is a little longer than one
 # that listed them flat. The made card carries a reply box for a stage that has ended, and the script that sends it.
+# Five more for an answer already placed, shown on its row in place of a second box.
 from __future__ import annotations
 
 import json
@@ -35,6 +37,7 @@ from .fleet_page import live_sub as fleet_sub
 # plain-words table was until the settings box needed it too.
 from .page_shell import PLAIN, STYLE, THEME, document, esc  # noqa: F401
 from .settings_card import settings
+from .talk_marks import placed_html
 from .timeline_page import SCRIPT as TIMELINE_SCRIPT
 from .timeline_page import STYLE as TIMELINE_STYLE
 from .timeline_page import timeline_card
@@ -101,7 +104,7 @@ if (fitting) {
     }
     // The card's own button and, on the Voyage, the strip's: two elements, so two ids.
     document.querySelectorAll('#launch, #launch-made').forEach(launch => { launch.hidden = !said.launchable; });
-    replying.hidden = !(said.talk && said.done);
+    replying.hidden = !said.talk;  // while it runs too: what is said then is queued for the end of its turn
     paint();
     if (running) setTimeout(poll, 700);
   };
@@ -115,8 +118,10 @@ if (fitting) {
     if (!box.value.trim()) return;
     const answer = await fetch('/stage/say', {method: 'POST', headers: {'Content-Type': 'application/json'},
                                                body: JSON.stringify({message: box.value.trim()})});
-    if (!answer.ok) { alert(await answer.text()); return; }
+    const told = await answer.text();
+    if (!answer.ok) { alert(told); return; }
     box.value = '';
+    if (told === 'queued') { poll(); return; }
     replying.hidden = true;
     running = true; seconds = 0;
     chip.dataset.state = 'running'; chip.className = 'chip running';
@@ -152,8 +157,10 @@ document.addEventListener('click', event => {
   const say = event.target.closest('[data-tell]');
   if (say) {
     const box = document.getElementById(say.dataset.box || 'tell-' + say.dataset.tell);
+    // Aimed at the slice the row is about, carrying what it answers and any answer it replaces.
     if (box && box.value.trim()) send('/tell', {fairway: say.dataset.tell, message: box.value.trim(),
-                                              ...(say.dataset.question ? {question: say.dataset.question} : {})});
+      slice: say.dataset.slice || '', of: say.dataset.of || '', replaces: say.dataset.replaces || '',
+      ...(say.dataset.question ? {question: say.dataset.question} : {})});
   }
   const read = event.target.closest('[data-read]');
   if (read) send('/read', {fairway: read.dataset.read, decisions: read.dataset.stamps.split(',')});
@@ -259,9 +266,9 @@ def headline(detail: str, limit: int = 140) -> str:
 
 def inbox_rows(rows: list[dict], controls: bool, streams: dict | None = None) -> str:
     """Each thing waiting on a person, grouped by what they have to do with it and opened by clicking it:
-    what the stream has been saying, and a box to answer it from here. The answer becomes a `told` in the
-    stream's deck log, which its captain reads at the next boundary — the one way a park is lifted without a
-    terminal."""
+    what the stream has been saying, and a box to answer it from here. The answer is a message in the inbox
+    of the slice the row is about (its stream's captain where it is about no slice), and once placed it is
+    shown on the row with where it stands, in place of the box (`talk_marks`)."""
     if not rows:
         return '<p class="empty">Nothing is waiting on you.</p>'
     groups = []
@@ -289,11 +296,14 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
     # hand-back with needs is not done until trunk has them, so Done is not offered on one.
     done = (f'<button data-dismiss="{esc(name)}" data-told="{esc(row["t"])}">Done</button>'
             if row["kind"] == "told" and not row.get("needs") else "")
-    # The box under a question answers it: the id rides on the button, and the answer is the decision that
-    # closes the question rather than a note beside it.
+    # The box under a question answers it: the id rides on the button, and the answer goes to the slice that
+    # asked it. A row already answered shows the answer, and the box only behind Change my answer.
     asks = f' data-question="{esc(str(row.get("id") or ""))}"' if row["kind"] == "question" and row.get("id") else ""
-    box = (f'<div class="ask"><input id="tell-wait-{index}" placeholder="Answer {esc(name)}…">'
-           f'<button class="go" data-tell="{esc(name)}" data-box="tell-wait-{index}"{asks}>Send</button>{done}</div>'
+    aim = f' data-slice="{esc(row.get("aim") or "")}" data-of="{esc(row.get("key") or "")}"'
+    hide = " hidden" if row.get("answer") else ""
+    box = (f'{placed_html(row.get("answer"), f"tell-wait-{index}")}<div class="ask"{hide}><input id="tell-wait-'
+           f'{index}" placeholder="Answer {esc(name)}…"><button class="go" data-tell="{esc(name)}" data-box='
+           f'"tell-wait-{index}"{asks}{aim}>Send</button>{done}</div>'
            if controls and row["kind"] != "unreadable" else "")
     # A question is its own words, whole, once: the id and the slice it came from are a tag beside it, and
     # the log line it was read from — the same words again, in field syntax — is folded away under it.
@@ -359,15 +369,14 @@ def unread_decisions(row: dict, controls: bool) -> str:
 
 
 def answer_boxes(rows: list[dict]) -> str:
-    """One box per stream that has written a line. An answer typed here becomes a `told` in its deck log,
-    which is the whole point: a person answers from one seat instead of finding the right terminal."""
+    """A link per stream that has written a line, to its captain's window: what is said to a whole stream is
+    said there, where its receipt and where the captain sent it are shown."""
     streams = sorted({str(row["fairway"]) for row in rows})
     if not streams:
         return ""
-    boxes = "".join(
-        f'<div class="ask"><input id="tell-{esc(one)}" placeholder="Tell {esc(one)} something…">'
-        f'<button class="go" data-tell="{esc(one)}">Send</button></div>' for one in streams)
-    return f'<div class="card"><h2>Say something to a stream</h2>{boxes}</div>'
+    links = " · ".join(f'<a href="/captain-window?fairway={esc(quote(one, safe=""))}" target="_blank" '
+                       f'rel="noopener">Captain · {esc(one)}</a>' for one in streams)
+    return f'<div class="card"><h2>Talk to a stream\'s captain</h2><p>{links}</p></div>'
 
 
 #: The two things a person does *before* there is anything to watch, each with the verb that does it. They
@@ -398,9 +407,9 @@ def fitting_card(made: dict, verb: str = "Made") -> str:
     # has ended well; a specification a person has read is what pressing it means.
     launch = (f'<button class="go" id="launch-made"{"" if made.get("launchable") else " hidden"}>'
               f'Continue the build</button>')
-    # A stage over the protocol kept its session, so once it has ended what it said can be answered here, as
-    # on the first page: a question the agent asked in its words rather than on a card has somewhere to go.
-    talk = made.get("talk") and made["done"]
+    # A stage over the protocol kept its session, so what it said can be answered here, as on the first page;
+    # while it runs, what is said waits for the end of its turn.
+    talk = made.get("talk")
     reply = (f'<div id="stage-reply"{"" if talk else " hidden"}><form class="ask">'
              f'<input placeholder="Reply, or tell it what to do next…" autocomplete="off" aria-label="Reply">'
              f'<button class="go" type="submit">Reply</button></form></div>')

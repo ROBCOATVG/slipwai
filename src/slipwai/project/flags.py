@@ -131,7 +131,23 @@ def flag_stage(apps: list[App]) -> str:
     and because deciding it later means deciding it after the code exists — which is when "it is only a
     small change" starts to sound reasonable.
     """
-    return f"""**Release constraint** — the slice's flag is decided and written down in the plan: which
+    return f"""**Release constraint** — how dark this slice's merge is follows from where the product is, and
+   is read, not weighed: `python3 scripts/agents/release_state.py` prints the product's state and its
+   mode. Write the mode in the plan in one line, with what it means for this slice, and do as it says:
+   - **open** (pre-launch: no production, or one only the team sees) — the slice merges visible and opens
+     no flag. Nobody uses the product yet, so a flag would hold nothing back. Say so in the plan, and add
+     no key to `infra/service/flags.auto.tfvars`.
+   - **keystone** (pilot: known pilot users) — no flag either. The capability's entry point — the route,
+     menu item or command an actor reaches it by — is wired by the capability's last slice in
+     `specs/<feature>/chart.yaml`, and every slice before it lands unreachable. Where the chart names the
+     entry under the capability's `entry:`, `make check-slice-scope` refuses it to any earlier slice.
+     Demo an earlier slice at the `http` or `cli` rung, which reaches it without the entry.
+   - **flagged** (live: real users use what trunk deploys), and a project with no state recorded — the
+     flag decision below.
+   - **promoted** — the slice merges visible; production takes only what passes the promotion gate.
+
+   Never move the state to make a slice easier: it is a person's decision and an ADR. Under **flagged**,
+   the slice's flag is decided and written down in the plan: which
    releasable capability the slice belongs to, the flag key that holds it, and the fact that the flag is
    declared in `infra/service/flags.auto.tfvars` seeded `off` in the same change as the code that reads
    it. A flag covers a **releasable capability**, which is usually more than one slice: a capability that

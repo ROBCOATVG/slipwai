@@ -50,6 +50,7 @@ sys.path.insert(0, str(HERE))
 
 import clearance  # noqa: E402
 import logs  # noqa: E402
+import talk  # noqa: E402
 
 #: Slices one fairway runs at once where `harbour.json` names no `abreast`. Three, because that is
 #: `half-ahead`'s `boilers` — a fresh harbour with one fairway then uses every session it was given, and
@@ -251,13 +252,19 @@ def harbour_plan(lit: set[str], config: Path) -> dict[str, tuple[int, int, str]]
         parks = logs.open_parks(deck, harbour, fairway)
         on = live(deck) if fairway in lit else []
         running[fairway] = len(on)
+        # A person's word waiting is a reason to light the captain, parked or not: it is what reads it.
+        heard = 1 if not on and word_waiting(fairway, deck, harbour) else 0
         if logs.fairway_parks(parks):
-            wants[fairway] = 0
+            wants[fairway] = heard
             continue
         stopped = [one for one in logs.unmerged(deck) if one not in on and one not in logs.held_slices(parks)]
         offered = ready(charted, folded_logs, done, fairway, on + stopped)
+        # A slice paused, or stopped by a person, wants no session until a person resumes it: counted, it
+        # would light a captain every pass that finds nothing it may start and exits.
+        kept = held_by_person(fairway, stopped + offered)
+        stopped, offered = [one for one in stopped if one not in kept], [one for one in offered if one not in kept]
         owed = 1 if fix_owed(fairway, deck, harbour) is not None and not on else 0
-        wants[fairway] = len(stopped) + len(offered) + owed
+        wants[fairway] = max(len(stopped) + len(offered) + owed, heard)
         weight[fairway] = max([critical(charted, one) for one in offered + stopped] or [0])
         if pending(deck, harbour):
             backed.add(fairway)
@@ -265,6 +272,42 @@ def harbour_plan(lit: set[str], config: Path) -> dict[str, tuple[int, int, str]]
     planned = allocate(order, preferred, wants, running, backed, weight,
                        boilers if boilers is not None and boilers > 0 else None, width(held))
     return {fairway: (count, running[fairway], to) for fairway, (count, to) in planned.items()}
+
+
+def word_waiting(fairway: str, deck: list[logs.Entry], harbour: list[logs.Entry]) -> bool:
+    """Whether a person has said something this stream's captain has not read and must: anything signed
+    for the stream itself, a resume for one of its slices, or words to a slice whose park — its own or the
+    stream's — is open. Each is a reason to light a captain whatever else holds the stream, since reading
+    it is the captain's first act; a word for a slice that is simply queued for its next run is not."""
+    run = logs.run_dir(clearance.ROOT)
+    parks = logs.open_parks(deck, harbour, fairway)
+    try:
+        homes = {one: talk.place(run, fairway, one) for one in talk.conversations(run, fairway)}
+    except ValueError:
+        return False
+    for slice_id, home in homes.items():
+        for message in talk.unseen(home):
+            if message.get("from") != talk.PERSON:
+                continue
+            if slice_id == talk.CAPTAIN or message.get("kind") == "resume":
+                return True
+            mine = [park for park in parks if logs.about(park, slice_id)]
+            if message.get("kind") == "say" and any(str(message.get("t", "")) > park.t for park in mine):
+                return True
+    return False
+
+
+def held_by_person(fairway: str, slices: list[str]) -> list[str]:
+    """The slices whose conversation says they are paused, or stopped by a person."""
+    run = logs.run_dir(clearance.ROOT)
+    held = []
+    for one in slices:
+        try:
+            if talk.halted(talk.place(run, fairway, one))[0]:
+                held.append(one)
+        except ValueError:
+            continue
+    return held
 
 
 def granted(harbour: list[logs.Entry], fairway: str) -> logs.Entry | None:

@@ -29,6 +29,16 @@ What a slice's change may contain — everything since the branch left `main`, c
   model names none — and, where the block names a `context`, nothing under another context's directory in
   `domain/` or `application/`. A browser app is open to every slice: a white box is one screen;
 - **the context's events module additively**: a line may be added, none removed. It is the contract;
+- **its own flag's declaration**, `infra/service/flags.auto.tfvars`, additively and seeded `off`: a key, a
+  comment, a blank line may be added, nothing removed or changed. The method asks for the declaration in the
+  same change as the code that reads it, and `check-flags` holds a branch to that — declared and never read is
+  red on `main`, read and never declared is red on the branch — so a slice refused the file could pass on
+  neither. lean-coffee-club's MT1 handed the line back, nothing could land it alone, and it parked for a
+  person; SI1 before it stubbed sign-in round the flag it could not declare;
+- **under keystone mode** (the product in pilot, `scripts/agents/release_state.py`), **nothing of a
+  capability's entry point but in its last slice**: `specs/<feature>/keystones.yaml` names each capability's
+  entry as globs, and the chart's split order names its last slice. Every slice before it lands unreachable,
+  which is how a pilot product keeps an unfinished capability from its users without a flag;
 - **new migration files only**, timestamped so two slices never mint the same name: `YYYYMMDDHHMM_<name>`,
   or `V<YYYYMMDDHHMM>__<name>` under Flyway. The shipped numbered ones keep working — the order is lexical
   either way, and every stamp sorts after every number;
@@ -101,6 +111,10 @@ LAYERS_BY_CONTEXT = ("domain", "application")
 #: linked — so in hr-test-2 every slice run abreast went red here on files the run itself had put there, and
 #: in game-club-manager every berth did on the ACP session files a name-by-name list had not caught up with.
 RUN_STATE = re.compile(r"^\.slipwai/run/.*$")
+#: Where the release flags are declared (`check-flags.py`), and the one shape a slice may add there: a key
+#: seeded `off`, with or without its comment. Blank lines and comments ride with it.
+FLAGS = "infra/service/flags.auto.tfvars"
+FLAG_SEEDED_OFF = re.compile(r'^\s*[A-Za-z_][A-Za-z0-9_-]*\s*=\s*"off"\s*(#.*)?$')
 
 
 def git(*arguments: str) -> str | None:
@@ -379,7 +393,27 @@ class Scope:
             f"`.slipwai/dispatch/<feature>/{self.slice_id}.jsonl` and no other; the rest are the host's."
         )
 
+    def flags_violation(self, path: str, status: str) -> str | None:
+        """The flags file grows by a declaration seeded `off`, and by nothing else, on a slice branch."""
+        if status == "D" or deletions(self.base, path):
+            return (
+                f"{path}: a line was removed or changed. A slice declares its own flag here, seeded `off`, and "
+                f"touches no other key; turning one on or striking one is the host's."
+            )
+        diff = git("diff", "--unified=0", self.base, "--", path) or ""
+        added = [line[1:] for line in diff.splitlines() if line.startswith("+") and not line.startswith("+++")]
+        wrong = [line for line in added
+                 if line.strip() and not line.lstrip().startswith("#") and not FLAG_SEEDED_OFF.match(line)]
+        if wrong:
+            return (
+                f"{path}: `{wrong[0].strip()}` is not a declaration seeded `off`. A flag a slice introduces is "
+                f"seeded `off`, as `key = \"off\"`, in the same change as the code that reads it."
+            )
+        return None
+
     def violation(self, path: str, status: str) -> str | None:
+        if path == FLAGS:
+            return self.flags_violation(path, status)
         if path.startswith(".slipwai/dispatch/"):
             return self.ledger_violation(path)
         if path.startswith("specs/"):
@@ -525,6 +559,57 @@ def chart_fairways(slice_id: str) -> tuple[str | None, dict[str, list[str]]]:
     return None, {}
 
 
+def product_mode() -> str:
+    """How dark a merge is here, from `scripts/agents/release_state.py` — `flagged` where it cannot be read,
+    which is how every project merged before the product's state was recorded."""
+    module_path = ROOT / DELIVERY / "scripts/agents/release_state.py"
+    if not module_path.is_file():
+        return "flagged"
+    spec = importlib.util.spec_from_file_location("release_state", module_path)
+    if spec is None or spec.loader is None:
+        return "flagged"
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True
+    spec.loader.exec_module(module)
+    return str(module.mode_of(module.read(ROOT)))
+
+
+def keystones(slice_id: str) -> dict[str, tuple[str, list[str]]]:
+    """Under keystone mode: each capability's entry point and the slice that may wire it — the capability's
+    last slice in the chart, which is split order. Read from `specs/<feature>/keystones.yaml`, beside the
+    chart that names this slice: `<capability>: [<glob>, …]`. Beside it rather than in it, because on the
+    event profile the chart is rendered from the model and compared whole."""
+    found: dict[str, tuple[str, list[str]]] = {}
+    for chart_path in sorted((ROOT / SPECS).glob("*/chart.yaml")) if (ROOT / SPECS).is_dir() else []:
+        listed = chart_path.parent / "keystones.yaml"
+        if not listed.is_file():
+            continue
+        chart, entries = load_chart(chart_path.read_text(encoding="utf-8")), load_chart(listed.read_text(encoding="utf-8"))
+        if not isinstance(chart, dict) or not isinstance(entries, dict):
+            continue
+        slices = chart.get("slices") if isinstance(chart.get("slices"), dict) else {}
+        if slice_id not in slices:
+            continue
+        for capability, globs in entries.items():
+            members = [name for name, body in slices.items()
+                       if isinstance(body, dict) and body.get("capability") == capability]
+            if members and isinstance(globs, list):
+                found[str(capability)] = (str(members[-1]), [str(glob) for glob in globs])
+    return found
+
+
+def keystone_violation(slice_id: str, path: str, held: dict[str, tuple[str, list[str]]]) -> str | None:
+    """A capability's entry point touched by a slice that is not the capability's last."""
+    for capability, (last, globs) in sorted(held.items()):
+        if slice_id != last and owned_by(path, globs):
+            return (
+                f"{path}: the entry point of capability `{capability}`. The product is in pilot, so a capability "
+                f"lands dark by omission: its entry is wired by its last slice, `{last}`, and every slice before "
+                f"it lands unreachable. Leave the entry out and demo this slice at the `http` or `cli` rung."
+            )
+    return None
+
+
 def check(branch: str | None) -> tuple[list[str], str]:
     """The violations, and the one line to print when there are none."""
     violations = lost_records()
@@ -537,8 +622,10 @@ def check(branch: str | None) -> tuple[list[str], str]:
     if base is None:
         return violations, f"check-slice-scope: slice/{slice_id} has no `main` to compare with — nothing to hold"
     scope = Scope(slice_id, base)
+    held = keystones(slice_id) if product_mode() == "keystone" else {}
     for path, status in sorted(changed_files(base).items()):
-        found = scope.violation(path, status) or scope.fairway_violation(path)
+        found = (scope.violation(path, status) or scope.fairway_violation(path)
+                 or keystone_violation(slice_id, path, held))
         if found:
             violations.append(found)
     if scope.unreadable is not None:

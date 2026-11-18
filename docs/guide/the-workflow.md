@@ -25,7 +25,7 @@ the "Writes" column exists. Nobody types a status. [The board](the-board.md) des
 | 6 | Event model | The agent, on the event-modelling profile only | Approving the storyboard (`make model-next`), or the modelling skill | `docs/event-model/model.yaml` | Yes, by default |
 | 7 | Chart and split | The agent, in a headless session | **Continue the build** (`make launch`), or `/launch` | `specs/<feature>/chart.yaml` and the slices | No |
 | 8 | Slices | The fleet: one captain per fairway, and one harbourmaster per machine | `/launch` casts off. **Cast off the fleet** (`make cruise`), or `/cruise` | Deck logs and the harbour log | Only when a captain parks |
-| 9 | Accepted | You, as the actor | A demo, when a capability's last slice merges | An `accepted` line | Yes, at every demo |
+| 9 | Accepted | The hand, as the actor. You, if `demos` is `person` | The hand's walk, when a capability's last slice merges and its gates pass | An `accepted` line | No, by default. See [step 9](#step-9-the-demo-and-acceptance) |
 
 On the standard profile, step 6 is skipped. The chart comes from the specification instead, and approving
 the storyboard starts step 7.
@@ -85,8 +85,13 @@ you press it.
 
 The fleet has two kinds of process:
 
-- **A captain** works one fairway. At each turn it reads the logs, takes the next slice that clearance
-  allows, writes `claimed`, and runs `/sail` in its berth. A captain holds no credential and never merges.
+- **A captain** works one fairway. Its program reads the logs at each turn, takes the next slice that
+  clearance allows, writes `claimed`, and runs `/sail` in the slice's berth. Where the harness has a proven
+  launch over the Agent Client Protocol and the project has turned it on, a captain agent sits on top of the
+  program and makes a few choices for it — which cleared slice starts next, whether a slice that missed its
+  gate runs again, what to do about a stuck slice, where something said to the stream goes — and the program
+  checks each one against the rules before it does it. A captain holds no credential and never merges.
+  [Let it cruise](let-it-cruise.md#the-captain) says more.
 - **The harbourmaster** is one process per machine. It copies marks between fairways, allocates berths,
   answers a captain's requests, and performs each merge after the full gate passes on trunk.
 
@@ -120,20 +125,40 @@ board shows every open park under **Waiting on you**, with how long it has waite
 
 Tell the fairway something. Use one of these:
 
-- the answer box under **Waiting on you**, or **Say something to a stream**, on the board;
+- the answer box on the parked slice's card, or under **Waiting on you**, on the board;
 - `/cruise-tell <fairway> <the answer>` in the agent.
 
-Each writes a `told` line in the fairway's deck log. On its next pass, the harbourmaster writes a
+The board places your answer in the parked slice's inbox, and its captain writes it as a `told` line in the
+fairway's deck log when it next runs; the row on the board says whether that has happened yet, and whether the
+fleet is running at all. `/cruise-tell` writes the `told` line itself. On its next pass, the harbourmaster writes a
 `cleared` receipt in the harbour log for every open park that the message came after. The receipt keeps
 your message as the answer. On the pass after that, the harbourmaster lights the captain again.
 
 A project generated before this change has older copies of `scripts/agents/`. In that project a message
 does not clear a park. Upgrade the project with `slipwai migrate`.
 
+### How to steer a slice that is working
+
+You do not have to wait for a park. **Open its window** on a slice's card opens its conversation:
+
+- **Send** puts a message in after the turn under way; **Interrupt** cancels the turn and puts it in at once,
+  where the slice's session is held over the Agent Client Protocol.
+- **Pause** lets the turn finish and gives the session slot back; **Resume** carries on in the same session;
+  **Stop** ends the session now and puts the slice back in the queue. A pause or stop you make holds the slice
+  until you resume it.
+- Each message shows its receipt: queued, held at the merge, delivered, answered, delivered and not
+  addressed, or not delivered with why.
+
+What you want a whole stream to know goes to its captain, from the captains strip above the tabs.
+[The board](the-board.md#a-slices-window) describes both windows.
+
 ## Step 9: the demo and acceptance
 
-When the last slice of a capability merges and its gates pass, the capability is demoed to you as the
-actor. Accept it, or say no with notes. The notes go back into the slice. The release mode decides what a
+When the last slice of a capability merges and its gates pass, the hand has walked it as the actor. By
+default the hand's verdict is the acceptance: nothing waits for you, and the hand's film is on the board.
+Watch it when you have time and press **Say what it showed**. What you say is feedback, like anything else
+you say on the board. If you set `demos` to `person` in `.specify/cruise.json`, the capability waits for
+you instead. Accept it, or say no with notes. The notes go back into the slice. The release mode decides what a
 merge means before that demo: see [release modes](../reference/release-modes.md).
 
 ---
@@ -179,7 +204,8 @@ still passes. Setting the value writes the key into the file.
 
 These stops apply whatever `upstream` says:
 
-1. **The demo.** You accept each capability as the actor.
+1. **The demo, if `demos` is `person`.** You accept each capability as the actor. By default the hand's
+   verdict accepts it, and nothing stops.
 2. **A park.** A captain parks when it needs a person, and the fairway waits until you tell it something.
 3. **The decision ceiling.** When a fairway takes `decision_ceiling` decisions that nobody has read, it
    parks itself.

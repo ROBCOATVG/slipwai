@@ -1,10 +1,11 @@
 """The Feedback card on the Voyage tab: what using the app showed a person, where it goes, and what it became.
 
-Three things in one card, because they are one loop. A capability waiting for its demo is accepted here, or
-not yet, with the reason. Anything a person says — from this card, from Try it, from a slice's card — is
-written under `docs/feedback/` (`feedback.py`), and the board starts the triage session that proposes a
-route for it. Each proposal then waits here for Confirm, a different route, or Drop, and below them the list
-of every item and what it turned into.
+Three things in one card, because they are one loop. Where the project says a person accepts demos, a
+capability waiting for its demo is accepted here, or not yet, with the reason; by default the hand's verdict
+was the acceptance and nothing here asks for one — its film offers the same box instead. Anything a person
+says — from this card, from Try it, from a slice's card — is written under `docs/feedback/` (`feedback.py`),
+and the board starts the triage session that proposes a route for it. Each proposal then waits here for
+Confirm, a different route, or Drop, and below them the list of every item and what it turned into.
 
 **The box is not repainted.** The card polls `/feedback.json` and swaps its list when what it shows has
 changed; the box a person is typing in sits outside that list, so a poll never takes their words away.
@@ -14,12 +15,15 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlencode
 
+from .demos import HAND, accept, mark_opened, opened
 from .feedback import HOLDS, ROUTES, Item, capture, confirm, drop, items
+from .film import films_of
 from .page_shell import esc
 
 #: What the card's buttons and the box ask for.
-VERBS = ("send", "confirm", "drop", "triage", "accept")
+VERBS = ("send", "confirm", "drop", "triage", "accept", "opened")
 #: How each context line is said on its chip.
 CHIPS = {"slice": "Slice", "capability": "Capability", "page": "Page", "signed-in-as": "Signed in as",
          "trunk": "Trunk"}
@@ -87,14 +91,34 @@ SCRIPT = """
     setTimeout(poll, found.triaging ? 3000 : 10000);
   };
   setTimeout(poll, 3000);
+  const open = (given, ask) => {
+    context = given; verdict = '';
+    box().hidden = false; box().querySelector('h3').textContent = ask || 'What did using it show?';
+    chips(); box().scrollIntoView({block: 'nearest'}); box().querySelector('textarea').focus();
+  };
+  // Opened from another window — a decision's Change this in a slice's window, which has no box — with the
+  // context in the address: read once, then taken out of it so a reload does not open the box again.
+  (function(){
+    const asked = new URLSearchParams(location.search);
+    const given = {};
+    let ask = '';
+    for (const [key, value] of asked) {
+      if (key === 'feedback-ask') ask = value;
+      else if (key.startsWith('feedback-')) given[key.slice(9)] = value;
+    }
+    if (!ask && !Object.keys(given).length) return;
+    [...asked.keys()].filter(key => key.startsWith('feedback-')).forEach(key => asked.delete(key));
+    const query = asked.toString();
+    history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    open(given, ask);
+  })();
   document.addEventListener('click', async event => {
     const at = event.target.closest('button');
     if (!at) return;
     const data = at.dataset;
     if (data.feedback !== undefined) {
-      context = JSON.parse(data.feedback || '{}'); verdict = data.verdict || '';
-      box().hidden = false; box().querySelector('h3').textContent = data.ask || 'What did using it show?';
-      chips(); box().scrollIntoView({block: 'nearest'}); box().querySelector('textarea').focus();
+      open(JSON.parse(data.feedback || '{}'), data.ask);
+      verdict = data.verdict || '';
     } else if (data.unchip) { delete context[data.unchip]; chips(); }
     else if (data.fbCancel !== undefined) { box().hidden = true; }
     else if (data.fbSend !== undefined) {
@@ -128,6 +152,15 @@ def opener(face: str, context: dict[str, str], primary: bool = False, ask: str =
             f'data-feedback="{esc(json.dumps(shown))}"{extra}>{esc(face)}</button>')
 
 
+def box_address(context: dict[str, str], ask: str = "") -> str:
+    """The Voyage window with the box opened on this context: for a page that has no box of its own. The
+    Feedback tab is named in the fragment, so the page shows the tab the box is on."""
+    shown = {f"feedback-{key}": value for key, value in context.items() if value}
+    if ask:
+        shown["feedback-ask"] = ask
+    return f"/voyage?{urlencode(shown)}#tab-try"
+
+
 def act_button(verb: str, face: str, primary: bool = False, **data: str) -> str:
     extra = "".join(f' data-{name}="{esc(value)}"' for name, value in data.items())
     kind = "go" if primary else "install"
@@ -155,6 +188,21 @@ def capabilities_html(fleet: dict) -> str:
                  ask=f"What does the {name} capability still need?", verdict="not-yet")
         + "</span></div>" for name, fairway in sorted(due.items()))
     return f"<h3>Ready for your demo</h3>{rows}"
+
+
+def to_look_at(root: Path, fleet: dict) -> list[dict[str, str]]:
+    """Each capability with a film nobody has said anything about or opened: *when you have time*.
+
+    For the Waiting-on-you list to read. Never holding anything up — under `hand` the capability is accepted
+    already, and under `person` a capability owed a verdict is listed by the Feedback card as well; `accept`
+    says which, so the list can word it. Said about is any feedback item naming the capability.
+    """
+    named = {one.fields.get("capability", "") for one in items(root)}
+    due = fleet.get("demo_due_in") or {}
+    return [{"feature": one["feature"], "capability": one["capability"], "title": one["title"],
+             "accept": "yes" if one["capability"] in due else ""}
+            for one in films_of(root)
+            if one["capability"] not in named and not opened(root, one["feature"], one["capability"])]
 
 
 def proposal_html(item: Item, rows: list[dict[str, str]]) -> str:
@@ -230,17 +278,30 @@ def payload(root: Path, rows: list[dict[str, str]], fleet: dict, triaging: bool)
 
 def act(root: Path, held: dict, rows: list[dict[str, str]], fleet: dict, start: Callable[[], bool]) -> str:
     """One press on the card. `start` begins the triage session when the board is free, and says if it did."""
-    from .deck import tell
+    from .talk_said import tell
 
     verb = str(held.get("verb", ""))
     if verb not in VERBS:
         raise ValueError(f"the Feedback card has no {verb!r}; it can {', '.join(VERBS)}")
+    if verb == "opened":
+        # A person pressed Play on a capability's film: it is no longer something they have yet to look at.
+        marked = mark_opened(root, str(held.get("feature", "")), str(held.get("capability", "")))
+        return "noted" if marked else "no such film"
     if verb == "accept":
         capability, fairway = str(held.get("capability", "")), str(held.get("fairway", ""))
         if capability not in (fleet.get("demo_due_in") or {}):
+            if fleet.get("demos", HAND) == HAND:
+                raise ValueError("nothing here waits on a person to accept a demo: this project takes the hand's "
+                                 "verdict as the acceptance. Say what the film showed instead")
             raise ValueError(f"{capability or 'that capability'} is not waiting for a demo")
-        tell(root, fairway, f"Demo verdict for the {capability} capability: accepted.")
-        return f"told {fairway}: {capability} accepted"
+        # The line itself, held to whole-and-cleared: a message alone was read by nobody once every slice
+        # had merged. The captain is still told, where its stream has a log to tell.
+        said = accept(root, capability)
+        try:
+            tell(root, fairway, f"Demo verdict for the {capability} capability: accepted.")
+        except ValueError:
+            return said
+        return f"{said}; told {fairway}"
     if verb == "send":
         given = held.get("context")
         context: dict = given if isinstance(given, dict) else {}

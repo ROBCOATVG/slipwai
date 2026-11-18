@@ -59,12 +59,26 @@ def trees_here() -> set[str]:
 
 ASSETS_HERE = trees_here()
 # Written for version 2 rather than brought back, so the ledger will never hold them.
-OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_crossing",
-       "migration_result", "migration_merge", "migration_renames", "catalog_checks", "catalog_options",
+OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_page", "board_read", "voyage_live",
+       "on_you", "fleet_tab", "demos",
+       # Trunk on the board: the trunk mender's attempts and words, folded and drawn.
+       "trunk_story", "trunk_card",
+       # A conversation with a slice: the experiment wrote what a person said into the deck log.
+       "talk",
+       # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.
+       "stuck", "captain_decisions",
+       # Where the product is and how dark a merge is: the release modes rebuilt so something reads them.
+       "release_state", "cli_release_state",
+       # Talking to the fleet from the board: the windows, the strip, and every message placed in an inbox.
+       "talk_said", "talk_fold", "captain_files", "talk_page", "talk_waits", "talk_card", "captain_window",
+       "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",
+       "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_sentence",
+       "migration_crossing", "migration_result", "migration_merge", "migration_renames", "catalog_checks",
+       "catalog_options",
        "cli_offered", "cli_search",
        "project.briefs", "project.prose", "project.sail_section", "project.write_model_prose",
        "project.ladder", "project.capability_gates", "project.careen", "project.harbour", "project.unit_targets",
-       "project.release", "project.domain", "logs", "berths", "hooks", "project.events_index",
+       "project.domain", "logs", "berths", "hooks", "project.events_index",
        "project.wiring", "project.berth_commands", "extension_shape", "extension_directory", "extension_tools",
        "extension_install", "package_new", "package_templates", "language_templates", "package_release",
        "package_version", "package_sources", "cli_extension", "cli_package",
@@ -104,7 +118,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # And feedback from using it: version 1 had no built product on a board to say anything about.
        "feedback", "feedback_card",
        # And the decision log: version 1 kept decisions in a file nobody was shown.
-       "decision_log",
+       "decision_entry", "decision_log", "decision_cards",
        # And the live strip: version 1's runner printed to a terminal, and nothing kept what it said.
        "activity", "live_page",
        # A window each. The experiment's board served one directory, so it had no table of who is looking
@@ -119,7 +133,7 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        # Where trunk's CI is read, asked before the fleet sails. The experiment merged with no CI to read.
        "trunk_remote",
        # The brief read before it is handed over, and the page reader the board and that check share.
-       "drawn", "brief_check", "brief_session", "brief_page", "cli_brief",
+       "drawn", "brief_check", "brief_faults", "brief_session", "brief_page", "cli_brief",
        # The Agent Client Protocol's client half, and what the board runs it on. The experiment had one
        # harness, by name.
        "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session", "stage_steps",
@@ -165,7 +179,10 @@ OWN = {"migration_legacy", "migration_flight", "migration_settings", "migration_
        "project.intake", "project.intake_cleanup",
        # The board pressing its own next button above the chart, where the project asks it to. The
        # experiment's board had no buttons above the chart to press.
-       "upstream"}
+       "upstream",
+       # A storyboard a person can talk about without a verdict: the conversation kept, the hold a word puts on
+       # the board, the review read for them, and the card. The experiment's storyboard had no session.
+       "stage_talk", "review_reading", "storyboard_card", "storyboard_script", "step_record"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will
 # grow a verb per slice, `assets` holds the paths and not the asset trees, `__init__` and `__main__` are
 # the package's own. The ledger's row for each describes what it becomes, not what is here, so they are

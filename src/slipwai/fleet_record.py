@@ -118,7 +118,9 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         held["slices"].append(str(row.get("slice") or row["fairway"]))
         if row["fairway"] not in held["fairways"]:
             held["fairways"].append(row["fairway"])
-        held["parks"].append({"fairway": row["fairway"], "t": row["t"], "slice": str(row.get("slice") or "")})
+        held["parks"].append({"fairway": row["fairway"], "t": row["t"], "slice": str(row.get("slice") or ""),
+                              "aim": str(row.get("aim") or row.get("slice") or ""), "key": str(row.get("key") or ""),
+                              **({"answer": row["answer"]} if row.get("answer") else {})})
         held["t"] = min(held["t"], row["t"])
         held["times"] = max(int(held.get("times", 1)), int(row.get("times") or 1))
         held["until"] = max(held["until"], str(row.get("until") or ""))

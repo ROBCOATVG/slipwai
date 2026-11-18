@@ -19,7 +19,7 @@ from unittest import mock
 
 from slipwai.activity import caption, fold, lines_of, live, log_path, stamp, task_of
 from slipwai.assets import TOOLKIT_ROOT
-from slipwai.live_page import strip_html, strip_payload, window_body, window_payload
+from slipwai.live_page import look_html, window_body, window_payload
 
 AGENTS = TOOLKIT_ROOT / "scripts/agents"
 NOW = datetime(2026, 10, 21, 9, 30, tzinfo=UTC)
@@ -261,22 +261,21 @@ class BoardTest(unittest.TestCase):
         self.assertIn("L13 waiting too", folds["leaver-offboarding/L08"]["warnings"][0]["said"])
         self.assertTrue(caption(folds["leaver-offboarding/L08"]).startswith("waiting on the UX gates · "))
 
-    def test_the_strip_puts_the_slice_that_needs_a_look_first_and_names_one_with_no_log(self) -> None:
+    def test_needs_a_look_names_only_the_slice_with_a_warning_and_links_to_its_card(self) -> None:
+        """The card says where each slice is; the strip says only what is wrong, and where to look."""
         now = datetime.now(UTC)
         self.log("L10", [{"t": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "said", "what": "Dispatching T018a.",
                           "agent": "session"}])
         self.log("L13", [{"t": (now - timedelta(minutes=12)).strftime("%Y-%m-%dT%H:%M:%SZ"), "kind": "ran",
                           "what": "Run unit tests", "agent": "session"}])
         rows = self.rows()
-        drawn = strip_html(rows, live(self.root, rows))
-        self.assertLess(drawn.index(">L13<"), drawn.index(">L10<"), "a quiet slice is the one to look at")
-        self.assertIn("nothing for 12m", drawn)
-        self.assertIn("“Dispatching T018a.”", drawn)
-        self.assertIn("no activity log yet", drawn, "L08 has none, and says so rather than looking idle")
-        self.assertIn('href="/slice?fairway=leaver-offboarding&amp;slice=L10"', drawn)
-        self.assertNotIn(">L01<", drawn)
-        self.assertEqual(strip_html([row for row in rows if row["state"] == "done"], {}), "")
-        self.assertEqual(json.loads(strip_payload(rows, live(self.root, rows)))["html"], drawn)
+        drawn = look_html(rows, live(self.root, rows), {})
+        self.assertIn("Needs a look · 1", drawn)
+        self.assertIn("Gone quiet: nothing for 12m", drawn)
+        self.assertIn('href="#card-L13"', drawn)
+        for fine in ("L10", "L08", "L01", "Dispatching"):
+            self.assertNotIn(fine, drawn, "a slice going well is its card's to describe, not the strip's")
+        self.assertIn("3 working · 2 fine", drawn)
 
     def test_the_window_is_lanes_a_feed_and_a_summary(self) -> None:
         now = datetime.now(UTC)

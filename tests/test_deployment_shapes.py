@@ -18,7 +18,7 @@ class ChoiceTest(unittest.TestCase):
         self.assertEqual(recorded({"target": "a-managed-target", "shape": "skiff"}), "skiff")
         # A field the manifest does not have decides nothing: the shape is recorded, or it is the liner
         # every pre-shape project was generated as.
-        self.assertEqual(recorded({"target": "a-managed-target", "state": "in-service"}), "liner")
+        self.assertEqual(recorded({"target": "a-managed-target", "state": "live"}), "liner")
 
     def test_a_new_project_starts_small_and_an_explicit_answer_is_kept(self) -> None:
         self.assertEqual(selected(None), "skiff")
@@ -67,6 +67,28 @@ class GeneratedShapeTest(unittest.TestCase):
                 self.assertIn("\n  staging:", liner[".github/workflows/deploy.yml"])
                 self.assertIn("infra/service/staging.tfvars", liner)
                 self.assertIn(".github/workflows/production.yml", liner)
+
+    def test_no_generated_workflow_asks_a_condition_of_what_github_does_not_offer_there(self) -> None:
+        """A step's or a job's `if:` may not read `secrets`: GitHub refuses the whole file before any job is
+        made, with no log. The Azure target chose its sign-in that way, so every project generated for Azure
+        began with a red trunk, and the mender — rightly forbidden to edit an `if:` — could not clear it.
+
+        Held to GitHub's context-availability table, not only to `secrets`: a job's `if:` and `name:` and a
+        step's `if:` each read only what GitHub offers there (`test_scaffold_starts_green.OFFERED`), over
+        every target, shape and profile."""
+        import re
+
+        from test_scaffold_starts_green import asked_where_not_offered, parsed, workflows
+
+        from slipwai.scaffold import project_files
+        asks = re.compile(r"^\s*(?:-\s*)?if:.*\bsecrets\.", re.MULTILINE)
+        for (target, shape, profile, name), text in workflows().items():
+            with self.subTest(target=target, shape=shape, profile=profile, workflow=name):
+                self.assertEqual(asks.findall(text), [])
+                self.assertEqual(asked_where_not_offered(parsed(text)), [])
+        deploy = project_files("a-staff-tool", "event-modelling", "azure", self.apps())[".github/workflows/deploy.yml"]
+        self.assertIn("steps.azure-sign-in.outputs.by == 'federation'", deploy)
+        self.assertIn("steps.azure-sign-in.outputs.by == 'secret'", deploy)
 
     def test_a_shape_that_migrates_from_its_deploy_job_signs_that_job_in_to_the_registry(self) -> None:
         """`registry_at_deploy`, and the two halves of it that matter.

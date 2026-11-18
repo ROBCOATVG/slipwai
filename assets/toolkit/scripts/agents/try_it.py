@@ -133,6 +133,41 @@ def walks() -> Path:
     return logs.run_dir(main) / "walks"
 
 
+def film(act: str, feature: str, capability: str, slice_id: str, example: str, says: str) -> str:
+    """A capability's film: one recording of the whole walk, and the marks that say what each part of it is.
+
+    The hand recorded a file per example, and what a person got was thirty clips of two seconds each, named
+    `ac1-3`, one of them the sign-in page. A capability is walked as one flow, so it is recorded as one:
+    `start` says where to record and starts the clock, `chapter` marks the instant an example begins with
+    the slice it belongs to and a sentence in the actor's words, `stop` closes it. The marks are a file beside
+    the recording, `film.json`, which is how the board offers chapters and says what is on screen.
+    """
+    if not feature or not capability or "/" in feature + capability:
+        raise SystemExit("film: usage is `film start|chapter|stop <feature> <capability>`")
+    home = walks() / feature / capability
+    marks = home / "film.json"
+    if act == "start":
+        home.mkdir(parents=True, exist_ok=True)
+        fresh = {"feature": feature, "capability": capability, "started": time.time(), "chapters": []}
+        marks.write_text(json.dumps(fresh, indent=2), encoding="utf-8")
+        return str(home / "film.webm")
+    try:
+        held = json.loads(marks.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise SystemExit(f"film {act}: no film was started for {capability} — `film start` first") from None
+    at = round(time.time() - float(held.get("started") or time.time()), 1)
+    if act == "chapter":
+        if not slice_id or not says.strip():
+            raise SystemExit("film chapter: needs --slice and --says, a sentence in the actor's own words")
+        held["chapters"].append({"at": at, "slice": slice_id, "example": example, "says": says.strip()})
+    elif act == "stop":
+        held["length"] = at
+    else:
+        raise SystemExit("film: start, chapter or stop")
+    marks.write_text(json.dumps(held, indent=2), encoding="utf-8")
+    return f"{act} at {int(at) // 60}:{int(at) % 60:02d}"
+
+
 def workspace() -> Path:
     return ROOT.parent / f"{ROOT.name}-try"
 
@@ -1237,13 +1272,19 @@ def down(state: dict, log: Path, forget: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("verb", choices=("start", "refresh", "fresh", "stop", "status", "seed", "flag", "walks",
-                                         "people"))
+                                         "people", "film"))
     parser.add_argument("rest", nargs="*")
     parser.add_argument("--slice", default="", help="seed: only this slice's story, from this checkout")
     parser.add_argument("--api", default="", help="seed --slice: the service to load it into, e.g. a berth's")
     parser.add_argument("--apply", action="store_true",
                         help="people: create the declared people the running sign-in server lacks (a berth's)")
+    parser.add_argument("--example", default="", help="film chapter: the example being walked, as examples.md numbers it")
+    parser.add_argument("--says", default="", help="film chapter: who is signed in and what they are about to do")
     asked = parser.parse_args(argv)
+    if asked.verb == "film":
+        act, feature, capability = (asked.rest + ["", "", ""])[:3]
+        print(film(act, feature, capability, asked.slice, asked.example, asked.says))
+        return 0
     if asked.verb == "people":
         # Who a story may sign in as, from this checkout; with `--apply`, made in whichever sign-in server
         # the environment names — a berth's, before `seed --slice` — the way Try it makes them in its own.

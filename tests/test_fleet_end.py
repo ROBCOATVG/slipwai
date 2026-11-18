@@ -38,6 +38,8 @@ class EndTest(Fixture):
         self.assertEqual(colour, "brass")
         self.assertEqual(sentence, "Merged, not yet gated: 1 capability owed its gates — take-orders.")
         self.assertIn("/sail", under)
+        self.assertIn("then to the hand's walk, whose verdict accepts it unless the project says a person does", under)
+        self.assertNotIn("to its demo", under, "nobody is promised a demo by default")
         found["gates_owed"] = ["take-orders", "bill-orders"]
         self.assertEqual(headline(found)[1],
                          "Merged, not yet gated: 2 capabilities owed their gates — take-orders, bill-orders.")

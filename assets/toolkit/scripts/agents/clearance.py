@@ -105,6 +105,10 @@ BASELINE = "baseline"
 STARTED = ("dispatched", "taken-here")
 #: The band whose claim ends at the slice's own `mark-set` lines rather than at its merge.
 PREPARE = "prepare"
+#: `.specify/cruise.json`'s `demos`: who accepts a whole capability. The hand by default.
+HAND_DEMOS, PERSON_DEMOS = "hand", "person"
+#: Who an `accepted` line names when the hand's verdict wrote it.
+DEMO_HAND = "sail-demo-hand"
 #: How many of trunk's first-parent merges are read for a slice branch. Enough for any run's history and
 #: bounded, because this is asked at every boundary.
 MERGES_READ = 5000
@@ -216,6 +220,7 @@ class Folded:
         self.merged_in_git: set[str] = set()
         self.verdict: dict[str, str] = {}  # slice -> the hand's last verdict
         #: Capabilities a person's demo is owed for and has not accepted: `demo-due` without a later `accepted`.
+        #: Only where `demos` is `person`; under `hand` the hand's verdict was the acceptance and this stays empty.
         self.demo_due: set[str] = set()
         #: Open questions per slice: a `question` whose `id` no `decision` has carried since.
         self.questions: dict[str, list[tuple[str, str]]] = {}
@@ -233,9 +238,22 @@ class Folded:
         self.baselined: set[str] = set()
 
 
-def folded(found: list[dict]) -> Folded:
+def demos_setting(root: Path | None = None) -> str:
+    """`.specify/cruise.json`'s `demos`: `hand`, the default, or `person`. Under `hand` the hand's verdict at
+    a capability's walk is its acceptance, so no slice ever waits on a person's demo; under `person` one
+    does, until an `accepted` line a person's word wrote — one the hand wrote is the last reading before it."""
+    try:
+        held = json.loads(((root or ROOT) / ".specify" / "cruise.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return HAND_DEMOS
+    return PERSON_DEMOS if isinstance(held, dict) and held.get("demos") == PERSON_DEMOS else HAND_DEMOS
+
+
+def folded(found: list[dict], demos: str | None = None) -> Folded:
     """The fold. Order matters for every pair that answers each other — a `decision` closes the `question`
-    it names, an `accepted` closes the `demo-due` for its capability, a `claimed` lifts its fairway's park."""
+    it names, an `accepted` closes the `demo-due` for its capability, a `claimed` lifts its fairway's park.
+    `demos` is who accepts a capability, read from the project where it is not given."""
+    person = (demos or demos_setting()) == PERSON_DEMOS
     state = Folded()
     slice_park_at: dict[str, tuple[str, str]] = {}
     park_at: dict[str, str] = {}
@@ -260,9 +278,9 @@ def folded(found: list[dict]) -> Folded:
             state.merged[slice_id] = str(line.get("commit", ""))
         elif kind == "demo" and slice_id:
             state.verdict[slice_id] = str(line.get("verdict", ""))
-        elif kind == "demo-due":
+        elif kind == "demo-due" and person:
             state.demo_due.add(str(line.get("capability", "")))
-        elif kind == "accepted":
+        elif kind == "accepted" and line.get("by") != DEMO_HAND:
             state.demo_due.discard(str(line.get("capability", "")))
         elif kind == "question" and slice_id and line.get("id"):
             state.questions.setdefault(slice_id, []).append((str(line["id"]), str(line.get("what", ""))))

@@ -230,9 +230,20 @@ class AnswersTest(unittest.TestCase):
                 self.assertIn(one.language, named,
                               f"{one.name} answers `language {one.language}` and does not name the package")
                 if one.framework:
-                    backend = f"{one.language}-{one.framework}"
-                    self.assertIn(backend, named,
-                                  f"{one.name} answers `framework {one.framework}` and names no {backend}")
+                    # `java-spring` answers `spring-boot`: held equal, `framework spring` shipped.
+                    short = [name.removeprefix(f"{one.language}-") for name in named
+                             if name.startswith(f"{one.language}-")]
+                    self.assertTrue(any(one.framework == w or one.framework.startswith(f"{w}-") for w in short),
+                                    f"{one.name} answers `framework {one.framework}` and names no package of it")
+
+    def test_the_framework_it_answers_is_one_the_package_it_names_offers_where_that_package_is_known(self) -> None:
+        """Against the word each published backend gives its framework: this catalogue has no real language."""
+        offered = {"java-spring": "spring-boot", "java-quarkus": "quarkus"}
+        for root, one in loaded():
+            for each in one.languages:
+                if each.name in offered and each.name.startswith(f"{one.language}-"):
+                    with self.subTest(quickstart=root.name):
+                        self.assertEqual(one.framework, offered[each.name])
 
 
 class ReasoningTest(unittest.TestCase):

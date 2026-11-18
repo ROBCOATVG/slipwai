@@ -33,11 +33,14 @@ class EntryShapeTest(unittest.TestCase):
         self.assertIn("**Read against:**", DECISION_ENTRY)
 
     def test_it_is_inside_why_rather_than_a_field_of_its_own(self) -> None:
-        """A tenth bullet would lengthen every entry a project has already written, and the gate holds the
-        fields in order — so an existing record would fail on its shape rather than on its content."""
+        """A bullet of its own would be one the gate holds every existing entry to, in order — so an existing
+        record would fail on its shape rather than on its content. The tenth bullet, `In short`, is the one
+        the gate asks only of entries written since its rule (`test_decision_sentence.py`)."""
         why = next(line for line in DECISION_ENTRY.splitlines() if line.startswith("- **Why:**"))
         self.assertIn("**Read against:**", why)
-        self.assertEqual(9, sum(1 for line in DECISION_ENTRY.splitlines() if line.startswith("- **")))
+        bullets = [line for line in DECISION_ENTRY.splitlines() if line.startswith("- **")]
+        self.assertEqual(10, len(bullets))
+        self.assertEqual(1, sum(1 for line in bullets if line.startswith("- **In short:**")))
 
     def test_the_four_authorities_are_named_where_a_writer_will_read_them(self) -> None:
         for authority in ("this project's own", "the specification", "the constitution", "standing D<m>"):

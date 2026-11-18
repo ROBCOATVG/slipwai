@@ -45,6 +45,7 @@ from .project.adopted import WRITTEN
 from .project.design_page import DESIGN, existing_design_page, starter_design
 from .project.docs_index import docs_index
 from .project.pruner import pruner
+from .release_state import state_of
 from .scaffold import FACTORY_EMAIL, FACTORY_IDENTITY, NO_MAINTENANCE, project_files, write_project
 from .services import App, web_apps
 
@@ -121,6 +122,7 @@ def replay(
 
     files = project_files(
         name, document["profile"], document["target"], apps, target, adoption, recorded_shape(document),
+        state_of(document),
     )
     preserve_project_styles(root, parent, apps, files, target)
     carried = handed_over_at(root, parent, layout) if parent is not None else {}

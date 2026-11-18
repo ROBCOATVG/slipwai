@@ -54,12 +54,30 @@ SLOW += test_captain_log
 SLOW += test_harbourmaster_needs test_bridge_needs
 SLOW += test_fence
 SLOW += test_mender test_stop_the_line
+SLOW += test_scaffold_starts_green
 SLOW += test_run_folder
 SLOW += test_harbourmaster_stop
+SLOW += test_example_map_source
+# The captain as an agent: a captain run per case, and the six captain suites run twice over.
+SLOW += test_captain_agent test_captain_agent_parity test_captain_heard
+# A captain run with the stand-in agent, sat out to a stage's silence bound.
+SLOW += test_captain_review7
+# Every order a captain gives, through the real captain program with the stand-in, a captain run per case.
+SLOW += test_captain_through
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out
 	$(if $(UNIT_TESTS),PYTHONPATH=$(TEST_PATH):tests python3 -m unittest $(UNIT_TESTS),@echo 'unit: no test modules yet')
+
+# Evals are not tests: each puts a recorded moment to the captain agent through the project's own harness,
+# several times, and scores the order it gives. They spend a person's tokens, so they are never part of
+# `verify` and never gate a merge; the score is advice (docs/captain-evals.md). PROJECT names the project
+# whose initialised harness is used, or CAPTAIN a command that stands in for the agent.
+.PHONY: evals evals-rescore
+evals: ## Put the recorded captain cases to the captain agent: DECISION=, N= runs, BOUND= seconds, PROJECT= or CAPTAIN=
+	python3 scripts/evals.py run $(if $(DECISION),--decision $(DECISION)) --runs $(or $(N),3) --bound $(or $(BOUND),60) $(if $(PROJECT),--project "$(PROJECT)") $(if $(CAPTAIN),--captain "$(CAPTAIN)")
+evals-rescore: ## Score a saved eval run again against the labels as they are now, calling no agent: RUN=
+	python3 scripts/evals.py rescore "$(RUN)"
 
 .PHONY: glossary
 glossary: ## Rewrite GLOSSARY.md from the plan's vocabulary (tests/test_glossary.py holds them in step)
@@ -122,8 +140,12 @@ check-structure: ## Fail when a module imports against the declared direction, c
 	python3 scripts/check-structure.py
 	python3 scripts/bring-back.py --check
 
+.PHONY: parity
+parity: ## A stand-in captain agent making today's choices leaves the six captain suites' deck logs as they were
+	SLIPWAI_PARITY=1 PYTHONPATH=$(TEST_PATH):tests python3 -m unittest test_captain_agent_parity
+
 .PHONY: verify
-verify: lint typecheck check-structure check-shared check-release test ## Full local gate — the same one CI runs
+verify: lint typecheck check-structure check-shared check-release test parity ## Full local gate — the same one CI runs
 	@echo
 	@echo 'verify: all gates passed'
 

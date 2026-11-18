@@ -68,7 +68,8 @@ whoever is being shown it. At the end of each slice its examples are proven by i
 capability is whole the hand walks every one of them in the running app and records a verdict in three
 words, because a test that passes and a path that works are different claims and only one of them is
 machine-checked; **nobody is stopped for that**. This stop runs when a capability's last slice has merged
-and its gates have cleared, and it walks the whole capability as one flow. Ask what is owed:
+and its gates have cleared, and it walks the whole capability as one flow. Ask what is owed — the hand's
+`accepted` line under `demos: hand`, a person's demo under `person`; the command says which:
 
 ```sh
 python3 scripts/agents/capabilities.py --due
@@ -84,9 +85,28 @@ adversary pass, one mutation run over every production file the capability's sli
 `sail-mutation-shipworm` under its `harbour.json` budget — a run that reaches it is killed, its own process
 tree and nothing else, and leaves a qualified receipt rather than a score), and the hand's walk of every
 example. They are recorded in `specs/<feature>/capabilities/<capability>/gates.md`, and its `Cleared:` line is
-what makes this stop due. Findings above the bar are fixed in a follow-up slice before the person is shown
-the capability; per capability each reading is one pass over the thing a person is about to accept, which
-is the only thing it is evidence about.
+what makes this stop due. Findings above the bar are fixed in a follow-up slice before the capability is
+accepted; per capability each reading is one pass over the thing about to be accepted, which is the only
+thing it is evidence about.
+
+**Who accepts it is `.specify/cruise.json`'s `demos`, and this is the one place that says how it is
+written.** Under `hand`, the default, the hand's `accepted` at the walk is the acceptance: once the record
+says `Cleared:`, run
+
+```sh
+python3 scripts/agents/deck_line.py accepted --capability <capability> --by sail-demo-hand
+```
+
+and the capability and its slices are done. **The session does not pause there.** It shows the board and
+the thing, asks what using it revealed, and carries straight on with the next ready slice; the hand's film
+stays on the board for a person to watch and say what it showed when they have time, and what they say is
+feedback, routed like any other. Under `person` a person accepts it: run `python3
+scripts/agents/deck_line.py demo-due --capability <capability>`, and the board offers *Accept* and *Not
+yet*. Only the board writes a person's acceptance, when they press *Accept*; a person who accepts in the
+conversation is pointed to that button, since no session may write an acceptance as them. *Not yet* is a
+`behaviour` verdict with their reason. The command refuses a capability that is not whole and cleared, and
+the line the setting does not take. Either way a verdict of `behaviour` or `implementation` re-enters the
+ladder as it always has.
 
 **Accepting it is not a release decision.** Acceptance says the capability is right. Hoisting a flag says
 the business wants it live, which may be another quarter or never, and stays a person's act on their own

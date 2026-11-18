@@ -1,0 +1,235 @@
+{
+ "situation": "GN1 has spent ten minutes on one task; its others took a minute.",
+ "source": "a recorded run of project-a, the game-nights stream, 2026-11-13",
+ "snapshot": {
+  "feature": "001-project-a",
+  "fairway": "game-nights",
+  "slices": {
+   "GN1": "claimed, in flight"
+  },
+  "deck": [
+   {
+    "t": "2026-11-13T12:35:04Z",
+    "kind": "claimed",
+    "slice": "GN1"
+   },
+   {
+    "t": "2026-11-13T12:45:36Z",
+    "kind": "mark-set",
+    "slice": "GN1",
+    "mark": "GameNightAsked"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-11-13T12:35:30Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   }
+  ],
+  "activity": {
+   "GN1": [
+    {
+     "t": "2026-11-13T12:56:55Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && mkdir -p tests/fakes/game-nights",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:57:19Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:57:37Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && sed -i ''",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:57:48Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:57:52Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "npx biome check --write apps/project-a-service >/dev/null",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:58:06Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "make check-imports 2>&1 | head -20;",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:58:12Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "grep -n \"public\\|context\\|allow\" scripts/check-imports.py | head",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:58:14Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "sed -n 98,125p scripts/check-imports.py; sed -n",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:58:36Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:58:44Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && grep -n \"ports.js\"",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:58:54Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:58:59Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "npx biome check --error-on-warnings apps/project-a-service 2>&1",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:04Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "git diff --stat 2ceecc7 HEAD |",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:11Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "make lint 2>&1 | grep -B3",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:16Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && npx biome check",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:25Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && npx biome check",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:34Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && sed -n 28,80p",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:43Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && sed -n 66,150p",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:48Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    },
+    {
+     "t": "2026-11-13T12:59:59Z",
+     "stage": "drive",
+     "agent": "a66f789",
+     "kind": "ran",
+     "what": "cd ../project-a-GN1/apps/project-a-service && python3 - <<'EOF'",
+     "role": "sail-implement-shipwright"
+    }
+   ]
+  },
+  "warnings": {
+   "GN1": [
+    {
+     "kind": "long",
+     "level": "amber",
+     "said": "10m on one task · its others took 1m"
+    }
+   ]
+  }
+ },
+ "event": {
+  "v": 1,
+  "id": "gn1-long-command",
+  "t": "2026-11-13T12:59:59Z",
+  "kind": "stuck",
+  "slice": "GN1"
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "none"
+   },
+   {
+    "verb": "say"
+   }
+  ],
+  "wrong": [
+   {
+    "verb": "stop",
+    "slice": "GN1"
+   },
+   {
+    "verb": "park",
+    "slice": "GN1"
+   }
+  ],
+  "why": "The agent on it was still running a command every few seconds; a long task that is still writing lines is working.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: the activity tail shows a command every few seconds up to the moment. What happened: it finished, asked to merge, and was held only by a red trunk."
+ }
+}

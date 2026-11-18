@@ -1,0 +1,354 @@
+{
+ "situation": "The library stream has been given a second session slot while LB6 runs. Nine slices have had their parks answered by a person and are cleared to start.",
+ "source": "a recorded run of project-b, the library stream, 2026-10-22",
+ "snapshot": {
+  "feature": "001-project-b",
+  "fairway": "library",
+  "slices": {
+   "LB1": "parked, answered and cleared: LB1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB11": "parked, answered and cleared: LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB15": "parked, answered and cleared: LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB2": "parked, answered and cleared: LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB3": "parked, answered and cleared: LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB4": "parked, answered and cleared: LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+   "LB6": "claimed, in flight",
+   "LB7": "parked, answered and cleared: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed on slice/LB7 at 83f5d36; mark ListeningSto",
+   "LB8": "parked, answered and cleared: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and the Designed line committed on slice/LB8 ",
+   "LB9": "parked, answered and cleared: LB9: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows"
+  },
+  "deck": [
+   {
+    "t": "2026-10-21T16:13:06Z",
+    "kind": "parked",
+    "slice": "LB7",
+    "why": "LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed on slice/LB7 at 83f5d36; mark ListeningStopped set 16:02:45Z) and waits at the implementation rung on the same host change LB6 parked on (D31/D32): land on main `context: catch-up` for LB6, LB7, LB8, LB9, LB10 (and LB13, recommended) in docs/event-model/model.yaml - check-model's one-stream-one-context rule means all together - then make chart and make decisions so chart.yaml and the split's Fairways table put them in the catch-up fairway …"
+   },
+   {
+    "t": "2026-10-21T16:15:03Z",
+    "kind": "mark-set",
+    "slice": "LB8",
+    "mark": "PositionEntered",
+    "contract": "docs/event-model/model.yaml#PositionEntered",
+    "examples": "specs/001-project-b/slices/LB8/examples.md"
+   },
+   {
+    "t": "2026-10-21T16:20:25Z",
+    "kind": "read",
+    "told": "2026-10-21T16:14:38Z"
+   },
+   {
+    "t": "2026-10-21T16:20:25Z",
+    "kind": "read",
+    "told": "2026-10-21T15:52:44Z"
+   },
+   {
+    "t": "2026-10-21T16:20:25Z",
+    "kind": "read",
+    "told": "2026-10-21T15:48:59Z"
+   },
+   {
+    "t": "2026-10-21T16:23:12Z",
+    "kind": "told",
+    "slice": "LB8",
+    "by": "session",
+    "message": "LB4 (abreast): LB8's EnterPosition turns chapter plus minutes into a position from the book's chapters, read off book-{bookId} by a tolerant reader that folds BookImported.chapters and ServerBookAdded.chapters alike and asserts number, start and length of each chapter and nothing else (slices/LB8/research.md section 1). Please carry chapters[] on ServerBookAdded as { number, title?, start, length } in whole seconds, numbered 1..N in the server's order - the server's start/end pairs mapped to start/length in your translation - the shape LB3's data model gives BookImported.chapters. Until the sh …"
+   },
+   {
+    "t": "2026-10-21T16:28:54Z",
+    "kind": "mark-set",
+    "slice": "LB1",
+    "mark": "ServerConnected",
+    "contract": "docs/event-model/model.yaml#ServerConnected",
+    "examples": "specs/001-project-b/slices/LB1/examples.md",
+    "commit": "62952c1"
+   },
+   {
+    "t": "2026-10-21T16:30:52Z",
+    "kind": "parked",
+    "slice": "LB8",
+    "why": "LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and the Designed line committed on slice/LB8 at fc0ee23; mark PositionEntered set 16:15:03Z) and waits at the implementation rung on the same host change LB6 (16:03:03Z) and LB7 (16:13:06Z) parked on (D31/D32): land on main `context: catch-up` for LB6, LB7, LB8, LB9, LB10 (and LB13, recommended) in docs/event-model/model.yaml - check-model's one-stream-one-context rule means all together - then make chart and make decisions so chart.yaml and …"
+   },
+   {
+    "t": "2026-10-21T16:31:31Z",
+    "kind": "claimed",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-21T16:35:27Z",
+    "kind": "stowed",
+    "slice": "LB3",
+    "from": "review",
+    "what": "1 item: every imported file is read in full up to three times (the D20 digest tie-break, the book hash, an M4B chapter text track) - correctness holds, the cost is time on a 1 GB book; one pass that scans and hashes is a reshape of the store and the reader together. Recorded in specs/001-project-b/slices/LB3/review.md #6; fairways/library/careen.md is outside what a slice branch may write, so the host carries the row."
+   },
+   {
+    "t": "2026-10-21T16:40:06Z",
+    "kind": "told",
+    "slice": "LB1",
+    "by": "session",
+    "message": "Host, on main, from LB1's plan (research P-10): (1) CREDENTIALS_KEY (32 bytes base64, openssl rand -base64 32) documented in .env.example and set in make demo's environment - the Postgres credential store (ADR 0006, D41) is wired only when DATABASE_URL and CREDENTIALS_KEY are both set, else the in-memory one; (2) VITE_FLAG_AUDIOBOOKSHELF_COMPANION=off in .env.example; (3) merge slice/LB3 before slice/LB1 (split order already says so): LB1 carries LB3's authentication files byte-identical (authenticate port, bearer.ts, the userinfo adapter, clock, ids, their fakes, stub and tests) so the merge  …"
+   },
+   {
+    "t": "2026-10-21T16:40:25Z",
+    "kind": "parked",
+    "why": "LB3: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB3"
+   },
+   {
+    "t": "2026-10-21T16:40:27Z",
+    "kind": "claimed",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-21T16:40:33Z",
+    "kind": "parked",
+    "why": "LB1: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-21T16:40:41Z",
+    "kind": "parked",
+    "why": "LB4: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-21T16:40:44Z",
+    "kind": "claimed",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-21T16:40:44Z",
+    "kind": "claimed",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-21T16:40:58Z",
+    "kind": "parked",
+    "why": "LB15: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-21T16:40:58Z",
+    "kind": "parked",
+    "why": "LB2: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-21T16:41:13Z",
+    "kind": "claimed",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-21T16:41:26Z",
+    "kind": "parked",
+    "why": "LB11: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-21T16:42:07Z",
+    "kind": "parked",
+    "why": "LB9: `/sail` exited 1. That was the last of 3 run(s), which is what `attempts` allows",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T08:00:25Z",
+    "kind": "read",
+    "told": "2026-10-21T16:26:23Z"
+   },
+   {
+    "t": "2026-10-22T10:04:16Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB6 is planned and tasked (plan, tasks, Designed line committed on slice/LB6) and waits at the implementation rung on a host change the person decided (D32): l…",
+    "by": "person",
+    "slice": "LB6"
+   },
+   {
+    "t": "2026-10-22T10:04:22Z",
+    "kind": "claimed",
+    "slice": "LB6"
+   },
+   {
+    "t": "2026-10-22T10:04:37Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed o…",
+    "by": "person",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T10:04:39Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed o…",
+    "by": "person",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T10:04:44Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and…",
+    "by": "person",
+    "slice": "LB8"
+   },
+   {
+    "t": "2026-10-22T10:04:48Z",
+    "kind": "told",
+    "message": "sorted, carry on: LB7 is prepared, planned and tasked (examples R1-R7 with D33, plan, research, data model, contract, quickstart, try-it, tasks and the Designed line committed o…",
+    "by": "person",
+    "slice": "LB7"
+   },
+   {
+    "t": "2026-10-22T10:04:57Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB3"
+   },
+   {
+    "t": "2026-10-22T10:04:58Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB3"
+   },
+   {
+    "t": "2026-10-22T10:04:59Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB1"
+   },
+   {
+    "t": "2026-10-22T10:05:01Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB4"
+   },
+   {
+    "t": "2026-10-22T10:05:02Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB15"
+   },
+   {
+    "t": "2026-10-22T10:05:04Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB2"
+   },
+   {
+    "t": "2026-10-22T10:05:05Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB11"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T10:05:15Z",
+    "kind": "told",
+    "message": "sorted, carry on: `/sail` exited 1",
+    "by": "person",
+    "slice": "LB9"
+   },
+   {
+    "t": "2026-10-22T10:10:23Z",
+    "kind": "read",
+    "slice": "LB6",
+    "told": "2026-10-22T10:04:16Z"
+   },
+   {
+    "t": "2026-10-22T10:22:15Z",
+    "kind": "told",
+    "slice": "LB6",
+    "by": "session",
+    "message": "Host: two things changed in LB6 at implementation, both in decisions.md. D45 - LB6's code is under library/ (not catch-up/) until the D32 move lands; the landing should git mv LB6's listening files (domain/library/{events/,listening/}, application/library/{book-owner,resume-listening}.ts, adapters/driving/http/library/resumptions.ts, tests/*/library/resume-listening*, listening-decide*, resumptions*) to catch-up/ and fix imports - a refactor. D46 - the service's bearer check is LB3's Authenticate/bearerCheck/userinfo adapter, taken byte-identical (as LB1 does); LB6 no longer asks for jose, and …"
+   }
+  ],
+  "harbour": [
+   {
+    "t": "2026-10-22T10:04:36Z",
+    "kind": "slots",
+    "slots": 1,
+    "running": 1
+   },
+   {
+    "t": "2026-10-22T10:04:51Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:30:52Z",
+    "what": "sorted, carry on: LB8 is prepared, planned and tasked (examples R1-R8 with D35-D37, plan, research, data model, contract LB8-entries.md, quickstart, try-it, tasks T001-T020 and…"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:40:25Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:40:33Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:40:41Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:40:58Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:40:58Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:05:07Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:41:26Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   },
+   {
+    "t": "2026-10-22T10:05:22Z",
+    "kind": "cleared",
+    "parked": "2026-10-21T16:42:07Z",
+    "what": "sorted, carry on: `/sail` exited 1"
+   }
+  ],
+  "slots": 1
+ },
+ "event": {
+  "v": 1,
+  "id": "library-second-slot",
+  "t": "2026-10-22T10:52:44Z",
+  "kind": "choose-next",
+  "slice": ""
+ },
+ "label": {
+  "accept": [
+   {
+    "verb": "start",
+    "within": [
+     "LB7",
+     "LB8"
+    ]
+   }
+  ],
+  "wrong": [],
+  "why": "LB7 and LB8 are the slices the log shows prepared, planned and tasked; the others show only an exit 1.",
+  "signed_off": "",
+  "note": "Draft, cut from a recorded run and labelled from what the snapshot shows at that instant, for a person to confirm or correct. Rests on: LB7's and LB8's park text in `slices` says prepared, planned and tasked; every other cleared slice's says only that `/sail` exited 1.  The person's words here are paraphrased, keeping what the routing turns on."
+ }
+}

@@ -1,8 +1,8 @@
 """The bridge: the board as a page, and the three things a person can do to a run from it.
 
 The point of the page is not that it is prettier than the terminal. It is that a person answers from one
-seat — so the test that matters most is that an answer typed on the page becomes a line in the right
-stream's own log, which is the file the captain reads at its next boundary.
+seat — so the test that matters most is that an answer typed on the page lands in the right inbox: the
+slice it names, or its stream's captain, whose driver delivers it and writes the receipt.
 """
 from __future__ import annotations
 
@@ -22,17 +22,17 @@ from pathlib import Path
 import checkout_packages  # noqa: F401
 from board_fixture import BoardTest, Fixture
 
-from slipwai import logs
+from slipwai import logs, talk
 from slipwai.bridge import serve
 from slipwai.bridge_page import PLAIN, page, read_only
 from slipwai.cli_fleet import config
-from slipwai.deck import tell
 from slipwai.fleet import board
 from slipwai.passage import record_verdict
 from slipwai.project.harbour import START
+from slipwai.talk_said import tell
 from slipwai.telegraph import MEANS
 
-# budget: 795 — every route the board answers, the draft that runs by itself, the question that reads
+# budget: 810 — every route the board answers, the draft that runs by itself, the question that reads
 # once among them, driven against
 # `board_fixture`: the fleet pages, the
 # controls, the tell, and the landing a generate leaves behind with the voyage it opens. What a run's own
@@ -44,26 +44,33 @@ from slipwai.telegraph import MEANS
 # Twenty for Done on a note for the host, which is a `read` receipt written from the page.
 # and an answer from a red card naming the slice it is for
 # Twenty for where trunk's CI is read: the remote a form gives, and the question before casting off.
+# Fifteen for the tell reaching an inbox rather than a deck log: the message, its id, and no line written.
 
 
 class TellTest(Fixture):
-    def test_an_answer_becomes_a_told_line_in_that_stream_s_own_log(self) -> None:
+    def inbox(self, slice_id: str = talk.CAPTAIN) -> list[dict]:
+        return talk.inbox(talk.place(logs.run_dir(self.root), "ORD", slice_id))
+
+    def test_a_message_to_a_stream_goes_to_its_captain_s_inbox_and_writes_no_deck_line(self) -> None:
         """The whole point of the page: a message somewhere else is a message nothing is watching."""
-        tell(self.root, "ORD", "stop and talk to me")
-        told = [e for e in self.read("ORD") if e.kind == "told"]
-        self.assertEqual(len(told), 1)
-        self.assertEqual(told[0].fields["message"], "stop and talk to me")
+        said = tell(self.root, "ORD", "stop and talk to me")
+        [sent] = self.inbox()
+        self.assertEqual((sent["text"], sent["from"]), ("stop and talk to me", "person"))
+        self.assertEqual(said, f"the ORD captain: sent · the fleet is not running: read when it is cast off · "
+                               f"message {sent['id']}", "never told for something nothing has read")
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "told"], [])
 
     def test_a_stream_with_no_log_says_so_rather_than_making_one(self) -> None:
         with self.assertRaises(ValueError) as refused:
             tell(self.root, "NOPE", "hello")
         self.assertIn("no log here", str(refused.exception))
 
-    def test_an_answer_from_a_red_card_names_its_slice(self) -> None:
-        """The box on a waiting slice's card: the line says which slice it is for, so it clears that park."""
+    def test_an_answer_from_a_red_card_goes_to_its_slice(self) -> None:
+        """The box on a waiting slice's card: the slice's inbox, where the captain takes a person's message
+        to a parked slice as the answer to its park (`test_captain_talk`)."""
         tell(self.root, "ORD", "use the bank by role family", "ORD-07")
-        told = [e for e in self.read("ORD") if e.kind == "told"]
-        self.assertEqual((told[0].fields["slice"], told[0].fields["by"]), ("ORD-07", "person"))
+        [sent] = self.inbox("ORD-07")
+        self.assertEqual((sent["text"], sent["from"]), ("use the bank by role family", "person"))
         with self.assertRaises(ValueError):
             tell(self.root, "ORD", "hello", "../etc")
 
@@ -130,15 +137,16 @@ class ServerTest(BoardTest):
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
 
     def test_the_page_is_served(self) -> None:
-        """The Board is the landing — looking at, where it stands, what can be started — and the live cards
-        are on the Voyage tab, beside the stages and the model."""
+        """The Board is the landing — looking at, where it stands, what can be started — and the fleet's
+        machinery is on the Voyage window's Fleet tab, with its settings; the streams' rows are not."""
         code, said = self.get("/")
         self.assertEqual(code, 200)
         self.assertIn("Start something", said)
         self.assertNotIn("<h2>Streams</h2>", said)
         code, said = self.get("/voyage")
         self.assertEqual(code, 200)
-        self.assertIn("<h2>Streams</h2>", said)
+        self.assertIn("<h2>Fleet</h2>", said)
+        self.assertNotIn("<h2>Streams</h2>", said)
         self.assertIn("<h2>Settings</h2>", said)
         self.assertIn('for="tab-speed"', said, "the speed is a tab of the settings box now")
         self.assertIn('data-ring', said, "the controls came with the cards")
@@ -148,28 +156,33 @@ class ServerTest(BoardTest):
         self.assertEqual(code, 200)
         self.assertIn("berths", json.loads(said))
 
-    def test_an_answer_posted_from_the_page_reaches_the_log(self) -> None:
-        code, _ = self.post("/tell", {"fairway": "ORD", "message": "from the page"})
+    def test_a_message_posted_from_the_page_reaches_the_captain_s_inbox_with_its_id(self) -> None:
+        code, said = self.post("/tell", {"fairway": "ORD", "message": "from the page"})
         self.assertEqual(code, 200)
-        self.assertEqual([e.fields["message"] for e in self.read("ORD") if e.kind == "told"],
-                         ["from the page"])
+        [sent] = talk.inbox(talk.place(logs.run_dir(self.root), "ORD"))
+        self.assertEqual(sent["text"], "from the page")
+        self.assertTrue(said.endswith(f"message {sent['id']}"), said)
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "told"], [], "no deck line for anything said")
 
-    def test_an_answer_to_a_question_is_the_decision_that_closes_it(self) -> None:
-        """The box under a question wrote a note beside it, and the question stood until somebody wrote the
-        decision line by hand."""
-        self.deck("ORD", logs.entry("question", fairway="ORD", id="D13", slice="chart", what="One context?"))
+    def test_an_answer_to_a_question_goes_to_the_slice_that_asked_it(self) -> None:
+        """The box under a question wrote a `decision` itself; now the answer is a message to the slice, which
+        its captain carries to the park and records as the decision when it carries the slice on."""
+        self.deck("ORD", logs.entry("question", fairway="ORD", id="D13", slice="ORD-01", what="One context?"))
         self.assertIn('data-question="D13"', self.rendered())
         code, said = self.post("/tell", {"fairway": "ORD", "message": "Yes, one context.", "question": "D13"})
-        self.assertEqual((code, said), (200, "answered D13"))
-        taken = [e for e in self.read("ORD") if e.kind == "decision"]
-        self.assertEqual([(e.fields["id"], e.fields["what"], e.fields["decided_by"]) for e in taken],
-                         [("D13", "Yes, one context.", "human")])
-        self.assertNotIn("Needs an answer", self.rendered(), "answered: the question is off the card")
+        [sent] = talk.inbox(talk.place(logs.run_dir(self.root), "ORD", "ORD-01"))
+        self.assertEqual((code, said), (200, f"answered D13 · ORD-01: sent · the fleet is not running: read when "
+                                             f"it is cast off · message {sent['id']}"))
+        self.assertEqual(sent["of"], "question:D13", "what lets the question's row show it was answered")
+        self.assertEqual((sent["text"], sent["from"]), ("Yes, one context.", "person"))
+        self.assertEqual([e for e in self.read("ORD") if e.kind in ("decision", "told")], [])
         self.assertEqual(self.post("/tell", {"fairway": "ORD", "message": "x", "question": "../D"})[0], 400)
+        self.assertEqual(self.post("/tell", {"fairway": "ORD", "message": "x", "question": "D99"})[0], 400)
 
     def test_a_note_for_the_host_is_dismissed_from_the_page(self) -> None:
         """A session's note needs no answer, and nothing but a `read` receipt takes it off Waiting on you."""
-        self.post("/tell", {"fairway": "ORD", "message": "For the host: ignore preflight.json"})
+        self.deck("ORD", logs.entry("told", fairway="ORD", message="For the host: ignore preflight.json",
+                                    by="session"))
         told = next(e for e in self.read("ORD") if e.kind == "told")
         code, said = self.post("/dismiss", {"fairway": "ORD", "told": told.t})
         self.assertEqual(code, 200, said)
@@ -294,8 +307,9 @@ class LandingTest(BoardTest):
         self.patch("generate", lambda answers, root: (True, f"created: {self.made}"))
         self.patch("destination", lambda answers, root: self.made)
 
-    def patch(self, name: str, with_this: object) -> None:
-        import slipwai.bridge as module
+    def patch(self, name: str, with_this: object, where: str = "slipwai.bridge") -> None:
+        import importlib
+        module = importlib.import_module(where)
         held = getattr(module, name)
         setattr(module, name, with_this)
         self.addCleanup(setattr, module, name, held)
@@ -562,8 +576,9 @@ class LandingTest(BoardTest):
             "## Surface: Discover\n- Populated \u2014 parked: no styling at all\n", encoding="utf-8")
         found = json.loads(self.get("/voyage.json")[1])
         self.assertTrue(found["drawable"])
-        self.assertEqual(found["waiting"], {"count": 1, "href": "#draw",
-                                            "text": "The specification is ready: read it, then draw the storyboard"})
+        self.assertEqual({key: found["waiting"][key] for key in ("count", "href", "text")},
+                         {"count": 1, "href": "#draw",
+                          "text": "The specification is ready: read it, then draw the storyboard"})
         # Not while a redraw this board did not start is running: that offered a second drawing over the first.
         (self.made / ".slipwai").mkdir(exist_ok=True)
         (self.made / ".slipwai/surfaces.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
@@ -656,7 +671,7 @@ class LandingTest(BoardTest):
         self.assertEqual(self.post("/cast-off", {})[0], 400, "no split, nothing to cast off")
         rows = [{"slice": "S01", "state": "todo", "title": "", "why": "", "fairway": "", "clearance": "blocked",
                  "feature": "001-demo"}]
-        self.patch("folded", lambda root, feature="": (rows, ""))
+        self.patch("folded", lambda root, feature="": (rows, ""), "slipwai.board_read")
         (self.made / "Makefile").write_text("cruise:\n\t@echo 'captain started'\n", encoding="utf-8")
         found = json.loads(self.get("/voyage.json")[1])
         self.assertTrue(found["castable"])
@@ -680,7 +695,7 @@ class LandingTest(BoardTest):
         (self.made / "harbour.json").write_text('{"v": 1}\n', encoding="utf-8")
         rows = [{"slice": "S01", "state": "todo", "title": "", "why": "", "fairway": "", "clearance": "blocked",
                  "feature": "001-demo"}]
-        self.patch("folded", lambda root, feature="": (rows, ""))
+        self.patch("folded", lambda root, feature="": (rows, ""), "slipwai.board_read")
         self.assertIn('id="remote-card"', self.get("/voyage")[1])
         code, said = self.post("/cast-off", {})
         self.assertEqual(code, 400)

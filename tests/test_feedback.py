@@ -1,8 +1,8 @@
 """Feedback from the board: what a person said after using the app, where it goes, and what it became.
 
 The record is the state, so most of these write a record, change it the way triage or a person would, and
-read back what the board would show and what was handed on: an intake idea, a design note, or a `told` to
-the slice's captain that answers no park.
+read back what the board would show and what was handed on: an intake idea, a design note, or a message from
+`feedback` in the slice's inbox (its captain's once it has merged) that answers no park.
 """
 from __future__ import annotations
 
@@ -14,14 +14,15 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 
-from slipwai import feedback, logs
+from slipwai import feedback, logs, talk
 from slipwai.deck import entries
 from slipwai.feedback_card import act, card, list_html, payload
-from slipwai.fleet import for_someone_else
 from slipwai.voyage_page import tabs_html
 
 CHART = """v: 1
@@ -57,9 +58,17 @@ class Project(unittest.TestCase):
         feedback.write(item)
         return item
 
-    def told(self) -> list[logs.Entry]:
+    def told(self) -> list[SimpleNamespace]:
+        """What was placed in the stream's inboxes, oldest first, each read as a line's fields; and never a
+        `told` in the deck log, which the board no longer writes for anything said."""
         found, _ = entries(self.root, "ORD", "ordering")
-        return [one for one in found if one.kind == "told"]
+        self.assertEqual([one for one in found if one.kind == "told"], [], "the board wrote a deck line")
+        run = logs.run_dir(self.root)
+        sent = [(one, place) for place in talk.conversations(run, "ORD")
+                for one in talk.inbox(talk.place(run, "ORD", place))]
+        return [SimpleNamespace(fields={"message": one["text"], "by": one["from"],
+                                        "slice": "" if place == talk.CAPTAIN else place})
+                for one, place in sorted(sent, key=lambda pair: (pair[0]["t"], pair[0]["id"]))]
 
 
 class CaptureTest(Project):
@@ -111,17 +120,22 @@ class ConfirmTest(Project):
         self.assertIn("- Bigger buttons. (feedback 0002", text)
         self.assertTrue(text.startswith("# Design\n\nThe floor."))
 
-    def test_a_defect_is_told_to_the_slices_captain_and_answers_no_park(self) -> None:
+    def test_a_defect_in_a_merged_slice_goes_to_its_captain_from_feedback_and_answers_no_park(self) -> None:
         item = self.proposed("Closed before it was resigned.", "defect")
         feedback.confirm(self.root, item.number, [{"slice": "L01", "fairway": "ORD", "state": "done"}])
         [told] = self.told()
-        self.assertEqual((told.fields["by"], told.fields["slice"]), ("feedback", "L01"))
+        # To the captain, since a merged slice has no session to hear it, and not a person's, so nothing
+        # takes it as the answer to a park.
+        self.assertEqual((told.fields["by"], told.fields["slice"]), ("feedback", ""))
         self.assertIn("add a fix slice after it", told.fields["message"])
         self.assertIn("docs/feedback/0001-", told.fields["message"])
-        # Addressed to the captain, so it is not a note under Waiting on you, and not a person's, so the
-        # harbourmaster clears nothing with it.
-        self.assertTrue(for_someone_else(told))
         self.assertEqual(feedback.find(self.root, item.number).fields["became"], "told ORD about L01")
+
+    def test_a_defect_in_a_slice_in_flight_goes_to_that_slice_s_inbox(self) -> None:
+        item = self.proposed("Closed before it was resigned.", "defect")
+        feedback.confirm(self.root, item.number, [{"slice": "L01", "fairway": "ORD", "state": "working"}])
+        [told] = self.told()
+        self.assertEqual((told.fields["by"], told.fields["slice"]), ("feedback", "L01"))
 
     def test_a_defect_in_a_slice_still_in_flight_is_fixed_before_it_merges(self) -> None:
         item = self.proposed("Closed before it was resigned.", "defect")
@@ -134,9 +148,9 @@ class ConfirmTest(Project):
         held = self.proposed("Fewer questions.", "change", **{"in-flight": "L01"})
         feedback.confirm(self.root, parked.number, rows, hold="park")
         feedback.confirm(self.root, held.number, rows, hold="after-merge")
-        first, second = self.told()
-        self.assertIn("park L01 at its next boundary", first.fields["message"])
-        self.assertIn("leave L01 as it is while it is in flight", second.fields["message"])
+        said = " | ".join(one.fields["message"] for one in self.told())  # sent in one second: either order
+        self.assertIn("park L01 at its next boundary", said)
+        self.assertIn("leave L01 as it is while it is in flight", said)
         self.assertEqual(feedback.find(self.root, parked.number).fields["hold"], "park")
 
     def test_a_slice_nobody_has_claimed_is_told_to_the_stream_its_chart_names(self) -> None:
@@ -194,7 +208,11 @@ class CardTest(Project):
         self.assertIn("Triage now", list_html(self.root, [], {}, False))
 
     def test_accept_is_a_persons_verdict_told_to_the_capabilitys_stream(self) -> None:
-        act(self.root, {"verb": "accept", "capability": "basket", "fairway": "ORD"}, [], self.fleet, lambda: True)
+        """The line itself is `demos.accept`'s, held to whole-and-cleared, and tested in `test_demos`."""
+        with mock.patch("slipwai.feedback_card.accept", return_value="basket accepted") as wrote:
+            act(self.root, {"verb": "accept", "capability": "basket", "fairway": "ORD"}, [], self.fleet,
+                lambda: True)
+        wrote.assert_called_once_with(self.root, "basket")
         [told] = self.told()
         self.assertEqual(told.fields["by"], "person")
         self.assertIn("basket capability: accepted", told.fields["message"])

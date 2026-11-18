@@ -31,6 +31,24 @@ class SaidTest(unittest.TestCase):
             with self.subTest(kind=entry.kind):
                 self.assertIn(expected, said(entry))
 
+    def test_a_pause_or_stop_through_a_conversation_says_whose_it_was_and_what_lifts_it(self) -> None:
+        def line(**more: str | bool) -> str:
+            return said(logs.Entry("stopped", {"fairway": "ORD", "slice": "ORD-01", **more}))
+        self.assertIn("asked to stop, mid-way through ORD-01", line(), "the fleet stopped: as it always was")
+        cases: tuple[tuple[dict[str, str | bool], str], ...] = (
+            ({"by": "person", "paused": True, "why": "lunch"},
+             "ORD-01 paused by you: lunch — it waits until you resume it"),
+            ({"by": "captain:ORD", "paused": True, "why": "circling"},
+             "ORD-01 paused by the ORD captain: circling — it waits until you or its captain resume it"),
+            ({"by": "person"}, "ORD-01 stopped by you — it waits until you resume it"),
+            ({"by": "captain:ORD", "why": "circling"},
+             "ORD-01 stopped by the ORD captain: circling — it goes back in the queue"),
+        )
+        for fields, expected in cases:
+            with self.subTest(fields=fields):
+                self.assertEqual(line(**fields), expected)
+                self.assertNotIn("asked to stop", line(**fields))
+
     def test_a_heartbeat_says_what_it_has_spent_where_it_says_anything(self) -> None:
         self.assertIn("42k", said(logs.entry("heartbeat", fairway="ORD", tokens=42)))
         self.assertEqual(said(logs.entry("heartbeat", fairway="ORD")), "still going")

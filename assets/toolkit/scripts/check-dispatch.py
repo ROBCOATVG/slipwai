@@ -66,6 +66,12 @@ OLD_LEDGER = "dispatch-ledger.jsonl"
 #: What a slice id looks like: letters then digits, optionally one more letter — `SB1`, `SB7V`, `OB7I`,
 #: `TN16V`, `GV5`, `UI9`. Anchored whole, so `HTTP2XX` inside a word is not one.
 SHAPE = re.compile(r"^[A-Z]{1,5}\d{1,3}[A-Z]{0,2}$")
+#: The same with a hyphen before the digits — `MTG-01`, `ACC-3` — which is how a project whose model
+#: numbers its slices per context names them. Judged only in a project whose plans name an id this way,
+#: because elsewhere the shape is more often `UTF-8` or a ticket key than a slice.
+HYPHENATED = re.compile(r"^[A-Z]{1,5}-\d{1,3}[A-Z]{0,2}$")
+#: An id as a plan writes it, either way: `SB7V`, `MTG-01`.
+PLANNED = r"[A-Za-z]+-?\d+[A-Za-z]*"
 #: Shapes that are id-like and are never slices: a decision, a task, a request and a question. Excluded by what they are rather
 #: than by a list of the ones seen so far, which would need editing every time a project minted one.
 NOT_SLICES = re.compile(r"^(D\d+|T\d+|R\d+|Q\d+)$")
@@ -91,9 +97,9 @@ def charted() -> set[str]:
     if MODEL.is_file():
         texts.append(MODEL.read_text(encoding="utf-8", errors="replace"))
     for text in texts:
-        found |= {match for match in re.findall(r"^\s*-?\s*(?:id:\s*)?['\"]?([A-Za-z]+\d+[A-Za-z]*)['\"]?\s*:?\s*$",
+        found |= {match for match in re.findall(rf"^\s*-?\s*(?:id:\s*)?['\"]?({PLANNED})['\"]?\s*:?\s*$",
                                                 text, re.M)}
-        found |= set(re.findall(r"^\s*-\s*id:\s*['\"]?([A-Za-z]+\d+[A-Za-z]*)['\"]?", text, re.M))
+        found |= set(re.findall(rf"^\s*-\s*id:\s*['\"]?({PLANNED})['\"]?", text, re.M))
     if SPECS.is_dir():
         found |= {path.name for path in SPECS.glob("*/slices/*") if path.is_dir()}
     return {one for one in found if one}
@@ -132,14 +138,18 @@ def ledgered(commit: str = "") -> set[str]:
     return rows([path.read_text(encoding="utf-8", errors="replace") for path in paths])
 
 
-def named(subject: str) -> list[str]:
-    """The slice-shaped tokens one commit subject claims, before its first colon and nowhere else."""
+def named(subject: str, hyphenated: bool = False) -> list[str]:
+    """The slice-shaped tokens one commit subject claims, before its first colon and nowhere else.
+
+    `hyphenated` is whether this project's plans name their slices `MTG-01`-style, and so whether that shape
+    is a claim here at all.
+    """
     head = SUBJECT.match(subject)
     if head is None:
         return []
     words = re.split(r"[\s,/()\[\]]+|(?<=[A-Z0-9])-(?=[A-Z])", head.group(1))
     return [word for word in (one.strip(".,;") for one in words)
-            if SHAPE.match(word) and not NOT_SLICES.match(word)]
+            if (SHAPE.match(word) or (hyphenated and HYPHENATED.match(word))) and not NOT_SLICES.match(word)]
 
 
 def trunk() -> str:
@@ -191,8 +201,9 @@ def ranges(argv: list[str]) -> list[str]:
 
 def faults(span: str, plans: set[str], accounted: set[str]) -> list[str]:
     found = []
+    hyphenated = any(HYPHENATED.match(one) for one in plans)
     for commit, subject in commits(span):
-        for token in named(subject):
+        for token in named(subject, hyphenated):
             if token not in plans:
                 found.append(
                     f"{commit[:8]} names {token}, which is in no chart, no event model and no "
@@ -213,8 +224,17 @@ def main(argv: list[str]) -> int:
         return 0
     plans = charted()
     if not plans:
-        print("check-dispatch: no chart, no event model and no slice folders, so no plan says what the "
-              "ids in a commit mean — nothing to hold")
+        # Said as what was found, because the two are different news: a project with no plan yet, and one
+        # whose plans name no slice id this gate can read — the second is a gate that holds nothing while
+        # the project believes it is held.
+        read = [path.relative_to(ROOT).as_posix() for path in [*sorted(SPECS.glob("*/chart.yaml")), MODEL]
+                if path.is_file()]
+        if read:
+            print(f"check-dispatch: no slice id shaped like SB7 or MTG-01 in {', '.join(read)}, so no plan "
+                  "says what the ids in a commit mean yet — nothing to hold")
+        else:
+            print("check-dispatch: no chart, no event model and no slice folders, so no plan says what the "
+                  "ids in a commit mean — nothing to hold")
         return 0
     # What a push or an explicit range carries is judged by its own tree; this branch against trunk, which
     # `make verify` runs before the commit exists, by the working tree.

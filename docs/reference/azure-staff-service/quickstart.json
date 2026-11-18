@@ -7,7 +7,7 @@
     "profile": "event-modelling",
     "target": "azure",
     "language": "java",
-    "framework": "spring",
+    "framework": "spring-boot",
     "frontend": "none",
     "axes": {
       "write-model": "events",

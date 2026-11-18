@@ -66,6 +66,10 @@ jobs:
         run: make lint typecheck check-structure check-shared check-release
       - if: runner.os != 'Windows'
         run: make test TESTS="$(python3 scripts/test-shard.py ${{ matrix.shard }} 4 | tr '\n' ' ')"
+      # The captain agent's parity — the six captain suites run twice, with and without a stand-in captain —
+      # is `make verify`'s and so CI's, on one Linux shard: eight minutes once, rather than on every row.
+      - if: runner.os == 'Linux' && matrix.shard == 1
+        run: make parity
 
       # Windows runs the same checks without make. `make` and a POSIX `scripts/verify` are not a given
       # there, and what Windows has to prove is that *slipwai* works on it, not that the keel's Makefile

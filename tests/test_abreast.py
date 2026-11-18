@@ -31,7 +31,7 @@ def carried(root: Path) -> ModuleType:
     resolve the project from where they sit, so they are copied there rather than imported in place."""
     place = root / "scripts/agents"
     place.mkdir(parents=True, exist_ok=True)
-    for name in ("abreast.py", "clearance.py", "logs.py"):
+    for name in ("abreast.py", "clearance.py", "logs.py", "talk.py"):
         shutil.copy(AGENTS / name, place / name)
     (root / "project.json").write_text("{}", encoding="utf-8")
     for name in ("abreast", "clearance", "logs"):

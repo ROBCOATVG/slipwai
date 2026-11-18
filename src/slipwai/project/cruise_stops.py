@@ -55,8 +55,10 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
         ("The demo stop",
          f"Delegate to `{HAND}` with exactly what the stop hands a person, plus the acceptance script; take its "
          "verdict as the actor's and re-enter the ladder where demo feedback re-enters. Acceptance says "
-         f"`accepted-by: {HAND}` on the register row or status flip",
-         f"`{DEMO_LOG}`, `benchmark.json` `outcome=`, the register"),
+         f"`accepted-by: {HAND}` on the register row or status flip. For a whole capability, under `demos: "
+         "hand` (the default) its `accepted` is the capability's acceptance and nobody is asked; under "
+         "`person` a person is, from the board, and nothing else waits on them",
+         f"`{DEMO_LOG}`, `benchmark.json` `outcome=`, the register, an `accepted` or `demo-due` line"),
         ("The ready set is empty",
          "Not a stop: the completion audit below. Only an audit with nothing left is `done`",
          f"`{REPORT}`, decision entries"),
@@ -69,13 +71,17 @@ def stop_table(event: bool, target: str, adoption: Adoption | None) -> str:
     if target != "none":
         rows.insert(5, (
             "Release constraint",
-            "Take the stage's own recommendation. `release: flagged` — every slice continues or opens a flag "
+            "Not a question: the mode is read from where the product is (`python3 scripts/agents/release_state.py`), "
+            "never weighed, and never moved by a run. **open** and **keystone** open no flag and do not stop. Only "
+            "under **flagged** does this setting apply: `release: flagged` — every slice continues or opens a flag "
             "seeded `off`, so every merge is dark and a person flips keys. `park` stops at the push instead",
-            "`plan.md`, the flag file, a decision entry"))
+            "`plan.md`, the flag file under flagged, a decision entry"))
         rows.insert(6, (
-            "\"A release they want now\" — no flag, or a flag already on, before the push",
+            "\"A release they want now\" — under flagged, no flag or a flag already on, before the push",
             "Never answered by the machine: a release nobody asked for is on the catastrophic list. Under "
-            "`flagged` it does not arise; where it does, park with the exact question", "a `parked` line in the log"))
+            "`release: flagged` it does not arise; where it does, park with the exact question. Under open and "
+            "keystone a merge is the release the state already says it is, and nothing is asked",
+            "a `parked` line in the log"))
     if adoption is not None:
         rows += [
             ("Ground: a convergence row still `unrecorded` on an axis the slice touches",

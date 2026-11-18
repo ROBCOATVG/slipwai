@@ -9,7 +9,9 @@ from pathlib import Path
 import checkout_packages  # noqa: F401
 
 from slipwai import logs
-from slipwai.decision_log import card, decisions, mark, parse
+from slipwai.decision_cards import tab
+from slipwai.decision_entry import parse
+from slipwai.decision_log import decisions, mark
 from slipwai.deck import entries
 
 BOOK = """# Decisions
@@ -69,14 +71,30 @@ class LogTest(unittest.TestCase):
         self.assertEqual([one.title for one in ones], ["Are the connector writes built?"])
         self.assertTrue(ones[0].key.startswith("deck:ORD:"), "the deck line: its receipt is what the ceiling counts")
 
+    def test_a_deck_decision_with_a_fairway_s_prefixed_id_is_its_entry_too_and_is_listed_once(self) -> None:
+        book = self.root / "specs/ordering/decisions.md"
+        added = "".join(f"\n## {number} — {title}\n- **Stage:** plan · **Slice:** L05 · **When:** 2026-10-22T09:00:00Z"
+                        f" · **Stream:** ORD\n- **Decision:** (a).\n"
+                        for number, title in (("D-ORD-07", "Who rounds a line?"), ("D-08", "Who rounds a total?")))
+        book.write_text(BOOK + added, encoding="utf-8")
+        with self.deck.open("a", encoding="utf-8") as handle:
+            handle.write(logs.entry("decision", fairway="ORD", slice="L05", id="L05-Q7",
+                                    what="D-ORD-07 (a): the line rounds", decided_by="sail-decide-skipper").line())
+            handle.write(logs.entry("decision", fairway="ORD", id="D-08", what="The total is the lines' sum.",
+                                    decided_by="host (stage recommendation)").line())
+        found = [(one.number, one.title, one.key.split(":")[0]) for one in decisions(self.root)
+                 if one.number in ("D-ORD-07", "D-08")]
+        self.assertEqual(sorted(found), [("D-08", "Who rounds a total?", "deck"),
+                                         ("D-ORD-07", "Who rounds a line?", "deck")])
+
     def test_a_persons_own_answer_is_shown_with_the_question_it_answered_and_is_read(self) -> None:
         mine = next(one for one in decisions(self.root) if one.yours)
         self.assertEqual((mine.title, mine.decision, mine.read), ("Which bank question?", "decide for me", True))
 
     def test_a_persons_own_answer_is_drawn_read_so_the_unread_filter_leaves_it_out(self) -> None:
         """The filter, the count and Mark every one shown all read the class: `yours` alone listed it unread."""
-        html, _ = card(self.root)
-        self.assertIn('<article class="yours read"', html)
+        html, _ = tab(self.root, lambda name, drawn: drawn)
+        self.assertIn('<article class="read yours"', html)
 
     def test_a_decision_from_before_the_fleet_is_in_the_log_too(self) -> None:
         early = next(one for one in decisions(self.root) if one.number == "D1")
@@ -103,11 +121,12 @@ class LogTest(unittest.TestCase):
         book.write_text(BOOK + "\n## D9 — New in the berth?\n- **Decision:** yes.\n", encoding="utf-8")
         self.assertIn("D9", {one.number for one in decisions(self.root)})
 
-    def test_the_card_counts_what_is_unread_and_offers_each_its_receipt(self) -> None:
-        html, unread = card(self.root)
-        self.assertEqual(unread, 2)
+    def test_the_card_offers_each_unread_decision_its_receipt(self) -> None:
+        html, _ = tab(self.root, lambda name, drawn: drawn)
+        self.assertEqual(html.count("data-decision-read="), 2)
         self.assertIn('data-decision-read="md:D1"', html)
-        self.assertIn("<b>Your answer:</b> decide for me", html)
+        self.assertIn("Decided by you", html)
+        self.assertIn("decide for me", html)
 
 
 if __name__ == "__main__":

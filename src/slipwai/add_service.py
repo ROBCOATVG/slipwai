@@ -46,6 +46,7 @@ from .manifest import apps_from_manifest, check_known, read_manifest, wrote_here
 from .naming import checked_contexts
 from .origin import adoption_of
 from .project.pruner import pruner
+from .release_state import state_of
 from .scaffold import project_files
 from .selection import Selection, resolve_selection
 from .services import App, add_service, add_web, contexts_phrase, frontend_of, services_of
@@ -222,8 +223,8 @@ def regenerate(
     ones, and the manifest the revised list generates, for the caller to take its entry from."""
     layout, adoption = layout_of(document), adoption_of(document)
     arguments = (document["name"], document["profile"], document["target"])
-    before = project_files(*arguments, apps, layout, adoption, recorded(document))
-    after = project_files(*arguments, revised, layout, adoption, recorded(document))
+    before = project_files(*arguments, apps, layout, adoption, recorded(document), state_of(document))
+    after = project_files(*arguments, revised, layout, adoption, recorded(document), state_of(document))
     executables = {layout.place(path) for path in executable_paths(document["profile"], revised)}
     for relative in after:  # all held inside the project before the first is written
         contained(root, relative)

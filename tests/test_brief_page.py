@@ -171,7 +171,8 @@ class FirstPageTest(BoardTest):
         (home / "brief" / "look").mkdir()
         (home / "brief" / "look" / "look.css").write_text(":root{}", encoding="utf-8")
         code, said = self.get("/brief/files/club-boats/prototype/index.html")
-        self.assertEqual((code, said), (200, "<title>Play</title>"))
+        # The page itself, after the one line every prototype is served with (`brief_faults`).
+        self.assertEqual((code, said.split("</script>", 1)[-1]), (200, "<title>Play</title>"))
         sheet = served("/brief/files/club-boats/brief/look/look.css")
         assert sheet is not None
         self.assertEqual(sheet[1], "text/css; charset=utf-8")
@@ -215,3 +216,14 @@ class ReadingTest(BoardTest):
         with self.assertRaises(urllib.error.HTTPError) as refused:
             self.get("/brief/read?sketch=club-boats&file=secrets")
         self.assertEqual(refused.exception.code, 404)
+
+
+class FollowTest(unittest.TestCase):
+    def test_what_a_person_just_said_is_scrolled_to_wherever_they_had_scrolled(self) -> None:
+        from slipwai.brief_page import SCRIPT
+        self.assertIn("follow = true; drawWaiting(log, true, false); bottom();", SCRIPT,
+                      "sending takes the log to its end at once")
+        self.assertIn("if (stuck || follow) bottom();", SCRIPT, "and the poll that draws the words does too")
+        self.assertIn("if (said.turns.length) follow = false;", SCRIPT,
+                      "after which a person who scrolls up to read is left where they are")
+        self.assertIn("scrollIntoView({block: 'nearest'})", SCRIPT, "the page scrolls too, not only the log")

@@ -41,6 +41,7 @@ sys.path.insert(0, str(HERE))
 
 import clearance  # noqa: E402
 import logs  # noqa: E402
+import talk  # noqa: E402
 
 
 def project_root() -> Path:
@@ -108,14 +109,24 @@ def alive(pid: int) -> bool:
     return True
 
 
+def read_pid(path: Path) -> int | None:
+    """The pid a file in the run folder records, read through the one reader (`talk.read_bytes`): None where it is
+    not a plain file holding a number — a pipe in its place is never waited on."""
+    got = talk.read_bytes(path, 64)
+    try:
+        pid = int(got[0].decode("ascii").strip()) if got else 0
+    except (ValueError, UnicodeDecodeError):
+        return None
+    return pid if pid > 0 else None
+
+
 def recorded() -> dict[str, int]:
     """What was started last time, from the pid files, whether or not it is still running."""
     found: dict[str, int] = {}
     for path in sorted(RUNNING.glob("*.pid")) if RUNNING.is_dir() else []:
-        try:
-            found[path.stem] = int(path.read_text(encoding="utf-8").strip())
-        except (OSError, ValueError):
-            continue
+        pid = read_pid(path)
+        if pid is not None:
+            found[path.stem] = pid
     return found
 
 
@@ -155,10 +166,7 @@ def relight_harbourmaster() -> int | None:
     both saw it gone finds the first one's harbourmaster alive and starts nothing.
     """
     def recorded_pid() -> int | None:
-        try:
-            return int((RUNNING / "harbourmaster.pid").read_text(encoding="utf-8").strip())
-        except (OSError, ValueError):
-            return None
+        return read_pid(RUNNING / "harbourmaster.pid")
 
     pid = recorded_pid()
     if pid is None or alive(pid):
@@ -236,6 +244,8 @@ def relight(limit: int | None, say: bool = False, wanted: list[str] | None = Non
                 print(f"{fairway}: captain already running, pid {standing[name]}")
             continue
         why = parked(fairway)
+        if why and word_waiting(fairway):
+            why = ""  # a person has answered, or said something: the captain is lit to read it, and exits parked
         if why:
             if say:
                 lifting = paused_until(fairway)
@@ -251,6 +261,18 @@ def relight(limit: int | None, say: bool = False, wanted: list[str] | None = Non
             print(f"{fairway}: captain started, pid {pid}")
         started, lit = started + 1, lit + 1
     return started
+
+
+def word_waiting(fairway: str) -> bool:
+    """Whether a person's word waits for this fairway's captain (`abreast.word_waiting`). False where the
+    rule's module is not carried or the log cannot be read: lighting is then as it was."""
+    where = deck_of(fairway)
+    try:
+        import abreast  # noqa: PLC0415 — carried beside this in a project; a fixture may leave it out
+        deck = logs.fold(where.read_text(encoding="utf-8").splitlines()) if where is not None else []
+        return abreast.word_waiting(fairway, deck, logs.harbour_fold(ROOT))
+    except (ImportError, logs.Unreadable, OSError, UnicodeDecodeError, ValueError):
+        return False
 
 
 def parked(fairway: str) -> str:

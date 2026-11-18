@@ -172,6 +172,60 @@ class HandshakeTest(unittest.TestCase):
             two.start()
         self.assertEqual(seen, [acp.TIMEOUT])
 
+    def packaged(self, home: Path) -> Session:
+        return Session(["/usr/bin/npx", "--yes", "some-agent"], home, lambda u: None, lambda t, o: None,
+                       lambda p: ("decline", None))
+
+    def test_a_package_launch_that_fell_over_is_tried_once_more_and_only_a_package_launch(self) -> None:
+        """Two captains launching one agent in the same second met in npm's cache: `ENOTEMPTY … rename`, the
+        runner exited, and the slice ran in print mode for its whole run."""
+        home, tried = Path(tempfile.mkdtemp()), []
+
+        def falls_over_once(one: Session) -> object:
+            def shaken(waits: float) -> dict:
+                tried.append(waits)
+                if len(tried) == 1:
+                    one.exited = 190
+                    raise acp.Fault("the agent exited 190; the last it said: npm error ENOTEMPTY")
+                return {"protocolVersion": 1}
+            return shaken
+        one = self.packaged(home)
+        with mock.patch.object(one, "shaken", side_effect=falls_over_once(one)), mock.patch.object(acp, "AGAIN", 0):
+            one.start()
+        self.assertEqual(len(tried), 2)
+        self.assertIsNone(one.exited, "the second launch starts from nothing")
+        tried.clear()
+        plain = Session([sys.executable, str(AGENT)], home, lambda u: None, lambda t, o: None,
+                        lambda p: ("decline", None))
+        with mock.patch.object(plain, "shaken", side_effect=falls_over_once(plain)), self.assertRaises(acp.Fault):
+            plain.start()
+        self.assertEqual(len(tried), 1, "an agent that is a binary and died is not launched twice")
+        tried.clear()
+        slow = self.packaged(home)
+        with mock.patch.object(slow, "shaken", side_effect=acp.Fault("did not answer initialize")), \
+                self.assertRaises(acp.Fault):
+            slow.start()  # still running and silent: not the runner falling over, so not tried again
+
+    @unittest.skipIf(acp.fcntl is None, "no flock on this platform")
+    def test_package_launches_on_one_machine_take_turns_and_others_do_not_queue(self) -> None:
+        order: list[str] = []
+
+        def launch(name: str, held: float) -> None:
+            with acp.one_at_a_time(True):
+                order.append(f"{name} in")
+                time.sleep(held)
+                order.append(f"{name} out")
+        first = threading.Thread(target=launch, args=("a", 0.4))
+        first.start()
+        time.sleep(0.1)
+        second = threading.Thread(target=launch, args=("b", 0))
+        second.start()
+        with acp.one_at_a_time(False):  # not a package launch: straight through while `a` holds the turn
+            order.append("plain")
+        first.join()
+        second.join()
+        self.assertEqual(order, ["a in", "plain", "a out", "b in", "b out"])
+
 
 class PolicyTest(unittest.TestCase):
     def test_within_wants_every_location_under_the_directory(self) -> None:

@@ -66,7 +66,15 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                     "app_version",
                     # What every catch-up page shares — its opening section and where a finished one is
                     # archived — here so the command page in `parts` and the writers in `assembly` both reach it.
-                    "catch_up_page")),
+                    "catch_up_page",
+                    # A conversation's inbox, thread and receipts, carried into every project as the captain's.
+                    "talk",
+                    # Whether a slice is stuck, read off its activity log: the board's warning and the
+                    # captain's wake-up, carried into every project so the two never disagree.
+                    "stuck",
+                    # Where the product is and how dark a merge is, carried into every project so the
+                    # release stage, the slice gate and `slipwai release-state` read one table.
+                    "release_state")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.
@@ -87,8 +95,17 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "images")),
     # One validated answer per axis, which applications a project has, and what they add up to being able
     # to do.
-    ("answers", ("selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
+    # `captain_decisions` reads back what a stream's captain agent decided, for the board.
+    ("answers", ("captain_decisions",
+                 "selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
                  "fleet_record", "timeline", "deck",
+                 # What the board says to the fleet, placed in an inbox; a conversation read the way a person
+                 # reads it, with what they have seen; and what a captain decided, off its orders and events.
+                 "talk_said", "talk_fold", "captain_files",
+                 # Where an answer a person placed was aimed, and where it honestly stands.
+                 "talk_placed",
+                 # Who accepts a whole capability — the hand or a person — read once for the board's fold.
+                 "demos",
                  "toolkit", "platform", "convergence", "delivery_facts", "programme", "quick_wins",
                  "uncommitted", "wrappers", "strategy_record", "strategy", "survey", "structure", "big_picture",
                  "deployment_shapes",
@@ -106,7 +123,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "adopt_report",
                   "add_service", "adopt",
                   "migration_legacy", "migration_flight", "migration_settings", "migration_claims",
-                  "migration_crossing", "migration_result", "migration_merge", "migration_renames",
+                  "migration_sentence", "migration_crossing", "migration_result", "migration_merge",
+                  "migration_renames",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
@@ -126,7 +144,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "package_new", "package_templates", "language_templates", "target_templates", "package_release",
               "package_version", "package_sources", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
-              "cli_telegraph", "harbour", "cli_fleet",
+              "cli_telegraph", "cli_release_state", "harbour", "cli_fleet",
               # The read side served to whatever is doing the work: the tools and the stdio session.
               "mcp", "cli_mcp",
               # The board, as a page a person answers from: the render, the server and the verb — and
@@ -134,7 +152,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # that server has, which is a window each: every route beside it is a fold of files on disk.
               "page_shell", "seats", "console", "console_page", "attention",
               # The conversation that writes a brief before a project exists, on the console's shape.
-              "brief_session", "brief_page",
+              "brief_faults", "brief_session", "brief_page",
               # The Agent Client Protocol's client half: the session behind the board's conversations, what
               # the board is set to run them on, and the page that sets it.
               "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session",
@@ -168,12 +186,31 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "try_card",
               # And what a person said after using it: the record under docs/feedback, and its card there.
               "feedback", "feedback_card",
-              # And every decision the fleet took, readable, each with the receipt the ceiling counts.
-              "decision_log",
+              # And every decision the fleet took, readable, each with the receipt the ceiling counts: one entry
+              # read for a person — its sentence, its options split — and its card, in the tab and the slice's window.
+              "decision_entry", "decision_log", "decision_cards",
               # And what each working slice is doing now, read off its activity log and drawn there.
               "activity", "live_page",
-              # And the stop above the chart answered without a person, where the project says so.
-              "upstream",
+              # And one slice's card there — where it stands on the ladder and how it got there — and a
+              # capability's film: the hand's one recording of the whole walk, a chapter a slice.
+              "film", "slice_card",
+              # And the slice's example map, read off its examples file and drawn in its window.
+              "example_map", "example_map_source", "example_map_page",
+              # And the stop above the chart answered without a person, where the project says so — never past
+              # a person's word to a stage (kept with what was said), or a review with something to discuss —
+              # and the storyboard's card on the Screens tab, with what the drawing found and the conversation.
+              "stage_talk", "step_record", "review_reading", "upstream", "storyboard_card", "storyboard_script",
+              # And the board kept current: one read of a project shared by every poll, the one poll that
+              # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
+              "board_read", "voyage_live", "on_you", "fleet_tab",
+              # And trunk on it: what the trunk mender did about a red trunk, folded, and drawn as a band,
+              # a card on the Fleet tab and an item under Waiting on you.
+              "trunk_story", "trunk_card",
+              # And talking to the fleet: a conversation drawn, what it adds to a card and to the one list,
+              # a captain's window, the captains on the board, and the routes every message goes through.
+              "talk_page", "talk_waits", "talk_card", "captain_window", "captains_strip", "talk_routes",
+              # An answer shown on the row it was sent from, and the one check that a POST is the board's own.
+              "talk_marks", "post_guard",
               # What a handed-over document stands on, carried in with it.
               "design_docs",
               # The same folder read before it is handed over, and the verb that prints the reading.

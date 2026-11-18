@@ -9,8 +9,8 @@ exits. Nothing holds a run, so nothing can be the thing that died.
 
 What is left here is the settings, which outlived the loop because they were never the loop's: they are the
 answers a run gives at `/sail`'s stops — who decides a product question, what a release becomes, what a demo
-is driven with, what an unratified constitution does, what a block becomes. A captain reads this file; so does
-`/sail` under one. The shape is `sail.py`'s, which does the same job for the ladder's own settings.
+is driven with and who accepts it, what an unratified constitution does, what a block becomes. A captain
+reads this file; so does `/sail` under one. The shape is `sail.py`'s, which does the same job for the ladder's own settings.
 
     python3 scripts/agents/cruise.py                       # every setting and what it controls
     python3 scripts/agents/cruise.py --check               # well-formed; `make check-agents` runs this
@@ -66,7 +66,8 @@ CHOICES: dict[str, tuple[str, ...]] = {
     "hand": ("browser", "http", "cli"),
     "unblock": ("bosun", "park"),
     "upstream": ("park", "advance"),
-    "sessions": ("print", "protocol"),
+    "sessions": ("auto", "print", "protocol"),
+    "demos": ("hand", "person"),
 }
 # Free text, or null: the model the ladder itself runs on, passed through the harness row's own `modelFlag`.
 TEXTS = ("model",)
@@ -78,17 +79,21 @@ TEXTS = ("model",)
 # takes them out, because a setting nothing reads is worse than one that was never there.
 DEFAULTS: dict[str, Any] = {
     "enabled": False, "decide": "recommended-first", "release": "flagged", "constitution": "ratify",
-    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "print", "model": None,
+    "hand": "browser", "unblock": "bosun", "upstream": "park", "sessions": "print", "demos": "hand",
+    "model": None,
 }
 # Settings that arrived after projects already had this file. Absent is the default rather than a finding, so
 # a project written before one existed still passes `make check-agents`; `--set` writes it in.
-LATER = ("upstream", "sessions")
+LATER = ("upstream", "sessions", "demos")
+# `sessions` absent is `print`, as it was before `auto` existed: migrating never switches how a project's
+# sessions run. A project generated since is written with `auto` (`slipwai.project.cruise`).
 CONTROLS = {
     "enabled": "whether `/cruise` runs at all; `false` is a refusal that says so",
     "decide": "who answers a product question: the host where the stage recommends an answer or a standing "
               "decision covers it and `sail-decide-skipper` otherwise, or `sail-decide-skipper` for every question",
-    "release": "the release-constraint stage: every slice continues or opens a flag seeded off, so every merge "
-               "is dark; or park at the push and let a person say it is a release they want",
+    "release": "the release-constraint stage when the product is live (flagged mode): every slice continues or "
+               "opens a flag seeded off, so every merge is dark; or park at the push and let a person say it is a "
+               "release they want. Pre-launch and pilot products open no flag, whatever this says",
     "constitution": "an unratified constitution: the skipper drafts and ratifies it, marked pending human "
                     "review; or park",
     "hand": "the top of the hand's ladder for a demo; each falls through to the next where it cannot run",
@@ -99,9 +104,12 @@ CONTROLS = {
                 "as each ends well",
     "model": "the model the iteration itself runs on — the driver, and every stage `.specify/models.json` maps to "
              "`host`; null is the harness's default, which nobody at the wheel chooses",
-    "sessions": "how a captain starts a session: the harness's print mode, as it always has; or over the Agent C"
-                "lient Protocol, which shows its work as it goes and stops on a cancel — needs a harness with a "
-                "launch row this machine can make, proven on Claude Code and OpenCode",
+    "sessions": "how a captain starts a session: `auto`, over the Agent Client Protocol — which shows its work "
+                "as it goes, holds the session open and takes messages and a stop — where the harness's launch "
+                "is marked proven in the registry and this machine can make it, and the harness's print mode "
+                "elsewhere; `print` always; or `protocol` on any launch row this machine can make",
+    "demos": "who accepts a whole capability: the hand, whose verdict at its walk is the acceptance and whose "
+             "film is there for a person to comment on; or a person, who is asked to accept or say not yet",
 }
 
 

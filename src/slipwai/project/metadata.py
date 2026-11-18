@@ -56,7 +56,7 @@ def sourced(app: App) -> bool:
 
 def metadata(
     project_name: str, profile: str, target: str, apps: list[App], layout: Layout = AT_ROOT,
-    adoption: Adoption | None = None, shape: str | None = None,
+    adoption: Adoption | None = None, shape: str | None = None, state: str | None = None,
 ) -> str:
     """`project.json`: the answers this project was generated from, for a tool rather than a reader.
 
@@ -104,6 +104,9 @@ def metadata(
         # later `./init` offers an axis only the answers this target carries.
         "target": target,
         **({"shape": shape} if shape is not None else {}),
+        # Where the product is, which decides how dark a merge is (`release_state.py`). A new project starts
+        # `pre-launch`; one that never recorded it merges flagged, as before the state existed, until a person does.
+        **({"state": state} if state is not None else {}),
         "capabilities": capabilities,
         "deployables": {
             app.name: {

@@ -20,9 +20,12 @@ from datetime import UTC, datetime
 from .fleet import instant
 from .fleet_record import NOTHING, clock_of
 from .page_shell import esc
+from .talk_marks import SCRIPT as MARKS_SCRIPT
+from .talk_marks import STYLE as MARKS_STYLE
+from .talk_marks import every_placed
 
-# budget: 375 — the headline over every state a fleet can be in, a build merged whole and one merged but
-# ungated among them
+# budget: 385 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# ungated among them, and a group already answered showing what was said and where it stands
 
 #: The word on a group for its cause, in the words a person uses rather than the record's.
 CAUSES = {"limit": "paused", "host": "on main", "question": "a question", "demo": "demo sent back",
@@ -67,11 +70,10 @@ STYLE = """
 .quiet-button:hover{border-color:var(--teal);color:var(--ink)}
 @media (max-width:720px){.headline{grid-template-columns:1fr}.needs li{grid-template-columns:20px 1fr}
   .needs .how{grid-column:2;text-align:left;white-space:normal}.tl-names{width:90px}}
+""" + MARKS_STYLE
 
-"""
-
-#: What the page's script does with the two controls this tab adds. One `told` per park in a group, then
-#: one reload: the route that writes a `told` is the one the board already has, and a group is several parks.
+#: What the page's script does with the two controls this tab adds. One message per park in a group, aimed at
+#: the park's slice and carrying the park it answers, then one reload: a group is several parks.
 SCRIPT = """
 async function each(path, bodies){
   for (const body of bodies) {
@@ -85,7 +87,8 @@ document.addEventListener('click', event => {
   const many = event.target.closest('[data-tell-each]');
   if (many) {
     const parks = JSON.parse(many.dataset.tellEach);
-    each('/tell', parks.map(park => ({fairway: park.fairway, slice: park.slice, message: many.dataset.message})));
+    each('/tell', parks.map(park => ({fairway: park.fairway, slice: park.aim || park.slice, of: park.key || '',
+                                      message: many.dataset.message})));
   }
   const tick = event.target.closest('[data-need]');
   if (tick) {
@@ -94,7 +97,7 @@ document.addEventListener('click', event => {
   }
 });
 
-"""
+""" + MARKS_SCRIPT
 
 
 def when(stamp: str, now: datetime | None = None) -> str:
@@ -203,7 +206,7 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
             many = "1 capability owed its" if len(owed) == 1 else f"{len(owed)} capabilities owed their"
             return ("brass", f"Merged, not yet gated: {many} gates — {', '.join(owed)}.",
                     "`/sail` takes each through converge, gaps, design review, adversary, mutation and the walk, "
-                    "then to its demo.")
+                    "then to the hand's walk, whose verdict accepts it unless the project says a person does.")
         return ("grey", f"Built: every stream has merged what it claimed, {plural(merged, 'slice')} in all.",
                 f"{plural(len(on_you), 'thing')} left for you below; none of them holds a slice." if on_you
                 else "Nothing is waiting on you.")
@@ -309,7 +312,12 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
     if int(group.get("times") or 1) > 1:
         meta.append(f"said {group['times']} times")
     buttons = ""
-    if controls and group.get("source") != "told":
+    sent = every_placed(group.get("parks") or [])
+    if controls and group.get("source") != "told" and sent:
+        # Said already: what was sent and where it stands, until the captain carries it and the park clears.
+        buttons = (f'<p class="placed"><span><b>You said:</b> {esc(sent[-1].get("text", ""))}</span>'
+                   f'<small class="{esc(sent[-1].get("tone", ""))}">{esc(sent[-1].get("line", ""))}</small></p>')
+    elif controls and group.get("source") != "told":
         # A hand-back's needs are met by trunk or ticked one by one; nothing a person says carries it on.
         label = "I have landed it, carry on" if cause == "host" else "Sorted, carry on"
         buttons = (f'<button type="button" class="go" data-tell-each=\'{esc(parks)}\' '

@@ -68,7 +68,13 @@ COMMENT = (
     "retry, not a park — before the fairway parks naming what is still missing. `browsers` is how many "
     "browser-driven test runs may be in flight on this machine at once, whichever worktrees they are in — "
     "several berths are still one machine's CPU, and the symptom of too many is a suite that is slow one "
-    "run and flaky the next. `ci` is how the "
+    "run and flaky the next. `captain` says whether each stream's captain is an agent choosing over the "
+    "program (`agent`) — which slice starts next, what follows a missed gate, what to do about a stuck slice, "
+    "where something said to the stream goes — where its session can be held over the Agent Client Protocol, "
+    "and how many seconds it has for each choice from when that session is ready (`bound`) before the "
+    "program's own rule decides. `answers` lets it answer a slice's mid-turn question, each answer a decision "
+    "for a person to review: off by default, because no program can tell an operational question from a "
+    "product one and under /cruise nothing bounds what it answers. `ci` is how the "
     "harbourmaster asks the forge whether trunk is green before it grants any merge: absent means `gh` "
     "where it is installed, a list of words is a command for another forge with `{trunk}` and `{limit}` "
     "filled in, and `off` says not to ask — which reads as unverified and never as green. Change "
@@ -86,6 +92,9 @@ def harbour_config() -> str:
         "v": 1,
         "position": START,
         "stages": STAGE_BUDGETS,
+        # A new project's stream captains are agents over the program (`scripts/agents/captain_agent.py`), where
+        # their sessions can be held over the protocol; an existing project is never switched by migrating.
+        "captain": {"agent": True, "bound": 60, "answers": False},
         # Last, so the file matches the position it declares exactly. `bar`, `decision_ceiling` and
         # `wait_bound` are the telegraph's rows now, and `START`'s are the three constants above — written
         # once here rather than twice, because two sources for one number is how a board starts lying.

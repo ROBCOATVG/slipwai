@@ -42,8 +42,8 @@ project has adopted a code index, a caller or blast-radius question is one call 
 around each delegation the way every stage is bracketed, and pass `driver=cruise` to every `end` this
 session closes.
 
-**A person's word arrives as a `told` line in the stream's own deck log**, written by `/cruise-tell` or from
-the bridge. Read the inbox at every stage boundary (`python3 {{inbox}} <stream>`) and act on what is
+**A person's word arrives as a `told` line in the stream's own deck log**, written by `/cruise-tell`, or by
+the captain from what a person said to the stream on the board. Read the inbox at every stage boundary (`python3 {{inbox}} <stream>`) and act on what is
 there before the next stage: a steer takes precedence over what the artifacts alone would make this stage do,
 a fact the run lacked is the answer to a block, and a scope or a preference is written down — into the owner
 brief (`{{owner-brief}}`) or a decision entry with `Decided by: human` — so it outlives this session. A `told` that answers an open
@@ -96,7 +96,11 @@ A delegate cannot see what its siblings are adding, so it numbers nothing they s
 back as the same `D3`, with requirement ranges that overlapped, were exactly the reconciliation by hand this
 protocol exists to end.
 
-The entry's shape, which `{{make}} check-decisions` holds:
+The entry's shape, which `{{make}} check-decisions` holds. Its `In short` is written by whoever decides, at
+the time — this session or the delegate — and is one sentence a product owner reads without the
+specification open: what the product now does, with no requirement, decision or event identifiers and no
+file names. It is what the board leads the decision with, so a person can confirm or change it without
+reading the rest:
 
 ```markdown
 {{decision-entry}}
@@ -119,7 +123,7 @@ concurrently, as the post-implementation pass is per seam — and put every find
 a criterion nothing built becomes a slice, appended to the split with `/story-splitting`, and the ladder is
 re-entered for it; a finding the owner rules out of scope is a decision entry saying so. Write
 `{{report}}`: what the specification asked, what shipped, every out-of-scope decision, and every entry a person
-has not yet reviewed. An audit with nothing left to build writes the stream's last lines and the capability's `accepted`; the captain reads those and claims nothing more.
+has not yet reviewed. An audit with nothing left to build writes the stream's last lines — a capability's acceptance as `commands/sail.md`'s *What the demo stop has to contain* says, and nowhere else — and the captain reads those and claims nothing more.
 
 ## The stage contract
 

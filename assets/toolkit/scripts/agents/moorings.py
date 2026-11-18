@@ -261,8 +261,49 @@ def leave(root: Path, berth: Path) -> str:
             # Git reads the junction as a folder of the worktree's own and keeps the berth; `rmdir` takes
             # the junction alone, and the deck logs it joins are not touched.
             os.rmdir(here)
+    branch = git(berth, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
     gone = git(root, "worktree", "remove", str(berth))
     if gone.returncode != 0:
         said = (gone.stderr or gone.stdout).strip().splitlines()
         return f"{berth} was kept: {said[-1] if said else 'git would not remove it'}"
-    return ""
+    # Only once the worktree is gone: a berth that was kept is somebody's, and so is what it is running.
+    stopped = stop_services(berth)
+    if branch and branch != "HEAD" and git(root, "branch", "--remotes", "--contains", branch).stdout.strip():
+        git(root, "branch", "--delete", "--force", branch)  # the forge holds every commit of it
+    return f"{stopped} container(s) of {berth.name} were still up and were removed" if stopped else ""
+
+
+#: How long docker is given to answer. A daemon that is not running answers at once; one that hangs is not
+#: allowed to hold a captain that has just merged.
+DOCKER_WAIT = 20
+
+
+def stop_services(berth: Path) -> int:
+    """Remove the containers a merged slice's berth left running, with their volumes. How many there were.
+
+    lean-coffee-club's MT1 merged and its worktree was removed, and two hours later its database, its second
+    database and its sign-in server were still up, holding their ports and their memory: nothing owned them
+    once the session that started them had ended. Two kinds are the berth's: a compose project started in it,
+    which docker labels with the directory, and a container named after it — `<berth's folder>-…`, lower
+    case, which is how a session names one it starts by hand. The trailing hyphen is what keeps `…-mt1-`
+    from taking `…-mt10-`. Where docker is not installed or does not answer there is nothing to do, and a
+    container that will not go is left: the merge has happened, and this is housekeeping.
+    """
+    if shutil.which("docker") is None:
+        return 0
+    found: set[str] = set()
+    for chosen in (f"label=com.docker.compose.project.working_dir={berth}", f"name=^/?{berth.name.lower()}-"):
+        try:
+            listed = subprocess.run(["docker", "ps", "--all", "--quiet", "--filter", chosen], capture_output=True,
+                                    text=True, check=False, timeout=DOCKER_WAIT)
+        except (OSError, subprocess.SubprocessError):
+            return 0
+        found.update(listed.stdout.split() if listed.returncode == 0 else [])
+    if not found:
+        return 0
+    try:
+        removed = subprocess.run(["docker", "rm", "--force", "--volumes", *sorted(found)], capture_output=True,
+                                 text=True, check=False, timeout=DOCKER_WAIT * 3)
+    except (OSError, subprocess.SubprocessError):
+        return 0
+    return len(removed.stdout.split())

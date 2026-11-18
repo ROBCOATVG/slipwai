@@ -207,6 +207,30 @@ class NeedTest(MenderFixture):
         self.assertEqual(self.of_kind("mend"), [])
 
 
+class SharedSurfaceTest(unittest.TestCase):
+    """Which hand-backs the mender may land: a shared surface's text, written for the fleet."""
+
+    def setUp(self) -> None:
+        self.mender = WorkflowRuleTest.load()
+
+    def need(self, path: str, by: str = "fleet") -> dict:
+        return {"what": "x", "by": by, "check": {"kind": "text", "path": path, "has": "x"}}
+
+    def test_the_local_services_own_files_are_shared(self) -> None:
+        """lean-coffee-club's MT1 stood parked for eighteen hours on a client missing from the local realm."""
+        self.assertEqual(self.mender.eligible(self.need("docker/keycloak/realms/app.json"), False),
+                         "docker/keycloak/realms/app.json")
+
+    def test_a_gate_and_a_service_s_own_code_are_not(self) -> None:
+        for path in ("Makefile", "scripts/check-flags.py", "apps/club/pom.xml", "infra/service/flags.auto.tfvars"):
+            with self.subTest(path=path):
+                self.assertEqual(self.mender.eligible(self.need(path), False), "")
+
+    def test_a_person_s_need_is_taken_only_under_cruise(self) -> None:
+        self.assertEqual(self.mender.eligible(self.need("docker/x.json", by="person"), False), "")
+        self.assertEqual(self.mender.eligible(self.need("docker/x.json", by="person"), True), "docker/x.json")
+
+
 class WorkflowRuleTest(unittest.TestCase):
     """A workflow is the mender's only to move an action's `uses:` to another ref of the same action."""
 

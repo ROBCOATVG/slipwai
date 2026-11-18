@@ -75,7 +75,7 @@ def fairway_of(body: dict) -> str:
 
 
 def line(kind: str, slice_id: str, feature: str = "", mark: str = "", verdict: str = "",
-         by: str = "", log: str = "") -> logs.Entry:
+         by: str = "", log: str = "", stowed: int = 0) -> logs.Entry:
     """The entry, or a refusal that names what the chart or the vocabulary says instead."""
     name, body = charted(slice_id, feature)
     fairway = fairway_of(body)
@@ -88,7 +88,10 @@ def line(kind: str, slice_id: str, feature: str = "", mark: str = "", verdict: s
             raise Refused(f"the chart says {slice_id} sets {', '.join(sets) or 'no mark'}, not {mark!r}. A "
                           f"mark another slice sets is that slice's line to write")
         return logs.entry("mark-set", fairway=fairway, slice=slice_id, mark=mark)
-    said = {name: value for name, value in (("by", by), ("log", log)) if value}
+    if stowed and verdict != "accepted":
+        raise Refused("`--stowed` is for an `accepted` verdict: it says how many findings the last walk allowed "
+                      "left as tasks in the careen. A verdict that sends the slice back stows nothing")
+    said = {name: value for name, value in (("by", by), ("log", log), ("stowed", stowed)) if value}
     try:
         return logs.entry("demo", fairway=fairway, slice=slice_id, verdict=verdict, **said)
     except logs.Unreadable as fault:
@@ -153,6 +156,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--by", default="", help="for `demo`: who walked it, as `sail-demo-hand`; for "
                                                  "`accepted`: `sail-demo-hand`, the only one it takes")
     parser.add_argument("--log", default="", help="for `demo`: the demo log the verdict is recorded in")
+    parser.add_argument("--stowed", type=int, default=0, metavar="N",
+                        help="for an `accepted` demo: how many findings were left as tasks in the careen "
+                             "because `walks` in harbour.json was reached and none was critical")
     parser.add_argument("--feature", default="", help="the feature, where more than one has a chart")
     parsed = parser.parse_args(argv)
     if parsed.kind in CAPABILITY_KINDS:
@@ -175,7 +181,7 @@ def main(argv: list[str]) -> int:
     try:
         feature, _ = charted(parsed.slice_id, parsed.feature)
         entry = line(parsed.kind, parsed.slice_id, parsed.feature, parsed.mark, parsed.verdict,
-                     parsed.by, parsed.log)
+                     parsed.by, parsed.log, parsed.stowed)
         path = write(entry, feature)
     except Refused as refused:
         print(f"deck_line: no `{parsed.kind}` line for {parsed.slice_id}: {refused}", file=sys.stderr)

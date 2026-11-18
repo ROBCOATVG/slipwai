@@ -1,7 +1,7 @@
 """The capability gates: the readings that need a whole capability, decided 2026-10-17.
 
 Split from `test_ladder_parts.py`, which holds the ladder's shape; this holds what the gates say, what a slice
-keeps, and what still runs per slice under the `open` release mode.
+keeps, and what still runs per slice where the project reads each slice.
 """
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ class CapabilityGatesTest(unittest.TestCase):
 
     Each reads something a slice has a fraction of. Converge asks whether the code does what the specification
     requires, which has its answer only once the slices sharing a requirement are built; the adversary pass
-    runs only where a slice widened something; under `open`, where a merge reaches the actor at once, four
-    readings run per slice as well.
+    runs only where a slice widened something; and where the project reads each slice, four readings run per
+    slice as well.
     """
 
     def rungs(self) -> dict[str, str]:
@@ -53,7 +53,7 @@ class CapabilityGatesTest(unittest.TestCase):
         self.assertNotIn("Convergence", headings(every_rung()))
         rung = self.rungs()["Implementation"]
         self.assertIn("the slice goes straight on to its examples: convergence is the capability's first gate", rung)
-        self.assertIn("this slice converges here", rung, "under `open` the slice still converges")
+        self.assertIn("this slice converges here", rung, "where the project reads each slice the slice still converges")
 
     def test_the_record_is_keyed_by_the_capability_and_cleared_is_what_makes_a_demo_due(self) -> None:
         rung = self.rungs()["Capability gates"]
@@ -79,7 +79,7 @@ class CapabilityGatesTest(unittest.TestCase):
         self.assertIn("`## Examples proven`", rung)
         self.assertIn("it stands where the hand's verdict stood", rung)
         self.assertIn("no browser is opened", rung)
-        self.assertIn("Under the `open` release mode", rung)
+        self.assertIn("Where the project reads each slice", rung)
 
 
 class AdversaryTest(unittest.TestCase):
@@ -104,8 +104,8 @@ class AdversaryTest(unittest.TestCase):
         self.assertIn("The slice that closes a feature's split no longer takes a full pass of its own", page)
         self.assertNotIn("takes a full pass whether or not the trigger fired", page)
 
-    def test_under_open_only_authorisation_identity_or_money_is_attacked_per_slice(self) -> None:
-        """"Anything not covered would be dark" — everywhere but `open`, a flag or a keystone holds it back."""
+    def test_where_slices_are_read_only_authorisation_identity_or_money_is_attacked_per_slice(self) -> None:
+        """"Anything not covered would be dark" — a flag or a keystone holds it back, or nobody is there yet."""
         rung = self.rungs()["Attack surface"]
         self.assertIn("the authorisation, identity or money trigger `widened` is attacked here as well", rung)
         self.assertIn("nothing else is", rung)
@@ -119,12 +119,14 @@ class OpenModeTest(unittest.TestCase):
 
     def test_the_open_mode_paragraph_says_exactly_which_move(self) -> None:
         rung = flat(rung_bodies(every_rung())["Capability gates"])
-        self.assertIn("Under the `open` release mode four of the gates do not wait for the capability", rung)
+        self.assertIn("Nothing is read per slice unless the project asks for it", rung)
+        self.assertIn("in every release mode — `open` among them", rung)
+        self.assertIn('`"readings": "slice"` in `harbour.json`', rung)
+        self.assertIn("A slice that only shows takes none of the four", rung)
         self.assertIn("converge, the gaps trace, the design review and the hand's walk run per slice", rung)
         self.assertIn("attacks a slice whose record has the authorisation, identity or money trigger `widened`",
                       rung)
-        self.assertIn("Converge, the adversary pass and mutation still run here, over the whole capability, in "
-                      "every mode", rung)
+        self.assertIn("Converge, the adversary pass and mutation still run here, over the whole capability", rung)
 
 
 class ScopeTest(unittest.TestCase):
@@ -154,7 +156,7 @@ class ScopeTest(unittest.TestCase):
     def test_the_design_review_rung_points_at_the_capability_and_keeps_open_s_reading(self) -> None:
         rung = flat(design_stage.design_review_stage("`apps/web`"))
         self.assertIn("`Reviewed with capability <name>`", rung)
-        self.assertIn("**Under the `open` release mode**", rung)
+        self.assertIn("**Where the project reads each slice**", rung)
         self.assertIn("and nothing it did not touch", rung)
 
     def test_the_capability_rung_reviews_screens_only_where_there_is_one(self) -> None:

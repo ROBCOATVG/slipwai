@@ -159,7 +159,7 @@ class HeldTest(unittest.TestCase):
         self.assertEqual(held.halted, ("paused", "person", "lunch"))
         self.assertEqual(self.state(resume["id"])["why"], "only a person lifts a hold a person placed")
 
-    def test_a_stage_that_reviews_opens_a_fresh_session(self) -> None:
+    def test_a_drive_asked_for_a_fresh_session_loads_nothing(self) -> None:
         record = self.root / "benchmark.json"
         record.write_text(json.dumps({"stages": [{"stage": "implement-shipwright"}, {"stage": "review-mate"}]}),
                           encoding="utf-8")
@@ -168,7 +168,7 @@ class HeldTest(unittest.TestCase):
         held = self.started("hello", fresh=True)
         held.wait(20)
         opened = next(one for one in talk.thread(self.home) if one["kind"] == "session")
-        self.assertEqual((opened["loaded"], opened["why"]), (False, "a stage that reviews starts fresh"))
+        self.assertEqual((opened["loaded"], opened["why"]), (False, "this run reads the slice from its files"))
 
     def test_withdraw_before_delivery(self) -> None:
         sent = talk.send(self.home, "say", "never mind this")

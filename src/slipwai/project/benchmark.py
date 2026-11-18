@@ -61,7 +61,7 @@ moments — Claude Code's and Codex's today; anywhere else the record says `null
 delegated, and to which agent type where the transcript names one (Claude Code attributes every sub-agent line
 to the type that ran it, so an adversary pass on this slice is comparable with the same type on another); the tasks a converge pass appended; how many converge passes there were — a capability's gates are
 recorded with the capability's name as the slice, so its converge passes are a row of their own, and a slice's
-row shows none outside the `open` release mode; a stage re-entered after implementation. A delegated stage is started and ended here, by the host: the sub-agent's transcript is found from
+row shows none unless the project reads each slice; a stage re-entered after implementation. A delegated stage is started and ended here, by the host: the sub-agent's transcript is found from
 this session's. A number the script could not read is `null` with its reason and stays that way — never fill one
 in, and never pass `model=` when the record already names one. Start and end must bracket the work itself. Two
 brackets open at once are told apart: a line goes to the innermost bracket covering it, and a delegate's lines to

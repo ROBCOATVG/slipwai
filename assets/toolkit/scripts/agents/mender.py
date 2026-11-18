@@ -21,7 +21,8 @@ one change allowed onto a red trunk. Every attempt is a harbour line — `mend`,
 asked at all.
 
 **Between reds it lands what slices hand back.** A `need` naming a shared surface — the `.env.example` lines,
-a section of `docs/design.md`, a typed `post` in `packages/api-client` — had nobody to do it unless a person
+a section of `docs/design.md`, a typed `post` in `packages/api-client`, a client in the local sign-in realm
+under `docker/` — had nobody to do it unless a person
 did. game-club-manager's five slices left eleven of them. The mender takes one at a time while trunk is
 green: a need written `by: fleet`, and under `/cruise` one written `by: person` as well when its check is a
 shared surface's text, because the person asked not to be waited on. The receipt is the need's own check
@@ -82,7 +83,11 @@ DEFAULT_ATTEMPTS, DEFAULT_MINUTES = 3, 60
 NEVER = ("scripts/", "tools/", ".githooks/", ".slipwai/", ".specify/", "agents/", "commands/", "skills/",
          "Makefile", "harbour.json", "project.json", ".github/")
 #: Where a need's change may land: the shared surfaces a slice may not edit and hands back instead.
-SHARED = (".gitignore", ".env.example", "docs/", "packages/", "design-system/")
+#: `docker/` is the local backing services' own configuration — the sign-in realm, a database's init script —
+#: which no deployable owns and every slice's story runs against. It was nobody's: lean-coffee-club's MT1
+#: handed back "the realm has no browser client, so no story can sign in" as a need for the fleet, no mender
+#: could take it, and the slice stood parked for eighteen hours until a person came back.
+SHARED = (".gitignore", ".env.example", "docs/", "packages/", "design-system/", "docker/")
 #: And under a feature's `specs/`, the mock-ups: the host's as `docs/design.md` is, and handed back the
 #: same way. Not the rest of `specs/` — a slice's own folder is the slice's, and the chart is rendered.
 SHARED_UNDER_SPECS = re.compile(r"^specs/[^/]+/mockups/")

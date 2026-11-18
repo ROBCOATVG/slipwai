@@ -37,7 +37,8 @@ workflow.
 The per-call brief quotes what the slice handed back and the need's check: a file that must hold a given
 line on trunk. Land exactly that, taking the text from what the slice left. Usually that is
 `specs/<feature>/slices/<id>/` holding the lines it could not add, such as `env-example-additions.txt` or the
-section of `design.md` it recorded. Keep everything already in the file, put the addition where the file's
+section of `design.md` it recorded — or the need's own words, for a file under `docker/` such as the local
+sign-in realm, where the slice says what the file has to hold. Keep everything already in the file, put the addition where the file's
 own order says it goes, and change nothing else. A need that is not a change to a shared surface, because it
 waits on another slice's merge, a secret, an account or a person's decision, is not yours. Change nothing,
 and end.

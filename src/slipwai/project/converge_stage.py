@@ -2,7 +2,7 @@
 than a loop.
 
 It was a rung of every slice until 2026-10-17. It is the first of the capability gates now (`capability_gates.py`),
-run once over the capability's whole diff, and per slice only under the `open` release mode, where a merge
+run once over the capability's whole diff, and per slice only where the project reads each slice, where a merge
 reaches the actor at once. The rules below did not move with it: they govern the pass wherever it runs.
 
 Its own module for the reason `demo_stop.py` is: the text has grown by evidence, and each addition is a slice
@@ -23,7 +23,7 @@ PASSES = "two"
 # Every level a first pass is asked to account for, so the follow-on passes that would each look one level
 # further out are one pass. Named once, so the ladder and the converge brief cannot list them differently.
 LEVELS = ("domain", "use case", "delivery adapter", "screen", "published contract")
-#: What the per-slice rungs say about convergence under `open`, where it still runs on every slice.
+#: What the per-slice rungs say about convergence where the project reads each slice, where it still runs on every slice.
 OPEN_SLICE = ("this slice converges here, after implementation and before its examples are recorded, under "
               "the rules of the *Converge* gate in *Capability gates* — over the slice's diff and its own "
               "`tasks.md`, what it appends being this slice's own tasks and the verdict going under "

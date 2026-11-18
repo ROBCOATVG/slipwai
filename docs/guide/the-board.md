@@ -59,6 +59,9 @@ header shows the four steps: describe, walk the states, check, hand over.
 - **The brief, as the start page will read it** counts what the brief has settled and what the build will
   have to assume. Green lines need no question. Amber lines are what the draft will decide and say it did.
 - **Read the brief as a document** opens the requirements document, the people or the facts as a page.
+- **Save a copy to send**, under the prototype, downloads it as one file with its styles, scripts and
+  pictures inside. Send that file to somebody who is not at this board: it opens in any browser, with a
+  strip at the foot saying it is a copy and when it was made. Nothing is uploaded anywhere.
 - **Hand over** appears once the brief has a document, and is marked when the agent says the brief is
   ready. It opens the next tab with the brief's answers filled in: a confirm page that shows what the brief
   settled, with every extension on this machine ticked. **Make it** makes the project. **Change something**
@@ -211,6 +214,11 @@ Under it is the verdict form:
 | **Disapprove**, with a reason in the box | The same file, with every drawn state `parked:` and your reason. A reason is required. Nothing else starts |
 
 Both buttons lock when the storyboard has a verdict. To change a verdict, edit `mock-states.md`.
+
+**Save a copy to send**, above the verdict form, downloads the storyboard as one file: every page it frames
+is inside it, and a page it only links to is drawn at the end. A strip at the top says it is a copy, when
+it was made, and where the verdict stood. The copy carries only files the board itself serves for a
+mock-up, and names anything it left out. A verdict is still given here, not on the copy.
 
 ### Needs a look
 

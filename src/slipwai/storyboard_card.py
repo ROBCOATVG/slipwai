@@ -19,6 +19,7 @@ from typing import Any
 from . import stage_talk
 from .drawn import decided_states, withdrawn_parts
 from .init_run import outside_session, resumed
+from .page_copy import ROUTE
 from .page_shell import esc
 from .passage import surface_pages
 from .review_reading import RESEARCH, reading
@@ -26,6 +27,7 @@ from .stage_session import kept_stage
 from .storyboard_script import SCRIPT as SCRIPT  # the card's look and script, read by name by the Voyage page
 from .storyboard_script import STYLE as STYLE
 from .upstream import NAMED, advancing, held_by
+from .voyage import MOCK_ROUTE
 
 #: The stages whose result has a tab of its own, by the step the board's run is on and the command it runs.
 WATCHED = {"surfaces": "mockups", "model": "model"}
@@ -202,6 +204,37 @@ def about(where: str, text: str) -> str:
     return f"About the Blocker{f' on {where}' if where else ''}: “{text}” — "
 
 
+def standing(root: Path, feature: str) -> tuple[str, str]:
+    """Where a storyboard's verdict stands — `changed` since it was given, `parked`, `approved` or not given —
+    and what goes with it: the pages that changed, or the reason it was disapproved. Read once, for the form
+    under the storyboard and for a copy of it that leaves the board (`copy_said`)."""
+    path = root / "specs" / feature / "mockups" / "mock-states.md"
+    text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
+    seen, since = withdrawn_parts(root, feature)
+    if seen or since:
+        # "In the conversation" only where the board saw the turn change the page.
+        return "changed", "; ".join([*(f"{one} (in the conversation)" for one in seen), *since])
+    parked = next((line.split("parked:", 1)[1].strip()
+                   for line in text.splitlines() if "— parked:" in line), "")
+    return ("parked", parked) if parked else ("approved" if "— approved" in text else "", "")
+
+
+def copy_said(root: Path, feature: str) -> str:
+    """The verdict as a copy's strip says it, to somebody who never gave one."""
+    where, detail = standing(root, feature)
+    return {"changed": "It has changed since its last verdict, so it is not approved.",
+            "parked": f"It was disapproved: {detail}.",
+            "approved": "It is approved."}.get(where, "It is not approved yet.")
+
+
+def copy_links(boards: list[dict[str, str]]) -> str:
+    """Under the storyboard: each one as a single file to send (`page_copy.py`), at its own seated address."""
+    return "".join(
+        f'<p class="empty"><a href="{esc(ROUTE + row["href"].removeprefix(MOCK_ROUTE))}" download>Save a copy '
+        f'to send</a> — {esc(row["feature"])}: one file with every page in it, for somebody who is not at this '
+        f"board. It says where the verdict stood; verdicts are still given here.</p>" for row in boards)
+
+
 def verdict_form(root: Path, feature: str) -> str:
     """Approve marks every drawn state approved. Disapprove parks them, and has to say why.
 
@@ -215,23 +248,13 @@ def verdict_form(root: Path, feature: str) -> str:
         return ('<p class="empty">This storyboard has no page per surface, so there is nothing to approve: '
                 "each surface is drawn as its own page, which the storyboard links. Draw the storyboard draws it "
                 "again.</p>")
-    path = home / "mock-states.md"
-    note = "Nothing on this storyboard is approved yet."
-    text = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else ""
-    parked = next((line.split("parked:", 1)[1].strip()
-                   for line in text.splitlines() if "— parked:" in line), "")
-    seen, since = withdrawn_parts(root, feature)
-    gone = [*seen, *since]
-    if gone:
-        # "In the conversation" only where the board saw the turn change the page.
-        said = [*(f"{one} (in the conversation)" for one in seen), *since]
-        note = ("Changed since your verdict, so not approved: " + "; ".join(said)
-                + ". Approve or disapprove the storyboard again.")
-    elif parked:
-        note = (f"Disapproved: {parked}. It is being drawn again from that, and the new drawing waits on a "
-                f"verdict of its own.")
-    elif "— approved" in text:
-        note = "Approved."
+    where, detail = standing(root, feature)
+    gone, parked = where == "changed", where == "parked"
+    note = {"changed": f"Changed since your verdict, so not approved: {detail}. Approve or disapprove the "
+                       "storyboard again.",
+            "parked": f"Disapproved: {detail}. It is being drawn again from that, and the new drawing waits on a "
+                      "verdict of its own.",
+            "approved": "Approved."}.get(where, "Nothing on this storyboard is approved yet.")
     # Where the pages say who chose each state, the note says how many a person decided and how many the
     # tool put in: the person approving knows which states they have already seen.
     who = [one for page in surface_pages(home) for _, one in decided_states(page)[1]]
@@ -240,7 +263,7 @@ def verdict_form(root: Path, feature: str) -> str:
         note += (f" {len(who)} states: {sum(bool(one) for one in who) - proposed} decided by a person, "
                  f"{proposed} proposed.")
     # Either verdict locks both. A refusal (a disapproval with no reason) turns them back on in the page.
-    held = " disabled" if (parked or "— approved" in text) and not gone else ""
+    held = " disabled" if parked or where == "approved" else ""
     return (f'<form class="verdict" onsubmit="return false"><p class="empty{" verdict-gone" if gone else ""}">'
             f"{esc(note)} Approving marks every drawn state approved. Disapproving draws it again from your "
             f'reason.</p><div class="ask"><input id="why-{esc(feature)}" type="text" maxlength="240" '
@@ -274,7 +297,7 @@ def mockups_card(found: list[dict[str, str]], root: Path | None = None) -> str:
             "</span></a>"
             for row in boards)
         return (f'<div class="card" id="mockups"><h2>Storyboard</h2><div class="mocks">{tiles}</div>'
-                f"{forms}</div>")
+                f"{copy_links(boards)}{forms}</div>")
     tiles = "".join(
         f'<a class="mock" href="{esc(row["href"])}" target="_blank" rel="noopener">'
         f'<iframe src="{esc(row["href"])}" loading="lazy" tabindex="-1" title="{esc(row["title"])}"></iframe>'

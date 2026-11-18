@@ -80,11 +80,13 @@ HOLDER = ('<div class="fault" hidden role="alert"><p></p>'
           '<button type="button">Ask it to fix this</button></div>')
 
 
-def under(played: str, drawn: bool) -> str:
-    """What sits under the prototype's frame: a way to play it in a window of its own, and the fault's holder."""
+def under(played: str, drawn: bool, copy: str = "") -> str:
+    """What sits under the prototype's frame: a way to play it in a window of its own, a copy of it to send
+    to somebody who is not at this board (`page_copy.py`), and the fault's holder."""
+    send = f' · <a class="quiet-link" href="{copy}" download>Save a copy to send</a>' if copy else ""
     return (f'<p class="full"{"" if drawn else " hidden"}><button type="button" class="widen" '
             f'aria-pressed="false">Show it full width</button> · <a class="quiet-link" target="_blank" '
-            f'rel="noopener" href="{played}">Open the prototype in a full window</a></p>{HOLDER}')
+            f'rel="noopener" href="{played}">Open the prototype in a full window</a>{send}</p>{HOLDER}')
 
 STYLE = """
 #sketch .fault { margin: 10px 0 0; padding: 10px 12px; border: 1px solid #e3b4ad; border-radius: 8px;

@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote
 
-from . import brief_faults
+from . import brief_faults, page_copy
 from .brief_session import BRIEF, BROUGHT, PROTOTYPE, for_slug, sketches, slug_of, started, workspace
 from .errors import Busy
 from .page_shell import document, esc
@@ -268,7 +268,8 @@ def sketch_page(slug: str) -> str:
             f'<a class="quiet-link" href="/brief/read?sketch={quote(slug)}&amp;file=domain">the facts</a></p>'
             f'<p class="empty" style="margin-top:8px">Folder: <code>{esc(home / BRIEF)}</code></p></div>'
             f'<div class="card" style="margin-top:14px"><h2>The prototype</h2>{frame}'
-            f'{brief_faults.under(played, has_prototype)}</div></div></div>')
+            f'{brief_faults.under(played, has_prototype, f"/brief/copy?sketch={quote(slug)}")}'
+            f'</div></div></div>')
 
 
 #: The brief's documents a person may read on the board, by the name the address carries.
@@ -334,6 +335,13 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
             bridge.send(200, json.dumps(said), "application/json; charset=utf-8")
         except ValueError as refused:
             bridge.send(400, str(refused), "text/plain; charset=utf-8")
+    elif where == "/brief/copy":  # the prototype as one file to send: `page_copy.py`
+        try:
+            slug = (parse_qs(query).get("sketch") or [""])[0]
+            home = workspace(slug)
+            bridge.send(200, *page_copy.prototype(home / PROTOTYPE / "index.html", home, slug))
+        except ValueError as refused:
+            bridge.send(404, str(refused), "text/plain; charset=utf-8")
     elif where.startswith("/brief/files/"):
         found = served(where)
         if found is None:

@@ -182,7 +182,9 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "upstream",
        # A storyboard a person can talk about without a verdict: the conversation kept, the hold a word puts on
        # the board, the review read for them, and the card. The experiment's storyboard had no session.
-       "stage_talk", "review_reading", "storyboard_card", "storyboard_script", "step_record"}
+       "stage_talk", "review_reading", "storyboard_card", "storyboard_script", "step_record",
+       # A prototype or a storyboard as one file to send. The experiment's pages never left the board.
+       "page_copy"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will
 # grow a verb per slice, `assets` holds the paths and not the asset trees, `__init__` and `__main__` are
 # the package's own. The ledger's row for each describes what it becomes, not what is here, so they are

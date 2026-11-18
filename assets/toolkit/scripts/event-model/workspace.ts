@@ -7,6 +7,7 @@ import { join, posix } from 'node:path';
 
 import { parse as parseYaml } from 'yaml';
 
+import { heldEventNames } from './held-names.ts';
 import { MODEL_DIR_POSIX, parseModel, type Model } from './model.ts';
 import type { Workspace } from './validate.ts';
 
@@ -228,6 +229,9 @@ export function createWorkspace(model: Model): Workspace {
     },
     isGenerated(service: string): boolean {
       return loadServices().find((record) => record.name === service)?.generated ?? true;
+    },
+    heldEventNames(): ReadonlySet<string> {
+      return heldEventNames(ROOT);
     },
   };
 }

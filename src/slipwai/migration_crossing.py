@@ -30,6 +30,7 @@ from .migration_merge import Tree, git, install, merge, modes, tracked, validate
 from .migration_renames import moved, renamed, table
 from .migration_result import Migration
 from .migration_settings import settings
+from .migration_slices import kept_section, unmodelled_section
 from .replay import Replay, replay
 from .survey import survey
 from .versions import parse
@@ -154,6 +155,7 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             f"Run `{command}`. Place every `unplaced` slice in a named context on its chart; "
             "on the standard profile run `/chart`. Confirm the chart with "
             f"`{command} --confirm`, then run `make verify`.\n\n"
+            + unmodelled_section(flight.unmodelled) +
             "## Installed base\n\n"
             f"The base was reconstructed by installed slipwai {used}; the project recorded {recorded}. "
             "Snapshot fallbacks use the nearest available stable release below the snapshot.\n\n"
@@ -163,6 +165,7 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             "under `fairways/main/<feature>/`; ADRs retain their paths and numbers. Implementation "
             "was reconciled upward from trunk's slice merges: a slice trunk could not prove keeps the "
             "status the model recorded for it.\n\n" +
+            kept_section(flight.kept) +
             # What the crossing would have done to `infra/` and did not. Named rather than silently skipped:
             # a person who upgrades and later finds the factory's stack has moved on should find out here,
             # with the list in front of them, rather than from a plan that proposes to replace a database.

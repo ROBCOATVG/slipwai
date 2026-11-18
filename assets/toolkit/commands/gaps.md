@@ -43,7 +43,7 @@ Compare event names, schemas, {{identity}}, and model links with the implementat
 
 It runs once per capability, at the ladder's *Capability gates* rung, over the capability's whole diff —
 every slice under it merged and the capability converged — and per slice, over the slice diff after the
-slice's own convergence, only under the `open` release mode.
+slice's own convergence, only where the project reads each slice.
 
 Run this pass **after** the installed Spec Kit converge command reports converged, never before it.
 Converge appends tasks for work the artifacts require and the code lacks; ahead of it, this pass reports

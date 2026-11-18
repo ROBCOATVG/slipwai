@@ -442,8 +442,11 @@ which `check-chart` holds to the model), the mockups, the code and tests of the 
 several — the context's events module *additively*, **new** migration files named by a timestamp
 (`date -u +%Y%m%d%H%M`, so two slices never mint the same name), a **new** ADR under `docs/adr/` at
 `Proposed` (never an edit to one that stands), and the composition root. Nothing else —
-`Makefile`, `project.json`, package manifests and locks, `scripts/`, `skills/`, `agents/`, the other docs —
-is a slice's to write: a delegate that needs one of them hands the need back here, and it lands on `main`
+`Makefile`, `project.json`, the workspace's root manifests and locks, the local services' files under
+`docker/`, `scripts/`, `skills/`, `agents/`, the other docs — is a slice's to write. **The manifest and lock
+of the service that owns the slice are that service's code, and are the slice's**: a dependency or a build
+step it needs goes there in the same change as the code that uses it, and is never handed back. For the
+rest: a delegate that needs one of them hands the need back here, and it lands on `main`
 before the fan-out or between merges. **A hand-back that names a shared surface is a need, not a note**:
 under `/cruise` it is a `told` with `needs`, one item per thing that has to change, each with a `check`
 wherever trunk can prove it landed — a dependency is `text:<manifest>:"<package>"`, a realm user is
@@ -541,6 +544,18 @@ slice left in it, and the next slice's own demo. **A slice having finished is no
 
 Demo feedback re-enters the ladder at the stage that owns the change, which may sit well above the slice
 loop. Re-derive the entry stage from artifacts instead of assuming the loop resumes where it paused.
+
+**A slice, or a capability, is walked twice at most** — `walks` in `harbour.json`, two where it names none:
+the walk, and one more to see that what it sent back was put right. After the last one allowed, nothing is
+walked again for a finding that is not critical: fix what a test can prove fixed, write the rest into the
+fairway's careen as tasks, one row each with the screenshot or example that shows it, and record the verdict
+with `python3 scripts/agents/deck_line.py demo --slice <id> --verdict accepted --stowed <how many>`. A finding
+is critical where an example fails, where something stops the actor finishing what they came to do, or
+where data is lost or shown to the wrong person — and then the next walk is opened saying so, `python3
+scripts/agents/benchmark.py start <dir> demo critical="<what is critical>"`, which is the only way
+`benchmark.py` opens a walk past the bound. Where a message sits, a control's label and where the focus
+lands are findings worth fixing and are not that. What a person sends back at their own demo is always worth
+another walk, opened the same way with their words.
 
 <!-- section: push-check -->
 ### Before you push, name the release constraint

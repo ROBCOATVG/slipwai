@@ -40,12 +40,12 @@ def screen_design_stage(baseline: str) -> str:
 
 
 def design_review_stage(baseline: str) -> str:
-    """The `**Design review**` rung, after implementation: the screens looked at here under the `open`
-    release mode, and a pointer to the capability's reading under every other."""
+    """The `**Design review**` rung, after implementation: the screens looked at here where the project reads
+    each slice, and a pointer to the capability's reading everywhere else."""
     return f"""**Design review** — the `## Design review` section says `Reviewed with capability <name>`, or
    `No screen in this slice`. The screens are read once the capability is whole, at *Capability gates*, over
    every screen its slices changed: a screen a later slice finishes, read now, is a finding the next slice
-   was always going to close. **Under the `open` release mode** the section has a `Reviewed:` line for every
+   was always going to close. **Where the project reads each slice** the section has a `Reviewed:` line for every
    screen the slice adds or changes instead — those screens, and the elements it changed in them, and
    nothing it did not touch, which goes to the capability's review — and this rung reviews what the actor
    will see, not the source:
@@ -69,7 +69,7 @@ def tasks_brief() -> str:
 carries them — where shipped, since a project with no browser app receives neither — `skills/frontend-design`'s
 second pass over the plan before any code — with whatever an extension block in `AGENTS.md` adds to
 `/sail`'s *Screen design* rung. The review of the rendered screens is the capability's, at *Capability gates*,
-and not a task here, except under the `open` release mode, where the styling task names it too. Leave a
+and not a task here, except where the project reads each slice, where the styling task names it too. Leave a
 `## Design review` heading for the `Designed:` lines, or `No screen in this slice` under it where the slice
 has none."""
 
@@ -77,6 +77,6 @@ has none."""
 def with_design_rungs(stages: list[str], baseline: str) -> list[str]:
     """The ladder with *Screen design* before *Implementation* and *Design review* after it — around the
     implementation, because the screen is decided before a delegate builds it on the browser's defaults, and
-    under `open` the review's fixes are code the slice's own convergence should see."""
+    where the project reads each slice the review's fixes are code the slice's own convergence should see."""
     at = next(index for index, stage in enumerate(stages) if stage.startswith("**Implementation**"))
     return [*stages[:at], screen_design_stage(baseline), stages[at], design_review_stage(baseline), *stages[at + 1:]]

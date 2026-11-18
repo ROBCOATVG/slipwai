@@ -49,6 +49,44 @@ class ReviewCadenceTest(unittest.TestCase):
         self.assertEqual(self.benchmark.REVIEWS, 2)
 
 
+class WalkBoundTest(unittest.TestCase):
+    """A slice is walked twice at most: the walk, and one more to see what it sent back put right. A walk
+    past that is opened only by saying what is critical."""
+
+    def setUp(self) -> None:
+        self.benchmark = load()
+        self.home = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, self.home, True)
+        self.benchmark.HARBOUR = self.home / "harbour.json"
+
+    def test_the_first_and_second_walk_may_start(self) -> None:
+        self.assertIsNone(self.benchmark.walk_refused(record("implement"), "demo", ""))
+        self.assertIsNone(self.benchmark.walk_refused(record("demo"), "demo", ""))
+
+    def test_a_third_is_refused_and_says_what_to_do_instead(self) -> None:
+        refused = self.benchmark.walk_refused(record("demo", "implement", "demo"), "demo", "")
+        assert refused is not None
+        for word in ("walked 2 time(s)", "careen", "--stowed", "critical="):
+            self.assertIn(word, refused)
+
+    def test_a_critical_finding_opens_another(self) -> None:
+        self.assertIsNone(self.benchmark.walk_refused(record("demo", "demo"), "demo", "MT1-4 fails: nothing is made"))
+
+    def test_the_hand_s_own_stage_name_counts_as_a_walk(self) -> None:
+        self.assertIsNotNone(self.benchmark.walk_refused(record("demo", "demo-hand"), "demo-hand", ""))
+
+    def test_no_other_stage_is_bounded_by_it(self) -> None:
+        self.assertIsNone(self.benchmark.walk_refused(record("demo", "demo", "demo"), "implement", ""))
+
+    def test_harbour_json_may_name_another_bound_and_never_less_than_one(self) -> None:
+        self.benchmark.HARBOUR.write_text(json.dumps({"walks": 3}), encoding="utf-8")
+        self.assertIsNone(self.benchmark.walk_refused(record("demo", "demo"), "demo", ""))
+        self.benchmark.HARBOUR.write_text(json.dumps({"walks": 0}), encoding="utf-8")
+        self.assertEqual(self.benchmark.walks_allowed(), 1)
+        self.benchmark.HARBOUR.write_text(json.dumps({"walks": True}), encoding="utf-8")
+        self.assertEqual(self.benchmark.walks_allowed(), 2)
+
+
 def entry(source: str, seconds: int = 60, counts: str | None = None, **tokens: int) -> dict:
     usage = {"source": source, "host": {"m": {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0, **tokens}},
              "subagents": {}}

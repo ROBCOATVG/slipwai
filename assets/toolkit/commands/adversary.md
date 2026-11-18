@@ -17,10 +17,11 @@ with the capability's diff as the diff — **only where at least one of those sl
 clears the gate. The slice that closes a feature's split no longer takes a full pass of its own: a pass runs
 only when something widened.
 
-**One exception, under the `open` release mode.** Where a merge reaches the actor at once, a slice whose table
-has the authorisation, identity or money trigger `widened` is attacked at its own rung, before its push.
-Everywhere else a merge is held back by a flag or a keystone, so what the capability's pass has not yet
-covered is dark until it has; under `open` it would be live. Nothing else is attacked per slice in any mode.
+**One exception, where the project reads each slice** — `"readings": "slice"` in `harbour.json`, for a product
+whose merges reach somebody at once. There a slice whose table has the authorisation, identity or money
+trigger `widened` is attacked at its own rung, before its push. Everywhere else a merge is held back by a
+flag or a keystone, or the product is pre-launch and has nobody to reach, so what the capability's pass has
+not yet covered harms no one until it has. Nothing else is attacked per slice.
 
 ## Record the slice's trigger table
 
@@ -72,7 +73,7 @@ of them has a trigger `widened`, or `--full` was passed**; it covers every seam 
 together — a seam one slice opened and the next one reached. When none widened anything, write the
 capability's row as a skip — headed `## <capability> · <commit> · <date> · skipped: no slice widened a
 trigger`, naming each slice's trigger record it relied on, `Spawned:` empty — and the gate is cleared.
-**Skipping is a reported decision, not silence.** A seam a slice's own pass already attacked under `open` is
+**Skipping is a reported decision, not silence.** A seam a slice's own pass already attacked where the project reads each slice is
 cited rather than probed again, unless a later slice changed it.
 
 ## Triage the seams
@@ -126,7 +127,7 @@ stage default to `fast`: a per-seam choice is evidence for later slices, not a n
 
 Append to `specs/<feature>/adversary-log.md` either way. Copy this shape; an unwritten row is a pass that
 has to be run again. A slice's trigger record is the heading and the table; a capability's pass, or the
-`open` exception's, adds the lines below it:
+per-slice exception's, adds the lines below it:
 
 ```markdown
 ## <slice-id or capability> · <commit> · <date>
@@ -158,10 +159,10 @@ Each finding carries a severity — `CRITICAL` (data of one actor reaches anothe
 `HIGH`, `MEDIUM`, `LOW` — and a state: `open`, `fixed` with the commit, `stowed` into the fairway's careen,
 or `deferred` with the person's name and their reason, in their words.
 
-**One round, and a bar.** The pass runs once per capability — and per slice only for the `open` exception —
+**One round, and a bar.** The pass runs once per capability — and per slice only for the per-slice exception —
 not until it converges: in the experiment it ran 21 rounds and produced 129 findings, 64 of them LOW and most of those about wording, and slice S20 still ended
 with five open. A finding at or above the fairway's severity bar closes before the person's demo, in a follow-up slice in
-the same fairway — or, for the `open` exception, before the slice's push. One below it is **stowed** — a row
+the same fairway — or, for the per-slice exception, before the slice's push. One below it is **stowed** — a row
 in `fairways/<name>/careen.md` naming the capability or the slice — and the work goes on. The careen is a
 hardening slice the fairway runs when its planned slices are done, and its demo is that the findings are
 closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is the

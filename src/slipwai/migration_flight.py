@@ -18,6 +18,7 @@ from .errors import GenerationError
 from .layout import layout_of
 from .logs import Entry, entry
 from .migration_merge import Tree, git
+from .migration_slices import NAMES_FROM, modelled_only, named, names_file, stored_names
 
 
 class YAMLReader(Protocol):
@@ -25,7 +26,6 @@ class YAMLReader(Protocol):
 
 
 STATE = ".slipwai/migration.json"
-SLICE = re.compile(r"\b[A-Z][A-Z0-9]*-\d+\b")
 #: What a fairway or a feature may be called: one path component, on every platform and in a git ref.
 NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._-]*")
 #: What version 1's runner — version 1's own word for what a captain replaced — left behind. All three
@@ -152,6 +152,13 @@ class Flight:
     files: Tree = field(default_factory=dict)
     logs: list[tuple[str, str, Entry]] = field(default_factory=list)
     features: dict[str, dict] = field(default_factory=dict)
+    #: Per feature, what its split or a `slices/` directory names that the model does not hold, on the
+    #: profile where the model is what a slice is. Named on the catch-up page and kept out of `unplaced`:
+    #: the chart is rendered from the model, so nothing a person does could ever place one of these.
+    unmodelled: dict[str, list[str]] = field(default_factory=dict)
+    #: The event names this crossing recorded in `NAMES_FROM`, for the catch-up page; none where it wrote
+    #: no file, because nothing was in a log or an earlier crossing had already recorded them.
+    kept: list[str] = field(default_factory=list)
 
     @property
     def counts(self) -> tuple[int, int]:
@@ -268,19 +275,23 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
         feature = split.parent
         name = identifier(feature.name)
         frozen(flight, feature)
-        found = sorted(set(SLICE.findall(split.read_text(encoding="utf-8"))) |
+        modelled = document["profile"] == "event-modelling"
+        found = sorted(set(named(split.read_text(encoding="utf-8"),
+                                 [str(item["id"]) for item in items] if modelled else ())) |
                        {path.name for path in (feature / "slices").glob("*") if path.is_dir()})
         local = [dict(item) for item in items if str(item["id"]) in found]
-        if document["profile"] != "event-modelling":
+        if modelled:
+            # The model is what a slice is here; what only the split or a directory names is said, not charted.
+            found, missing = modelled_only(found, {str(item["id"]) for item in local})
+            if missing:
+                flight.unmodelled[name] = missing
+        else:
             local = []
             for slice_id in found:
                 plans = sorted((feature / "slices" / slice_id).glob("*plan*.md"))
                 text = "\n".join(path.read_text(encoding="utf-8") for path in plans)
                 local.append({"id": slice_id, "context": plan_context(text, contexts),
                               "capability": slice_id, "frames": [], "reads": []})
-        recorded = {str(item["id"]) for item in local}
-        local += [{"id": slice_id, "context": "unplaced", "capability": slice_id,
-                   "frames": [], "reads": []} for slice_id in found if slice_id not in recorded]
         for item in local:
             item["context"] = identifier(str(item.get("context") or "unplaced"))
             item.setdefault("capability", str(item.get("name") or item["id"]))
@@ -321,6 +332,10 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
                     original.setdefault("capability", item["capability"])
     if items:
         flight.files[model_path.relative_to(root).as_posix()] = model_bytes(model_path, model)
+    # Once: a later run that listed the model again would forgive every name added under the rules since.
+    names = stored_names(items)
+    if names and not (root / NAMES_FROM).exists():
+        flight.kept, flight.files[NAMES_FROM] = names, names_file(names)
     # Version 1 ran one loop over the whole project, so its messages and its stop belong to the `main`
     # fairway, beside the records frozen there. Carried whether or not any feature has a split: they are
     # the project's loop's, not any feature's, and the crossing is the moment that loop stops running —

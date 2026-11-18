@@ -51,6 +51,15 @@ nobody has. The frame says so:
 If the absence genuinely matters and nothing caused it, what you have is a **read model** answering *which
 of these has not happened yet* — which is a `state-view` slice, not an event.
 
+## A name already in a log is kept
+
+A stored event cannot be renamed, so neither gate asks anything of one that was written before the gate
+existed. A project that crossed from version 1 holds `.specify/event-names-from.json`, written once by
+`slipwai migrate`: the events of the slices that were `implemented` at the crossing. `check-model` passes
+exactly those names on exactly these two rules, and holds every event named afterwards to both. A project
+made under the rules has no such file and no such names. It is a record of what was in the log, not a list
+to add to: a new `OrderCreated` is renamed, or says `crud: true` and why.
+
 ## The rest, which are judgement
 
 **No `Event` suffix.** `OrderPlacedEvent` says twice what the type already says once. The model has four

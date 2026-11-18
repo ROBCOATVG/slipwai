@@ -40,6 +40,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from . import spend
 from .deck import recent, said
 from .demos import on_board
 from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name through this module
@@ -364,13 +365,16 @@ def feed(found: list[Fairway], harbour: list[Entry], limit: int = FEED) -> list[
     return sorted(lines)[-limit:]
 
 
-def spent(found: list[Fairway], day: datetime | None = None) -> int | None:
-    """Thousands of input tokens the whole harbour has recorded — on `day`'s date only, where given, which is
-    what a budget per day is held against — or None where nothing records any."""
+def spent(found: list[Fairway], day: datetime | None = None, root: Path | None = None) -> int | None:
+    """Thousands of work tokens the harbour recorded — on `day`'s date only, where given — or None where nothing
+    records any: the stages' own records (`spend.py`), and a log line carrying `tokens`, though none is written."""
     on = day.astimezone(UTC).strftime("%Y-%m-%d") if day is not None else ""
     counted = [e.fields["tokens"] for one in found for e in one.entries
                if isinstance(e.fields.get("tokens"), int | float) and e.t.startswith(on)]
-    return int(sum(counted)) if counted else None
+    recorded = spend.spent(root, on) if root is not None else None
+    if not counted and recorded is None:
+        return None
+    return int(sum(counted)) + (recorded or 0)
 
 
 def pressure(config: dict, harbour: list[Entry]) -> dict[str, object]:
@@ -646,8 +650,10 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         # next question is always "what has this one been doing", and that is forty lines of one file.
         "streams": {one.name: recent(root, one.name)[0] for one in found},
         "pressure": pressure(held, harbour),
-        "bunker": {"spent": spent(found), "allowed": held.get("bunker_per_day", NOTHING),
-                   "today": spent(found, now or datetime.now(UTC))},
+        "bunker": {"spent": spent(found, root=root), "allowed": held.get("bunker_per_day", NOTHING),
+                   "today": spent(found, now or datetime.now(UTC), root),
+                   **spend.day(root, (now or datetime.now(UTC)).astimezone(UTC).strftime("%Y-%m-%d"),
+                               held.get("prices"))},
         "inbox": waiting,
         "feed": feed(found, harbour),
         "unreadable": faults,

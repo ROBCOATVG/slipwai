@@ -59,6 +59,9 @@ header shows the four steps: describe, walk the states, check, hand over.
 - **The brief, as the start page will read it** counts what the brief has settled and what the build will
   have to assume. Green lines need no question. Amber lines are what the draft will decide and say it did.
 - **Read the brief as a document** opens the requirements document, the people or the facts as a page.
+- **Save a copy to send**, under the prototype, downloads it as one file with its styles, scripts and
+  pictures inside. Send that file to somebody who is not at this board: it opens in any browser, with a
+  strip at the foot saying it is a copy and when it was made. Nothing is uploaded anywhere.
 - **Hand over** appears once the brief has a document, and is marked when the agent says the brief is
   ready. It opens the next tab with the brief's answers filled in: a confirm page that shows what the brief
   settled, with every extension on this machine ticked. **Make it** makes the project. **Change something**
@@ -229,6 +232,11 @@ Under it is the verdict form:
 
 Both buttons lock when the storyboard has a verdict. To change a verdict, edit `mock-states.md`.
 
+**Save a copy to send**, above the verdict form, downloads the storyboard as one file: every page it frames
+is inside it, and a page it only links to is drawn at the end. A strip at the top says it is a copy, when
+it was made, and where the verdict stood. The copy carries only files the board itself serves for a
+mock-up, and names anything it left out. A verdict is still given here, not on the copy.
+
 ### Needs a look
 
 At the top of the Work tab. It lists only what is wrong: a red trunk, then each slice stuck on one task, going
@@ -373,7 +381,7 @@ turn it on.
 ### Fleet
 
 The Fleet tab is the machinery: **Sessions** in use against the slots, and which slice takes the next one;
-**Tokens today** against the budget a day; **Trunk**, green or red with why; and one row per process (the
+**Work tokens today** against the budget a day (uncached input plus output, the pace the bunker holds the fleet to), with each model's day underneath by kind and, where `harbour.json` has `prices` for every model that ran, an estimate in money; **Trunk**, green or red with why; and one row per process (the
 harbourmaster and each captain) with its state and its last line. **Open log ↗** on a captain's row opens that
 captain's own window, described below. **Stop the fleet** and the settings are here too.
 

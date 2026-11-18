@@ -15,6 +15,7 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 from test_drive import loaded
@@ -114,3 +115,41 @@ class SettingTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IdTest(unittest.TestCase):
+    """Two messages of one second must never share an id: the second replaced the first, unseen."""
+
+    def setUp(self) -> None:
+        self.home = talk.place(Path(tempfile.mkdtemp()), "ORD", "ORD-01")
+
+    def drawn(self, *first: str):
+        """`secrets.token_hex` that answers these for an id, in turn, and is itself for everything else."""
+        real, waiting = talk.secrets.token_hex, list(first)
+
+        def token_hex(count: int | None = None) -> str:
+            return waiting.pop(0) if waiting and count == talk.ID_BYTES else real(count)
+        return mock.patch.object(talk.secrets, "token_hex", token_hex)
+
+    def test_two_messages_drawing_one_id_in_one_second_are_both_kept(self) -> None:
+        same = "ab" * talk.ID_BYTES
+        with mock.patch.object(talk, "now", return_value="2026-11-18T14:25:43Z"), self.drawn(same, same):
+            first = talk.send(self.home, "say", "the first")
+            second = talk.send(self.home, "say", "the second")
+        self.assertNotEqual(first["id"], second["id"])
+        self.assertCountEqual([one["text"] for one in talk.pending(self.home)], ["the first", "the second"])
+
+    def test_an_id_already_handled_is_not_drawn_again(self) -> None:
+        same = "cd" * talk.ID_BYTES
+        with mock.patch.object(talk, "now", return_value="2026-11-18T14:25:43Z"), self.drawn(same, same):
+            first = talk.send(self.home, "say", "handled already")
+            done = self.home / "inbox" / talk.DONE
+            done.mkdir()
+            os.replace(self.home / "inbox" / f"{first['id']}.json", done / f"{first['id']}.json")
+            second = talk.send(self.home, "say", "sent after it")
+        self.assertNotEqual(first["id"], second["id"])
+        self.assertEqual([one["text"] for one in talk.pending(self.home)], ["sent after it"])
+
+    def test_an_id_is_wide_enough_that_a_long_thread_of_one_second_does_not_meet_itself(self) -> None:
+        self.assertGreaterEqual(talk.ID_BYTES, 8)
+

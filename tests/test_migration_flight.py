@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,7 @@ def script(relative: str):
     spec = importlib.util.spec_from_file_location("migration_script", ROOT / "assets/toolkit/scripts" / relative)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # before it runs: 3.11's `@dataclass` reads `sys.modules[__module__]`
     spec.loader.exec_module(module)
     return module
 
@@ -79,7 +81,11 @@ class FlightTest(unittest.TestCase):
         self.root = Path(scratch.name)
         self.feature = self.root / "specs/ordering"
         (self.feature / "slices/ORD-01").mkdir(parents=True)
-        (self.feature / "story-split.md").write_text("ORD-01 ORD-02 ORD-03", encoding="utf-8")
+        # A slice graph, since issue 95: a split names its slices in that table's first column, and an id
+        # that merely appears in its prose is not one. This fixture was the three ids on one bare line.
+        (self.feature / "story-split.md").write_text(
+            "## Slice graph\n| Slice | depends_on |\n|---|---|\n| ORD-01 | — |\n| ORD-02 | ORD-01 |\n"
+            "| ORD-03 | ORD-01 |\n", encoding="utf-8")
         self.document = {"profile": "standard", "target": "none", "layout": {"delivery": "."},
                          "deployables": {"service": {"kind": "service", "path": "apps/service",
                                                      "contexts": ["ordering", "billing"]}}}

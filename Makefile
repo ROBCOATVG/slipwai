@@ -66,6 +66,8 @@ SLOW += test_captain_review7
 SLOW += test_captain_through
 # A board served, and a stand-in agent spawned per case, for the hand-over on the Next features tab.
 SLOW += test_intake_card test_intake_talk
+# Node, once per case, reading the file `check.py` reads: the two model checkers held in step.
+SLOW += test_event_names_parity
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

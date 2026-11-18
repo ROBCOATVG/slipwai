@@ -69,14 +69,19 @@ def negative_fault(name: str) -> str | None:
     )
 
 
-def naming_findings(slice_id: str, frames: list) -> list[str]:
-    """`event-is-not-crud` and `event-is-not-negative`, over one slice's event frames, on either rung."""
+def naming_findings(slice_id: str, frames: list, held: frozenset[str] = frozenset()) -> list[str]:
+    """`event-is-not-crud` and `event-is-not-negative`, over one slice's event frames, on either rung.
+
+    `held` are the names the project already had in a log when these rules reached it
+    (`check.held_event_names`). Neither rule asks about one: the only compliant move would be to rename a
+    stored event, which nothing can do. Every other rule still reads the frame.
+    """
     findings: list[str] = []
     for frame in frames:
         if not isinstance(frame, dict) or frame.get("type") != "evt":
             continue
         name = frame.get("name")
-        if not isinstance(name, str) or not name:
+        if not isinstance(name, str) or not name or name in held:
             continue
         if not frame.get("crud") and (fault := crud_fault(name)) is not None:
             findings.append(f"{slice_id}: {fault}")

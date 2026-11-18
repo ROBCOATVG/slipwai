@@ -36,6 +36,8 @@ CASE: dict[str, Any] = {
               "why": "the same refusal twice", "signed_off": ""},
 }
 Seen = list[Path]
+#: Why two cases are POSIX's: what an exited command left behind cannot be found on Windows without a job object.
+LEFT_BEHIND = "an exited command's leftovers cannot be found on Windows without a job object"
 
 
 def alive(pid: int) -> bool:
@@ -157,7 +159,7 @@ class TheRunner(unittest.TestCase):
         self.assertIn("after a failed gate: retry or park: always `park` is right on 1 of 1; always silent is right "
                       "on none", text)
 
-    @unittest.skipIf(os.name == "nt", "what an exited command left behind cannot be found on Windows without a job object")
+    @unittest.skipIf(os.name == "nt", LEFT_BEHIND)
     def test_what_a_captain_command_left_running_is_ended_when_it_exits(self) -> None:
         marker = self.root / "child.pid"
         script = self.root / "spawner.py"
@@ -173,7 +175,7 @@ class TheRunner(unittest.TestCase):
             time.sleep(0.05)
         self.assertFalse(alive(pid))
 
-    @unittest.skipIf(os.name == "nt", "what an exited command left behind cannot be found on Windows without a job object")
+    @unittest.skipIf(os.name == "nt", LEFT_BEHIND)
     def test_a_leftover_that_would_have_outlived_the_run_s_folder_is_ended_with_the_command(self) -> None:
         """The case above cannot tell on its own: a Python started in the run's folder dies as the folder is
         taken away, ended or not. This one starts outside it, and waits to be told it is up."""

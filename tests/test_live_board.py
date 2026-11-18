@@ -7,9 +7,9 @@ The pure parts are driven with the rows the fold would make; the routes against 
 from __future__ import annotations
 
 import json
+import os
 import re
 import tempfile
-import os
 import unittest
 import urllib.error
 from datetime import UTC, datetime, timedelta
@@ -104,7 +104,7 @@ class OneAskTest(unittest.TestCase):
             board_read.fold(root)
         self.assertEqual(asked, ["001-demo"])
 
-    @unittest.skipIf(os.name == "nt", "a login shell is never asked on Windows (`from_login`), so there is nothing to keep")
+    @unittest.skipIf(os.name == "nt", "`from_login` never asks a login shell on Windows: nothing to keep")
     def test_the_login_shell_is_asked_once_while_the_board_keeps_its_answer(self) -> None:
         asked = []
 

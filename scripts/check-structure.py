@@ -190,6 +190,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "try_card",
               # And what a person said after using it: the record under docs/feedback, and its card there.
               "feedback", "feedback_card",
+              # And a further feature handed over there: the document a person attaches, checked; the
+              # conversation with the project's agent that ends in one idea; and the Next features tab.
+              "intake_document", "intake_talk", "intake_card",
               # And every decision the fleet took, readable, each with the receipt the ceiling counts: one entry
               # read for a person — its sentence, its options split — and its card, in the tab and the slice's window.
               "decision_entry", "decision_log", "decision_cards",

@@ -1,7 +1,8 @@
-"""`docs/intake/`: the record `/sail` writes when a person hands it a further feature.
+"""`docs/intake/`: the record written when a person hands over a further feature, to `/sail` or on the board.
 
-The person does not create the directory. The session does, from the words they typed and the documents
-that session can read. Spec Kit's assessment then lives in `.specify/assessments/<slug>/`. A `go` is what
+The person does not create the directory. `/sail` does, from the words they typed and the documents that
+session can read; the board's Next features tab does, through `capture`, at the end of its own conversation
+(`intake_talk.py`). Spec Kit's assessment then lives in `.specify/assessments/<slug>/`. A `go` is what
 may be specified, and only after `confirmed` says a person — or, under `/cruise`, the skipper — agreed
 this was a new feature. `specified.json` names the feature directory and the digest of the sources that
 produced it, so a later edit of those sources is seen rather than treated as already done.
@@ -163,12 +164,15 @@ def readme() -> str:
     """The page a generated project gets, so the record has a reader."""
     return """# Intake
 
-A further feature is handed to `/sail` in the conversation: the request, text pasted there, or a document
-that session can read. `/sail` writes one directory here per idea. Creating the directory by hand is not
-how a feature starts.
+A further feature is handed over in one of two places. To `/sail` in the conversation: the request, text
+pasted there, or a document that session can read. Or on the board, on the Voyage window's **Next features**
+tab: say what it is or attach its document, answer what the agent asks, and press **Capture this idea**.
+Either way one directory is written here per idea. Creating the directory by hand is not how a feature
+starts.
 
 `brief.md` is the request, exactly as it was handed over. Any other file beside it is a document that
-came with it. `confirmed` is the yes that this is a new feature — a person in the session, or the skipper
+came with it; `conversation.md` is what was asked and answered on the board before it was captured.
+`confirmed` is the yes that this is a new feature — a person in the session, or the skipper
 when `/cruise` is driving — and it is written before Spec Kit assesses the idea.
 
 Assessment lives in `.specify/assessments/<slug>/`. Its `decision.md` ends in `go`, `needs-clarification`,

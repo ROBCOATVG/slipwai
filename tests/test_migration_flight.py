@@ -13,7 +13,7 @@ import yaml  # type: ignore[import-untyped]
 
 from slipwai.assets import ROOT
 from slipwai.fleet import Fairway, inbox, state_of
-from slipwai.migration_flight import json_bytes, model_bytes, named, plan_context, read, shipped
+from slipwai.migration_flight import NAMES_FROM, json_bytes, model_bytes, named, plan_context, read, shipped
 from slipwai.migration_settings import on_without_a_date, settings
 
 
@@ -224,6 +224,65 @@ ORD-99 was dropped.
         self.assertIn("confirmed", written)
         claims = script("agents/claims.py")
         self.assertNotIn("confirmation", claims.take(self.root, "billing", "this-machine").why or "")
+
+    def kept(self, *slices: dict) -> object:
+        """The event names the crossing records for these slices, or None where it writes no file."""
+        path = self.root / "docs/event-model/model.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(json_bytes({"slices": list(slices)}))
+        with patch("slipwai.migration_flight.shipped",
+                   side_effect=lambda root, slice_id: "abc" if slice_id == "ORD-01" else None):
+            self.flight = read(self.root, self.document, YAML())
+        written = self.flight.files.get(NAMES_FROM)
+        return json.loads(written)["events"] if written is not None else None
+
+    @staticmethod
+    def raising(slice_id: str, status: str, *events: str, **frame: object) -> dict:
+        return {"id": slice_id, "status": status, "frames": [
+            {"type": "cmd", "name": f"Do{slice_id.replace('-', '')}"},
+            *({"type": "evt", "name": event, **frame} for event in events)]}
+
+    def test_the_crossing_records_the_event_names_of_slices_that_may_already_be_in_a_log(self) -> None:
+        """Issue 95: a stored event cannot be renamed, so the naming rules ask nothing of one."""
+        self.assertEqual(self.kept(
+            self.raising("S1", "implemented", "WorkspaceCreated", "DocumentNotReceived"),
+            self.raising("S2", "observed", "LedgerUpdated"),
+            self.raising("S3", "implemented", "WorkspaceCreated", "PaymentTaken")),
+            ["DocumentNotReceived", "LedgerUpdated", "PaymentTaken", "WorkspaceCreated"])
+        self.assertEqual(self.flight.kept, ["DocumentNotReceived", "LedgerUpdated", "PaymentTaken",
+                                            "WorkspaceCreated"])
+        self.assertEqual(NAMES_FROM, script("event-model/check.py").NAMES_FROM, "the gate reads what this writes")
+
+    def test_a_slice_nobody_has_built_keeps_no_name(self) -> None:
+        """The stricter of the issue's two readings: modelled and never written can still be renamed."""
+        self.assertEqual(self.kept(
+            self.raising("S1", "implemented", "WorkspaceCreated"),
+            self.raising("S2", "planned", "ModelVersionCreated"),
+            self.raising("S3", "modelled", "InviteNotSent"),
+            self.raising("S4", "proposed", "ThingDeleted"),
+            {"id": "S5", "frames": [{"type": "evt", "name": "StatuslessUpdated"}]}), ["WorkspaceCreated"])
+
+    def test_a_slice_trunk_proves_shipped_keeps_its_names_whatever_its_status_said(self) -> None:
+        self.assertEqual(self.kept(self.raising("ORD-01", "proposed", "OrderCreated")), ["OrderCreated"])
+
+    def test_a_project_with_nothing_in_a_log_gets_no_file_and_is_held_on_every_name(self) -> None:
+        self.assertIsNone(self.kept(self.raising("S2", "planned", "ModelVersionCreated")))
+        self.assertEqual(self.flight.kept, [])
+
+    def test_the_names_are_recorded_once_and_a_second_crossing_leaves_them(self) -> None:
+        """Rewriting it would forgive every name added under the rule since."""
+        (self.root / ".specify").mkdir()
+        (self.root / NAMES_FROM).write_text('{"events": ["WorkspaceCreated"]}', encoding="utf-8")
+        self.assertIsNone(self.kept(self.raising("S1", "implemented", "WorkspaceCreated", "LaterUpdated")))
+        self.assertEqual(self.flight.kept, [])
+
+    def test_what_the_crossing_writes_is_what_the_gate_then_passes(self) -> None:
+        gate = script("event-model/check.py")
+        self.kept(self.raising("S1", "implemented", "WorkspaceCreated"), self.raising("S2", "planned", "RowUpdated"))
+        (self.root / ".specify").mkdir()
+        (self.root / NAMES_FROM).write_bytes(self.flight.files[NAMES_FROM])
+        with patch.object(gate, "ROOT", self.root):
+            self.assertEqual(gate.held_event_names(), frozenset({"WorkspaceCreated"}))
 
     def model(self, *slices: dict) -> dict:
         path = self.root / "docs/event-model/model.yaml"

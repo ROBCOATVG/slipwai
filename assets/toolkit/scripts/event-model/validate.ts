@@ -49,6 +49,13 @@ export interface Workspace {
    * service the keel made is the ordinary case. `observed` is allowed only where this is false.
    */
   isGenerated(service: string): boolean;
+  /**
+   * The event names this project already had in a log when the two naming rules reached it — what
+   * `.specify/event-names-from.json` lists, and nothing where there is no such file (`held-names.ts`).
+   * A stored event cannot be renamed, so neither rule asks about one. Throws where the file is unreadable:
+   * that is neither "nothing held" nor "everything held".
+   */
+  heldEventNames(): ReadonlySet<string>;
 }
 
 export interface Violation {
@@ -206,11 +213,17 @@ const PUBLISHERS = ['outbox', 'bus', 'cdc'] as const;
  */
 const NEGATIVE_NAME = /(?:^|[a-z0-9])(Not|Never|Un)[A-Z]/;
 
-/** `event-is-not-crud` and `event-is-not-negative`, over one slice's event frames, on either rung. */
-function namingViolations(slice: Slice): Violation[] {
+/**
+ * `event-is-not-crud` and `event-is-not-negative`, over one slice's event frames, on either rung.
+ *
+ * `held` are the names the project already had in a log when these rules reached it. Neither rule asks
+ * about one — the only compliant move would be to rename a stored event — and every other rule still reads
+ * the frame. Mirrors `naming_findings` in `rung.py`.
+ */
+function namingViolations(slice: Slice, held: ReadonlySet<string>): Violation[] {
   const violations: Violation[] = [];
   for (const frame of slice.frames) {
-    if (frame.type !== 'evt') continue;
+    if (frame.type !== 'evt' || held.has(frame.name)) continue;
     const verb = CRUD_VERBS.find((word) => frame.name.endsWith(word) && frame.name !== word);
     if (verb !== undefined && frame.crud !== true) {
       const subject = frame.name.slice(0, -verb.length);
@@ -294,10 +307,12 @@ export function validate(model: Model, workspace: Workspace): Violation[] {
   const commandNames = new Set(
     frames.filter((f) => f.type === 'cmd').map((f) => f.name),
   );
+  // Read once, and before any slice: an unreadable file is one failure, not one per event.
+  const heldNames = workspace.heldEventNames();
 
   for (const [index, slice] of model.slices.entries()) {
     violations.push(...checkGrammar(slice));
-    violations.push(...namingViolations(slice));
+    violations.push(...namingViolations(slice, heldNames));
 
     // The rung this slice's service is on, decided before any rule that reads it. Named explicitly, or the
     // only service there is, or — with several and none named — unknown, which the placement rules below

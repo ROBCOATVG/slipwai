@@ -25,6 +25,14 @@ class YAMLReader(Protocol):
 
 
 STATE = ".slipwai/migration.json"
+#: Where a crossing records the event names the project already had in a log, which `check-model`'s two
+#: naming rules then ask nothing of: a stored event cannot be renamed. Written once, here, and read by
+#: `scripts/event-model/check.py` and `held-names.ts`, which spell the same path.
+NAMES_FROM = ".specify/event-names-from.json"
+#: The statuses that say a slice's events may already be written: built, or recorded from code that exists.
+#: A slice that is only modelled or planned has raised nothing, so its events can still be renamed and the
+#: rules hold them — the stricter of the two readings issue 95 left open.
+WRITTEN = frozenset({"implemented", "observed"})
 #: What a slice's id looks like where a split writes one: `S38`, `ORD-01`, `CL2`. Read only out of the first
 #: column of a split's slice table and never out of its prose — a split quotes scenario, requirement and
 #: rule ids (`CS-3`, `FR-006`, `V-10`) in the very same shape, and nothing but where it stands says which a
@@ -87,6 +95,17 @@ def named(split: str, known: Collection[str] = ()) -> list[str]:
         found += [slice_id for slice_id in known
                   if re.search(rf"(?<![\w-]){re.escape(slice_id)}(?![\w-])", cell)]
     return sorted(set(found))
+
+
+def stored_names(slices: list[dict]) -> list[str]:
+    """The names of the events these slices may already have written, sorted and once each.
+
+    Read after the statuses are reconciled, so a slice trunk proves shipped counts whatever its field said.
+    """
+    return sorted({frame["name"] for item in slices if item.get("status") in WRITTEN
+                   for frame in item.get("frames") or []
+                   if isinstance(frame, dict) and frame.get("type") == "evt"
+                   and isinstance(frame.get("name"), str) and frame["name"]})
 
 
 def json_bytes(value: object) -> bytes:
@@ -206,6 +225,9 @@ class Flight:
     #: profile where the model is what a slice is. Named on the catch-up page and kept out of `unplaced`:
     #: the chart is rendered from the model, so nothing a person does could ever place one of these.
     unmodelled: dict[str, list[str]] = field(default_factory=dict)
+    #: The event names this crossing recorded in `NAMES_FROM`, for the catch-up page; none where it wrote
+    #: no file, because nothing was in a log or an earlier crossing had already recorded them.
+    kept: list[str] = field(default_factory=list)
 
     @property
     def counts(self) -> tuple[int, int]:
@@ -384,6 +406,18 @@ def read(root: Path, document: dict, legacy: YAMLReader, claims: Collection[str]
                     original.setdefault("capability", item["capability"])
     if items:
         flight.files[model_path.relative_to(root).as_posix()] = model_bytes(model_path, model)
+    # Never rewritten: the names are the crossing's, and a later run that listed the model again would
+    # forgive every name added under the rules since. And not written for a project with nothing in a log —
+    # no file is how the gate knows to hold every name.
+    names = stored_names(items)
+    if names and not (root / NAMES_FROM).exists():
+        flight.kept = names
+        flight.files[NAMES_FROM] = json_bytes({
+            "events": names,
+            "why": "Events the model's implemented slices held when slipwai migrate crossed this project from "
+                   "version 1. A stored event cannot be renamed, so scripts/event-model/check.py does not ask "
+                   "event-is-not-crud or event-is-not-negative of these names; every event named since is "
+                   "held to both. Written once; leave it as it is."})
     # Version 1 ran one loop over the whole project, so its messages and its stop belong to the `main`
     # fairway, beside the records frozen there. Carried whether or not any feature has a split: they are
     # the project's loop's, not any feature's, and the crossing is the moment that loop stops running —

@@ -239,6 +239,15 @@ class CatchUpTest(unittest.TestCase):
         self.assertIn("- `ordering`: `S38`, `S39`, `W5`", page)
         self.assertNotIn("## Slices the model does not hold", self.page([]))
 
+    def test_the_event_names_it_kept_are_on_the_page_with_what_that_means(self) -> None:
+        document = {"name": "orders", "layout": {"delivery": "."}}
+        page = catch_up("orders", "1.5.1", "1.5.1", Flight(kept=["DocumentNotReceived", "WorkspaceCreated"]),
+                        layout_of(document), {}, [])
+        self.assertIn("## Event names kept", page)
+        self.assertIn("`DocumentNotReceived`, `WorkspaceCreated`", page)
+        self.assertIn("`.specify/event-names-from.json`", page)
+        self.assertNotIn("## Event names kept", self.page([]))
+
     def test_what_the_crossing_could_not_write_is_said_on_the_page(self) -> None:
         page = self.page(["`project.json` conflicted, so releaseMode and state were not written."])
         self.assertIn("## What this crossing could not do", page)

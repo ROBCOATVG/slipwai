@@ -24,7 +24,7 @@ from .layout import layout_of
 from .logs import Entry, deck_path
 from .manifest import apps_from_manifest
 from .migration_claims import ahead, prepare, update
-from .migration_flight import Flight, read
+from .migration_flight import NAMES_FROM, Flight, read
 from .migration_legacy import runtime
 from .migration_merge import Tree, git, install, merge, modes, tracked, validate
 from .migration_renames import moved, renamed, table
@@ -175,6 +175,16 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             "under `fairways/main/<feature>/`; ADRs retain their paths and numbers. Implementation "
             "was reconciled upward from trunk's slice merges: a slice trunk could not prove keeps the "
             "status the model recorded for it.\n\n" +
+            # The names `check-model`'s naming rules will not ask about, said where the person reads what
+            # the crossing did: an exemption nobody was told of is one nobody can check.
+            ("## Event names kept\n\n"
+             "These events belong to slices that were `implemented` at this crossing, so they may already "
+             "be in a log, and a stored event cannot be renamed. `make check-model` does not ask "
+             "`event-is-not-crud` or `event-is-not-negative` of them; it holds every event named from here "
+             f"on to both. The list is `{NAMES_FROM}`, written once: take a name out of it when the event "
+             "it names is retired, and never add one to pass the gate.\n\n"
+             + ", ".join(f"`{name}`" for name in flight.kept) + "\n\n"
+             if flight.kept else "") +
             # What the crossing would have done to `infra/` and did not. Named rather than silently skipped:
             # a person who upgrades and later finds the factory's stack has moved on should find out here,
             # with the list in front of them, rather than from a plan that proposes to replace a database.

@@ -64,6 +64,7 @@
 # why: 2026-11-17 38e17315f6867180 Not Windows work, and deliberately a change on every platform: check-slice-scope reads the product's state through scripts/agents/release_state.py, a new standard-library module carried into every project, and under pilot holds a capability's entry to its last slice; a project with no state recorded merges flagged as before.
 # why: 2026-11-17 68b004cd9fe48155 Not Windows work, and the same on every platform: the backing-service pruner asks git which of an option's matching paths it ignores, and counts none of those as the option installed; git check-ignore runs the same everywhere, and a path outside a repository is counted as before.
 # why: 2026-11-18 e4c300a544886a35 Windows work for the captain-agent stream, macOS and Linux unchanged: the captain's named command is split as drive.words already split a slice's (backslashes kept only on Windows); a print-mode program is looked up on PATH only on Windows, where an npm .cmd shim is not found by a bare name; drive.alive asks the process handle only on Windows, where os.kill(pid, 0) is a Ctrl-C; drive.end_group and the captain's timed-out command end the tree with taskkill /T only on Windows and keep killpg elsewhere; captain_orders.unreadable compares against os.sep, which is / on macOS and Linux; check-dispatch prints its project paths with as_posix, the same text off Windows; the pruner's check-ignore is NUL-separated, the same answer off Windows.
+# why: 2026-11-18 df30366479d37207 Windows work, macOS and Linux unchanged: talk.send stamps each message file's mtime with an instant later than the last this process sent, which off Windows is the clock's own, so the order fold draws is the same; drive.end_group's Windows branch always passes taskkill /F, and the POSIX branch is unchanged.
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -142,6 +143,10 @@
 4d01015df1d5601a14f6b32a608f71109decb17f99a546ce954afb159317f7e2  event-modelling-postgres-toy-serve  scripts/agents/berths.py
 4d01015df1d5601a14f6b32a608f71109decb17f99a546ce954afb159317f7e2  standard-memory-none  scripts/agents/berths.py
 4d01015df1d5601a14f6b32a608f71109decb17f99a546ce954afb159317f7e2  standard-postgres-toy-serve  scripts/agents/berths.py
+4f6e0a460dd84ef8cf043d9f61eef394d21099a25932a3ccfae1bf2368012f59  event-modelling-memory-none  scripts/agents/drive.py
+4f6e0a460dd84ef8cf043d9f61eef394d21099a25932a3ccfae1bf2368012f59  event-modelling-postgres-toy-serve  scripts/agents/drive.py
+4f6e0a460dd84ef8cf043d9f61eef394d21099a25932a3ccfae1bf2368012f59  standard-memory-none  scripts/agents/drive.py
+4f6e0a460dd84ef8cf043d9f61eef394d21099a25932a3ccfae1bf2368012f59  standard-postgres-toy-serve  scripts/agents/drive.py
 4fb3121474bb558e1f94e559755a42b3dcac972adfc3f654c0fd76d1569e3da9  event-modelling-memory-none  scripts/agents/inbox.py
 4fb3121474bb558e1f94e559755a42b3dcac972adfc3f654c0fd76d1569e3da9  event-modelling-postgres-toy-serve  scripts/agents/inbox.py
 4fb3121474bb558e1f94e559755a42b3dcac972adfc3f654c0fd76d1569e3da9  standard-memory-none  scripts/agents/inbox.py
@@ -192,10 +197,6 @@
 6c52dfa5f9751de3310fac50a2b2cf6ea52d977be01bb63ae124c5a494794d86  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-memory-none  scripts/event-model/model.ts
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-postgres-toy-serve  scripts/event-model/model.ts
-6e8ca0b7d3d16332843944340e06fcd392326e0bbf20001857a45d7cb91e9b2d  event-modelling-memory-none  scripts/agents/drive.py
-6e8ca0b7d3d16332843944340e06fcd392326e0bbf20001857a45d7cb91e9b2d  event-modelling-postgres-toy-serve  scripts/agents/drive.py
-6e8ca0b7d3d16332843944340e06fcd392326e0bbf20001857a45d7cb91e9b2d  standard-memory-none  scripts/agents/drive.py
-6e8ca0b7d3d16332843944340e06fcd392326e0bbf20001857a45d7cb91e9b2d  standard-postgres-toy-serve  scripts/agents/drive.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-memory-none  scripts/check-decisions.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-postgres-toy-serve  scripts/check-decisions.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-memory-none  scripts/check-decisions.py
@@ -234,10 +235,6 @@
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  event-modelling-postgres-toy-serve  scripts/agents/session.py
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  standard-memory-none  scripts/agents/session.py
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  standard-postgres-toy-serve  scripts/agents/session.py
-8153668637e8f2a1b1a8d7e3250655c3171135372a49e9ad0c6b1bede6612ad2  event-modelling-memory-none  scripts/agents/talk.py
-8153668637e8f2a1b1a8d7e3250655c3171135372a49e9ad0c6b1bede6612ad2  event-modelling-postgres-toy-serve  scripts/agents/talk.py
-8153668637e8f2a1b1a8d7e3250655c3171135372a49e9ad0c6b1bede6612ad2  standard-memory-none  scripts/agents/talk.py
-8153668637e8f2a1b1a8d7e3250655c3171135372a49e9ad0c6b1bede6612ad2  standard-postgres-toy-serve  scripts/agents/talk.py
 821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  event-modelling-memory-none  init
 821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  standard-memory-none  init
 86738d3e275d5bf14528f900c4366d19b11206c5b8fda8b33de76086fe834f82  event-modelling-memory-none  scripts/event-model/package.json
@@ -302,6 +299,10 @@ aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  event-modellin
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  event-modelling-postgres-toy-serve  scripts/check-speckit.py
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  standard-memory-none  scripts/check-speckit.py
 aefe80e5934d8f6ff1a8a330d9194eb1083c8f492948176ca9171511e5bc5836  standard-postgres-toy-serve  scripts/check-speckit.py
+b18505aa041031435a8252135e302abe2a38dc4306fa404f3d1af766777bbb13  event-modelling-memory-none  scripts/agents/talk.py
+b18505aa041031435a8252135e302abe2a38dc4306fa404f3d1af766777bbb13  event-modelling-postgres-toy-serve  scripts/agents/talk.py
+b18505aa041031435a8252135e302abe2a38dc4306fa404f3d1af766777bbb13  standard-memory-none  scripts/agents/talk.py
+b18505aa041031435a8252135e302abe2a38dc4306fa404f3d1af766777bbb13  standard-postgres-toy-serve  scripts/agents/talk.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modelling-memory-none  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  event-modelling-postgres-toy-serve  scripts/agents/capabilities.py
 b49721abc6cd8f642bdb7a1dad71d0d9f6d86d139bfa43cbc24447066c2677f7  standard-memory-none  scripts/agents/capabilities.py

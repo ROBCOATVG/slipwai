@@ -15,9 +15,11 @@ answered `Reply: <text>` — or not at all where it says `quiet`. A captain's dr
 import hashlib
 import json
 import os
+import queue
 import select
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -116,17 +118,41 @@ def busy(session):
     """Call tools, one finished every fifth of a second, and write nothing else, until the turn is cancelled:
     an agent going round in circles, which the captain must still end."""
     count = 0
+    lines = heard_until_cancel() if os.name == "nt" else None
     while True:
         count += 1
         update(session, sessionUpdate="tool_call", toolCallId=f"busy-{count}", title="Read a file", kind="read",
                status="completed")
-        ready, _, _ = select.select([sys.stdin], [], [], 0.2)
-        if ready:
+        if lines is not None:  # Windows: `select` takes sockets only, so a thread reads the pipe
+            try:
+                line = lines.get(timeout=0.2)
+            except queue.Empty:
+                continue
+        else:
+            ready, _, _ = select.select([sys.stdin], [], [], 0.2)
+            if not ready:
+                continue
             line = sys.stdin.readline()
-            if not line:
-                os._exit(0)
-            if json.loads(line).get("method") == "session/cancel":
-                return "cancelled"
+        if not line:
+            os._exit(0)
+        if json.loads(line).get("method") == "session/cancel":
+            return "cancelled"
+
+
+def heard_until_cancel() -> "queue.Queue[str]":
+    """Lines from stdin, read on a thread of their own up to and including the cancel `busy` waits for — and
+    no further, so nothing after it is taken from whoever reads stdin next."""
+    lines: queue.Queue[str] = queue.Queue()
+
+    def read() -> None:
+        while True:
+            line = sys.stdin.readline()
+            lines.put(line)
+            if not line or json.loads(line).get("method") == "session/cancel":
+                return
+
+    threading.Thread(target=read, daemon=True).start()
+    return lines
 
 
 def dawdle():

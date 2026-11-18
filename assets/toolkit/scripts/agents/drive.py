@@ -93,11 +93,11 @@ LIVE: set[Drive] = set()
 def end_group(pid: int, hard: bool = False) -> None:
     """End an agent and everything it started: it runs in a process group of its own. Windows has no groups,
     and ending the root alone left what it started running, holding its folder: there the tree is ended by
-    its root, as `taskkill /T` ends one and as `harness.py` ends a session's."""
+    its root, as `taskkill /T` ends one. Always with `/F`: a console process has no gentler stop to take, and
+    `taskkill` without it ends nothing that has no window, which is every agent."""
     if os.name == "nt":  # pragma: no cover - the other platform's branch
         with contextlib.suppress(OSError, subprocess.SubprocessError):
-            subprocess.run(["taskkill", "/T", *(["/F"] if hard else []), "/PID", str(pid)],
-                           capture_output=True, check=False, timeout=10)
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True, check=False, timeout=10)
         return
     try:
         os.killpg(pid, signal.SIGKILL if hard else signal.SIGTERM)

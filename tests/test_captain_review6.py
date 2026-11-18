@@ -34,6 +34,7 @@ from slipwai import logs, talk
 class StopTest(Abreast):
     """1: a stop while the main thread waits on its captain's choice."""
 
+    @unittest.skipIf(os.name == "nt", "SIGTERM is TerminateProcess on Windows, which no program can catch")
     def test_a_stop_during_a_decision_on_the_main_thread_ends_as_a_stop(self) -> None:
         self.settings(attempts=0, captain={"agent": True, "bound": 20})
         self.skeleton_merged()

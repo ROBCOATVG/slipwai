@@ -36,10 +36,11 @@ Carried into every project by `scripts/shared-modules.py`, which is why this imp
 standard library and is handed the run folder rather than finding it: the board reads with it, the captain
 writes with it, and a reader and a writer that each kept a copy of the format would stop agreeing.
 """
-# budget: 610 — the conversation's whole format in one place, both runtimes' copy: the one reader for the run
+# budget: 630 — the conversation's whole format in one place, both runtimes' copy: the one reader for the run
 # folder, the inbox and its signing, the thread read to its end and who holds a slice since when,
 # the key and what makes one trustworthy (and what a remade one leaves standing), the thread read by offset,
-# and the fold into receipts for every kind, which a reader and the writer must not disagree on
+# the fold into receipts for every kind, which a reader and the writer must not disagree on, and the instant
+# each message is stamped with, which orders one second's messages wherever the file clock is coarse
 from __future__ import annotations
 
 import hashlib
@@ -50,6 +51,7 @@ import re
 import secrets
 import stat
 import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -230,8 +232,24 @@ def send(home: Path, kind: str, text: str = "", mode: str = "wait", by: str = PE
     box.mkdir(parents=True, exist_ok=True)
     aside = box / f".{message['id']}.json.part"
     aside.write_text(whole, encoding="utf-8")
+    # The file's instant is what orders messages of one second (`talk_fold.sent_at`). Windows stamps a file
+    # from a coarse clock, so twenty sent in a row shared one and drew in the order of their random ids: each
+    # is stamped here with an instant later than the last this process sent, which elsewhere is the clock's.
+    stamp = instant()
+    os.utime(aside, ns=(stamp, stamp))
     os.replace(aside, box / f"{message['id']}.json")
     return message
+
+
+#: The last instant this process stamped a message with, so the next is always later.
+SENT = [0]
+
+
+def instant() -> int:
+    """Now in nanoseconds, and never the same as or earlier than the last message this process sent."""
+    stamp = max(time.time_ns(), SENT[0] + 1)
+    SENT[0] = stamp
+    return stamp
 
 
 #: The largest file in the run folder the program reads as JSON: a message, an order, an event is a few lines.

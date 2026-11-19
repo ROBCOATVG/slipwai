@@ -100,7 +100,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # `captain_decisions` reads back what a stream's captain agent decided, for the board.
     ("answers", ("captain_decisions",
                  "selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
-                 "fleet_record", "timeline", "deck",
+                 "fleet_record", "inbox_rows", "timeline", "deck",
                  # What the board says to the fleet, placed in an inbox; a conversation read the way a person
                  # reads it, with what they have seen; and what a captain decided, off its orders and events.
                  "talk_said", "talk_fold", "captain_files",

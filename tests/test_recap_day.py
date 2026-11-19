@@ -126,8 +126,9 @@ class WithTheRecordTest(unittest.TestCase):
 
         colour, sentence, under = headline(self.found, now=MORNING)
         self.assertEqual(colour, "brass")
-        # One change on trunk, and four notes sessions left for the host that nobody has read.
-        self.assertEqual(sentence, "Stopped. 3 slices wait on you for 5 things.")
+        # One change on trunk and the hand-backs that need something there. A note that needs nothing is
+        # left to be read and is not a wait, so it is not counted.
+        self.assertEqual(sentence, "Stopped. 3 slices wait on you for 4 things.")
         self.assertIn("8 slices more are paused until", under)
         said = page(self.found, {"boilers": 3})
         self.assertIn("library captain", said)

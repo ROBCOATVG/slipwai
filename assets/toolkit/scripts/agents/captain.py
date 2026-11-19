@@ -331,13 +331,21 @@ def red_trunk() -> logs.Entry | None:
     return None
 
 
-def answered(request: str) -> logs.Entry | None:
-    """The harbourmaster's answer to this request, or None while there is not one yet."""
+def answered(request: str, since: str = "") -> logs.Entry | None:
+    """The harbourmaster's answer to this request, or None while there is not one yet.
+
+    `since` is when the request was written, given where this id has been asked before: an answer older
+    than that is the answer to the earlier asking. A slice's merge requests are numbered from nought at
+    every run, so lean-coffee-club's MT5, refused on a red trunk one evening, was told *refused: trunk is
+    red* the next morning by the same line, in the second it asked — while the harbourmaster gated and
+    merged it. The stream parked for a person on a slice that was on trunk.
+    """
     return next((e for e in reversed(harbour_entries())
-                 if e.kind in ("granted", "refused") and str(e.fields.get("request", "")) == request), None)
+                 if e.kind in ("granted", "refused") and str(e.fields.get("request", "")) == request
+                 and e.t >= since), None)
 
 
-def await_answer(request: str, bound: float) -> logs.Entry | None:
+def await_answer(request: str, bound: float, since: str = "") -> logs.Entry | None:
     """Wait for the answer to one request. None where the harbour went silent for the bound.
 
     A captain holds no credential, so this is the one place its own progress depends on another process —
@@ -360,7 +368,7 @@ def await_answer(request: str, bound: float) -> logs.Entry | None:
         if STOP.is_set():
             raise Stopped()
         keep_harbourmaster()
-        found = answered(request)
+        found = answered(request, since)
         if found is not None:
             return found
         count = len(harbour_entries())
@@ -2149,6 +2157,15 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
         except NeverRan as refused:
             return False, str(refused)
         FLIGHT.setdefault(slice_id, {})["merging"] = True
+        refused_run = FLIGHT.get(slice_id, {}).pop("refusal", None)
+        if refused_run is not None:
+            # The harness said no to the run that would have resolved the merge — a usage limit — which is
+            # a pause with its time on it, as it is at a slice's first run. Read as a run that failed, it
+            # parked lean-coffee-club's access stream on `/sail exited 1` for ten hours, for a person,
+            # while the two streams beside it paused and started again by themselves.
+            record(slice_id, cause=refused_run.cause, until=refused_run.until)
+            return False, (f"the harness would not run {slice_id} ({refused_run.said}). Paused until "
+                           f"{local_clock(refused_run.until)}, no attempt spent")
         if not finished:
             return False, fault
         if FLIGHT.get(slice_id, {}).pop("message_commits", False):
@@ -2323,11 +2340,16 @@ def ask_to_merge(slice_id: str, feature: str, fairway: str,
     # Waiting on a merge answer is what holds the fairway's next slice back: the harbourmaster gates one
     # merge at a time, and a slice started now would only meet the trunk this one is about to move.
     FLIGHT.setdefault(slice_id, {})["merging"] = True
-    write(feature, fairway, logs.entry(
+    # Asked before under this id — an earlier run of this slice — so only an answer from now on is this
+    # asking's. A first asking takes any answer, as it always has.
+    again = any(e.kind == "request" and str(e.fields.get("id", "")) == request
+                for e in entries(feature, fairway))
+    asking = logs.entry(
         "request", fairway=fairway, id=request, what="merge", slice=slice_id,
-        detail=f"merge slice/{slice_id} into trunk after the full gate"))
+        detail=f"merge slice/{slice_id} into trunk after the full gate")
+    write(feature, fairway, asking)
     try:
-        found = await_answer(request, wait_bound())
+        found = await_answer(request, wait_bound(), asking.t if again else "")
     finally:
         BOUNDARY.put(slice_id)
     if found is None:
@@ -2336,6 +2358,11 @@ def ask_to_merge(slice_id: str, feature: str, fairway: str,
                        f"indistinguishable from a run that stopped"), False
     if found.kind == "refused":
         why = str(found.fields.get("why", "no reason given"))
+        # What the harbourmaster says the refusal waits on rides to the park: a merge refused only because
+        # trunk was red is cleared by the harbourmaster when trunk turns, and a park with no word for that
+        # was listed as waiting on a person who had nothing to do (lean-coffee-club's MT2 and MT5).
+        if found.fields.get("waiting"):
+            FLIGHT.setdefault(slice_id, {})["waiting"] = str(found.fields["waiting"])
         return False, f"the merge was refused: {why}", bool(found.fields.get("resolve"))
     commit = str(found.fields.get("commit", ""))
     if not commit:

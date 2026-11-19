@@ -171,7 +171,9 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
     berths = found.get("berths") or []
     running, paused = int(counts.get("running") or 0), int(counts.get("paused") or 0)
     on_you = [g for g in groups if g.get("paused") != "yes"]
-    on_you += [row for row in inbox if row.get("kind") in LISTED and row.get("grouped") != "yes"]
+    # A note a slice left holds nothing up and is not a wait: it is listed to be read, and not counted here.
+    on_you += [row for row in inbox if row.get("kind") in LISTED and row.get("grouped") != "yes"
+               and row.get("kind") != "told"]
     limit = next((g for g in groups if g.get("cause") == "limit"), None)
     slots = counts.get("slots")
     stalled = [row["fairway"] for row in berths if row.get("state") == "stalled"]

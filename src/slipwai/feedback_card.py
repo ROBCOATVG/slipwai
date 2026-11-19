@@ -18,8 +18,9 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from .demos import HAND, accept, mark_opened, opened
-from .feedback import HOLDS, ROUTES, Item, capture, confirm, drop, items
+from .feedback import HOLDS, ROUTES, Item, capture, confirm, drop, find, items
 from .film import films_of
+from .intake_feedback import WHERE, new_scope
 from .page_shell import esc
 
 #: What the card's buttons and the box ask for.
@@ -73,7 +74,7 @@ SCRIPT = """
     const said = await answer.text();
     if (!answer.ok) { alert(said); return false; }
     setTimeout(poll, 300);
-    return true;
+    return said || true;
   };
   const chips = () => {
     const names = %CHIPS%;
@@ -134,14 +135,17 @@ SCRIPT = """
     } else if (data.fb) {
       const routed = at.closest('.prop') && at.closest('.prop').querySelector('select');
       at.disabled = true;
-      await post({verb: data.fb, number: data.number || '', hold: data.hold || '',
-                  route: data.fb === 'confirm' && routed ? routed.value : '',
-                  capability: data.capability || '', fairway: data.fairway || ''});
+      const said = await post({verb: data.fb, number: data.number || '', hold: data.hold || '',
+                               route: data.fb === 'confirm' && routed ? routed.value : '',
+                               capability: data.capability || '', fairway: data.fairway || ''});
       at.disabled = false;
+      // New scope is a conversation on another tab: shown, with its box as whoever is typing there left it.
+      const next = String(said).includes('%WHERE%') && document.querySelector('.tabs [data-tab="next"]');
+      if (next) next.click();
     }
   });
 })();
-""".replace("%CHIPS%", json.dumps(CHIPS))
+""".replace("%CHIPS%", json.dumps(CHIPS)).replace("%WHERE%", WHERE)
 
 
 def opener(face: str, context: dict[str, str], primary: bool = False, ask: str = "", verdict: str = "") -> str:
@@ -322,4 +326,6 @@ def act(root: Path, held: dict, rows: list[dict[str, str]], fleet: dict, start: 
     number = str(held.get("number", ""))
     if verb == "drop":
         return drop(root, number)
+    if (str(held.get("route", "")) or find(root, number).fields.get("route")) == "scope":
+        return new_scope(root, number)  # the hand-over's conversation, from this item's words: one way in
     return confirm(root, number, rows, str(held.get("route", "")), str(held.get("hold", "")))

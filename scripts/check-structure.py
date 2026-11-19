@@ -199,6 +199,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And a further feature handed over there: the document a person attaches, checked; the
               # conversation with the project's agent that ends in one idea; and the Next features tab.
               "intake_document", "intake_talk", "intake_card",
+              # And Feedback's New scope as a second door into that one conversation.
+              "intake_feedback",
               # And every decision the fleet took, readable, each with the receipt the ceiling counts: one entry
               # read for a person — its sentence, its options split — and its card, in the tab and the slice's window.
               "decision_entry", "decision_log", "decision_cards",

@@ -188,6 +188,12 @@ what was attached. A conversation left open is kept under the run folder and pic
 opened again, after a board restart too. What you have typed and not sent is never cleared by the window
 updating itself. With no agent the board can launch, the card says so; hand the feature to `/sail` instead.
 
+**From Feedback as well.** Confirming a feedback proposal as **New scope** opens this same conversation, with
+what you said in the item as its first words, and shows this tab. Say more or attach a document as you would
+to any hand-over. The item stays a proposal until **Capture this idea**, which records the idea as what it
+became; **Start again** leaves it a proposal. One conversation is open at a time: a second item waits until
+the first is captured or dropped.
+
 ### What to expect
 
 This card says what the current stage does, roughly how long it takes, and whether it stops for a person. A

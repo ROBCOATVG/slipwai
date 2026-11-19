@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 TOOLKIT = Path(__file__).resolve().parents[1] / "assets/toolkit"
@@ -46,7 +48,16 @@ class Project:
         self.available = self.extensions / "available-guards.json"
 
     def close(self) -> None:
-        self.holder.cleanup()
+        """Remove the project. A guard under test may have started a process that outlives it on purpose, and
+        Windows will not remove a directory such a process is still in, so wait a bounded while for it to go,
+        then leave the directory to the system's own temporary-file sweep rather than fail the test for it."""
+        for _ in range(50):
+            try:
+                self.holder.cleanup()
+                return
+            except PermissionError:
+                time.sleep(0.1)
+        shutil.rmtree(self.holder.name, ignore_errors=True)
 
     def extension(self, key: str, guards: dict, **files: str) -> Path:
         """An extension as generation leaves one: its files, and what it may refuse beside the others'."""

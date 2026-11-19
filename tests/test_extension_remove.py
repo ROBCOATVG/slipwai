@@ -23,7 +23,7 @@ from unittest import mock
 import checkout_packages  # noqa: F401
 
 from slipwai import cli_extension, hooks, toolkit
-from slipwai.assets import TOOLKIT_ROOT
+from slipwai.assets import TOOLKIT_ROOT, this_command
 from slipwai.extension_directory import Extension
 from slipwai.extension_removal import taken_back
 from slipwai.extension_shape import validate
@@ -227,7 +227,7 @@ class KeelTest(Project):
         said = taken_back(self.root, "indexer")
         self.assertEqual(len(said), 1)
         self.assertIn("could not be un-elected here", said[0])
-        self.assertIn("slipwai migrate", said[0].replace("`", ""))
+        self.assertIn(f"{this_command()} migrate", said[0].replace("`", ""))
         self.assertIn("indexer removed", self.removed(self.root))
 
 

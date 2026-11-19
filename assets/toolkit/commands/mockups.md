@@ -288,11 +288,34 @@ the marks to what can be checked and prints how many of each the storyboard show
 
 **Where the project has a storyboard, add to that flow; where it has none, this is the first, made from what
 exists.** A project that crossed from version 1 has dozens of built screens and no storyboard: draw the flow
-as it stands from the list, then this feature in its place. **Frame the part this feature touches and its
-neighbours** — each `changed` surface's built original beside it, each built screen that leads to or from a
-`changed` or `new` one, one frame per built surface in its ordinary state rather than one per state — and
-name the rest of the flow as boxes in the diagram, each linking its preview. Two hundred frames is not a
-storyboard, and the budget is the same fifteen minutes. Then run
+as it stands from the list, then this feature in its place.
+
+**How much is framed: what this feature touches, and its neighbours. No more, and no fewer.**
+
+- **Touched** is every surface this feature marks `changed` or `new`. A `changed` surface's original — the
+  built screen it alters, or its box where it has no picture — is framed beside it.
+- **A neighbour** is a surface **one step either side** of a touched one in the flow: the surface a person
+  is on immediately before they reach the touched one, and the surface they are on immediately after they
+  leave it. One step is **one navigation**. Where the surfaces are built, read it from the app: a link, a
+  button, a submit or a redirect on one screen that lands on the other's route — the route table and the two
+  components say so. Where one of them is not built (`new`, `planned`), read it from the model: the `ui`
+  frame of the slice before, and of the slice after, in the same actor's lane of
+  `docs/event-model/model.yaml`, whose slice order is timeline order; on the standard profile, the step
+  before and the step after in the specification's own user story. A surface every screen reaches — the
+  shell's navigation, sign-in — is a neighbour only where the touched surface is entered from it and from
+  nowhere else. **A neighbour's neighbour is not framed.**
+- **One frame per framed surface**, in its ordinary state — the populated one — never one per state.
+- **Everything else** in the flow is a box in the diagram that names the surface and links its preview. It is
+  named, not framed.
+
+Write what you framed under `## Framed` in `research.md`, one line per touched surface: the surface, each
+neighbour, and the navigation or the slice that makes it one — `Deal console (changed) ← Sign in: lands on /
+after sign-in; → Export pack: the Export button`. That list is what makes the rule checkable: a reader
+holds the storyboard to it, and a frame that is on the storyboard and not on the list, or on the list and
+not on the storyboard, is a finding. `python3 scripts/agents/existing.py <feature> --check` notes a
+`changed` surface whose original is not framed; it counts no frames and refuses no storyboard for how many
+it shows, because which screen is one step from another is not recorded anywhere a script can read. Two
+hundred frames is not a storyboard, and the budget is the same fifteen minutes. Then run
 `skills/find-gaps/SKILL.md` over that page in its design-mock mode, writing each answer back as a state the
 mock-up has to show.
 

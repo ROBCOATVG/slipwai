@@ -41,6 +41,12 @@ demonstrated. So in that stage, and only there:
   <a data-surface="new" href="export-pack.html" rel="noopener noreferrer">Open in new tab ↗</a>
   ```
 
+  **Frame what the feature touches and its neighbours, no more and no fewer:** every `changed` and `new`
+  surface, each `changed` one's original beside it, and the surfaces one step either side of a touched one —
+  one navigation in the app (a link, a button, a submit, a redirect) where both are built, else the slice
+  before and the slice after for the same actor in the event model. A neighbour's neighbour is not
+  framed; the rest of the flow is boxes in the diagram, each linking its preview. `commands/mockups.md`,
+  section 2, is exact, and has you list what you framed under `## Framed` in `research.md`.
   A `changed` surface sits beside the built original it changes, so the difference is what the eye lands
   on; a built or a planned frame gets no audit checklist, because nobody is asked about it here. In the flow
   diagram and in the legend the four have four colours and four glyphs — `BUILT`, `PLANNED`, `CHANGED`,

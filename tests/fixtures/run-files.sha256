@@ -79,6 +79,7 @@
 # why: 2026-11-19 1f221288ab16ea02 scripts/extensions/project.py: behaviour changes on purpose on every platform alike (#109, defect 5) — after firing the project point, make agents rewrites an elected extension's AGENTS.md block from its GUIDANCE where it still differs, so an extension with no project hook is re-projected; --check's message says so. Nothing platform-specific moved: no path, process or shell handling changed.
 # why: 2026-11-19 2b6a688583b03b12 Storyboard decision 7 (#120): existing.py says which word each surface takes and reads data-surface="planned"; surfaces.py does not count a planned frame as drawn; check-surfaces.py refuses a slice that names a planned surface. What these do on macOS and Linux is the same
 # why: 2026-11-19 0c9f241c77572d6e Storyboard decision 8 (#120): existing.py reads data-picture="none" and has --check, which refuses an unseen box that frames a page or holds something drawn; surfaces.py runs that check when a drawing ends and counts the boxes. What these do on macOS and Linux is the same
+# why: 2026-11-19 af888c4d31d06761 Storyboard decision 6 (#120): existing.py --check notes a changed surface whose original is not framed beside it, and refuses nothing more than it did. What it does on macOS and Linux is the same
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -285,10 +286,6 @@
 9b21d9961571e6bb948d1cacad9b0e2972f92cccae2f178bf95019ab956bfdca  standard-postgres-toy-serve  scripts/render-fairways.py
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-memory-none  scripts/event-model/readme.ts
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-postgres-toy-serve  scripts/event-model/readme.ts
-a38653d00f032a1641dcceb8b60d2e1753dec94dffbb4fb7335cdc6f827db576  event-modelling-memory-none  scripts/agents/existing.py
-a38653d00f032a1641dcceb8b60d2e1753dec94dffbb4fb7335cdc6f827db576  event-modelling-postgres-toy-serve  scripts/agents/existing.py
-a38653d00f032a1641dcceb8b60d2e1753dec94dffbb4fb7335cdc6f827db576  standard-memory-none  scripts/agents/existing.py
-a38653d00f032a1641dcceb8b60d2e1753dec94dffbb4fb7335cdc6f827db576  standard-postgres-toy-serve  scripts/agents/existing.py
 a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  event-modelling-memory-none  scripts/agents/release_state.py
 a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  event-modelling-postgres-toy-serve  scripts/agents/release_state.py
 a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  standard-memory-none  scripts/agents/release_state.py
@@ -356,6 +353,10 @@ c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  event-modellin
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  event-modelling-postgres-toy-serve  scripts/agents/captain_events.py
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  standard-memory-none  scripts/agents/captain_events.py
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  standard-postgres-toy-serve  scripts/agents/captain_events.py
+c9a276b7e049592cab5d0aadf4b5f20cb46e52ab57b4b0596df8253a2c1ea678  event-modelling-memory-none  scripts/agents/existing.py
+c9a276b7e049592cab5d0aadf4b5f20cb46e52ab57b4b0596df8253a2c1ea678  event-modelling-postgres-toy-serve  scripts/agents/existing.py
+c9a276b7e049592cab5d0aadf4b5f20cb46e52ab57b4b0596df8253a2c1ea678  standard-memory-none  scripts/agents/existing.py
+c9a276b7e049592cab5d0aadf4b5f20cb46e52ab57b4b0596df8253a2c1ea678  standard-postgres-toy-serve  scripts/agents/existing.py
 c9cb52d08cf244999081e20480101529a701c776e4b3fcc43a45eb2c70f579b8  event-modelling-memory-none  scripts/check-slice-scope.py
 c9cb52d08cf244999081e20480101529a701c776e4b3fcc43a45eb2c70f579b8  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
 c9cb52d08cf244999081e20480101529a701c776e4b3fcc43a45eb2c70f579b8  standard-memory-none  scripts/check-slice-scope.py

@@ -130,11 +130,24 @@ def unseen(home: Path) -> list[dict[str, str]]:
 def held(feature: str, root: Path = ROOT) -> tuple[list[str], list[str]]:
     """The storyboard's marks against what can be checked without judgement: the faults that refuse it, and
     the notes that do not. A fault: an unseen box that draws something, frames a page, or does not say what it
-    is known by. Whether a box's *label* says more than is known is a reader's to judge, and is not read here."""
+    is known by. Whether a box's *label* says more than is known is a reader's to judge, and is not read here.
+
+    A note: a `changed` surface whose original is not framed beside it — the one part of *touched plus
+    neighbours* a name can settle. Nothing here counts frames, in either direction: which surfaces are one
+    step from a touched one is read from the app's navigation or the model's order, by the drawing, which
+    writes it under `## Framed` in its research note for a reader to hold the storyboard to."""
     home = root / "specs" / feature / MOCKUPS
+    boxes = unseen(home)
     faults = [f"specs/{feature}/{MOCKUPS}/storyboard.html: the box for {one['known']} is marked "
-              f"data-picture=\"none\" and {one['fault']}" for one in unseen(home) if one["fault"]]
-    return faults, []
+              f"data-picture=\"none\" and {one['fault']}" for one in boxes if one["fault"]]
+    marked = kinds(home)
+    framed = {key(part) for page, kind in marked.items() if kind in FRAMED and page.is_file()
+              for part in title_of(page).split("—")} | {key(one["known"]) for one in boxes}
+    notes = [f"{name} is marked `changed` and its original is not framed beside it: frame the built screen it "
+             f'changes, `data-surface="built"`, or mark the surface `new` where there is no original'
+             for page, kind in marked.items() if kind == "changed" and page.is_file()
+             and key(name := title_of(page).split("—")[-1].strip()) not in framed]
+    return faults, notes
 
 
 def title_of(page: Path) -> str:

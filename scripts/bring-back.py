@@ -95,7 +95,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # A turn's child heard to its end, and every way it can end said. Version 2's.
        "turn_child",
        # The Fleet tab and the fold under it: the park record, the groups, the processes. Version 2's.
-       "fleet_page", "fleet_record", "timeline", "timeline_page",
+       "fleet_page", "fleet_record", "inbox_rows", "timeline", "timeline_page",
        # The console on the Voyage window: a read-only session of the project's agent, briefed as the
        # harbourmaster, and the dock that talks to it. Version 2's; version 1 had no board to put it on.
        "console", "console_page", "attention", "conformance.frontends",

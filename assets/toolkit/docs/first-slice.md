@@ -69,11 +69,11 @@ re-derive the convention. A regular file still at a canonical path — a harness
 moved under `slices/<id>/` before the mark is written; `make check-slice-scope` refuses one left behind.
 
 The demo is a feedback stage, not a presentation ceremony. Feedback returns to the delivery stage that owns
-it and the revised path is demonstrated again. After the demo is accepted with no unresolved feedback,
-finishing means mutation evidence, `make verify`, and the mark — `implemented` in the model, or the register
-row — plus an adversarial pass first, when this slice changed attack surface or closed the split.
-`commands/adversary.md` decides that against `adversary-log.md` and writes the row either way, so the
-decision is never a judgement made twice. The agent then reads the **ready** set from `story-split.md`
+it and the revised path is demonstrated again. Once every example is proven by a test and the review is closed,
+finishing a slice means its attack-surface trigger record, `make verify`, and the mark — `implemented` in the
+model, or the register row. Nothing is attacked and nothing is mutated per slice: both are the capability's,
+once, at the ladder's *Capability gates* rung. `commands/adversary.md` writes the trigger record against
+`adversary-log.md`, and it is what decides whether the capability owes a pass. The agent then reads the **ready** set from `story-split.md`
 (every slice not done whose `depends_on` are all done) and continues automatically: every unclaimed ready
 slice runs concurrently in the band its state admits — preparation on clearance alone, implementation once
 its own marks are set and no question stands open — one delegate per slice on a `slice/<id>` branch in its

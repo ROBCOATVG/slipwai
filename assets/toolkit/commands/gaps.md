@@ -42,7 +42,7 @@ Compare event names, schemas, {{identity}}, and model links with the implementat
 <!-- end section -->
 
 It runs once per capability, at the ladder's *Capability gates* rung, over the capability's whole diff —
-every slice under it merged and the capability converged — and per slice, over the slice diff after the
+every other slice under it merged, its last on its own branch, and the capability converged — and per slice, over the slice diff after the
 slice's own convergence, only where the project reads each slice.
 
 Run this pass **after** the installed Spec Kit converge command reports converged, never before it.

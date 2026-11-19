@@ -11,7 +11,7 @@ pass is the tests it leaves behind, and those keep paying on every later slice.
 
 **A slice records; a capability is attacked.** Per slice, at the ladder's *Attack surface* rung, this command
 writes the slice's trigger table and attacks nothing — `--full` included. Once per capability, at *Capability
-gates*, when its last slice has merged, it runs one pass over every boundary the capability's slices widened,
+gates*, on its last slice's branch before that slice merges, it runs one pass over every boundary the capability's slices widened,
 with the capability's diff as the diff — **only where at least one of those slices recorded a trigger
 `widened`**, or the capability was given `--full`. Otherwise the capability's row is a skip, and the skip
 clears the gate. The slice that closes a feature's split no longer takes a full pass of its own: a pass runs

@@ -142,10 +142,10 @@ slice loop: principles, product specification, the event model, the split, then 
 over it, the installed Spec Kit plan and tasks, implementation, the examples proven by tests, and — once a
 capability is whole — convergence, its other gates and the actor-visible demo. Invoking it before the model exists is
 a valid start rather than an error — it steps back to the stage that owes an artifact and says so. It never
-reruns a completed stage merely to check. It pauses at the demo before hardening so feedback can return to the stage that owns it. Once the
-demo is accepted, it runs the mutation pass — plus the adversarial pass when the slice changed attack
-surface or closed the split — verifies and archives the slice, and starts the next ready slice without
-another invocation. A real product question or unavailable external input is
+reruns a completed stage merely to check. Once a slice's examples are proven and its review is closed, it records the slice's attack-surface triggers,
+verifies, merges and marks the slice done, and starts the next ready slice without
+another invocation. The attack, the mutation pass and the hand's walk run once per capability, before its last
+slice merges, and the demo follows them, so feedback returns to the stage that owns it. A real product question or unavailable external input is
 the other stopping boundary.
 
 `/cruise` runs the same ladder with nobody at the wheel — deciding as the owner, demoing as the actor, recording

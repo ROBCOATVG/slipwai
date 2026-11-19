@@ -27,7 +27,7 @@ flowchart LR
     EM --> EG --> P --> T --> AN --> I --> EX --> R --> TR --> MG
   end
 
-  subgraph gates["once per capability — when its last slice has merged"]
+  subgraph gates["once per capability — before its last slice merges"]
     direction TB
     CV{"/speckit-converge · the capability's whole diff against the spec"}
     FS["follow-up slice · what converge or a gate found above the bar"]
@@ -85,7 +85,7 @@ flowchart LR
     SG --> P --> T --> AN --> I --> EX --> R --> TR --> MG
   end
 
-  subgraph gates["once per capability — when its last slice has merged"]
+  subgraph gates["once per capability — before its last slice merges"]
     direction TB
     CV{"/speckit-converge · the capability's whole diff against the spec"}
     FS["follow-up slice · what converge or a gate found above the bar"]
@@ -130,7 +130,7 @@ For one small vertical slice:
 7. Review the slice's diff against its merge base once — only what it added or changed.
 8. Run `/adversary` for the slice's trigger record — which attack-surface triggers it widened, attacking
    nothing — then `make verify`, and merge.
-9. Once a capability's last slice has merged, run its gates once: converge over its diff, `/gaps`, the design
+9. On a capability's last slice's branch, before that slice merges, run its gates once: converge over its diff, `/gaps`, the design
    review from screenshots, one adversary pass where any slice widened a trigger, `/mutation`, and the hand's
    walk of every example. Then the person's demo. Where the project reads each slice converge, the gaps trace, the
    design review and the walk run per slice as well, after step 5, and a slice that widened authorisation,

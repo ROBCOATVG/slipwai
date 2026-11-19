@@ -180,7 +180,7 @@ class MigrateTest(Upgraded):
         on that machine, so a guard an extension gained reaches the project with the files that run it."""
         gained = Extension("cg", Path("nowhere"), {"key": "cg", "guards": SEARCH})
         with mock.patch.object(toolkit, "EXTENSIONS", (gained,)), \
-                mock.patch.object(toolkit, "package_files", return_value=[]):
+                mock.patch.object(toolkit, "given", return_value=[]):
             written = json.loads(toolkit.extension_files()[toolkit.EXTENSION_GUARDS])
         self.assertEqual(written, {"cg": SEARCH})
 

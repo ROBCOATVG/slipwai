@@ -14,7 +14,7 @@ from .assets import PROFILE_ROOT, TOOLKIT_ROOT, asset_files
 from .capabilities import declared_for, pruning_capabilities, serves
 from .catalog import CATALOG, EXTENSIONS, family_of, framework_of
 from .examples import Speaker, resolve_canonical_examples, resolve_examples_for, stamp_pseudocode_notes
-from .extension_directory import files as package_files
+from .extension_given import given
 from .extension_tools import declared as tools_declared
 from .guards import declared as guards_declared
 from .hooks import declared
@@ -228,6 +228,9 @@ def extension_files() -> dict[str, str]:
     What is offered is what was installed when the project was generated, which is also what `./init` can
     actually run, and those being the same list is the whole point.
 
+    Only what a project is given of each (`extension_given`): what runs or is read there, and never the
+    workflows, tests and changelog of the package's own repository.
+
     A file that is not text is skipped rather than refused: the keel writes a project as text, an extension
     that ships a binary is shipping something the generator has no way to place, and one unreadable file is
     not a reason the other extensions do not arrive. `check-extensions` is where that is said out loud.
@@ -240,7 +243,7 @@ def extension_files() -> dict[str, str]:
         attached[extension.name] = declared(extension.manifest)
         guarding[extension.name] = guards_declared(extension.manifest)
         calling[extension.name] = list(tools_declared(extension.manifest))
-        for relative in package_files(extension.root):
+        for relative in given(extension.root, extension.manifest):
             try:
                 text = (extension.root / relative).read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):

@@ -16,7 +16,8 @@ import json
 from pathlib import Path
 
 from .assets import this_command
-from .extension_directory import MANIFEST, files
+from .extension_directory import MANIFEST
+from .extension_given import split
 from .language_directory import directory
 from .layout import layout_of
 from .toolkit import EXTENSION_ROOT
@@ -51,11 +52,20 @@ def text(path: Path) -> str | None:
         return None
 
 
+def manifest_of(package: Path) -> dict:
+    """The installed package's manifest, or nothing where it cannot be read: the conventional list then."""
+    try:
+        read = json.loads((package / MANIFEST).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return read if isinstance(read, dict) else {}
+
+
 def differing(copy: Path, package: Path) -> list[str]:
-    """Each file of the installed package this project's copy lacks or holds differently. A file only the
-    project has is its own, and a file the generator cannot write as text was never copied to compare."""
+    """Each file a project is given of the installed package that this copy lacks or holds differently. A file
+    only the project has is its own, and a file the generator cannot write as text was never copied to compare."""
     found: list[str] = []
-    for relative in files(package):
+    for relative in split(package, manifest_of(package))[0]:
         installed = text(package / relative)
         if installed is not None and text(copy / relative) != installed:
             found.append(relative.as_posix())
@@ -88,6 +98,35 @@ def section(root: Path, document: dict | None, where: Path) -> list[str]:
         rows.append(f"- `{key}` — this project's copy says {version(copy)}, the installed package is "
                     f"{version(package)}; {len(changed)} file(s) differ: {named}{more}. "
                     f"`diff -r {place}/{key} {package}` shows how.")
+    return [*differences(place, rows), *left(root, place, where)]
+
+
+def left(root: Path, place: str, where: Path) -> list[str]:
+    """The section naming each file a project is no longer given of an installed package and this one still has.
+
+    A project's copy held the package's whole repository until #119. The merge of the migration that stopped
+    giving them removed each one this project had left as it was given, so what is still here is one somebody
+    changed, or added under that name — elected or not, since every offered extension has a copy."""
+    rows: list[str] = []
+    for package in sorted(where.iterdir(), key=lambda entry: entry.name) if where.is_dir() else []:
+        if not (package / MANIFEST).is_file() or not (root / place / package.name).is_dir():
+            continue
+        here = [relative.as_posix() for relative in split(package, manifest_of(package))[1]
+                if (root / place / package.name / relative).is_file()]
+        rows += [f"- `{package.name}` — " + ", ".join(f"`{place}/{package.name}/{name}`" for name in here)] * bool(here)
+    if not rows:
+        return []
+    return [
+        "", "## Extension files a project is no longer given, and this one still has", "",
+        f"`{place}/<key>/` holds what runs or is read in a project, and no longer the package's own repository: "
+        "its workflows, its tests, its changelog, its ignore file. This migration removed each of those this "
+        "project had left as it was given. The ones below it left, because they were changed here, and nothing "
+        "was rewritten. Nothing in a project reads them: `git rm` each, or keep it on purpose.",
+        "", *rows,
+    ]
+
+
+def differences(place: str, rows: list[str]) -> list[str]:
     if not rows:
         return []
     return [

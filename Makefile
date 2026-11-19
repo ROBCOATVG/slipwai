@@ -74,6 +74,8 @@ SLOW += test_existing_surfaces
 SLOW += test_release_tracked
 # Stands up boards: the start pages answered while every tool is still out (#118).
 SLOW += test_machine_probe
+# A git repository and a merge per case: a project's copy of an extension losing the package's repository files.
+SLOW += test_migration_withheld
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

@@ -81,6 +81,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.
     ("contract", ("registry", "family_only", "renamed", "language_shape", "language_directory", "extension_directory",
+                  # What a project is given of an extension, and what stays the package repository's (#119).
+                  "extension_given",
                   "features", "extensions", "extension_shape", "extension_tools", "hooks", "guards",
                   "telegraph", "targets", "target_shape", "target_protocol", "target_directory",
                   "axes", "catalog", "rungs",
@@ -129,6 +131,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "migration_renames",
                   # `project.json` merged as a record: a key order is not a change either side made.
                   "migration_manifest",
+                  # An extension file a project is no longer given, kept where the project changed it (#119).
+                  "migration_withheld",
                   # An elected extension's copy in a project against the installed package, for the catch-up page.
                   "extension_copies",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),

@@ -24,6 +24,7 @@ If this page and the code disagree, the gate is red.
 |---|---|---|
 | What a manifest declares, and the six obligations | `src/slipwai/extension_shape.py` | contract |
 | Reading a package from disk | `src/slipwai/extension_directory.py` | contract |
+| What a project is given of a package | `src/slipwai/extension_given.py` | contract |
 | Adding a package to the catalogue | `src/slipwai/extensions.py` | contract |
 | The points that a hook can attach to | `src/slipwai/hooks.py` | contract |
 | Installing and removing a package | `src/slipwai/extension_install.py` | edge |
@@ -51,6 +52,7 @@ The manifest is `extension.json`, at the root of the package directory.
 | `hooks` | no | The points that the extension attaches to. See [The hook points](#the-hook-points). |
 | `guards` | no | What the extension can refuse, and with what message. See [The guards](#the-guards). |
 | `tools` | no | The tool names that a headless session must be allowed to call to reach the extension. See [The tools](#the-tools). |
+| `withhold` | no | Paths of the package that a project is not given, beyond the conventional ones. See [Where the files land](#where-the-files-land). |
 
 `key` and `name` are separate fields because they are different things. In a language's manifest, one
 name is both. This is the only way that an extension's manifest differs from a language's. The catalogue
@@ -260,12 +262,53 @@ not carry a live configuration value that belongs to an extension.
 
 ## Where the files land
 
-Slipwai writes every file of the package except `extension.json` into a generated project at
+Slipwai writes what a project runs or reads of the package into a generated project at
 `scripts/extensions/<key>/`. Three files sit beside them:
 
 - `scripts/extensions/available.json` carries each offered extension's hooks.
 - `available-guards.json` carries what each extension can refuse.
 - `available-tools.json` carries the tool names that each extension needs allowed.
+
+**A project is not given the package's repository.** A package is a repository as well as a tool. These
+paths at the package root stay in the package, for every extension, with no line in any manifest:
+
+| Not given | Why |
+|---|---|
+| `.github/` | A workflow outside a project's own `.github/` is run by nobody. |
+| `tests/` | Nothing in a project runs a package's tests. |
+| `changelog.d/`, `CHANGELOG.md` | `VERSION` says which release the copy is. What earlier releases changed is the repository's history. |
+| `.gitignore`, `.gitattributes` | They describe the package's checkout. A project ignores an extension's local state through `ignore` in the manifest. |
+| `__pycache__/`, at any depth | What an interpreter left in the publisher's checkout. |
+
+A manifest can add to that list with `withhold`, and cannot take anything off it:
+
+```json
+{"withhold": ["fixtures/", "MAINTAINING.md"]}
+```
+
+Each entry is a path from the package root, with `/` between its parts. An entry that ends in `/` is a
+folder and everything in it.
+
+Three things are always given, whatever either list says:
+
+- **Every script the manifest declares** at a hook or a guard, wherever the script sits.
+- **Every module of the package that such a script imports**, followed through. Slipwai reads the `import`
+  statements, and looks beside the importing file and at the package root. Slipwai does not see a module
+  that is loaded by a computed name, or a file that is opened as data. Keep those outside the paths above.
+- **`README.md`, a licence and a notice.** The README is what a person or an agent in the project reads to
+  learn what the folder is. A licence travels with the code that it covers, and a project holds a copy of
+  that code.
+
+`slipwai extension check <dir>` prints how many files a project is given, and names the ones it is not.
+`slipwai conformance --extension` runs the entry point in a project that holds only what is given. So a
+script that needs a withheld file fails on the publisher's machine, not in a project.
+
+None of this changes what a release packs. The archive, its checksum and the installed package are still
+the whole package.
+
+**An existing project loses those files at its next `slipwai migrate`.** The merge removes each one that
+the project left as it was given. A file that somebody changed in the project stays as it is, the merge
+does not stop on it, and the catch-up page names it.
 
 Slipwai does not copy the manifest. Nothing reads a manifest inside a project. A copy there would be a
 decoy that nothing reads and everybody edits.

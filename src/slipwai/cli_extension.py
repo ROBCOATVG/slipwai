@@ -17,6 +17,7 @@ from .assets import this_command
 from .catalog import REFUSALS
 from .errors import GenerationError, refuse
 from .extension_directory import MANIFEST, absent
+from .extension_given import split
 from .extension_install import catalogue, install, remove
 from .extension_shape import OBLIGATIONS
 from .guards import GUARDS
@@ -153,6 +154,9 @@ def check_main(path: str) -> None:
     print(f"  hooks        {attached(declared(manifest), 'hook', missing) or 'none'}")
     print(f"  guards       {attached(declared_guards(manifest), 'guard', missing) or 'none'}  — these may "
           f"refuse a tool call, and are agreed to at election")
+    kept, back = split(root, manifest)
+    held = f"; not {', '.join(path.as_posix() for path in back)}" if back else ""
+    print(f"  a project    is given {len(kept)} file(s) under scripts/extensions/{manifest['key']}/{held}")
     print("  obligations, which `slipwai conformance --extension` runs:")
     for name, said in OBLIGATIONS:
         print(f"    {name:<10} {said}")

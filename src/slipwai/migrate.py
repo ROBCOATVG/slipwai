@@ -38,9 +38,9 @@ from .errors import GenerationError
 from .extension_copies import copies
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
-from .migration_manifest import settled
 from .migration_result import Migration
 from .migration_sentence import date_sentence_rule
+from .migration_withheld import settled
 from .relocate import relocate
 from .replay import Replay, git, replay
 from .run_folder import dirt, move_in, refuse_while_out, unstage_run_state
@@ -135,7 +135,7 @@ def merge_offered(root: Path, offered: Replay, message: str) -> tuple[str | None
     unmerged = tuple(git(root, "diff", "--name-only", "--diff-filter=U").split())
     if merge.returncode != 0 and not unmerged:
         raise GenerationError(f"git merge failed without a conflict to resolve: {merge.stderr.strip()}")
-    conflicts = settled(root, unmerged)  # `project.json` merged by what it says, not by its key order
+    conflicts = settled(root, unmerged)  # `project.json` as a record; an extension file no longer given, kept
     return stat[-1].strip(), conflicts, git(root, "rev-parse", "HEAD") == git(root, "rev-parse", "FETCH_HEAD")
 
 

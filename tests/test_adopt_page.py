@@ -17,7 +17,6 @@ import json
 import os
 import subprocess
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
@@ -25,11 +24,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import checkout_packages  # noqa: F401
+from board_fixture import served
 
 from slipwai.adopt import Answers, adopt, proposed
 from slipwai.adopt_page import NOT_A_REPOSITORY, found, looked, page, run, would_write
 from slipwai.assets import ADOPTION_ROOT, relaunch
-from slipwai.bridge import serve
 from slipwai.errors import GenerationError
 from slipwai.layout import Layout
 from slipwai.project import prose
@@ -199,11 +198,8 @@ class ServedTest(Fixture):
 
     def setUp(self) -> None:
         super().setUp()
-        self.server = serve(self.scratch, "127.0.0.1", 0)
+        self.server = served(self, self.scratch)  # stopped, joined, then closed: `board_fixture`
         self.port = self.server.server_address[1]
-        threading.Thread(target=self.server.serve_forever, daemon=True).start()
-        self.addCleanup(self.server.server_close)
-        self.addCleanup(self.server.shutdown)  # added last, so run first: serving stops before the socket closes
 
     def get(self, path: str) -> str:
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=10) as answer:

@@ -13,6 +13,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
@@ -24,6 +25,20 @@ from slipwai.bridge_page import page
 from slipwai.cli_fleet import config
 from slipwai.fleet import board
 from slipwai.project.harbour import harbour_config
+
+
+def served(case: unittest.TestCase, root: Path, controls: bool = True) -> ThreadingHTTPServer:
+    """A board serving `root` on a port of its own until `case` is over. The one way a suite starts a board
+    it means to stop: four suites each wrote these lines, and three of them left the thread unjoined."""
+    server = serve(root, "127.0.0.1", 0, controls=controls)
+    serving = threading.Thread(target=server.serve_forever, daemon=True)
+    serving.start()
+    # Cleanups run last first, so these read upwards: stop serving, see the thread out, then close. Closed
+    # first, the socket went from under a thread still selecting on it — WinError 10038, once a case.
+    case.addCleanup(server.server_close)
+    case.addCleanup(serving.join)
+    case.addCleanup(server.shutdown)
+    return server
 
 
 class Fixture(unittest.TestCase):
@@ -45,12 +60,8 @@ class Fixture(unittest.TestCase):
         fresh = mock.patch("slipwai.board_read.KEEP", 0.0)
         fresh.start()
         self.addCleanup(fresh.stop)
-        # Nor what this machine has installed: a start page asks `git`, `node`, `python` and `make` for their
-        # versions before it answers, and a Windows runner once took twelve seconds over that while the window
-        # here waited five. `test_prerequisites` holds the line those pages carry, with a machine it describes.
-        equipped = mock.patch("slipwai.machine_card.lacking", return_value=[])
-        equipped.start()
-        self.addCleanup(equipped.stop)
+        # Nor what this machine has installed: no board under test asks it, whichever fixture started the
+        # board — `checkout_packages.no_machine`, above.
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
 
@@ -83,16 +94,9 @@ class BoardTest(Fixture):
 
     def setUp(self) -> None:
         super().setUp()
-        self.server = serve(self.root, "127.0.0.1", 0)
+        self.server = served(self, self.root)
         self.port = self.server.server_address[1]
         self.seat = "window-one"
-        serving = threading.Thread(target=self.server.serve_forever, daemon=True)
-        serving.start()
-        # Cleanups run last first, so these read upwards: stop serving, see the thread out, then close. Closed
-        # first, the socket went from under a thread still selecting on it — WinError 10038, once a case.
-        self.addCleanup(self.server.server_close)
-        self.addCleanup(serving.join)
-        self.addCleanup(self.server.shutdown)
 
     def at(self, path: str, seat: str | None = None) -> str:
         """That path on this board, carrying a window's seat — `seat=""` for a request that carries none."""

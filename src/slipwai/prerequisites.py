@@ -151,15 +151,6 @@ def needs(route: str, answers: Mapping[str, str] | None = None) -> list[str]:
     return list(dict.fromkeys(keys))
 
 
-def everything(path: str | None = None) -> list[Found]:
-    """Every tool, looked for on one reading of the login `PATH` rather than one per tool, and asked at once:
-    seven `--version`s in a row kept Settings from answering for longer than a Windows runner's five seconds,
-    and a person waits for the same sum. In the table's order whatever order they answer in."""
-    path = login_environment().get("PATH", "") if path is None else path
-    with ThreadPoolExecutor(max_workers=len(TOOLS)) as pool:
-        return list(pool.map(lambda tool: found(tool, path), TOOLS))
-
-
 def lacking(route: str, answers: Mapping[str, str] | None = None, look=None) -> list[Found]:
     """What `route` needs that this machine lacks or has too old: nothing, where it has everything."""
     keys = needs(route, answers)
@@ -168,6 +159,6 @@ def lacking(route: str, answers: Mapping[str, str] | None = None, look=None) -> 
     if look is None:
         path = login_environment().get("PATH", "")
         look = lambda tool: found(tool, path)  # noqa: E731 — the one way a tool is asked here
-    with ThreadPoolExecutor(max_workers=len(keys)) as pool:  # at once, as `everything` asks them
+    with ThreadPoolExecutor(max_workers=len(keys)) as pool:  # at once: the wait is the slowest, not the sum
         rows = list(pool.map(lambda key: look(BY_KEY[key]), keys))
     return [one for one in rows if one.state != "found"]

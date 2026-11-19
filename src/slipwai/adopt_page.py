@@ -40,7 +40,7 @@ from .folder_field import folder_field
 from .interview_form import field_html
 from .interview_page import extensions_asked, init_asked
 from .layout import Layout
-from .machine_card import lacking_line
+from .machine_card import WATCH, lacking_line
 from .page_shell import document, esc
 from .platform import with_platform
 from .project.big_picture_page import big_picture_files
@@ -208,7 +208,7 @@ def picker(root: str, answers: Mapping[str, str] | None = None) -> str:
     )
 
 
-SCRIPT = CHOOSING + """
+SCRIPT = CHOOSING + WATCH + """
 const answers = () => {
   const form = document.querySelector('#pick form.ask-page');
   const held = Object.fromEntries(new FormData(form).entries());

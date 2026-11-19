@@ -127,6 +127,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "migration_legacy", "migration_flight", "migration_settings", "migration_claims",
                   "migration_sentence", "migration_slices", "migration_crossing", "migration_result", "migration_merge",
                   "migration_renames",
+                  # `project.json` merged as a record: a key order is not a change either side made.
+                  "migration_manifest",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",

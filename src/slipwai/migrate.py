@@ -37,6 +37,7 @@ from .catch_up_page import ARCHIVE, after_conflicts, archive
 from .errors import GenerationError
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
+from .migration_manifest import settled
 from .migration_result import Migration
 from .migration_sentence import date_sentence_rule
 from .relocate import relocate
@@ -130,9 +131,10 @@ def merge_offered(root: Path, offered: Replay, message: str) -> tuple[str | None
         ["git", *NO_MAINTENANCE, "merge", "--no-edit", "-m", message, "FETCH_HEAD"],
         cwd=root, text=True, capture_output=True, check=False,
     )
-    conflicts = tuple(git(root, "diff", "--name-only", "--diff-filter=U").split())
-    if merge.returncode != 0 and not conflicts:
+    unmerged = tuple(git(root, "diff", "--name-only", "--diff-filter=U").split())
+    if merge.returncode != 0 and not unmerged:
         raise GenerationError(f"git merge failed without a conflict to resolve: {merge.stderr.strip()}")
+    conflicts = settled(root, unmerged)  # `project.json` merged by what it says, not by its key order
     return stat[-1].strip(), conflicts, git(root, "rev-parse", "HEAD") == git(root, "rev-parse", "FETCH_HEAD")
 
 

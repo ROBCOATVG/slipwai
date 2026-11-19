@@ -14,6 +14,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai import migrate
 from slipwai.migration_manifest import merged, ordered_like
 from slipwai.replay import Replay

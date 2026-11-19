@@ -12,6 +12,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import checkout_packages  # noqa: F401
+
 from slipwai import logs, migrate, run_folder
 from slipwai.errors import GenerationError
 from slipwai.project.gitignore import RUN_STATE, build_artifacts

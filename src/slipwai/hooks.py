@@ -72,9 +72,9 @@ class Point:
 
 #: In firing order where several fire around one thing, which is the order `slipwai hooks` lists them in.
 POINTS: tuple[Point, ...] = (
-    Point("init", "`./init --extension <key>`, once per election", ("root",), "`init.py`"),
+    Point("init", "`./init --extension <key>`, once per election", ("root", "guards_held"), "`init.py`"),
     Point("project", "every re-projection: `make agents`, `migrate`, `./init --integration`",
-          ("root", "harnesses"), "`project_guidance()`"),
+          ("root", "harnesses", "guards_held"), "`project_guidance()`"),
     Point("check", "`make verify`, as one more gate", ("root",), "`scripts/check-<key>.py`"),
     # The four below are new. Version 1 had no way to reach a rung at all, which is why `codegraph` went
     # through one harness's own hooks and did nothing on the rest.

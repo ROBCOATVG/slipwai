@@ -7,7 +7,8 @@ search, a write, a shell command — because those are the same in every project
 the project. So that one row is written here, from `.slipwai/guards.json`, whenever an agreement changes
 and at every `make agents`.
 
-    python3 scripts/extensions/guard_harness.py     # write, narrow or remove the row; say nothing if nothing moved
+    python3 scripts/extensions/guard_harness.py          # write, narrow or remove the row
+    python3 scripts/extensions/guard_harness.py --held   # which installed harness holds which guard, as JSON
 
 **The matcher is exactly what was declared, and nothing declared can be wide.** Each pattern is one MCP
 server's tools, by name or all of that server's (`guards.py` holds the expression), so the row can never
@@ -15,7 +16,8 @@ name a search, a write or every call. With no agreed guard seeing anything the r
 is what it was.
 
 Only Claude Code's `.claude/settings.json` is written, because it is the only harness the registry records
-a pre-tool event for whose shape was read. The row's command is taken from the `before-search` row already
+a pre-tool event for whose shape was read. `--held` says so as data: per installed harness, the moments a
+guard is run at there, which `hooks.py` hands an extension at `init` and `project`. The row's command is taken from the `before-search` row already
 in that file, so it carries whatever path this project keeps its scripts at; a file with no such row, or
 one that is not JSON, is left alone. Nothing here is fatal: the agreement is the registry, not this.
 
@@ -24,6 +26,7 @@ Standalone and dependency-free: this ships inside a generated project, which has
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -90,7 +93,57 @@ def claude() -> str | None:
     return ", ".join(patterns) if patterns and search is not None else "nothing"
 
 
+#: Every moment a guard's script can be run at: the seven it may refuse at, and the one it is only told at.
+MOMENTS = ("session", "before-search", "before-write", "before-command", "before-fetch", "after-delegate",
+           "before-stop", "tool-use")
+HARNESSES = HERE.parent / "agents/registry.json"
+INTEGRATION = ROOT / ".specify/integration.json"
+
+
+def holds(row: dict) -> list[str]:
+    """The moments this harness runs a guard at, as its registry row records: what it says outright, else
+    the events its hook projection writes. A row that records neither holds nothing — which is most of
+    them, and is the answer, not a gap in it."""
+    hooks = row.get("hooks")
+    hooks = hooks if isinstance(hooks, dict) else {}
+    projection = hooks.get("projection")
+    events = projection.get("events") if isinstance(projection, dict) else None
+    named = hooks.get("guards") if isinstance(hooks.get("guards"), list) else list(events or ())
+    return [moment for moment in MOMENTS if moment in named]
+
+
+def installed() -> list[str]:
+    """The harnesses installed in this project, and the one an `./init` in progress is installing."""
+    keys: list[str] = []
+    try:
+        state = json.loads(INTEGRATION.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError):
+        state = {}
+    recorded = state.get("installed_integrations") if isinstance(state, dict) else None
+    if isinstance(recorded, list) and recorded:
+        keys = [key for key in recorded if isinstance(key, str)]
+    elif isinstance(state, dict) and isinstance(state.get("default_integration"), str):
+        keys = [state["default_integration"]]
+    chosen = os.environ.get("SLIPWAI_INTEGRATION")
+    return list(dict.fromkeys([*keys, *([chosen] if chosen else [])]))
+
+
+def held() -> dict[str, list[str]]:
+    """Per installed harness, the moments a guard holds at there. What an extension is handed as
+    `SLIPWAI_GUARDS_HELD` at `init` and `project`, so its guidance says whether its guard holds here
+    rather than assuming the one harness it was written on. Nothing at all where the registry cannot be
+    read: an extension told nothing says nothing, and one told a guess would say it."""
+    try:
+        rows = {row["key"]: row for row in json.loads(HARNESSES.read_text(encoding="utf-8"))["harnesses"]}
+    except (OSError, ValueError, KeyError, TypeError, UnicodeDecodeError):
+        return {}
+    return {key: holds(rows[key]) if isinstance(rows.get(key), dict) else [] for key in installed()}
+
+
 def main() -> int:
+    if "--held" in sys.argv[1:]:
+        print(json.dumps(held(), indent=2))
+        return 0
     try:
         wrote = claude()
     except Exception as error:  # noqa: BLE001 — the agreement is the registry; this row is written again

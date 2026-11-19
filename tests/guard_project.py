@@ -73,6 +73,13 @@ class Project:
                               capture_output=True, text=True, cwd=self.root, timeout=120, input=given,
                               stdin=subprocess.DEVNULL if given is None else None)
 
+    def run(self, script: str, *arguments: str, **named: str) -> subprocess.CompletedProcess:
+        """Any other script of `scripts/extensions/`, with nobody at a terminal."""
+        environment = {name: value for name, value in os.environ.items() if not name.startswith("SLIPWAI_")}
+        return subprocess.run([sys.executable, str(self.extensions / script), *arguments], capture_output=True,
+                              text=True, cwd=self.root, timeout=120, stdin=subprocess.DEVNULL,
+                              env={**environment, **named})
+
     def session(self, verb: str, event: dict, **named: str) -> subprocess.CompletedProcess:
         """`scripts/agents/session.py <verb>`, the way a harness runs it: its event on stdin."""
         environment = {name: value for name, value in os.environ.items() if not name.startswith("SLIPWAI_")}

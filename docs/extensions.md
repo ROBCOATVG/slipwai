@@ -99,8 +99,8 @@ with what is attached to each point.
 
 | Point | Fires | Given |
 |---|---|---|
-| `init` | `./init --extension <key>`, once per election | `root` |
-| `project` | every re-projection: `make agents`, `migrate`, `./init --integration` | `root`, `harnesses` |
+| `init` | `./init --extension <key>`, once per election | `root`, `guards_held` |
+| `project` | every re-projection: `make agents`, `migrate`, `./init --integration` | `root`, `harnesses`, `guards_held` |
 | `check` | `make check-extensions`, as one more gate | `root` |
 | `before-stage` | before each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
 | `after-stage` | after each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
@@ -297,7 +297,8 @@ rules apply:
 A person agrees to what a guard sees together with the guard, and the question names the tools. On Claude
 Code, the pre-tool matcher for `tool-use` is exactly the entries of the agreed guards: slipwai writes that
 one row into `.claude/settings.json` when an agreement changes and at every `make agents`, and removes it
-when no agreed guard sees anything. No other harness runs anything at `tool-use`. A shell command that belongs to an extension needs no `sees`: every shell command
+when no agreed guard sees anything. [Which harness holds which guard](#which-harness-holds-which-guard)
+says where this works. A shell command that belongs to an extension needs no `sees`: every shell command
 reaches `before-search` already.
 
 `tests/test_guard_seen.py` holds this table to the code, and is the proof that the rule above can be
@@ -342,6 +343,41 @@ keel's answer first, and then the extensions' answers.
 So an extension declares `before-write` once. It does not have to learn the spelling of each of thirty-six
 harnesses. For the same reason, the keel's own refusal of edits to controlled files is a guard like any
 other. It is not a row that the keel writes into one harness's settings file.
+
+## Which harness holds which guard
+
+A guard holds on a harness only if that harness has a hook that can refuse at that moment, and somebody
+read the shape of that hook. `scripts/agents/registry.json` records this for each harness, with the source
+and the date. A harness that is not in this table holds no guard: an extension's guard is installed and
+agreed to there, and it refuses nothing.
+
+| Harness | `session` | `before-search` | `before-write` | `before-command` | `before-fetch` | `after-delegate` | `before-stop` | `tool-use` |
+|---|---|---|---|---|---|---|---|---|
+| Claude Code (`claude`) | yes | yes | yes | yes | yes | yes | yes | yes |
+| Cursor (`cursor-agent`) | no | no | no | no | no | no | yes | no |
+| Gemini CLI (`gemini`) | no | no | no | no | no | no | yes | no |
+
+`tool-use` is not a guard point. It is the moment when a guard is told that a tool it `sees` was used.
+
+**Cursor and Gemini CLI get no `before-search`, and slipwai does not pretend that they do.** The registry
+records a stop hook for each of them, and slipwai projects that hook. The registry records no hook before
+a tool call for either of them whose input and refusal were read. Slipwai writes a harness's hook file
+only from a shape that somebody read, because a row written from a guess is a guard that looks installed
+and never fires. When somebody reads such a hook, its row gains the event, slipwai projects it, and this
+table changes.
+
+**An extension is told, so that its guidance can be true.** At the `init` and `project` hook points, the
+hook receives `SLIPWAI_GUARDS_HELD`. It is a JSON object: each harness that is installed in the project,
+with the list of moments that hold there.
+
+```json
+{"claude": ["session", "before-search", "before-write", "before-command", "before-fetch", "after-delegate", "before-stop", "tool-use"], "gemini": ["before-stop"]}
+```
+
+`python3 scripts/extensions/guard_harness.py --held` prints the same object. So an extension that writes
+"a guard refuses that search" into `AGENTS.md` can write it only where `before-search` is in the list, and
+say that the rule is advice on the other harnesses. `tests/test_guard_harnesses.py` holds this table to
+the registry, and the Claude Code row to the hook rows that slipwai writes.
 
 ## The tools
 

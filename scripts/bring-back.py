@@ -144,7 +144,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "acp", "board_settings", "settings_page", "board_agent", "turn_cards", "stage_session", "stage_steps",
        "agent_ready", "agent_install", "handover",
        # The app and the machine it lands on (phase 23).
-       "prerequisites", "tool_install", "machine_card", "first_run", "app", "update_strip",
+       "prerequisites", "machine_probe", "tool_install", "machine_card", "first_run", "app", "update_strip",
        "terminal_command", "board_build",
        # Reading a drafted document on the board. The experiment had no board to read one on.
        "spec_page",

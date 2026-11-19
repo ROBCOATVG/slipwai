@@ -8,6 +8,9 @@ one left where it is — and the publisher's page where it has none.
 The start pages carry one line, `lacking_line`, only where the route they begin needs something missing —
 so a machine with everything sees those pages exactly as before.
 
+**Nothing here waits for a tool.** The card and the line are drawn from what the machine has said so far
+(`machine_probe`), marked while a tool is still out, and asked for again by the page until none is.
+
 **On Windows, a terminal.** The tools the board installed are on its children's `PATH` and never the
 system's, so the person's own terminal has none of them. The card offers *Open a terminal here* instead:
 Git Bash, in the project this window shows, started with the board's `PATH`. **On a Mac**, where the app
@@ -22,11 +25,12 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
-from . import terminal_command, tool_install
+from . import machine_probe, terminal_command, tool_install
+from .machine_probe import BOUND, CHECKING, UNANSWERED
 from .page_shell import esc
-from .prerequisites import Found, everything, lacking
+from .prerequisites import Found, lacking, needs
 from .shell_environment import git_bash, login_environment
 
 STYLE = """
@@ -34,7 +38,7 @@ STYLE = """
 #machine .tool{padding:8px 10px;border:1px solid var(--rule);border-radius:8px}
 #machine .tool b{font-weight:500}
 #machine .tool .where{display:block;font-size:.8rem;color:var(--ink-3);overflow-wrap:anywhere}
-#machine .tool.missing .where,#machine .tool.old .where{color:var(--brass)}
+#machine .tool.missing .where,#machine .tool.old .where,#machine .tool.unanswered .where{color:var(--brass)}
 #machine .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:.8rem;color:var(--ink-2)}
 #machine .acts button{font:inherit;font-size:.78rem;padding:3px 10px;border-radius:8px;cursor:pointer;
   border:1px solid var(--rule);background:transparent;color:var(--ink-2)}
@@ -101,13 +105,23 @@ function bindMachine(scope) {
     said.textContent = await answer.text(); said.hidden = false;
   }));
 }
-// The card is asked for after the page is up: each tool answers its version in its own time, and Settings
-// waited for the slowest of them before it showed anything.
-const machine = document.querySelector('[data-machine]');
-if (machine) fetch('/settings/machine.html').then(answer => answer.text()).then(html => {
-  machine.outerHTML = html;
-  bindMachine(document.getElementById('machine'));
-});
+// The card is asked for after the page is up, and again until every tool has answered: each answers its
+// version in its own time, and Settings waited for the slowest of them before it showed anything. A card
+// that says what the last one said is left as it is, so a button on it is not taken from under a press.
+let machineSaid = '';
+async function fillMachine() {
+  const machine = document.querySelector('[data-machine]');
+  if (!machine) return;
+  try {
+    const html = await (await fetch('/settings/machine.html')).text();
+    if (html !== machineSaid) {
+      machineSaid = html; machine.outerHTML = html;
+      bindMachine(document.getElementById('machine'));
+    }
+  } catch (fault) { /* asked again below */ }
+  setTimeout(fillMachine, 1000);
+}
+fillMachine();
 """
 
 
@@ -156,7 +170,28 @@ def open_terminal(root: Path, window: Path | None = None) -> str:
     return f"Git Bash is open in {root}."
 
 
+#: What a start page runs: its line is drawn before any tool has answered, and asked for again — at the
+#: address the line itself carries, which names the route and the answers it was drawn for — until each has.
+#: The form above it is drawn again when an answer changes, so the line is looked for afresh every time.
+WATCH = """
+let lackingSaid = null;
+(async function watchLacking() {
+  const line = document.querySelector('[data-lacking]');
+  if (line) try {
+    const answer = await fetch(line.dataset.lacking);
+    const html = answer.ok ? await answer.text() : lackingSaid;
+    if (html !== lackingSaid && line.isConnected) { lackingSaid = html; line.outerHTML = html; }
+  } catch (fault) { /* asked again below */ }
+  setTimeout(watchLacking, 1000);
+})();
+"""
+
+
 def where_line(one: Found) -> str:
+    if one.state == CHECKING:
+        return "asking it for its version…"
+    if one.state == UNANSWERED:
+        return f"did not answer within {BOUND:g} seconds; reload this page to ask it again"
     if one.state == "found":
         return f"{one.version or 'found'} at {one.where}"
     if one.lacks:
@@ -169,8 +204,8 @@ def where_line(one: Found) -> str:
 
 def acts(one: Found) -> str:
     """Install, for a tool the machine lacks or has only too old; the publisher's page where the board has
-    no way. Nothing for a good copy."""
-    if one.state == "found":
+    no way. Nothing for a good copy, nor for one nobody has heard from: that is not a tool known missing."""
+    if one.state in ("found", CHECKING, UNANSWERED):
         return ""
     how = tool_install.way(one.tool.key)
     if not how:
@@ -192,15 +227,17 @@ PLACEHOLDER = ('<div id="machine" class="card" data-machine><h2>This machine</h2
 
 
 def card(rows: list[Found] | None = None) -> str:
-    """The card, for Settings."""
-    rows = everything() if rows is None else rows
+    """The card, for Settings: as the machine stands now, and marked to be asked for again (`data-machine`)
+    while a tool has still to answer."""
+    rows = machine_probe.MACHINE.read() if rows is None else rows
+    again = " data-machine" if any(one.state == CHECKING for one in rows) else ""
     items = "".join(f'<div class="tool {esc(one.state)}"><b>{esc(one.tool.name)}</b>'
                     f'<span class="where">{esc(where_line(one))}</span>'
                     f'<span class="where">Needed because {esc(one.tool.why)}.</span>{acts(one)}</div>'
                     for one in rows)
-    return (f'<div id="machine" class="card"><h2>This machine</h2><p>What the board\'s routes need here. The board '
-            f'installs a tool only where the machine has none, or only one too old, and never changes one you '
-            f'installed.</p>'
+    return (f'<div id="machine" class="card"{again}><h2>This machine</h2><p>What the board\'s routes need here. '
+            f'The board installs a tool only where the machine has none, or only one too old, and never changes '
+            f'one you installed.</p>'
             f'<div class="tools">{items}</div>{last_row()}</div>')
 
 
@@ -221,21 +258,52 @@ def state_words(one: Found) -> str:
 
 def lacking_line(route: str, answers: Mapping[str, str] | None = None, look=None, inline: bool = False) -> str:
     """The line atop a start page whose route needs something the machine lacks; `""` where it has it all.
-    `inline` is the paragraph form, for a card that is re-rendered whole when an answer changes."""
-    missing = lacking(route, answers, look)
+    `inline` is the paragraph form, for a card that is re-rendered whole when an answer changes.
+
+    Read off what the machine has said so far and never waited for (`machine_probe`). While a tool the
+    route needs is still out the line says that instead, with the address its page asks again at and a
+    reload for a page with no script; one that did not answer in its time is said to be that, and is not
+    called missing. `look` is a machine described by the caller, asked there and then."""
+    if look is None:
+        keys = needs(route, answers)
+        missing = [one for one in machine_probe.MACHINE.read() if one.tool.key in keys and one.state != "found"]
+    else:
+        missing = lacking(route, answers, look)
     if not missing:
         return ""
-    named = ", ".join(f"{one.tool.name} ({state_words(one)})" for one in missing)
-    said = (f'This machine needs something first: {esc(named)}. <a href="/settings#machine">Settings</a> says '
-            f'what each is for and installs what is missing.')
+    again = ""
+    if out := [one.tool.name for one in missing if one.state == CHECKING]:
+        asks = {"route": route, **{key: str((answers or {}).get(key) or "") for key in ASKED_BY},
+                "inline": "1" if inline else ""}
+        again = f' data-lacking="/settings/lacking.html?{esc(urlencode({k: v for k, v in asks.items() if v}))}"'
+        said = (f'Checking what this machine has of {esc(", ".join(out))}… <a href="">Reload</a> if this line '
+                f'stays as it is.')
+    else:
+        silent = [one.tool.name for one in missing if one.state == UNANSWERED]
+        named = ", ".join(f"{one.tool.name} ({state_words(one)})" for one in missing if one.state != UNANSWERED)
+        said = (f'This machine needs something first: {esc(named)}. <a href="/settings#machine">Settings</a> says '
+                f'what each is for and installs what is missing.') if named else ""
+        if silent:
+            said += (f'{" " if said else ""}{esc(", ".join(silent))} did not answer within {BOUND:g} seconds, so '
+                     f'whether this machine has {"it" if len(silent) == 1 else "them"} is not known. '
+                     f'<a href="">Reload</a> to ask again.')
     if inline:
-        return f'<p class="lacking-note">{said}</p>'
-    return f'<div class="card lacking"><p>{said}</p></div>'
+        return f'<p class="lacking-note"{again}>{said}</p>'
+    return f'<div class="card lacking"{again}><p>{said}</p></div>'
+
+
+#: The answers that decide what a route needs (`prerequisites.needs`), carried in the address a line asks at.
+ASKED_BY = ("language", "backend", "profile")
 
 
 def route_get(bridge: Any, where: str, query: str) -> bool:
     if where == "/settings/machine.html":
         bridge.send(200, card(), "text/html; charset=utf-8")
+        return True
+    if where == "/settings/lacking.html":
+        asked = {key: values[0] for key, values in parse_qs(query).items()}
+        line = lacking_line(asked.get("route", ""), asked, inline=bool(asked.get("inline")))
+        bridge.send(200, line, "text/html; charset=utf-8")
         return True
     if where != "/settings/tool.json":
         return False

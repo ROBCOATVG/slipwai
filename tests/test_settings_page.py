@@ -133,12 +133,12 @@ class SettingsPageTest(BoardTest):
     def test_the_machine_card_is_asked_for_after_the_page_and_never_holds_it_up(self) -> None:
         """Seven tools asked their versions held Settings past five seconds on Windows; the page now shows
         a placeholder and fetches the card, so no tool's answer is between a person and the page."""
-        with mock.patch("slipwai.machine_card.everything", side_effect=AssertionError("asked on the page")):
+        with mock.patch("slipwai.machine_probe.MACHINE") as machine:  # #118: the card reads this, not `everything`
+            machine.read.side_effect = AssertionError("asked on the page")
             page = self.get("/settings")[1]
         self.assertIn("data-machine", page)
         self.assertIn("fetch('/settings/machine.html')", page)
-        with mock.patch("slipwai.machine_card.everything", return_value=[]):
-            status, card = self.get("/settings/machine.html")
+        status, card = self.get("/settings/machine.html")  # of the suite's stand-in machine, which has it all
         self.assertEqual(status, 200)
         self.assertIn('<div id="machine" class="card"><h2>This machine</h2>', card)
 

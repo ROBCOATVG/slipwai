@@ -35,12 +35,12 @@ from .assets import NOTES, VERSION
 from .catch_up import moved_languages, notes
 from .catch_up_page import ARCHIVE, after_conflicts, archive
 from .errors import GenerationError
-from .extension_copies import copies
+from .guards_offered import owed
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
-from .migration_manifest import settled
 from .migration_result import Migration
 from .migration_sentence import date_sentence_rule
+from .migration_withheld import settled
 from .relocate import relocate
 from .replay import Replay, git, replay
 from .run_folder import dirt, move_in, refuse_while_out, unstage_run_state
@@ -135,7 +135,7 @@ def merge_offered(root: Path, offered: Replay, message: str) -> tuple[str | None
     unmerged = tuple(git(root, "diff", "--name-only", "--diff-filter=U").split())
     if merge.returncode != 0 and not unmerged:
         raise GenerationError(f"git merge failed without a conflict to resolve: {merge.stderr.strip()}")
-    conflicts = settled(root, unmerged)  # `project.json` merged by what it says, not by its key order
+    conflicts = settled(root, unmerged)  # `project.json` as a record; an extension file no longer given, kept
     return stat[-1].strip(), conflicts, git(root, "rev-parse", "HEAD") == git(root, "rev-parse", "FETCH_HEAD")
 
 
@@ -163,7 +163,7 @@ def write_notes(
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(notes(name, was, languages=moved_languages(document) if document else (),
-                                     conflicts=conflicts, extensions=copies(root, document)), encoding="utf-8")
+                                     conflicts=conflicts, extensions=owed(root, document)), encoding="utf-8")
     except Exception as error:  # the merge is committed: whatever a recorded value did, say so and never raise
         return str(error) or type(error).__name__
     return None
@@ -295,8 +295,8 @@ def commit_says(refresh: Refresh, *, merge: bool = False) -> str:
 def report(done: Migration) -> str:
     """What happened and what to do next, for the person who ran it."""
     text = report_of(done)
-    left = [f"Left alone: {page}." for page in done.refresh.skipped]
-    return "\n".join([text, *left]) if left and not done.conflicts else text
+    left = [f"Left alone: {page}." for page in done.refresh.skipped] if not done.conflicts else []
+    return "\n".join([text, *left, *done.put_back])  # last: how to put back what no `git` undo moves
 
 
 def report_of(done: Migration) -> str:

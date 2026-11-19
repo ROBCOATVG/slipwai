@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 import unittest
 
+import checkout_packages  # noqa: F401
+
 from slipwai.example_map import card_counts, named_ids, proven_ids, read, summary
 from slipwai.example_map_page import STYLE, card_html, map_html
 from slipwai.live_page import WINDOW_SCRIPT, window_tabs

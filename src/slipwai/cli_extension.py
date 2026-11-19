@@ -1,4 +1,4 @@
-"""`slipwai extension list|install|remove|check` and `slipwai hooks`: the optional dev tooling, and where it attaches.
+"""`slipwai extension list|install|upgrade|remove|check` and `slipwai hooks`: the optional dev tooling, and its points.
 
 An extension is not a product-architecture choice, so it is not asked at `slipwai generate` and has no verb
 under it. It is installed into the package directory beside the languages, offered by `./init`'s menu in every
@@ -17,6 +17,7 @@ from .assets import this_command
 from .catalog import REFUSALS
 from .errors import GenerationError, refuse
 from .extension_directory import MANIFEST, absent
+from .extension_given import split
 from .extension_install import catalogue, install, remove
 from .extension_shape import OBLIGATIONS
 from .guards import GUARDS
@@ -24,7 +25,7 @@ from .guards import declared as declared_guards
 from .hooks import POINTS, declared
 from .language_directory import directory
 
-VERBS = ("list", "install", "remove", "check")
+VERBS = ("list", "install", "upgrade", "remove", "check")
 
 
 def rows() -> list[str]:
@@ -153,6 +154,9 @@ def check_main(path: str) -> None:
     print(f"  hooks        {attached(declared(manifest), 'hook', missing) or 'none'}")
     print(f"  guards       {attached(declared_guards(manifest), 'guard', missing) or 'none'}  — these may "
           f"refuse a tool call, and are agreed to at election")
+    kept, back = split(root, manifest)
+    held = f"; not {', '.join(path.as_posix() for path in back)}" if back else ""
+    print(f"  a project    is given {len(kept)} file(s) under scripts/extensions/{manifest['key']}/{held}")
     print("  obligations, which `slipwai conformance --extension` runs:")
     for name, said in OBLIGATIONS:
         print(f"    {name:<10} {said}")
@@ -166,9 +170,14 @@ def extension_main(argv: list[str]) -> None:
     parser.add_argument("arguments", nargs="*", metavar="<name-or-path>")
     parser.add_argument("--accept-publisher", action="store_true",
                         help="accept this package's publisher without being asked, and remember it")
+    parser.add_argument("--pre", action="store_true", help="with upgrade: count snapshots in the index")
     parsed = parser.parse_args(argv)
     try:
-        if parsed.verb == "list":
+        if parsed.verb == "upgrade":
+            from .extension_upkeep import upgrade
+            from .language_index import snapshots
+            print("\n".join(upgrade(parsed.arguments, directory(), prerelease=snapshots(parsed.pre))))
+        elif parsed.verb == "list":
             list_extensions()
         elif parsed.verb == "install":
             for line in install(parsed.arguments, directory(), parsed.accept_publisher):
@@ -176,8 +185,14 @@ def extension_main(argv: list[str]) -> None:
             print(f"`./init --extension <key>` elects one in a project; a project generated before this "
                   f"install does not offer it until `{this_command()} migrate` is run in it")
         elif parsed.verb == "remove":
-            for line in remove(parsed.arguments, directory()):
-                print(line)
+            from pathlib import Path
+
+            from .extension_removal import taken_back
+            for name in parsed.arguments:
+                # Taken back in this project first, while the package that says how is still here (#119).
+                if (directory() / name / MANIFEST).is_file():
+                    print("\n".join(taken_back(Path.cwd(), name)))
+                print("\n".join(remove([name], directory())))
         else:
             if len(parsed.arguments) != 1:
                 raise GenerationError(f"`{this_command()} extension check <directory>` takes one directory")

@@ -1,9 +1,8 @@
 """`scripts/agents/try_it.py`: trunk's newest merge, running for a person to use.
 
-The script is copied into a temporary project with a `project.json`, a Compose file, a realm and a git
-history, and loaded from there, because where the project is, is where it reads everything from. What is
-held is what it would hand the processes it starts, what it would show a person, and what it does with the
-example data a slice describes — never Docker, a package manager or a browser, which a suite cannot own.
+The script is loaded from a temporary project (a `project.json`, a Compose file, a realm and a git history),
+since it reads everything from where the project is. What is held is what it hands the processes it starts,
+what it shows a person and what it does with a slice's example data — never Docker, npm or a browser.
 """
 from __future__ import annotations
 
@@ -17,6 +16,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 from unittest import mock
+
+import checkout_packages  # noqa: F401
 
 from slipwai.assets import TOOLKIT_ROOT
 

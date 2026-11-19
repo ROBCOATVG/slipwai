@@ -13,6 +13,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai import githooks
 
 

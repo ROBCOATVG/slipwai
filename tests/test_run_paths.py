@@ -13,6 +13,8 @@ import re
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai import berths, logs
 
 REPOSITORY = Path(__file__).resolve().parents[1]

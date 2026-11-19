@@ -17,6 +17,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
+import checkout_packages  # noqa: F401
+
 from slipwai.activity import caption, fold, lines_of, live, log_path, stamp, task_of
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.live_page import look_html, window_body, window_payload

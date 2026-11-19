@@ -22,7 +22,7 @@ from .catch_up_page import archive, set_up, stated
 from .extension_copies import copies
 from .infra_check import check as infra_check
 from .layout import layout_of
-from .logs import Entry, deck_path
+from .logs import RUN, Entry, deck_path
 from .manifest import apps_from_manifest
 from .migration_claims import ahead, prepare, update
 from .migration_flight import Flight, read
@@ -33,7 +33,7 @@ from .migration_result import Migration
 from .migration_settings import settings
 from .migration_slices import kept_section, unmodelled_section
 from .replay import Replay, replay
-from .run_folder import move_version_1, version_1, version_1_section
+from .run_folder import move_version_1, version_1, version_1_section, walking_away, walking_away_section
 from .survey import survey
 from .versions import parse
 
@@ -145,7 +145,7 @@ def answers(files: Tree) -> Tree:
 
 def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branches: dict[str, str],
              notes: list[str], infra: Sequence[str] = (), twice: Sequence[str] = (),
-             conflicts: Sequence[str] = (), run_files: Sequence[str] = ()) -> str:
+             conflicts: Sequence[str] = (), run_files: Sequence[str] = (), decks: Sequence[str] = ()) -> str:
     proposed, unplaced = flight.counts
     command = f"python3 {layout.place('scripts/check-migration.py')}"
     # The same opening section an ordinary migration's page has: a crossing that conflicts leaves the same
@@ -168,6 +168,7 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             "was reconciled upward from trunk's slice merges: a slice trunk could not prove keeps the "
             "status the model recorded for it.\n\n" +
             kept_section(flight.kept) + version_1_section(list(run_files)) +
+            walking_away_section(run_files, decks) +
             # What the crossing would have done to `infra/` and did not. Named rather than silently skipped:
             # a person who upgrades and later finds the factory's stack has moved on should find out here,
             # with the list in front of them, rather than from a plan that proposes to replace a database.
@@ -233,6 +234,12 @@ def already(path: Path) -> Counter[str]:
         if isinstance(body, dict) and isinstance(body.get(CROSSED), str):
             found[body[CROSSED]] += 1
     return found
+
+
+def seeded(root: Path, flight: Flight) -> list[str]:
+    """The deck logs that hold version 1's history once `seed` has run, relative to the project, in one order."""
+    return sorted({deck_path(root, feature, fairway).relative_to(root).as_posix()
+                   for feature, fairway, _ in flight.logs})
 
 
 def seed(root: Path, flight: Flight) -> None:
@@ -302,8 +309,11 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         # role, and the `.slipwai/run/` ignore rule `seed` needs twelve lines below this.
         left = settings(root, document, result.files, conflicts=result.conflicts)
         validate(root, result.files)
+        run_files = version_1(root)
+        # Where `seed` will write once the merge has brought the one ignore line: named now, for the page.
+        decks = sorted({f"{RUN}/logs/{feature}/{fairway}.jsonl" for feature, fairway, _ in flight.logs})
         message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document),
-                           branches, left, untouched, twice, tuple(sorted(result.conflicts)), version_1(root))
+                           branches, left, untouched, twice, tuple(sorted(result.conflicts)), run_files, decks)
         if check:
             conflict_names = ", ".join(sorted(result.conflicts)) or "none"
             stopping = "".join(f"\n`slipwai migrate` would refuse: {note}" for note in blocking)
@@ -318,7 +328,8 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         seed(root, flight)
         # Version 1's run files, out from under a merge whose ignore file has stopped naming them: before
         # anybody resolving a conflict stages the tree. `flight` has read the two it reads by now.
-        move_version_1(root)
+        stuck = {kept.split(" (")[0] for kept in move_version_1(root)[1]}
+        put_back = walking_away([name for name in run_files if name not in stuck], seeded(root, flight))
         # Last, and never a refusal: the merge is committed by the time this reads anything. The project's
         # own gate cannot run this — `make verify` has no provider plugins and no credential by design — so
         # a crossing is the one moment between a tree being rewritten and a runner finding out.
@@ -336,4 +347,4 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
                           offered.base, offered.base_is_factory, offered.languages)
     conflicts = tuple(sorted(result.conflicts))
     return Migration(reported, recorded, conflicts, f"crossed from installed {legacy.used}; "
-                     f"{len(result.files)} files, {len(conflicts)} conflicts")
+                     f"{len(result.files)} files, {len(conflicts)} conflicts", put_back=tuple(put_back))

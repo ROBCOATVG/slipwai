@@ -18,6 +18,13 @@ the slug:
 1. Read `docs/intake/<slug>/brief.md` and every other file in that directory. Read `confirmed`: the first
    line is `yes` and the second is who answered. If `confirmed` is missing, stop and say that a person, or
    the skipper under `/cruise`, has to agree this is a new feature. Write nothing.
+   **Where `not-discussed` is in that directory, nobody shaped this idea.** It was captured on the board
+   where no agent could be launched, so the brief is a person's words as they typed them and the documents
+   are whatever they attached: no conversation asked whether this is one feature or what is being asked
+   for. Do that first, in `/speckit-assess-intake`: say whether it is one feature or several, and what the
+   words do not say. Where it is more than one feature, or you cannot tell what is asked for, the verdict
+   is `needs-clarification`, with each question a person has to answer written in `decision.md`; do not
+   guess your way to a `go`. Leave `not-discussed` where it is: it is part of the record.
 2. If `.specify/assessments/<slug>/decision.md` has no verdict yet, install the extension when the assess
    commands are missing (`specify extension add assess`) and run `/speckit-assess-intake`,
    `/speckit-assess-research`, `/speckit-assess-define`, `/speckit-assess-shape` and

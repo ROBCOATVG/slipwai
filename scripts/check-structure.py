@@ -81,6 +81,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.
     ("contract", ("registry", "family_only", "renamed", "language_shape", "language_directory", "extension_directory",
+                  # What a project is given of an extension, and what stays the package repository's (#119).
+                  "extension_given",
                   "features", "extensions", "extension_shape", "extension_tools", "hooks", "guards",
                   "telegraph", "targets", "target_shape", "target_protocol", "target_directory",
                   "axes", "catalog", "rungs",
@@ -129,8 +131,12 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "migration_renames",
                   # `project.json` merged as a record: a key order is not a change either side made.
                   "migration_manifest",
+                  # An extension file a project is no longer given, kept where the project changed it (#119).
+                  "migration_withheld",
                   # An elected extension's copy in a project against the installed package, for the catch-up page.
                   "extension_copies",
+                  # A guard an elected extension has and nobody agreed to, said by `migrate` and never agreed for.
+                  "guards_offered",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
@@ -150,7 +156,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # `upgrade`'s extension step: installed against published.
               "extension_upkeep",
               # The other kind of package: its install, its scaffold, and the two verbs over them.
-              "extension_install", "target_install", "cli_target", "cli_install",
+              "extension_install", "extension_removal", "target_install", "cli_target", "cli_install",
               "package_new", "package_templates", "language_templates", "target_templates", "package_release",
               "package_version", "package_sources", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",
@@ -190,7 +196,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # model, and who answers at each stop of the run.
               # A surface page read as the board reads it, in one place: the Voyage window, the upstream
               # stop and `brief check` all approve or count the same states.
-              "drawn",
+              # And what its storyboard says each surface is — built, planned, changed or new — read from the marks.
+              # And a feature with no surface at all: the grounds for saying so, and the record of it.
+              "framed", "no_surface", "drawn",
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",
@@ -201,6 +209,12 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And a further feature handed over there: the document a person attaches, checked; the
               # conversation with the project's agent that ends in one idea; and the Next features tab.
               "intake_document", "intake_talk", "intake_card",
+              # And Feedback's New scope as a second door into that one conversation.
+              "intake_feedback",
+              # And the requirement ids a handed-over document shares with the specifications: a warning.
+              "intake_overlap",
+              # And the surfaces the hand-over's agent thought the idea touches: a hint kept with the idea.
+              "intake_surfaces",
               # And every decision the fleet took, readable, each with the receipt the ceiling counts: one entry
               # read for a person — its sentence, its options split — and its card, in the tab and the slice's window.
               "decision_entry", "decision_log", "decision_cards",
@@ -215,6 +229,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # a person's word to a stage (kept with what was said), or a review with something to discuss —
               # and the storyboard's card on the Screens tab, with what the drawing found and the conversation.
               "stage_talk", "step_record", "review_reading", "upstream", "storyboard_card", "storyboard_script",
+              "storyboard_kinds",
               # And the board kept current: one read of a project shared by every poll, the one poll that
               # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
               "board_read", "voyage_live", "on_you", "fleet_tab",

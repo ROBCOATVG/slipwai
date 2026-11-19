@@ -16,6 +16,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import ROOT
 
 SCRIPTS = ROOT / "assets/toolkit/scripts/extensions"

@@ -13,6 +13,8 @@ import types
 import unittest
 from unittest import mock
 
+import checkout_packages  # noqa: F401
+
 from slipwai import splash
 
 

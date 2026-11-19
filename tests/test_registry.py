@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import unittest
 
+import checkout_packages  # noqa: F401
 from registry_fakes import fake_language, family_answers, required_answers
 
 from slipwai.assets import ROOT

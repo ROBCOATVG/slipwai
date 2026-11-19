@@ -109,6 +109,16 @@ def replace_block(key: str, guidance: str) -> None:
     AGENTS.write_text(updated, encoding="utf-8")
 
 
+def remove_block(key: str) -> None:
+    """Take an un-elected extension's region out of `AGENTS.md`, leaving what a person wrote around it."""
+    if not AGENTS.is_file():
+        return
+    content = AGENTS.read_text(encoding="utf-8")
+    region = rf"\n*{re.escape(marker(key, 'begin'))}.*?{re.escape(marker(key, 'end'))}\n*"
+    updated = re.sub(region, "\n\n", content, flags=re.DOTALL)
+    if updated != content:
+        AGENTS.write_text(updated.rstrip("\n") + "\n", encoding="utf-8")
+
 
 # --- an MCP server that travels with the checkout ---------------------------------------------------------------
 #

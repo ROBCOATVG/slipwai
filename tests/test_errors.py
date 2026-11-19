@@ -11,6 +11,8 @@ import io
 import unittest
 from contextlib import redirect_stderr
 
+import checkout_packages  # noqa: F401
+
 from slipwai.errors import Fault, GenerationError, Refusal, blame, failure, one_line, refuse, said
 
 # Each row is what a refusal is built from and the one line it must say.

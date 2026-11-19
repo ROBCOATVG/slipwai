@@ -56,9 +56,10 @@ class KeptTest(HandoverTest):
         self.assertEqual(said["turns"][-1]["kind"], "error")
         self.assertIn("Settings tab", said["turns"][-1]["text"])
         self.assertIn("/sail", said["turns"][-1]["text"])
-        with self.assertRaises(ValueError):
-            nobody.capture()
-        self.assertFalse((self.root / "docs/intake").exists())
+        self.assertFalse(said["ready"], "nothing stands in for the conversation")
+        self.assertFalse((self.root / "docs/intake").exists(), "and nothing is written until the person captures")
+        self.assertIn("marked not discussed", nobody.capture())  # issue 120: the words are not lost for want of one
+        self.assertEqual(self.written(), ["billing-for-clubs/brief.md", "billing-for-clubs/not-discussed"])
 
     def test_start_again_lets_go_of_the_words_the_documents_and_the_session(self) -> None:
         self.say(CLEAR, {"name": "billing.md", "text": "# Billing\n"})

@@ -31,8 +31,11 @@ from .acp import kept_session
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
 from .errors import Busy
+from .feedback import became_idea
 from .harness import acp_environment
 from .intake_document import TRANSCRIPT, held, staged, text_of
+from .intake_overlap import overlap, warning
+from .intake_surfaces import ASK, suggested
 from .logs import run_dir
 from .project.intake import PLACE, capture
 from .shell_environment import login_environment, with_tools
@@ -47,6 +50,11 @@ HELD = 400
 READY = "The idea is ready to capture."
 #: How the two things the board puts ahead of a person's words begin, so a replay shows only theirs.
 ROLE_HEAD, ATTACHED_HEAD = "You are taking a further feature", "The person attached"
+#: What the log says where no agent can be launched: not a turn of a conversation, and it says there is none.
+NOBODY = ("There is no agent this board can run, so nobody reads this with you: nothing on the Settings tab can "
+          "be launched. What you said and attached is kept. Capture it as an idea marked not discussed, which "
+          "the assessment is told to ask about first; or make an agent ready on the Settings tab and say it "
+          "again; or hand the feature to /sail in the agent.")
 ROLE = f"""{ROLE_HEAD} for this project from a person at its board, as `/sail` does at intake, and no more.
 
 Read what they say and any document they attach. Read `docs/prd.md` and `specs/` only as far as you need to see
@@ -60,7 +68,9 @@ specify, plan, chart, split or implement. The board writes the idea down, from t
 documents, when they press Capture this idea.
 
 When what they handed over is one clear idea, say in two or three sentences what you understand it to be, and
-end your reply with this line exactly: {READY}"""
+end your reply with this line exactly: {READY}
+
+{ASK}"""
 
 
 def brought(name: str) -> str:
@@ -80,12 +90,24 @@ class Handover:
         self.turns: list[dict] = []
         self.dropped = 0
         self.busy = self.ready = self.loading = False
+        self.raw = False  # whether the board can launch no agent, as last looked: the capture is then a raw idea
+        self.looked = threading.Event()  # set once that has been looked for
+        self.looking = False
+        self.overlap = ""  # what the documents share with the specifications, by id: said, never a refusal
+        self.source = ""  # the feedback item this conversation was started from, where it was
         self.told = False  # whether a session that could not load the last one has been given the role again
         self.tried = False  # whether this object has tried to pick its kept session up
         self.login: dict[str, str] | None = None
         self.lock = threading.Lock()
         for one in self.kept():  # a board restarted: the conversation as it was kept
             self.show(one["role"], one["text"], one.get("kind", "text"))
+            self.source = self.source or str(one.get("feedback") or "")
+        self.weigh()
+
+    def weigh(self) -> None:
+        """The ids the documents held share with the specifications, read when a document arrives and not at
+        every poll."""
+        self.overlap = warning(overlap(self.root, held(self.home / DOCUMENTS)))
 
     def environment(self) -> dict[str, str]:
         if self.login is None:
@@ -138,11 +160,13 @@ class Handover:
             return {"turns": self.turns[at:], "at": self.dropped + len(self.turns), "busy": self.busy,
                     "ready": self.ready and not self.busy, "open": bool(self.turns), "agent": self.on,
                     "thinking": bool(self.agent is not None and self.agent.thinking),
-                    "model": self.agent.model if self.agent is not None else "",
+                    "model": self.agent.model if self.agent is not None else "", "feedback": self.source,
+                    "overlap": self.overlap, "raw": self.raw,
                     "documents": [one.name for one in held(self.home / DOCUMENTS)]}
 
-    def ask(self, message: str, document: dict | None = None) -> str:
-        """Say something to the session, with a document or without: checked whole before anything is kept."""
+    def ask(self, message: str, document: dict | None = None, feedback: str = "") -> str:
+        """Say something to the session, with a document or without: checked whole before anything is kept.
+        `feedback` is the item whose words these are, where Feedback's *New scope* opened the conversation."""
         message = text_of(message.strip(), "what you typed")
         name, text = (str(document.get("name") or ""), str(document.get("text") or "")) if document else ("", "")
         if not message and not (name or text):
@@ -155,13 +179,17 @@ class Handover:
         first = not any(one["role"] == "person" for one in self.kept())
         # A document handed over with no words is the request: the idea is called what the document is.
         request = {"request": path.stem} if path is not None and not message and first else {}
+        if feedback and first:
+            request["feedback"], self.source = feedback, feedback
         self.say("person", message or brought(path.name if path else ""), **request)
         if path is not None:
             self.say("person", path.name, "attached")
+            self.weigh()
         launch = self.chosen()
-        if launch is None or not launch.able:
-            self.show("agent", "There is no agent this board can run: nothing on the Settings tab can be launched. "
-                      "Make one ready there and say this again, or hand the feature to /sail in the agent.", "error")
+        self.raw = launch is None or not launch.able
+        self.looked.set()
+        if self.raw:
+            self.show("agent", NOBODY, "error")
             with self.lock:
                 self.busy = False
             return "no agent"
@@ -224,6 +252,26 @@ class Handover:
             with self.lock:
                 self.busy = False
 
+    def agentless(self) -> bool:
+        """Whether the board can launch no agent, looked for now. Never raises: a machine that cannot be
+        asked has not said there is nothing, and the conversation stays the way in."""
+        try:
+            launch = self.chosen()
+            self.raw = launch is None or not launch.able
+        except Exception:  # noqa: BLE001 — as `drive`
+            self.raw = False
+        self.looked.set()
+        return self.raw
+
+    def look(self) -> None:
+        """Once, off the request, for a window nobody has typed in: the form says before the first word that
+        there will be no conversation. A turn and a capture look again for themselves."""
+        with self.lock:
+            if self.looking or self.looked.is_set():
+                return
+            self.looking = True
+        threading.Thread(target=self.agentless, daemon=True).start()
+
     def answer(self, number: str, answer: str | None) -> bool:
         return self.agent is not None and self.agent.answer(number, answer)
 
@@ -241,7 +289,7 @@ class Handover:
         shutil.rmtree(self.home, ignore_errors=True)
         with self.lock:
             self.turns, self.dropped, self.ready, self.told = [], self.dropped + len(self.turns), False, False
-            self.on = ""
+            self.on = self.source = self.overlap = ""
         return "cleared"
 
     def capture(self) -> str:
@@ -250,11 +298,17 @@ class Handover:
         with self.lock:
             if self.busy:
                 raise Busy("the last answer is still being written")
-            if not self.ready:
-                raise ValueError("nothing to capture yet: say what the feature is, and capture it once the "
-                                 "agent says the idea is ready")
+            discussed = self.ready
         kept = [one for one in self.kept() if one.get("kind", "text") == "text"]
         mine = [one for one in kept if one["role"] == "person"]
+        if not mine:
+            raise ValueError("nothing to capture yet: say what the feature is, or attach its document")
+        if not discussed:  # with an agent the conversation is the only way in: no capture skips it
+            was = self.raw
+            if not self.agentless():
+                raise ValueError("an agent can be launched now: say it again, and capture it once the agent says "
+                                 "the idea is ready" if was else "nothing to capture yet: capture it once the "
+                                 "agent says the idea is ready")
         sources = held(self.home / DOCUMENTS)
         if len(mine) > 1:  # the person answered something: what was asked and said goes with the idea
             page = self.home / TRANSCRIPT
@@ -262,10 +316,17 @@ class Handover:
                 f"**{'Person' if one['role'] == 'person' else 'Agent'}:** {one['text']}\n\n" for one in kept),
                 encoding="utf-8")
             sources.append(page)
-        folder, _ = capture(self.root, mine[0].get("request") or mine[0]["text"], sources)
+        touched = suggested([one["text"] for one in kept if one["role"] == "agent"]) if discussed else []
+        folder, _ = capture(self.root, mine[0].get("request") or mine[0]["text"], sources, discussed, touched)
+        marked = "" if discussed else (", marked not discussed: no agent read it with you, and the assessment "
+                                       "is told to ask first")
+        linked = became_idea(self.root, str(mine[0].get("feedback") or ""), folder)
+        warned = f" {self.overlap}" if self.overlap else ""
+        if touched:
+            linked += f" Kept as a suggestion for the storyboard: it seems to touch {'; '.join(touched)}."
         self.reset()
-        return (f"captured {PLACE}/{folder.name}. Continue the next feature confirms it is a new feature, and "
-                "then assesses it")
+        return (f"captured {PLACE}/{folder.name}{marked}.{linked} Continue the next feature confirms it is a new "
+                f"feature, and then assesses it.{warned}")
 
 
 TALKS: dict[Path, Handover] = {}

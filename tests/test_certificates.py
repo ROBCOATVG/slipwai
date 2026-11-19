@@ -15,6 +15,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import checkout_packages  # noqa: F401
+
 from slipwai import certificates
 
 #: A root made for this test and trusted by nothing: `openssl req -x509`, CN "slipwai test root".

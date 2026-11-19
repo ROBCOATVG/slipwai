@@ -76,7 +76,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",
        "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_sentence",
        "migration_slices", "migration_crossing", "migration_result", "migration_merge", "migration_renames",
-       "migration_manifest", "extension_copies", "extension_upkeep",
+       "migration_manifest", "extension_copies", "extension_upkeep", "guards_offered",
        "catalog_checks", "catalog_options",
        "cli_offered", "cli_search",
        "project.briefs", "project.prose", "project.sail_section", "project.write_model_prose",
@@ -87,6 +87,10 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "package_version", "package_sources", "cli_extension", "cli_package",
        # What a release holds of a package in a git repository: the files `HEAD` tracks. Version 2's.
        "release_tracked",
+       # What a project is given of an extension, and its changed copy kept across the migration. Version 2's.
+       "extension_given", "migration_withheld",
+       # An extension taken back in the project it is removed from. Version 2's.
+       "extension_removal",
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",
@@ -123,7 +127,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # And feedback from using it: version 1 had no built product on a board to say anything about.
        "feedback", "feedback_card",
        # And a further feature handed over on it: version 1's only way in was `/sail` in a terminal.
-       "intake_document", "intake_talk", "intake_card",
+       "intake_document", "intake_talk", "intake_card", "intake_feedback", "intake_overlap", "intake_surfaces",
        # And the decision log: version 1 kept decisions in a file nobody was shown.
        "decision_entry", "decision_log", "decision_cards",
        # And the live strip: version 1's runner printed to a terminal, and nothing kept what it said.
@@ -190,6 +194,11 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # A storyboard a person can talk about without a verdict: the conversation kept, the hold a word puts on
        # the board, the review read for them, and the card. The experiment's storyboard had no session.
        "stage_talk", "review_reading", "storyboard_card", "storyboard_script", "step_record",
+       # What a storyboard says each surface is — built, planned, changed or new — and the card's chips for
+       # them. The experiment drew each feature alone, so its storyboards had one kind of surface.
+       "framed", "storyboard_kinds",
+       # A feature with no surface ends the mock-up stage cleanly, on grounds. The experiment had no such stage.
+       "no_surface",
        # A prototype or a storyboard as one file to send. The experiment's pages never left the board.
        "page_copy"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will

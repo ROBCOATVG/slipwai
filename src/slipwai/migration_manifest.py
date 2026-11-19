@@ -97,12 +97,17 @@ def settled(root: Path, conflicts: tuple[str, ...]) -> tuple[str, ...]:
     subprocess.run(["git", "add", "--", MANIFEST], cwd=root, capture_output=True, check=True)
     left = tuple(path for path in conflicts if path != MANIFEST)
     if not left:
-        done = subprocess.run(["git", *NO_MAINTENANCE, "commit", "--quiet", "--no-edit"], cwd=root, text=True,
-                              capture_output=True, check=False)
-        if done.returncode != 0:
-            raise GenerationError(
-                "the merge is resolved and staged, and the commit that concludes it was refused: "
-                f"{done.stderr.strip() or done.stdout.strip() or 'no reason given'}. Deal with what refused it, "
-                "then run `git commit --no-edit`; or `git merge --abort` to walk away from all of it"
-            )
+        conclude(root)
     return left
+
+
+def conclude(root: Path) -> None:
+    """Commit a merge whose every conflict has been settled and staged, with the message git was given."""
+    done = subprocess.run(["git", *NO_MAINTENANCE, "commit", "--quiet", "--no-edit"], cwd=root, text=True,
+                          capture_output=True, check=False)
+    if done.returncode != 0:
+        raise GenerationError(
+            "the merge is resolved and staged, and the commit that concludes it was refused: "
+            f"{done.stderr.strip() or done.stdout.strip() or 'no reason given'}. Deal with what refused it, "
+            "then run `git commit --no-edit`; or `git merge --abort` to walk away from all of it"
+        )

@@ -74,16 +74,24 @@ A second feature is not drawn alone. Before it draws, the stage lists what the p
 - `docs/design.md`, and anything under `docs/design/`
 
 The storyboard for the new feature then shows the product's flow with the new feature in it. Every surface
-on it is one of three kinds:
+on it is one of four kinds:
 
 | Kind | What you see | Are you asked? |
 |---|---|---|
-| **Built** | The real screen: the app's own preview, or an earlier feature's page, shown where it lies | No |
+| **Built** | The real screen: the app's own preview, shown where it lies | No |
+| **Planned** | A screen that an earlier feature had approved and that is not built yet: that feature's page, shown where it lies | No. You approved it under the earlier feature |
 | **Changed** | A built screen as this feature alters it, beside the original | Yes |
 | **New** | A screen this feature adds | Yes |
 
-**Approve storyboard** marks the changed and new states only. A built screen is not approved again, and
-`mock-states.md` says that it was shown and not asked about.
+**Approve storyboard** marks the changed and new states only. A built or planned screen is not approved
+again, and `mock-states.md` says that it was shown and not asked about. A screen is planned only while
+nothing shows that it is built. When the app has a preview of it, a photograph, an implemented screen in
+the event model or a route, the next feature's storyboard frames it as built.
+
+A built screen is sometimes known only from a route in the app's source, with no preview and no photograph.
+The storyboard shows it as a plain box that carries its route and the words *built, no picture*. The stage
+invents nothing about how such a screen looks. To have it framed, commit a preview of it under the app's
+`screens/` directory.
 
 New and changed screens use the app's own stylesheet and sit in its shell, so they look like screens of
 this product. A direction that you put under `docs/design/` still wins. The stage proposes a look of its
@@ -92,6 +100,23 @@ own only in a project that has no browser app, no `docs/design/` and no earlier 
 A project that has built screens and no storyboard gets its first storyboard this way. That is the usual
 state of a project that crossed from version 1. The storyboard frames the part of the flow that the new
 feature touches and names the rest, each with a link to its preview.
+
+### A feature with no screen
+
+Some features add and change no surface: a migration, a scheduled job, a change behind an interface. The
+mock-up stage used to end such a feature as a failure, and you wrote `surfaces: none` by hand. The stage
+now records `surfaces: none` itself, with the reason, and ends successfully, so the feature moves on. It
+does so only when all of these hold:
+
+- the drawing's `research.md` says `Surfaces: none`, with a reason
+- no requirement line in the specification asks for something that a person or another system meets, such
+  as a screen, a form, something shown or displayed, an email, a report or a webhook
+- no slice of the feature names a surface in the split or carries a `ui` frame in the event model
+- nothing is drawn, and `mock-states.md` holds no verdict
+
+When one of these does not hold, the stage stops as before and says which. Run `/mockups <feature>` in the
+agent to settle it. To draw a surface after all, delete `specs/<feature>/mockups/mock-states.md` and run
+`/mockups <feature>`.
 
 There is still one storyboard per feature. The newest one shows the whole flow as it will stand.
 

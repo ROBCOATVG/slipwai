@@ -9,9 +9,10 @@ and its Python is imported to answer the backend protocol; an extension's manife
 entry, a set of hooks and a directory of files to copy into a project, and imports nothing into this process.
 Sharing one reader would mean one module holding both sets of rules and a `kind` branch in every function.
 
-**What is copied is everything but the manifest.** `init.py`, whatever it calls, whatever it ships beside it:
-the keel does not model an extension's internals, so it does not get to decide which of its files matter. The
-manifest is left behind because the project is not where it is read.
+**What is copied is what runs or is read in a project.** `init.py`, whatever it calls, whatever it ships beside
+it: the keel does not model an extension's internals, so it does not get to decide which of its files matter.
+What it leaves behind is the manifest, because the project is not where it is read, and the package's own
+repository — its workflows, tests and changelog — which `extension_given` names and nothing in a project runs.
 
 **A refused extension is refused alone.** Same rule as a language's: one line naming the extension, its
 directory and the fault, and the others load — an extension is optional dev tooling, and a project that cannot
@@ -137,8 +138,9 @@ def read(root: Path, core: str, installed: bool = False) -> tuple[list[Extension
 def files(root: Path) -> list[Path]:
     """Every file of the package but its manifest, relative to the package root, in a stable order.
 
-    Stable because this list becomes the files of a generated project, and a project whose contents depend on
-    the order a directory happened to be walked in is a project two generations disagree about.
+    Stable because the files of a generated project are taken from this list (`extension_given` says which),
+    and a project whose contents depend on the order a directory happened to be walked in is a project two
+    generations disagree about.
     """
     found = (path.relative_to(root) for path in root.rglob("*")
              if path.is_file() and path.name != MANIFEST and ".git" not in path.parts)

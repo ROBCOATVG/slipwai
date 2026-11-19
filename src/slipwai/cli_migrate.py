@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .assets import VERSION, relaunch
 from .errors import GenerationError, refuse
+from .guards_offered import said as guards_said
 from .language_directory import directory
 from .language_index import snapshots
 from .language_plan import Resolver, held_to_record, install_for, plan_install, project_names
@@ -94,6 +95,10 @@ def migrate_main(argv: list[str]) -> None:
     except GenerationError as error:
         refuse(parser.prog, error)
     print(migrate_report(done))
+    if not done.conflicts:
+        # A guard an elected extension gained with this, which nobody has agreed to: said, never agreed for.
+        for line in guards_said(Path.cwd(), document):
+            print(line)
     if done.conflicts:
         raise SystemExit(1)
 

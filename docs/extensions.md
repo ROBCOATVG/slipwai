@@ -24,6 +24,7 @@ If this page and the code disagree, the gate is red.
 |---|---|---|
 | What a manifest declares, and the six obligations | `src/slipwai/extension_shape.py` | contract |
 | Reading a package from disk | `src/slipwai/extension_directory.py` | contract |
+| What a project is given of a package | `src/slipwai/extension_given.py` | contract |
 | Adding a package to the catalogue | `src/slipwai/extensions.py` | contract |
 | The points that a hook can attach to | `src/slipwai/hooks.py` | contract |
 | Installing and removing a package | `src/slipwai/extension_install.py` | edge |
@@ -51,6 +52,8 @@ The manifest is `extension.json`, at the root of the package directory.
 | `hooks` | no | The points that the extension attaches to. See [The hook points](#the-hook-points). |
 | `guards` | no | What the extension can refuse, and with what message. See [The guards](#the-guards). |
 | `tools` | no | The tool names that a headless session must be allowed to call to reach the extension. See [The tools](#the-tools). |
+| `writes` | no | The paths that the extension writes in a project outside its own directory. See [Taking it back](#taking-it-back). |
+| `withhold` | no | Paths of the package that a project is not given, beyond the conventional ones. See [Where the files land](#where-the-files-land). |
 
 `key` and `name` are separate fields because they are different things. In a language's manifest, one
 name is both. This is the only way that an extension's manifest differs from a language's. The catalogue
@@ -99,9 +102,10 @@ with what is attached to each point.
 
 | Point | Fires | Given |
 |---|---|---|
-| `init` | `./init --extension <key>`, once per election | `root` |
-| `project` | every re-projection: `make agents`, `migrate`, `./init --integration` | `root`, `harnesses` |
+| `init` | `./init --extension <key>`, once per election | `root`, `guards_held` |
+| `project` | every re-projection: `make agents`, `migrate`, `./init --integration` | `root`, `harnesses`, `guards_held` |
 | `check` | `make check-extensions`, as one more gate | `root` |
+| `remove` | un-electing the extension: `python3 scripts/extensions/hooks.py --remove <key>` | `root` |
 | `before-stage` | before each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
 | `after-stage` | after each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
 | `boundary` | every captain boundary, after the captain reads the inbox | `slice`, `fairway`, `lines` |
@@ -189,7 +193,7 @@ So a guard is a separate kind. It has three differences from a hook, and they ar
 | Guard | Fires | Given | If the guard refuses |
 |---|---|---|---|
 | `session` | when a delegate's session opens, before its first tool call | `stage`, `slice`, `fairway`, `berth` | the session does not start |
-| `before-search` | just before a delegate searches the tree | `stage`, `slice`, `fairway`, `query`, `tool` | the search does not run, and the agent is told what to ask instead |
+| `before-search` | just before a delegate searches the tree | [the search event](#what-a-before-search-guard-is-handed) | the search does not run, and the agent is told what to ask instead |
 | `before-write` | just before a delegate writes or edits a file | `stage`, `slice`, `fairway`, `path`, `tool` | the file is not written |
 | `before-command` | just before a delegate runs a shell command | `stage`, `slice`, `fairway`, `command`, `tool` | the command does not run |
 | `before-fetch` | just before a delegate reads a URL | `stage`, `slice`, `fairway`, `url`, `host`, `tool` | the fetch does not happen |
@@ -207,6 +211,117 @@ guard is 5s, not 30s, because somebody is waiting for the tool call.
 }
 ```
 
+### How a guard is handed what it is given
+
+A guard receives the given values as environment variables, in the same way as a hook: `SLIPWAI_STAGE`,
+`SLIPWAI_QUERY`, `SLIPWAI_TOOL` and so on. `SLIPWAI_POINT` names the guard point. A variable is set only
+where the value exists. For example, a person's own session has no stage, so `SLIPWAI_STAGE` is not set.
+
+A guard runs with the project root as its working directory. Slipwai ends a guard that is over its budget,
+and the call goes ahead. A guard that crashes, exits with any code except 2, or is not in the project also
+lets the call go ahead. A guard can never keep a tool call waiting for longer than its budget.
+
+### What a `before-search` guard is handed
+
+A search guard must decide about *this* search: which tool made it, where it looks, and whose it is. So
+`before-search` also hands the guard one JSON object on its stdin. This object is the contract. Write a
+guard against it.
+
+| Field | What it is |
+|---|---|
+| `v` | The version of this contract: `1`. A new field does not change it. A field whose meaning changes does. |
+| `point` | `before-search`. |
+| `tool` | The tool that makes the search, in the harness's own spelling: `Grep`, `Glob` or `Bash` on Claude Code. |
+| `query` | The same string as `SLIPWAI_QUERY`: the pattern, or the command for a shell search. |
+| `pattern` | What a search tool looks for: a regular expression for `Grep`, a file pattern for `Glob`. |
+| `path` | Where a search tool looks, exactly as the agent wrote it. It can be relative to `cwd`. |
+| `glob` | The file filter of a `Grep`, for example `*.md`. |
+| `type` | The file type of a `Grep`, for example `py`. |
+| `command` | The whole shell command, for a search that comes through the shell. Slipwai does not parse it. |
+| `cwd` | The directory that the session is in. |
+| `session` | The harness's identifier for the session. |
+| `agent` | The harness's identifier for the sub-agent that made the call. It is absent for the session itself. |
+| `agent_type` | The type of that sub-agent, for example `sail-implement-shipwright`. |
+| `stage` | The rung, in a session that a captain dispatched. |
+| `slice` | The slice, in a session that a captain dispatched. |
+| `fairway` | The fairway, in a session that a captain dispatched. |
+
+**A field that the search did not name is absent.** It is never an empty string. A `Grep` with no `path`
+has no `path` key, and a call by the session itself has no `agent` key. Read a field with `.get()`.
+
+Every shell command reaches `before-search`, and not only the commands that search. A `grep` in the shell
+is the same search through another door, and slipwai cannot tell which commands search without parsing
+the shell. So a guard receives `tool: "Bash"` and the `command`, and decides for itself.
+
+**A guard is handed the search, not the session.** The harness's own event also names the transcript of
+the conversation, the permission mode and the identifier of the call. Slipwai copies none of them.
+
+`SLIPWAI_QUERY` is the only thing that a guard received before this event existed. It still carries the
+same string, so a guard that reads only `SLIPWAI_QUERY` works as before. Slipwai cuts it at 16,000
+characters, because a platform refuses a process whose arguments are too long. The event carries the
+whole string.
+
+The other guards receive no event on stdin. `tests/test_guard_event.py` holds this table to the code that
+builds the event.
+
+### A guard can see its extension's own tools used
+
+Some rules depend on what a session did earlier. The rule for a code index is *refuse a symbol search
+until this session has asked the index*. An ask over MCP is a tool call of its own, and no guard point
+fires for it. So a guard can declare the tools whose use it wants to **see**:
+
+```json
+{
+  "guards": {
+    "before-search": {"run": "guards/ask-the-index.py", "sees": ["mcp__codegraph__.*"]}
+  }
+}
+```
+
+When a session is about to use one of those tools, slipwai runs the same script. It sets `SLIPWAI_POINT`
+to `tool-use`, and `SLIPWAI_GUARD` to the guard that declared the tool. It hands the script this JSON
+object on stdin:
+
+| Field | What it is |
+|---|---|
+| `v` | The version of this contract: `1`. |
+| `point` | `tool-use`. |
+| `tool` | The tool that is being used, for example `mcp__codegraph__codegraph_explore`. |
+| `cwd` | The directory that the session is in. |
+| `session` | The harness's identifier for the session. |
+| `agent` | The harness's identifier for the sub-agent that made the call. It is absent for the session itself. |
+| `agent_type` | The type of that sub-agent. |
+| `stage` | The rung, in a session that a captain dispatched. |
+| `slice` | The slice, in a session that a captain dispatched. |
+| `fairway` | The fairway, in a session that a captain dispatched. |
+
+So one script reads `point`, records the session at `tool-use`, and decides at `before-search`. Three
+rules apply:
+
+- **Seeing is not judging.** `tool-use` is not a guard point. Slipwai discards the exit code, so a guard
+  cannot refuse a tool that it is only told about. If the script exits 2 there, slipwai says so and the
+  call goes ahead. This is why seeing is a separate moment and not one more `before-` point: a script
+  written to refuse wherever it runs would otherwise stop its own extension's tool.
+- **A guard is told which tool, and not what the tool was asked.** The event carries no arguments of the
+  call. They are not a search, and they can hold anything.
+- **`sees` is limited to one MCP server's tools.** Each entry is `mcp__<server>__<tool>` or
+  `mcp__<server>__.*`. Slipwai also reads `mcp__<server>__*`, the spelling that `tools` uses, as the same
+  thing. A guard can declare at most 8 entries. Slipwai refuses anything else when it reads the manifest,
+  and ignores it in a registry that somebody edited by hand. No alternation and no other wildcard is
+  accepted, so no extension can name a search tool, the shell or every MCP call, and no extension can put
+  a guard in front of every tool call.
+
+A person agrees to what a guard sees together with the guard, and the question names the tools. On Claude
+Code, the pre-tool matcher for `tool-use` is exactly the entries of the agreed guards: slipwai writes that
+one row into `.claude/settings.json` when an agreement changes and at every `make agents`, and removes it
+when no agreed guard sees anything. [Which harness holds which guard](#which-harness-holds-which-guard)
+says where this works. A shell command that belongs to an extension needs no `sees`: every shell command
+reaches `before-search` already.
+
+`tests/test_guard_seen.py` holds this table to the code, and is the proof that the rule above can be
+written: a stand-in extension refuses a symbol `Grep` of the source, allows it after its tool was used in
+that session, never refuses a `Grep` under `specs/` or a `Glob`, and still refuses another session.
+
 **A person agrees to a guard. Installing the extension is not enough.** A hook runs wherever an extension
 is elected. A guard can also refuse things that a person asked for. So `./init` asks once, and names in
 plain words what each guard could stop. `./init` writes `.slipwai/guards.json` from the answer, not from
@@ -214,8 +329,29 @@ the manifests.
 
 `./init` asks this question over the terminal. So a scripted or CI `./init` is never asked, and agrees to
 nothing. No answer means *no*. That is the only safe default for a question about refusing somebody's tool
-calls. If nobody agreed to an extension's guard, the guard never fires. To change the answer later, run
-`python3 scripts/extensions/guards.py --elect <keys>`.
+calls. If nobody agreed to an extension's guard, the guard never fires. To change the answer later:
+
+- `python3 scripts/extensions/guards.py --elect <keys>` agrees to the guards of the extensions it names.
+  It keeps every agreement that is already there.
+- `python3 scripts/extensions/guards.py --remove <keys>` takes the agreement back for the extensions it
+  names. It keeps the others.
+
+**A guard that arrives on an upgrade is said, and never agreed to for anybody.** A project can elect an
+extension before the extension has a guard. `slipwai migrate` then brings the guard's files and refreshes
+`available-guards.json` from the installed package, but nobody was asked. So:
+
+- `slipwai migrate` prints one line for each such extension, and writes the same lines to the catch-up
+  page under *Guards nobody has agreed to*.
+- `make agents` prints the same line every time it runs. If it runs at a terminal, it asks the question
+  that `./init` asks, and a `y` agrees. With no terminal it prints the line, changes nothing and exits 0.
+
+Each line ends with the command that agrees: `python3 scripts/extensions/guards.py --elect <key>`. Neither
+command writes `.slipwai/guards.json` unless a person answered. An extension must not write that file
+either, from a hook or from anywhere else. The file *is* the agreement.
+
+The registry holds each guard as it was when a person agreed to it. If an extension later changes that
+guard's declaration, the agreed one still fires. `make agents` and `migrate` say that it changed, with the
+same command, and `make agents` does not ask about it in passing.
 
 **Where guards fire from.** All of a harness's own events arrive at one place: `scripts/agents/session.py`.
 These events are the pre-tool event, the stop event and the compaction events. `session.py` runs the
@@ -224,6 +360,41 @@ keel's answer first, and then the extensions' answers.
 So an extension declares `before-write` once. It does not have to learn the spelling of each of thirty-six
 harnesses. For the same reason, the keel's own refusal of edits to controlled files is a guard like any
 other. It is not a row that the keel writes into one harness's settings file.
+
+## Which harness holds which guard
+
+A guard holds on a harness only if that harness has a hook that can refuse at that moment, and somebody
+read the shape of that hook. `scripts/agents/registry.json` records this for each harness, with the source
+and the date. A harness that is not in this table holds no guard: an extension's guard is installed and
+agreed to there, and it refuses nothing.
+
+| Harness | `session` | `before-search` | `before-write` | `before-command` | `before-fetch` | `after-delegate` | `before-stop` | `tool-use` |
+|---|---|---|---|---|---|---|---|---|
+| Claude Code (`claude`) | yes | yes | yes | yes | yes | yes | yes | yes |
+| Cursor (`cursor-agent`) | no | no | no | no | no | no | yes | no |
+| Gemini CLI (`gemini`) | no | no | no | no | no | no | yes | no |
+
+`tool-use` is not a guard point. It is the moment when a guard is told that a tool it `sees` was used.
+
+**Cursor and Gemini CLI get no `before-search`, and slipwai does not pretend that they do.** The registry
+records a stop hook for each of them, and slipwai projects that hook. The registry records no hook before
+a tool call for either of them whose input and refusal were read. Slipwai writes a harness's hook file
+only from a shape that somebody read, because a row written from a guess is a guard that looks installed
+and never fires. When somebody reads such a hook, its row gains the event, slipwai projects it, and this
+table changes.
+
+**An extension is told, so that its guidance can be true.** At the `init` and `project` hook points, the
+hook receives `SLIPWAI_GUARDS_HELD`. It is a JSON object: each harness that is installed in the project,
+with the list of moments that hold there.
+
+```json
+{"claude": ["session", "before-search", "before-write", "before-command", "before-fetch", "after-delegate", "before-stop", "tool-use"], "gemini": ["before-stop"]}
+```
+
+`python3 scripts/extensions/guard_harness.py --held` prints the same object. So an extension that writes
+"a guard refuses that search" into `AGENTS.md` can write it only where `before-search` is in the list, and
+say that the rule is advice on the other harnesses. `tests/test_guard_harnesses.py` holds this table to
+the registry, and the Claude Code row to the hook rows that slipwai writes.
 
 ## The tools
 
@@ -260,12 +431,54 @@ not carry a live configuration value that belongs to an extension.
 
 ## Where the files land
 
-Slipwai writes every file of the package except `extension.json` into a generated project at
-`scripts/extensions/<key>/`. Three files sit beside them:
+Slipwai writes what a project runs or reads of the package into a generated project at
+`scripts/extensions/<key>/`. Four files sit beside them:
 
 - `scripts/extensions/available.json` carries each offered extension's hooks.
 - `available-guards.json` carries what each extension can refuse.
 - `available-tools.json` carries the tool names that each extension needs allowed.
+- `available-writes.json` carries the paths that each extension says it writes outside its own directory.
+
+**A project is not given the package's repository.** A package is a repository as well as a tool. These
+paths at the package root stay in the package, for every extension, with no line in any manifest:
+
+| Not given | Why |
+|---|---|
+| `.github/` | A workflow outside a project's own `.github/` is run by nobody. |
+| `tests/` | Nothing in a project runs a package's tests. |
+| `changelog.d/`, `CHANGELOG.md` | `VERSION` says which release the copy is. What earlier releases changed is the repository's history. |
+| `.gitignore`, `.gitattributes` | They describe the package's checkout. A project ignores an extension's local state through `ignore` in the manifest. |
+| `__pycache__/`, at any depth | What an interpreter left in the publisher's checkout. |
+
+A manifest can add to that list with `withhold`, and cannot take anything off it:
+
+```json
+{"withhold": ["fixtures/", "MAINTAINING.md"]}
+```
+
+Each entry is a path from the package root, with `/` between its parts. An entry that ends in `/` is a
+folder and everything in it.
+
+Three things are always given, whatever either list says:
+
+- **Every script the manifest declares** at a hook or a guard, wherever the script sits.
+- **Every module of the package that such a script imports**, followed through. Slipwai reads the `import`
+  statements, and looks beside the importing file and at the package root. Slipwai does not see a module
+  that is loaded by a computed name, or a file that is opened as data. Keep those outside the paths above.
+- **`README.md`, a licence and a notice.** The README is what a person or an agent in the project reads to
+  learn what the folder is. A licence travels with the code that it covers, and a project holds a copy of
+  that code.
+
+`slipwai extension check <dir>` prints how many files a project is given, and names the ones it is not.
+`slipwai conformance --extension` runs the entry point in a project that holds only what is given. So a
+script that needs a withheld file fails on the publisher's machine, not in a project.
+
+None of this changes what a release packs. The archive, its checksum and the installed package are still
+the whole package.
+
+**An existing project loses those files at its next `slipwai migrate`.** The merge removes each one that
+the project left as it was given. A file that somebody changed in the project stays as it is, the merge
+does not stop on it, and the catch-up page names it.
 
 Slipwai does not copy the manifest. Nothing reads a manifest inside a project. A copy there would be a
 decoy that nothing reads and everybody edits.
@@ -274,6 +487,83 @@ The project receives the files at **generation**, not at election. `./init` buil
 catalogue, and the election happens inside the project, where there is no keel to fetch anything. So the
 menu offers exactly what `./init` can run. If you install an extension after a project was generated, the
 extension reaches that project at the next `slipwai migrate`.
+
+## Taking it back
+
+An extension can write outside its own directory. For example, an entry point can write a command at
+`scripts/<key>` that its `AGENTS.md` block names. Two declarations let a project take such a file back.
+
+**`writes` names the paths.** The record is declared, not observed: slipwai does not watch what a hook
+does.
+
+```json
+{
+  "hooks": {"init": "init.py", "remove": "hooks/remove.py"},
+  "writes": ["scripts/indexer"]
+}
+```
+
+Each entry is a path from the project root, with `/` between its parts, and outside
+`scripts/extensions/<key>/`. Declare the files that are wholly the extension's. Do not declare a file that
+the extension shares, such as `AGENTS.md` or a harness's MCP file. The extension holds one entry in such a
+file, and the `remove` hook takes that entry back.
+
+An election records the paths in `.slipwai/hooks.json`, under `writes`.
+
+**`remove` is the point where the extension takes them back.** It has no default declaration, because an
+entry point installs. Slipwai fires it for one extension, when a person un-elects that extension:
+
+```sh
+python3 scripts/extensions/hooks.py --remove <key>
+```
+
+The un-election does these things, in this order:
+
+1. It fires the extension's `remove` hook, if the extension declares one.
+2. It names each recorded path that is still in the project. It removes no file itself. A file that an
+   extension wrote can since have become a file that somebody depends on, so a person decides.
+3. It takes the extension out of `.slipwai/hooks.json`, out of `.slipwai/extensions.json`, and takes its
+   block out of `AGENTS.md`.
+
+A `remove` hook that fails never blocks the un-election. Slipwai reports it as a `hook` line, and
+continues. The extension's copy under `scripts/extensions/<key>/` stays, because the extension is still
+offered. The un-election does not withdraw a guard that somebody agreed to. `.slipwai/guards.json` holds
+that agreement.
+
+**`slipwai extension remove <key>` runs the un-election first** when you run it in a project that elected
+the extension. Then it removes the package from the machine. It changes no other project. Run anywhere
+else, it prints the un-election command to run in each project that elected the extension. Run that
+command before the project's next `slipwai migrate`, because the migration takes the copy away, and the
+`remove` hook is in the copy.
+
+## Keeping one current
+
+`slipwai upgrade` moves an installed extension as it moves an installed language. Its `extensions:` section
+has one line for each:
+
+| The line says | What happens |
+|---|---|
+| `<key> 1.0.0 → 1.0.1 available` | A newer release that this keel can load is published. `upgrade` installs it. With `--check`, it prints `would run: slipwai extension upgrade <key>` and installs nothing. |
+| `<key> 1.0.0 (newest compatible)` | Nothing moves. |
+| `<key> 1.0.0 held back: 2.0.0 needs another core schema than 9.0 — slipwai upgrade, once a slipwai that speaks it is published` | Nothing moves. The newer release is for another keel. |
+
+`slipwai extension upgrade <key>` is the same move for the extensions that you name. With no name, it moves
+every installed extension.
+
+An upgrade agrees to nothing for you:
+
+- If the release comes from a publisher that this machine has not accepted, `upgrade` refuses it and names
+  the command that accepts the publisher. The upgrade then exits non-zero. An upgrade that left an
+  extension behind did not succeed.
+- A guard is agreed to in a project, at election. If a newer package declares a guard, no project's
+  agreement changes.
+
+The newer release is admitted as an install admits it. Slipwai stages the release, reads its manifest
+under this keel's schema, and only then renames it into place. A release that does not load never replaces
+one that does.
+
+Moving the installed package does not move a project's copy. A project takes the installed package at its
+next `slipwai migrate`.
 
 ## Writing one
 
@@ -284,9 +574,11 @@ slipwai package release <dir>              # the release file, its digest and it
 slipwai package register <dir> --channel <checkout>   # both of those, into a channel
 slipwai extension check <dir>              # just the manifest, and the six it is held to
 slipwai extension install <key>            # into the package directory
+slipwai extension upgrade [<key>...]       # each installed one to its newest compatible release
 slipwai extension list                     # what is installed, and what each attaches to
 slipwai hooks                              # every point, and what is on it
-python3 scripts/extensions/guards.py --elect <keys>   # in a project: who may refuse a tool call
+python3 scripts/extensions/guards.py --elect <keys>   # in a project: one more may refuse a tool call
+python3 scripts/extensions/guards.py --remove <keys>  # in a project: it may not any more
 ```
 
 The scaffold ships a `Makefile` with `check`, `release` and `register`. It also ships a CI workflow that

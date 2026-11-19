@@ -55,13 +55,12 @@ class PublishedTest(unittest.TestCase):
     def said(self, prerelease: bool = False) -> list[str]:
         return standing(prerelease, self.packages, lambda: self.index)
 
-    def test_an_extension_behind_what_is_published_is_shown_with_the_command_that_moves_it(self) -> None:
+    def test_an_extension_behind_what_is_published_is_shown_in_the_words_a_language_is(self) -> None:
+        """The command that moves it is `upgrade`'s to say or to run (`test_extension_upgrade`), as for a language."""
         said = self.said()
-        self.assertEqual(said[0], "extensions:")
-        self.assertIn("  codegraph 1.0.0 (newest published)", said)
-        behind = next(line for line in said if "ux-gates" in line)
-        self.assertIn("ux-gates 1.0.0 → 1.0.1 available", behind)
-        self.assertTrue(behind.endswith("extension install ux-gates"), behind)
+        self.assertEqual(said[:3], ["extensions:", "  codegraph 1.0.0 (newest compatible)",
+                                    "  ux-gates 1.0.0 → 1.0.1 available"])
+        self.assertEqual(len(said), 4)
         self.assertIn("migrate", said[-1], "and what a project does to take it")
 
     def test_a_snapshot_counts_only_for_somebody_following_them(self) -> None:
@@ -79,7 +78,9 @@ class PublishedTest(unittest.TestCase):
             raise Unreachable("https://example.invalid/index.json", "could not be read")
         said = standing(False, self.packages, unreachable)
         self.assertEqual(said[:3], ["extensions:", "  codegraph 1.0.0", "  ux-gates 1.0.0"])
-        self.assertIn("could not be read", said[-1])
+        self.assertIn("could not be read", said[-2])
+        self.assertTrue(said[-1].endswith("extension install <path-or-url>"), "and the way round the index")
+        self.assertEqual(len(said), 5)
 
     def test_nothing_installed_says_so(self) -> None:
         with tempfile.TemporaryDirectory() as empty:
@@ -87,13 +88,13 @@ class PublishedTest(unittest.TestCase):
                              ["extensions: no extension is installed"])
 
     def test_the_extensions_follow_the_languages_whatever_the_languages_did(self) -> None:
-        step = with_extensions(lambda check, pre, moved: ["languages:"], lambda pre: ["extensions:"])
+        step = with_extensions(lambda check, pre, moved: ["languages:"], lambda check, pre, moved: ["extensions:"])
         self.assertEqual(step(True, False, False), ["languages:", "extensions:"])
 
         def failed(check: bool, pre: bool, moved: bool) -> list[str]:
             raise LanguagesNotUpgraded(["languages:", "not moved"])
         with self.assertRaises(LanguagesNotUpgraded) as raised:
-            with_extensions(failed, lambda pre: ["extensions:"])(False, False, True)
+            with_extensions(failed, lambda check, pre, moved: ["extensions:"])(False, False, True)
         self.assertEqual(raised.exception.lines, ["languages:", "not moved", "extensions:"])
 
 

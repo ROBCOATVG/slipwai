@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.film import films_card, films_of, ranged
 from slipwai.logs import run_dir

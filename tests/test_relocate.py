@@ -11,6 +11,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai.migrate import commit_says, refresh
 from slipwai.relocate import relocate
 

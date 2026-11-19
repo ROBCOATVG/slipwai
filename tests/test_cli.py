@@ -12,6 +12,8 @@ import io
 import sys
 import unittest
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import ROOT, VERSION
 from slipwai.cli import main
 

@@ -188,6 +188,12 @@ what was attached. A conversation left open is kept under the run folder and pic
 opened again, after a board restart too. What you have typed and not sent is never cleared by the window
 updating itself. With no agent the board can launch, the card says so; hand the feature to `/sail` instead.
 
+**A document that repeats what is specified.** Where a document you attached names requirement ids that a
+specification under `specs/` already lists (`FR-003`, `SC-001` and the like), the card lists them beside
+**Capture this idea**, with the document and the specification each is in. It is a match on the ids only:
+the board has not compared what they say, and two features can both number from one. Nothing is refused; you
+can still capture, and the assessment reads both. With no ids in the document, or no match, nothing is said.
+
 **From Feedback as well.** Confirming a feedback proposal as **New scope** opens this same conversation, with
 what you said in the item as its first words, and shows this tab. Say more or attach a document as you would
 to any hand-over. The item stays a proposal until **Capture this idea**, which records the idea as what it

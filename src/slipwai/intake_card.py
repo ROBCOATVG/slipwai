@@ -58,7 +58,7 @@ STYLE = """
   border:1px solid var(--rule);background:var(--paper);color:var(--ink-2)}
 #handover label.file:focus-within .pick{outline:2px solid var(--teal);outline-offset:1px}
 #handover .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-#handover .said{color:var(--brass);font-size:.88rem;margin:0}
+#handover .said,#handover .warn{color:var(--brass);font-size:.88rem;margin:0}
 """
 
 SCRIPT = """
@@ -75,6 +75,7 @@ document.addEventListener('click', event => {
     const go = home.querySelector('button[type=submit]'), stop = home.querySelector('button.stop');
     const take = home.querySelector('[data-capture]'), fault = home.querySelector('.said');
     const on = home.querySelector('.on'), again = home.querySelector('[data-clear]');
+    const warn = home.querySelector('.warn');
     let at = 0, busy = false, timer = null;
     const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
                                                  body: JSON.stringify(body)});
@@ -85,6 +86,7 @@ document.addEventListener('click', event => {
       go.textContent = busy ? (said && said.thinking ? 'Thinking…' : 'Reading…') : 'Say';
       if (!said) return;
       take.hidden = !said.ready; again.hidden = !said.open;
+      warn.textContent = said.overlap || ''; warn.hidden = take.hidden || !said.overlap;
       on.textContent = said.agent ? 'on ' + said.agent + (said.model ? ' · ' + said.model : '') : '';
     };
     const poll = async () => {
@@ -127,7 +129,7 @@ document.addEventListener('click', event => {
       take.disabled = false;
       refuse(await answer.text());
       if (!answer.ok) return;
-      emptied(); take.hidden = true;
+      emptied(); take.hidden = warn.hidden = true;
       // The idea is a new card on this tab: drawn by a reload, unless the box holds the next thing to say.
       if (!box.value.trim() && !file.value) location.reload(); else poll();
     });
@@ -153,6 +155,7 @@ def handover_html() -> str:
             '<div class="row"><button class="go" type="submit">Say</button>'
             '<button class="stop" type="button" hidden>Stop</button>'
             '<button class="go" type="button" data-capture hidden>Capture this idea</button></div>'
+            '<p class="warn" role="note" hidden></p>'
             '<p class="said" role="status" hidden></p></form></div>')
 
 

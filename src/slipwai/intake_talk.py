@@ -34,6 +34,7 @@ from .errors import Busy
 from .feedback import became_idea
 from .harness import acp_environment
 from .intake_document import TRANSCRIPT, held, staged, text_of
+from .intake_overlap import overlap, warning
 from .logs import run_dir
 from .project.intake import PLACE, capture
 from .shell_environment import login_environment, with_tools
@@ -81,6 +82,7 @@ class Handover:
         self.turns: list[dict] = []
         self.dropped = 0
         self.busy = self.ready = self.loading = False
+        self.overlap = ""  # what the documents share with the specifications, by id: said, never a refusal
         self.source = ""  # the feedback item this conversation was started from, where it was
         self.told = False  # whether a session that could not load the last one has been given the role again
         self.tried = False  # whether this object has tried to pick its kept session up
@@ -89,6 +91,12 @@ class Handover:
         for one in self.kept():  # a board restarted: the conversation as it was kept
             self.show(one["role"], one["text"], one.get("kind", "text"))
             self.source = self.source or str(one.get("feedback") or "")
+        self.weigh()
+
+    def weigh(self) -> None:
+        """The ids the documents held share with the specifications, read when a document arrives and not at
+        every poll."""
+        self.overlap = warning(overlap(self.root, held(self.home / DOCUMENTS)))
 
     def environment(self) -> dict[str, str]:
         if self.login is None:
@@ -142,6 +150,7 @@ class Handover:
                     "ready": self.ready and not self.busy, "open": bool(self.turns), "agent": self.on,
                     "thinking": bool(self.agent is not None and self.agent.thinking),
                     "model": self.agent.model if self.agent is not None else "", "feedback": self.source,
+                    "overlap": self.overlap,
                     "documents": [one.name for one in held(self.home / DOCUMENTS)]}
 
     def ask(self, message: str, document: dict | None = None, feedback: str = "") -> str:
@@ -164,6 +173,7 @@ class Handover:
         self.say("person", message or brought(path.name if path else ""), **request)
         if path is not None:
             self.say("person", path.name, "attached")
+            self.weigh()
         launch = self.chosen()
         if launch is None or not launch.able:
             self.show("agent", "There is no agent this board can run: nothing on the Settings tab can be launched. "
@@ -247,7 +257,7 @@ class Handover:
         shutil.rmtree(self.home, ignore_errors=True)
         with self.lock:
             self.turns, self.dropped, self.ready, self.told = [], self.dropped + len(self.turns), False, False
-            self.on = self.source = ""
+            self.on = self.source = self.overlap = ""
         return "cleared"
 
     def capture(self) -> str:
@@ -270,9 +280,10 @@ class Handover:
             sources.append(page)
         folder, _ = capture(self.root, mine[0].get("request") or mine[0]["text"], sources)
         linked = became_idea(self.root, str(mine[0].get("feedback") or ""), folder)
+        warned = f" {self.overlap}" if self.overlap else ""
         self.reset()
         return (f"captured {PLACE}/{folder.name}.{linked} Continue the next feature confirms it is a new "
-                "feature, and then assesses it")
+                f"feature, and then assesses it.{warned}")
 
 
 TALKS: dict[Path, Handover] = {}

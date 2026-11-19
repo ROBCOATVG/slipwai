@@ -77,6 +77,7 @@
 # why: 2026-11-19 21dd92eec61a759a captain.py, the same on every platform and on purpose: a merge request whose id was asked before is answered only by a granted or refused line written at or after the request, so an earlier run's refusal no longer answers it.
 # why: 2026-11-19 3dc4712bacfc8837 logs.py: the paused docstring reworded to fit the module's size budget; no behaviour changes.
 # why: 2026-11-19 1f221288ab16ea02 scripts/extensions/project.py: behaviour changes on purpose on every platform alike (#109, defect 5) — after firing the project point, make agents rewrites an elected extension's AGENTS.md block from its GUIDANCE where it still differs, so an extension with no project hook is re-projected; --check's message says so. Nothing platform-specific moved: no path, process or shell handling changed.
+# why: 2026-11-19 df9a10e418301f6b mender.py, the same on every platform and on purpose: a need's change may land anywhere but a gate, the cloud under infra/ other than a flag's declaration, a slice's own folder, and source and tests, where it could land only on six listed places.
 
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
@@ -209,14 +210,14 @@
 6ca5c08fd9e5efa52494d52df0badd2dfe366cda4bcbadb8f28718bc79bcc97c  standard-postgres-toy-serve  scripts/agents/deck_line.py
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-memory-none  scripts/event-model/model.ts
 6d4f714142f959706096d8367d25170763b2d25e220dbbbd7aab6229c91dab46  event-modelling-postgres-toy-serve  scripts/event-model/model.ts
-6d99950d70f7b6fd249a23edc7fa009b0098425a45b7bd020f9ca0b42699a3a6  event-modelling-memory-none  scripts/agents/mender.py
-6d99950d70f7b6fd249a23edc7fa009b0098425a45b7bd020f9ca0b42699a3a6  event-modelling-postgres-toy-serve  scripts/agents/mender.py
-6d99950d70f7b6fd249a23edc7fa009b0098425a45b7bd020f9ca0b42699a3a6  standard-memory-none  scripts/agents/mender.py
-6d99950d70f7b6fd249a23edc7fa009b0098425a45b7bd020f9ca0b42699a3a6  standard-postgres-toy-serve  scripts/agents/mender.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-memory-none  scripts/check-decisions.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-postgres-toy-serve  scripts/check-decisions.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-memory-none  scripts/check-decisions.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-postgres-toy-serve  scripts/check-decisions.py
+6f7bf41125ff5ba4fa80cec12935bed048840b918e40fcb18576b5fb59992eec  event-modelling-memory-none  scripts/agents/mender.py
+6f7bf41125ff5ba4fa80cec12935bed048840b918e40fcb18576b5fb59992eec  event-modelling-postgres-toy-serve  scripts/agents/mender.py
+6f7bf41125ff5ba4fa80cec12935bed048840b918e40fcb18576b5fb59992eec  standard-memory-none  scripts/agents/mender.py
+6f7bf41125ff5ba4fa80cec12935bed048840b918e40fcb18576b5fb59992eec  standard-postgres-toy-serve  scripts/agents/mender.py
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-memory-none  scripts/event-model/palette.ts
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-postgres-toy-serve  scripts/event-model/palette.ts
 7251998719c9c652a4742cb9e62e827f8aa4b68f4f78e072aa3a6cc3f58e93ee  event-modelling-memory-none  scripts/agents/preflight.py

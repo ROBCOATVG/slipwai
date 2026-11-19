@@ -82,15 +82,21 @@ DEFAULT_ATTEMPTS, DEFAULT_MINUTES = 3, 60
 #: one, or decides what an agent may do is a file it may edit.
 NEVER = ("scripts/", "tools/", ".githooks/", ".slipwai/", ".specify/", "agents/", "commands/", "skills/",
          "Makefile", "harbour.json", "project.json", ".github/")
-#: Where a need's change may land: the shared surfaces a slice may not edit and hands back instead.
-#: `docker/` is the local backing services' own configuration — the sign-in realm, a database's init script —
-#: which no deployable owns and every slice's story runs against. It was nobody's: lean-coffee-club's MT1
-#: handed back "the realm has no browser client, so no story can sign in" as a need for the fleet, no mender
-#: could take it, and the slice stood parked for eighteen hours until a person came back.
-SHARED = (".gitignore", ".env.example", "docs/", "packages/", "design-system/", "docker/")
-#: And under a feature's `specs/`, the mock-ups: the host's as `docs/design.md` is, and handed back the
-#: same way. Not the rest of `specs/` — a slice's own folder is the slice's, and the chart is rendered.
-SHARED_UNDER_SPECS = re.compile(r"^specs/[^/]+/mockups/")
+#: Where a need's change may land is everywhere but four things, and not a list of places. It was a list —
+#: `.env.example`, `docs/`, `docker/`, three more — and whatever a slice handed back outside it was nobody's:
+#: the slice may not write it, the mender might not, and it stood on the board for a person who, under
+#: `/cruise`, is not there. lean-coffee-club had sixteen such needs open after two days: a compose file's
+#: environment line, each fairway's `careen.md`, a flag's declaration, a service's build file. The four:
+#: `NEVER` above; the cloud, which is a person's because a change there spends money and reaches production;
+#: a slice's own folder; and source and tests, which are a slice's work and not a hand-back.
+#: The skill that says how this project's app is run is the project's own record, kept up as the app
+#: changes, so it is the one thing under `skills/` a need may change.
+KEPT_UP = ("skills/run-the-app/",)
+#: A flag's declaration is the one file under `infra/` a need may change: additive, and seeded `off`.
+FLAGS = "infra/service/flags.auto.tfvars"
+PERSONS = ("infra/",)
+#: A slice's own record, and code: `src/` and the test folders, wherever a deployable keeps them.
+SLICES_OWN = re.compile(r"^specs/[^/]+/slices/|(?:^|/)(?:src|test|tests|__tests__)/")
 WORKFLOWS = ".github/workflows/"
 #: A `uses:` line, as a workflow's step names an action: its indent and dash, the action, and its ref.
 USES = re.compile(r"^(\s*-?\s*)uses:\s*['\"]?([^@\s'\"]+)@([^\s'\"#]+)")
@@ -229,10 +235,13 @@ def refusal(job: str, onto: str, branch: str, reverting: list[str], reads: str =
             continue
         if job == TRUNK and path in reverting:
             continue
-        if any(path == never.rstrip("/") or path.startswith(never) for never in NEVER):
+        if job == NEED and shared(path):
+            continue
+        if never(path):
             return f"{path} is never the mender's to change: a gate passes on its own merits"
-        if job == NEED and not shared(path):
-            return f"{path} is not a shared surface, and a need's change lands only on one"
+        if job == NEED:
+            return (f"{path} is not a need's to change: the cloud is a person's, and a slice's own folder, "
+                    f"source and tests are a slice's")
     if job == NEED and reads and reads not in paths:
         return f"the need is checked in {reads}, and the change does not touch it"
     return ""
@@ -262,7 +271,7 @@ def prompt(job: str, worktree: Path, branch: str, told: dict) -> str:
     return head + (f"\n\nSlice work on fairway {told['fairway']} handed this back to the host: "
                    f"\"{told.get('said', '')}\". The need: \"{told['what']}\". It is met when "
                    f"{told['check']}. Land exactly that from what the slice left, which the need or the note "
-                   f"names. If it is not a change to a shared surface — it waits on another slice's merge, a "
+                   f"names. If it is not a change to a file — it waits on another slice's merge, a "
                    f"secret or a person — change nothing and end.")
 
 
@@ -426,9 +435,16 @@ def stamp(instant: str) -> str:
     return re.sub(r"\D", "", instant)[4:14] or "0"
 
 
+def never(path: str) -> bool:
+    """Whether a path is one no mend may change: a gate, what runs one, or what decides what an agent may do."""
+    return any(path == one.rstrip("/") or path.startswith(one) for one in NEVER)
+
+
 def shared(path: str) -> bool:
-    """Whether a path is a shared surface: one no slice may edit, so the one a slice hands back."""
-    return any(path == one or path.startswith(one) for one in SHARED) or SHARED_UNDER_SPECS.match(path) is not None
+    """Whether a need's change may land on this path: anywhere but the four things `KEPT_UP` is written under."""
+    if any(path.startswith(one) for one in KEPT_UP) or path == FLAGS:
+        return True
+    return not (never(path) or any(path.startswith(one) for one in PERSONS) or SLICES_OWN.search(path))
 
 
 def eligible(need: object, by_person: bool) -> str:

@@ -17,6 +17,7 @@ import sys
 import time
 import unittest
 from typing import Any, ClassVar
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 from harbourmaster_fixture import AGENTS
@@ -208,7 +209,7 @@ class NeedTest(MenderFixture):
 
 
 class SharedSurfaceTest(unittest.TestCase):
-    """Which hand-backs the mender may land: a shared surface's text, written for the fleet."""
+    """Which hand-backs the mender may land: anything a slice may not write, but for four things."""
 
     def setUp(self) -> None:
         self.mender = WorkflowRuleTest.load()
@@ -221,10 +222,36 @@ class SharedSurfaceTest(unittest.TestCase):
         self.assertEqual(self.mender.eligible(self.need("docker/keycloak/realms/app.json"), False),
                          "docker/keycloak/realms/app.json")
 
-    def test_a_gate_and_a_service_s_own_code_are_not(self) -> None:
-        for path in ("Makefile", "scripts/check-flags.py", "apps/club/pom.xml", "infra/service/flags.auto.tfvars"):
+    def test_what_lean_coffee_club_s_slices_handed_back_and_nobody_could_land(self) -> None:
+        """Sixteen needs stood on its board for a person after two days, because the list of places a need
+        might land was six entries long and these were not on it."""
+        for path in ("docker-compose.yml", "fairways/invitations/careen.md", "apps/club/pom.xml",
+                     "infra/service/flags.auto.tfvars", "skills/run-the-app/SKILL.md", "package.json",
+                     ".env.example", "docs/design.md", "specs/001-meetings/mockups/board.html"):
+            with self.subTest(path=path):
+                self.assertEqual(self.mender.eligible(self.need(path), False), path)
+
+    def test_a_gate_the_cloud_and_a_slice_s_own_work_are_not(self) -> None:
+        for path in ("Makefile", "scripts/check-flags.py", "scripts/agents/try_it.py", "harbour.json",
+                     ".github/workflows/verify.yml", "skills/tdd/SKILL.md", "agents/sail-review-mate.md",
+                     "infra/service/main.tf", "infra/platform/network.tf",
+                     "apps/club/src/main/java/Wiring.java", "apps/web/tests/Board.test.tsx",
+                     "specs/001-meetings/slices/MT1/plan.md"):
             with self.subTest(path=path):
                 self.assertEqual(self.mender.eligible(self.need(path), False), "")
+
+    def test_a_need_s_branch_is_held_to_the_same_places(self) -> None:
+        with mock.patch.object(self.mender, "changed", return_value=["fairways/meetings/careen.md"]):
+            self.assertEqual(self.mender.refusal("need", "a", "b", [], "fairways/meetings/careen.md"), "")
+        with mock.patch.object(self.mender, "changed", return_value=["skills/run-the-app/SKILL.md"]):
+            self.assertEqual(self.mender.refusal("need", "a", "b", [], "skills/run-the-app/SKILL.md"), "")
+        with mock.patch.object(self.mender, "changed", return_value=["docs/x.md", "infra/service/main.tf"]):
+            self.assertIn("the cloud is a person's", self.mender.refusal("need", "a", "b", [], "docs/x.md"))
+        with mock.patch.object(self.mender, "changed", return_value=["docs/x.md", "Makefile"]):
+            self.assertIn("never the mender's", self.mender.refusal("need", "a", "b", [], "docs/x.md"))
+        with mock.patch.object(self.mender, "changed", return_value=["skills/run-the-app/SKILL.md"]):
+            self.assertIn("never the mender's", self.mender.refusal("trunk", "a", "b", []),
+                          "a red trunk is not mended in a skill")
 
     def test_a_person_s_need_is_taken_only_under_cruise(self) -> None:
         self.assertEqual(self.mender.eligible(self.need("docker/x.json", by="person"), False), "")

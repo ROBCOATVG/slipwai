@@ -134,7 +134,9 @@ class RealGitTest(Case):
         package_new.write("extension", "lens", self.area / "worktree", CORE)
         (self.area / "worktree/.git").write_text(f"gitdir: {(self.area / 'gone').as_posix()}\n", encoding="utf-8")
         said = self.refused(self.area / "worktree/lens")
-        self.assertIn("fatal: not a git repository", said)
+        # git's own words differ by version ("not a git repository", "gitfile does not point to a valid
+        # repository"); what is held is that it refused, and quoted git rather than guessing for it.
+        self.assertIn("git would not answer for it: fatal:", said)
         self.assertIn(f"({self.area / 'worktree'})", said)
 
 

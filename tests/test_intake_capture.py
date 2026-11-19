@@ -152,3 +152,22 @@ class NoSkipTest(HandoverTest):
                                                     "document": {"name": "not-discussed", "text": "discussed\n"}})
         self.assertEqual(code, 400)
         self.assertIn("a name intake keeps for itself", refused)
+
+
+class SurfacesTest(HandoverTest):
+    def test_the_surfaces_the_agent_named_are_kept_with_the_idea_as_a_suggestion(self) -> None:
+        self.assertTrue(self.say(f"Billing for clubs.\nSurfaces it seems to touch: Member list; Checkout\n{CLEAR}")
+                        ["ready"])
+        code, captured = self.post("/handover/capture", {})
+        self.assertEqual(code, 200, captured)
+        self.assertIn("Kept as a suggestion for the storyboard: it seems to touch Member list; Checkout.", captured)
+        idea = intake.ideas(self.root)[0]
+        self.assertEqual(idea.surfaces, ("Member list", "Checkout"))
+        self.assertIn(f"{idea.slug}/surfaces.json", self.written())
+        self.assertIn("Seems to touch (a suggestion): Member list; Checkout", self.get("/voyage")[1])
+
+    def test_an_agent_that_named_none_leaves_no_hint(self) -> None:
+        self.say(CLEAR)
+        self.assertNotIn("suggestion", self.post("/handover/capture", {})[1])
+        self.assertEqual(intake.ideas(self.root)[0].surfaces, ())
+        self.assertNotIn("surfaces.json", "".join(self.written()))

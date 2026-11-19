@@ -196,6 +196,11 @@ words do not say — and to answer `needs-clarification` rather than guess. Wher
 conversation is the only way in: there is no button that skips it. Handing the feature to `/sail` still works
 either way.
 
+**The surfaces it seems to touch.** The agent is asked to name the screens or other surfaces the project
+already has that the idea seems to change. What it names is kept with the idea as
+`docs/intake/<slug>/surfaces.json` and shown under the idea as *Seems to touch (a suggestion)*. It is a hint
+for the storyboard stage to start from: nobody checked it against the app, and nothing treats it as decided.
+
 **A document that repeats what is specified.** Where a document you attached names requirement ids that a
 specification under `specs/` already lists (`FR-003`, `SC-001` and the like), the card lists them beside
 **Capture this idea**, with the document and the specification each is in. It is a match on the ids only:

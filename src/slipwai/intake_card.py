@@ -172,7 +172,9 @@ def next_features(root: Path, found: list) -> str:
     specified = bool(specifications(root))
     if not pending and not specified:
         return ""
-    rows = "".join(f"<p><b>{esc(one.slug)}</b> — {esc(one.state)}. {esc(one.detail)}</p>" for one in pending)
+    rows = "".join(f"<p><b>{esc(one.slug)}</b> — {esc(one.state)}. {esc(one.detail)}"
+                   + (f'<br><span class="hint">Seems to touch (a suggestion): {esc("; ".join(one.surfaces))}</span>'
+                      if one.surfaces else "") + "</p>" for one in pending)
     move = '<div class="ask"><button class="go" id="intake-go">Continue the next feature</button></div>'
     none = '<p class="empty">No idea is waiting. A further feature starts here, or with /sail in the agent.</p>'
     return (f'<div class="card" id="intake"><h2>Next features</h2>{rows + move if pending else none}'

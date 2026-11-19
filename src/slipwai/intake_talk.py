@@ -35,6 +35,7 @@ from .feedback import became_idea
 from .harness import acp_environment
 from .intake_document import TRANSCRIPT, held, staged, text_of
 from .intake_overlap import overlap, warning
+from .intake_surfaces import ASK, suggested
 from .logs import run_dir
 from .project.intake import PLACE, capture
 from .shell_environment import login_environment, with_tools
@@ -67,7 +68,9 @@ specify, plan, chart, split or implement. The board writes the idea down, from t
 documents, when they press Capture this idea.
 
 When what they handed over is one clear idea, say in two or three sentences what you understand it to be, and
-end your reply with this line exactly: {READY}"""
+end your reply with this line exactly: {READY}
+
+{ASK}"""
 
 
 def brought(name: str) -> str:
@@ -313,11 +316,14 @@ class Handover:
                 f"**{'Person' if one['role'] == 'person' else 'Agent'}:** {one['text']}\n\n" for one in kept),
                 encoding="utf-8")
             sources.append(page)
-        folder, _ = capture(self.root, mine[0].get("request") or mine[0]["text"], sources, discussed)
+        touched = suggested([one["text"] for one in kept if one["role"] == "agent"]) if discussed else []
+        folder, _ = capture(self.root, mine[0].get("request") or mine[0]["text"], sources, discussed, touched)
         marked = "" if discussed else (", marked not discussed: no agent read it with you, and the assessment "
                                        "is told to ask first")
         linked = became_idea(self.root, str(mine[0].get("feedback") or ""), folder)
         warned = f" {self.overlap}" if self.overlap else ""
+        if touched:
+            linked += f" Kept as a suggestion for the storyboard: it seems to touch {'; '.join(touched)}."
         self.reset()
         return (f"captured {PLACE}/{folder.name}{marked}.{linked} Continue the next feature confirms it is a new "
                 f"feature, and then assesses it.{warned}")

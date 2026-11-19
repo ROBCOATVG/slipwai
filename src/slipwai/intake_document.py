@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .project.intake import BRIEF, CONFIRMED, RECEIPT, UNDISCUSSED
+from .project.intake import BRIEF, CONFIRMED, RECEIPT, SURFACES, UNDISCUSSED
 
 #: Bytes one document, or one message, may be, as UTF-8: a long requirements document is a tenth of this, and
 #: the whole of it rides in an agent's context when it is read.
@@ -31,7 +31,7 @@ NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,79}$")
 DEVICES = frozenset(("con", "prn", "aux", "nul", *(f"com{n}" for n in range(1, 10)),
                      *(f"lpt{n}" for n in range(1, 10))))
 #: What intake itself writes in an idea's folder; a document called one of these would be read as it.
-RESERVED = frozenset(one.lower() for one in (BRIEF, CONFIRMED, RECEIPT, TRANSCRIPT, UNDISCUSSED))
+RESERVED = frozenset(one.lower() for one in (BRIEF, CONFIRMED, RECEIPT, TRANSCRIPT, UNDISCUSSED, SURFACES))
 #: Control characters text does not carry: everything below a space but tab, line feed, form feed and return.
 BINARY = re.compile(r"[\x00-\x08\x0b\x0e-\x1f]")
 

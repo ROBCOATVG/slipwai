@@ -203,6 +203,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "intake_feedback",
               # And the requirement ids a handed-over document shares with the specifications: a warning.
               "intake_overlap",
+              # And the surfaces the hand-over's agent thought the idea touches: a hint kept with the idea.
+              "intake_surfaces",
               # And every decision the fleet took, readable, each with the receipt the ceiling counts: one entry
               # read for a person — its sentence, its options split — and its card, in the tab and the slice's window.
               "decision_entry", "decision_log", "decision_cards",

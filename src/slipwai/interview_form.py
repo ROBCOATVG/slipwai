@@ -27,7 +27,7 @@ from .interview_page import (
     init_asked,
     repository_asked,
 )
-from .machine_card import lacking_line
+from .machine_card import WATCH, lacking_line
 from .page_shell import WORKS, document, esc
 
 
@@ -84,7 +84,7 @@ def form(answers: Mapping[str, str], root: Path | None = None) -> str:
 #: — the target decides which languages are offered, the backend decides which axes apply — is asked again
 #: rather than patched, because deciding in the browser which questions follow would be the second reading
 #: of the catalogue this slice exists to avoid.
-SCRIPT = WORKS + CHOOSING + """
+SCRIPT = WORKS + CHOOSING + WATCH + """
 // A file input's entry is a File, which JSON would render as `{}`: it is read here and sent as its text,
 // with its name beside it, and only when it is about to be used — a re-ask of the questions is sent the
 // name alone.

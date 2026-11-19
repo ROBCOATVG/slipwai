@@ -169,7 +169,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "stage_steps", "agent_ready", "agent_install",
               # What a route needs on the machine, the board installing it where the machine has none, and
               # the app opened from a download: placing itself, registering the board, opening it.
-              "prerequisites", "tool_install", "machine_card", "first_run", "app", "update_strip",
+              "prerequisites", "machine_probe", "tool_install", "machine_card", "first_run", "app", "update_strip",
               "terminal_command",
               # Where trunk's CI is read, asked before the fleet sails rather than at its first merge.
               "trunk_remote",

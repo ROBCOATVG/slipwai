@@ -24,7 +24,6 @@ import json
 import subprocess
 import sys
 import tempfile
-import threading
 import unittest
 import urllib.error
 import urllib.request
@@ -33,9 +32,9 @@ from pathlib import Path
 from unittest import mock
 
 import checkout_packages
+from board_fixture import served
 
 from slipwai import identity
-from slipwai.bridge import serve
 from slipwai.catalog import CATALOG, axis_applies
 from slipwai.cli_generate import DECLINE, quickstart_menu
 from slipwai.interview_form import form
@@ -280,11 +279,8 @@ class ServedTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp())
-        self.server = serve(self.root, "127.0.0.1", 0)
+        self.server = served(self, self.root)  # stopped, joined, then closed: `board_fixture`
         self.port = self.server.server_address[1]
-        threading.Thread(target=self.server.serve_forever, daemon=True).start()
-        self.addCleanup(self.server.server_close)
-        self.addCleanup(self.server.shutdown)  # added last, so run first: serving stops before the socket closes
 
     def get(self, path: str) -> str:
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=10) as answer:

@@ -42,6 +42,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from . import machine_probe
 from .agent_install import checked, fetched, unpacked
 from .prerequisites import BY_KEY, found
 from .shell_environment import TOOLS, adopt_tools
@@ -215,6 +216,7 @@ class Installing:
                       "first": self.first}
             (self.home / "tool.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
             adopt_tools(home=self.home.parent)  # the board's own `git` is found from now, not from a restart
+            machine_probe.MACHINE.forget(self.key)  # and the card's reload asks it again, not what it kept
             self.say(f"Installed {BY_KEY[self.key].name} {archive['version']} in {where}.")
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as fault:
             self.say(f"! {fault}")

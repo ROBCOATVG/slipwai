@@ -59,7 +59,7 @@ def differing(copy: Path, package: Path) -> list[str]:
         installed = text(package / relative)
         if installed is not None and text(copy / relative) != installed:
             found.append(relative.as_posix())
-    return found
+    return sorted(found)  # as text: `files` orders paths, which Windows compares without case
 
 
 def copies(root: Path, document: dict | None, packages: Path | None = None) -> list[str]:

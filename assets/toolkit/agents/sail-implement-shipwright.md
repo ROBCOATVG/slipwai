@@ -26,7 +26,8 @@ against; `example`, one at a time. Either way each example is observed failing f
 whatever an example names, as a no-op or a default return, before writing it, so a broken build is never the
 RED. That local, fast feedback is all this increment needs. Commit the increment locally when it is
 green; do not push, and do not widen to affected suites, static analysis or the full `{{make}} verify`.
-Those checks belong immediately before the first implementation push, which happens after demo acceptance.
+Those checks belong immediately before the first implementation push, which happens once the slice's examples
+are proven by tests and its review is closed — the ladder's *Demo* and *Merge to main* rungs say when.
 The task, its contract and the files you may read and write are in the brief; nothing else in the
 repository is yours to edit, including `tasks.md` — report which task you finished and the session that
 delegated you ticks the checkbox, because concurrent siblings would otherwise all write that one file.

@@ -117,7 +117,7 @@ Repository-specific test, coverage, mutation, and evidence-freshness rules take 
 - Assess after GREEN using the passing behavior tests as the working safety net
 - Load the `refactoring` skill only when restructuring is applicable; record `N/A` otherwise
 - Obtain approval for the working-baseline commit before refactoring when the workflow uses commits as safety checkpoints
-- Keep those same local quick tests green after each small refactor; widen only after demo acceptance, immediately before the first implementation push
+- Keep those same local quick tests green after each small refactor; widen only once the slice's examples are proven, immediately before the first implementation push
 
 Repeat RED-GREEN-REFACTOR as needed until the phase's PR scope is complete. Do not run the automated mutation harness after each increment, refactor, or commit.
 

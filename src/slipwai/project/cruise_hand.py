@@ -27,7 +27,7 @@ ladder starts, which is `{CONFIG}`'s `hand` and nothing the delegate can read fo
 `{BROWSER}` where the slice has a screen, then a browser tool the harness exposes, then HTTP, then the CLI;
 `http` starts at HTTP; `cli` at the CLI — each rung falling through to the next where it cannot run and saying
 so, and none climbing back above the one the setting names. Its verdict is the actor's: `accepted`
-continues to *After acceptance*, `behaviour` re-enters the ladder at the stage that owns the change with the
+lets the ladder go on from the rung the walk was at, `behaviour` re-enters the ladder at the stage that owns the change with the
 example that shows it, `implementation` is a task. Record `outcome=` on the demo entry from the verdict, and
 write `accepted-by: {HAND}` beside the register row or status flip, so a person can tell which demos a person
 has seen.

@@ -26,10 +26,10 @@ are mapped. Finishing a slice marks it done rather than moving it: `status: impl
 the ready set and the progress board both read. A `slices/README.md` register — one row per slice, accepted
 when it is — is worth its ten lines, so the next slice does not re-derive the convention.
 
-The demo is a feedback boundary, not completion. Route feedback to the stage that owns it, demonstrate the
-revision, then—after acceptance—run an adversarial pass where this slice changed attack surface or closed
-the split, mutation analysis where configured, and `make verify` before the ready slices (not done, every
-`depends_on` done). Every unclaimed ready slice runs concurrently in the band its state admits — preparation
+The demo is a feedback boundary, not completion. Route feedback to the stage that owns it and demonstrate the
+revision. A slice then records its attack-surface trigger table, which attacks nothing, runs `make verify`
+and merges; the attack, mutation analysis and the hand's walk are the capability's, once, at the ladder's
+*Capability gates* rung. Then come the ready slices (not done, every `depends_on` done). Every unclaimed ready slice runs concurrently in the band its state admits — preparation
 on clearance alone, implementation once its own marks are set and no question stands open — one delegate
 per slice on a `slice/<id>` branch in its own worktree, refilled at every boundary, merged in split order and
 held to the shared-surface rule by `make check-slice-scope` (`commands/sail.md`, *Running ready slices

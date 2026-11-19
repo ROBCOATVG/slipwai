@@ -181,8 +181,8 @@ to its own service's write model. An event is a named business fact on both — 
   already built — is a rule cut too small, and belongs inside the increment that produces the behaviour it
   guards.
 - At most **one rule's** examples may be failing at a time. Each cycle MUST leave the quickest relevant
-  tests in its file or area green. Commit each completed cycle locally; do not push those commits until the
-  actor has accepted the demo. The whole suite MUST be green immediately before that first implementation push,
+  tests in its file or area green. Commit each completed cycle locally; do not push those commits until every
+  example of the slice is proven by a test (the ladder's *Demo* rung). The whole suite MUST be green immediately before that first implementation push,
   which is what may land on trunk. A row of pending tests is not RED; it is an unintegrated batch of
   the kind X exists to prevent.
 - **RED is a failing assertion, not a failing build.** Whatever an example names — function, method, type,

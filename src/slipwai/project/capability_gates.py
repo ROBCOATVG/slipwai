@@ -9,8 +9,8 @@ as a whole. Read per slice, each found the same seam again in the next instalmen
 next slice was always going to fill. Mutation moved first, on 2026-10-14, for the same reason; the other four
 followed it on 2026-10-17, from the warbook's feedback that they "should happen per stream PR point, not per
 slice". Version 2 has no stream pull request — the plan merges each slice to trunk and forbids integration
-branches — so the point is the capability: whole when its last slice has merged, which
-`scripts/agents/capabilities.py` already computes, and before the demo stop accepts it.
+branches — so the point is the capability: its gates run on its last slice's branch, before that
+slice merges (the harbourmaster refuses the merge until they have cleared), and before the demo stop accepts it.
 
 What stays per slice is what only a slice can answer, scoped to what the slice added or changed: screen design
 for its own screens, one review of its own diff, its examples proven by its own tests, its story seeded green

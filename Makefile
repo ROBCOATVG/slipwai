@@ -103,6 +103,10 @@ shared: ## Carry the modules both runtimes need from the keel into the toolkit
 check-shared: ## Fail when a carried module is not what its keel source renders to
 	@python3 scripts/shared-modules.py --check
 
+.PHONY: check-rules
+check-rules: ## Fail when a rule's owning passage changed, or a copy of it was added, and nobody read the copies again
+	python3 scripts/rule-copies.py --check
+
 .PHONY: skills
 skills: ## Copy the toolkit's and the maintainer's skills into .claude/skills for this checkout (ignored by git)
 	python3 -c "import pathlib, shutil; d = pathlib.Path('.claude/skills'); shutil.rmtree(d, ignore_errors=True); shutil.copytree('assets/toolkit/skills', d); [shutil.copytree(s, d / s.name) for s in sorted(pathlib.Path('maintainer/skills').iterdir()) if s.is_dir()]"

@@ -80,9 +80,10 @@ proven by a test, and one review of the slice's own diff; then `/adversary` for 
 which attacks nothing — `commands/adversary.md` says how — then `make verify`. Once a capability's last slice
 has merged, its gates run once: the installed Spec Kit converge command over its diff until it reports
 converged or reaches its bound, `/gaps`, the design review, one adversary pass where any slice widened a
-trigger, `/mutation`, and the hand's walk, then the person's demo. Under the `open` release mode converge, the
-gaps trace, design review and walk run per slice as well, and a slice that widened authorisation, identity or
-money is attacked before its push; the capability's converge, adversary pass and mutation still run. Stop earlier only for a product decision or unavailable external input.
+trigger, `/mutation`, and the hand's walk, then the person's demo. Nothing is read per slice in any release
+mode, `open` included: only where `harbour.json` says `"readings": "slice"` do converge, the gaps trace, design
+review and walk run per slice as well, and a slice that widened authorisation, identity or money is attacked
+before its push; the capability's converge, adversary pass and mutation still run. Stop earlier only for a product decision or unavailable external input.
 <!-- end section -->
 <!-- section: continuation-cruise -->
 
@@ -98,7 +99,7 @@ blocks progress, or the ordered split is exhausted. Before the push, prove every
 review the slice's own diff. Then finish the slice — `/adversary` for its trigger record, then `make verify`;
 once a capability is whole its gates run once — converge and `/gaps` over its diff, the design review, one
 adversary pass where a slice widened a trigger, `/mutation`, the hand's walk — and its demo follows (converge,
-the gaps trace, design review and walk per slice as well under the `open` release mode) — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one runs concurrently in the band its state admits — preparation needs clearance alone, implementation needs the slice's own marks set and no open question — one delegate per slice on a `slice/<id>` branch, refilled at every boundary, merged in split order (`commands/sail.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
+the gaps trace, design review and walk per slice as well only where `harbour.json` says `"readings": "slice"`, never because the release mode is `open`) — then continue to the ready slices (not done, every `depends_on` done): every unclaimed one runs concurrently in the band its state admits — preparation needs clearance alone, implementation needs the slice's own marks set and no open question — one delegate per slice on a `slice/<id>` branch, refilled at every boundary, merged in split order (`commands/sail.md`, *Running ready slices concurrently*); where the harness cannot delegate, the earliest in split order, naming the rest.
 
 Under `/cruise` the same contract holds with nobody at the wheel: the two stops that were a person's — a
 product decision and the demo — are answered by `sail-decide-skipper` and `sail-demo-hand`, every answer is written where

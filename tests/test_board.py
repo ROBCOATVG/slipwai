@@ -11,13 +11,13 @@ It stands up servers, so it is in the Makefile's `SLOW` list.
 from __future__ import annotations
 
 import tempfile
-import threading
 import unittest
 import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
 import checkout_packages  # noqa: F401
+from board_fixture import served
 
 from slipwai.bridge import serve
 from slipwai.bridge_page import read_only
@@ -34,11 +34,8 @@ class Fixture(unittest.TestCase):
         (self.root / ".slipwai").mkdir()
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
         self.opened: list[str] = []
-        self.server = serve(self.root, "127.0.0.1", 0)
+        self.server = served(self, self.root)  # stopped, joined, then closed: `board_fixture`
         self.port = self.server.server_address[1]
-        threading.Thread(target=self.server.serve_forever, daemon=True).start()
-        self.addCleanup(self.server.server_close)
-        self.addCleanup(self.server.shutdown)  # added last, so run first: serving stops before the socket closes
 
     def get(self, path: str) -> str:
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=10) as answer:

@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import unittest
 
+import checkout_packages  # noqa: F401
+
 from slipwai.axes import validate_axis_capabilities
 from slipwai.extensions import known_extensions, validate_extensions
 from slipwai.features import axis_of, known_features, validate_traits

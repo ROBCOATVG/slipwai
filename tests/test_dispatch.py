@@ -23,6 +23,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import TOOLKIT_ROOT
 
 GATE = TOOLKIT_ROOT / "scripts/check-dispatch.py"

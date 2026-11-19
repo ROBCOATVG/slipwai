@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import TOOLKIT_ROOT
 
 SCRIPT = TOOLKIT_ROOT / "scripts/agents/try_it.py"

@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import checkout_packages  # noqa: F401
 import yaml  # type: ignore[import-untyped]
 
 from slipwai.package_sources import declaration, expose

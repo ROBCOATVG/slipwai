@@ -19,6 +19,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import TOOLKIT_ROOT
 
 AGENTS = TOOLKIT_ROOT / "scripts/agents"

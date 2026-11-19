@@ -283,6 +283,18 @@ class NoMachineTest(unittest.TestCase):
                   if starts.search(text := path.read_text(encoding="utf-8")) and not imports.search(text)]
         self.assertEqual(forgot, [], "start each with `import checkout_packages  # noqa: F401`")
 
+    def test_every_suite_that_imports_slipwai_imports_the_pins_first(self) -> None:
+        """`checkout_packages` puts this checkout's packages where the keel looks before the catalogue is read,
+        and the catalogue is read once. Importing a board page now reaches it (the feedback card leads to
+        the passage and its next steps), so a suite that imports slipwai without the pins left every suite
+        after it in the same process with no languages or targets installed, and only in a CI shard whose
+        order put it first. Every suite that imports slipwai imports the pins, so that order cannot matter."""
+        uses = re.compile(r"^(?:from slipwai\b|import slipwai\b)", re.MULTILINE)
+        pins = re.compile(r"^(?:import checkout_packages|from (?:board|intake)_fixture import)", re.MULTILINE)
+        forgot = [path.name for path in sorted(Path(__file__).parent.glob("test_*.py"), key=lambda p: p.name)
+                  if uses.search(text := path.read_text(encoding="utf-8")) and not pins.search(text)]
+        self.assertEqual(forgot, [], "start each with `import checkout_packages  # noqa: F401`")
+
 
 if __name__ == "__main__":
     unittest.main()

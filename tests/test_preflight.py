@@ -13,6 +13,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
+
 from slipwai.assets import TOOLKIT_ROOT
 
 SCRIPT = TOOLKIT_ROOT / "scripts/agents/preflight.py"

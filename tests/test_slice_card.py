@@ -7,6 +7,8 @@ from __future__ import annotations
 import json
 import unittest
 
+import checkout_packages  # noqa: F401
+
 from slipwai.activity import caption
 from slipwai.slice_card import lit, slice_html
 from slipwai.slice_rungs import LADDER, ladder

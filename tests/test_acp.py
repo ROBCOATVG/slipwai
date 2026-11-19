@@ -15,6 +15,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import checkout_packages  # noqa: F401
+
 from slipwai import acp
 from slipwai.acp import Fault, Session, kept_session, once, policy, within
 

@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
+import checkout_packages  # noqa: F401
+
 from slipwai import example_map_source
 from slipwai.example_map_source import card_line, found_map
 from slipwai.live_page import window, window_payload

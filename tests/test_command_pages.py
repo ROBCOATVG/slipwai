@@ -23,6 +23,7 @@ import hashlib
 import unittest
 from pathlib import Path
 
+import checkout_packages  # noqa: F401
 import command_pages
 import frontend_entry
 

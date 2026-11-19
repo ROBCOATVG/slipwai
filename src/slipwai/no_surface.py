@@ -20,6 +20,12 @@ is a feature built with a screen nobody ever saw.
    `docs/event-model/model.yaml` hold no frame of `type: ui`. A feature with no slice yet has none that does.
 4. **Nothing was drawn and nobody has judged anything.** No surface page of this feature, and no
    `mock-states.md` with a verdict in it.
+5. **Where the hand-over suggested surfaces, the drawing has answered it.** The conversation that handed the
+   idea over may have named surfaces it thought the feature touches (`surface_hint.py`). That is a suggestion
+   and decides nothing; but a drawing that ends at *no surface* against it says so, with its reason:
+   `Suggested surfaces: not touched — <why>` in `research.md`. Then the record names the suggestion and the
+   answer. Without that line the stage stops and says the two disagree. A feature nobody suggested a surface
+   for is read as it always was.
 
 **Where any of them fails, the stage still stops, and says which.** A reading that errs stops: a requirement
 that says "the job reports its failures to the log" names a report, and a person settles it with `/mockups`.
@@ -47,6 +53,9 @@ MET = re.compile(
     r"clicked|taps?|tapped|displays?|displayed|shows?|shown|showed|sees?|seen|views?|viewed|navigat\w*|"
     r"sign(?:s|ed)?[ -]in|log(?:s|ged)?[ -]in|browsers?|ui|user interface|e-?mails?|notif\w*|reports?|"
     r"webhooks?|command line|cli|prints?|printed)\b", re.IGNORECASE)
+#: The drawing's answer to a hand-over that named surfaces, where it found the feature touches none of them.
+ANSWERED = re.compile(r"^[\s>*_`+-]*suggested surfaces[*_` \t]*:[*_` \t]*not touched\b[*_` \t.]*"
+                      r"(?:[—–:-]+[ \t]*)?(?P<why>.*)$", re.IGNORECASE | re.MULTILINE)
 VERDICT = re.compile(r"^-\s*.+?\s*—\s*(approved|parked|n/a)\b", re.MULTILINE)
 #: A reason shorter than this is a word, not a reason.
 SHORTEST = 12
@@ -113,11 +122,14 @@ def surfaced(home: Path, model: str) -> list[str]:
     return found
 
 
-def grounds(root: Path, feature: str, drawn: int = 0) -> tuple[str | None, list[str], list[str]]:
+def grounds(root: Path, feature: str, drawn: int = 0,
+            hinted: tuple[str, ...] = ()) -> tuple[str | None, list[str], list[str]]:
     """The reason the drawing gave (`None` where it gave no word of it), the grounds that hold, and what stands
-    against recording it. Recorded only where there is a reason and nothing against."""
+    against recording it. Recorded only where there is a reason and nothing against. `hinted` are the surfaces
+    the hand-over suggested the feature touches (`surface_hint.read`), which the drawing has to have answered."""
     home = root / "specs" / feature
-    why = declared(read(home / MOCKUPS / "research.md"))
+    research = read(home / MOCKUPS / "research.md")
+    why = declared(research)
     held: list[str] = []
     against: list[str] = []
     if why is None:
@@ -144,6 +156,17 @@ def grounds(root: Path, feature: str, drawn: int = 0) -> tuple[str | None, list[
         named = slices_of(home)
         held.append(f"none of its {len(named)} slice(s) carries a `ui` frame or names a surface" if named
                     else "it has no slice yet, so none carries a `ui` frame")
+    if hinted:
+        suggested = ", ".join(f"`{one}`" for one in hinted)
+        answer = ANSWERED.search(research)
+        reason = re.sub(r"[*_`]", "", answer.group("why")).strip().rstrip(".").strip() if answer else ""
+        if len(reason) < SHORTEST:
+            against.append(f"the hand-over conversation suggested it touches {suggested} — a suggestion, and the "
+                           f"drawing disagrees with it without saying why: say `Suggested surfaces: not touched "
+                           f"— <why>` in specs/{feature}/{MOCKUPS}/research.md, or draw them")
+        else:
+            held.append(f"the hand-over conversation suggested it touches {suggested}, and the drawing answers "
+                        f"that it does not: {reason}")
     states = read(home / MOCKUPS / "mock-states.md")
     if drawn:
         against.append(f"{drawn} surface page(s) of it are drawn under specs/{feature}/{MOCKUPS}/")
@@ -152,13 +175,13 @@ def grounds(root: Path, feature: str, drawn: int = 0) -> tuple[str | None, list[
     return why, held, against
 
 
-def settle(root: Path, feature: str, drawn: int = 0) -> tuple[bool, str]:
+def settle(root: Path, feature: str, drawn: int = 0, hinted: tuple[str, ...] = ()) -> tuple[bool, str]:
     """Record `surfaces: none` where the grounds are positive, and answer whether it stands and what to say.
     `(False, "")` where the drawing never said it had no surface: the stage's ordinary refusals are the answer."""
     path = root / "specs" / feature / MOCKUPS / "mock-states.md"
     if NONE in read(path) and not drawn:
         return True, f"{feature} has no surface: specs/{feature}/{MOCKUPS}/mock-states.md says `{NONE}` already"
-    why, held, against = grounds(root, feature, drawn)
+    why, held, against = grounds(root, feature, drawn, hinted)
     if why is None:
         return False, ""
     if against:

@@ -15,7 +15,7 @@ import re
 import time
 from pathlib import Path
 
-from . import no_surface
+from . import no_surface, surface_hint
 from .framed import FRAMED, built_pages, planned_pages, surface_kinds, titled
 from .framed import app_look as app_look  # read by name from here by the Voyage window
 
@@ -118,7 +118,8 @@ def undrawn(where: Path, feature: str) -> str:
     home = where / "specs" / feature / "mockups"
     if feature and home.is_dir() and surface_pages(home):
         return ""
-    stands, said = no_surface.settle(where, feature) if feature else (False, "")
+    stands, said = (no_surface.settle(where, feature, hinted=surface_hint.read(where, feature).names)
+                    if feature else (False, ""))
     if stands or said:
         return "" if stands else said[:1].upper() + said[1:]
     return (f"The session ended with no surface page under specs/{feature}/mockups/ — "

@@ -336,6 +336,21 @@ calls. If nobody agreed to an extension's guard, the guard never fires. To chang
 - `python3 scripts/extensions/guards.py --remove <keys>` takes the agreement back for the extensions it
   names. It keeps the others.
 
+**Either command leaves the gate green.** An extension's guidance can say whether its guard is agreed to,
+so both commands bring what follows from the agreement up to date before they return:
+
+1. the harness's row for the tools an agreed guard sees;
+2. the guidance of each extension they named, by firing that extension's `project` hook alone, with what
+   `make agents` hands it, and then writing its block from its `GUIDANCE` if it is still drifted;
+3. where `AGENTS.md` changed, the copy of its extension guidance in the context file of a harness that
+   reads a copy.
+
+Each command prints what it brought up to date. `make check-extensions` then passes with nothing else run.
+A `project` hook that crashes or goes over its budget does not undo the agreement and does not change the
+exit code: the command prints the `hook <key> project` line, says whether the block is current, and names
+`make agents` as the command that runs the hook again. A *yes* at the question `make agents` asks runs
+`--elect`, so it does the same. `make agents` still asks last, after it has projected.
+
 **A guard that arrives on an upgrade is said, and never agreed to for anybody.** A project can elect an
 extension before the extension has a guard. `slipwai migrate` then brings the guard's files and refreshes
 `available-guards.json` from the installed package, but nobody was asked. So:

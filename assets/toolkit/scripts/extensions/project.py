@@ -15,6 +15,12 @@ agrees — and asks, where somebody is at a terminal. It never agrees for anybod
 
 And after the point has fired, a block still drifted is written from that same data (`rewrite_drifted`), so
 an extension that attaches nothing to `project` is re-projected too and the fix `--check` names is one.
+
+`--only <key>...` is that projection for the extensions it names and nothing more, and is what
+`guards.py --elect` and `--remove` run: an extension's block may say whether its guard is agreed to, so the
+command that changes the agreement brings that extension's guidance up to date before it returns, and a
+person who did what they were told is not left with a red `make check-extensions`. It says, per extension,
+what it did, and exits 0 whatever a hook did — the agreement is the registry, never this.
 """
 from __future__ import annotations
 
@@ -26,7 +32,7 @@ from pathlib import Path
 from types import ModuleType
 
 sys.dont_write_bytecode = True
-from guidance import ROOT, adopted_extensions, canonical_block, installed_block, replace_block
+from guidance import AGENTS, ROOT, adopted_extensions, canonical_block, installed_block, replace_block
 
 HERE = Path(__file__).resolve().parent
 HOOKS = HERE / "hooks.py"
@@ -74,6 +80,66 @@ def rewrite_drifted(adopted: list[str]) -> None:
             continue
 
 
+def drifted(key: str) -> bool | None:
+    """Whether this extension's block differs from its `GUIDANCE` now. None where nothing can say: no
+    `AGENTS.md`, or no `GUIDANCE` that can be read."""
+    if not AGENTS.is_file():
+        return None
+    try:
+        return installed_block(key) != canonical_block(key, extension_module(key).GUIDANCE)
+    except Exception:  # noqa: BLE001 — an extension's own module, run at import: anything may be raised
+        return None
+
+
+def only(keys: list[str]) -> int:
+    """Bring the guidance of each extension `keys` names up to date, as `make agents` would, and say so.
+
+    Its `project` hook where it attaches one — fired for it alone, with what `make agents` hands it, so it
+    reads the agreement as it is now — and then its block from its `GUIDANCE` where that is still drifted.
+    A hook that crashed or ran out its budget is `hooks.py`'s `hook` line and a sentence here naming the
+    command that runs it again; it is never an exit code, because what called this has already recorded a
+    person's answer and a hook is not a reason that answer failed."""
+    try:
+        adopted = adopted_extensions(persist_legacy=False)
+    except (OSError, ValueError) as error:
+        print(f"guards: which extensions are elected here could not be read ({error})", file=sys.stderr)
+        return 1
+    import hooks  # beside this script; asked for here so a plain projection still runs it as its own process
+    attached = {body.get("extension") for body in hooks.read(hooks.REGISTRY).get("points", {}).get("project", [])
+                if isinstance(body, dict)}
+    for key in sorted(set(keys)):
+        if key not in adopted:
+            print(f"guards: {key} is not elected here, so it has no guidance to bring up to date")
+            continue
+        failed = key in attached and hooks.fire("project", {}, fatal=True, only=key) != 0
+        sys.stdout.flush()
+        behind = drifted(key)
+        rewrite_drifted([key])
+        stale = drifted(key)
+        hook = f"guards: {key}'s `project` hook did not finish (the `hook {key} project` line above)"
+        if failed and stale is False:
+            print(f"{hook}. The agreement is recorded and stands, and {key}'s AGENTS.md block was written from "
+                  "its GUIDANCE, so it is current; `make agents` runs the hook again for anything else it does.",
+                  file=sys.stderr)
+        elif failed:
+            print(f"{hook}, so what {key} says in AGENTS.md may be as it was before this agreement changed. "
+                  "The agreement is recorded and stands; `make agents` runs the hook again.", file=sys.stderr)
+        elif stale:
+            print(f"guards: {key}'s AGENTS.md block still differs from its GUIDANCE, and nothing here could "
+                  "write it. The agreement is recorded and stands; `make check-extensions` says what is wrong "
+                  "with the block.", file=sys.stderr)
+        elif key in attached:
+            print(f"guards: {key}'s guidance is up to date with this agreement: its `project` hook ran")
+        elif stale is False:
+            how = "was written from" if behind else "already matches"
+            print(f"guards: {key}'s guidance is up to date with this agreement: its AGENTS.md block {how} "
+                  "its GUIDANCE")
+        else:
+            print(f"guards: {key} attaches nothing to `project` and has no block to write, so it had no "
+                  "guidance to bring up to date")
+    return 0
+
+
 def project(check: bool) -> list[str]:
     findings: list[str] = []
     try:
@@ -103,7 +169,10 @@ def project(check: bool) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--only", nargs="+", metavar="KEY")
     arguments = parser.parse_args()
+    if arguments.only:
+        return only(arguments.only)
     findings = project(arguments.check)
     if findings:
         print("\n".join(f"check-extensions: {finding}" for finding in findings), file=sys.stderr)
@@ -123,7 +192,13 @@ def offer_guards() -> None:
 
     First `guard_harness.py` has the harness tell an agreed guard about the tools it declared it `sees`,
     which is a row of a file a clone does not have until this runs. Then `guard_offer.py` says the line and the command and changes nothing unless a person answers yes; it is
-    its own script, with this process's terminal, and never a reason `make agents` fails."""
+    its own script, with this process's terminal, and never a reason `make agents` fails.
+
+    **Asked last, after the projection, and a yes is still in this run's guidance.** A yes runs the command
+    the line names — `guards.py --elect` — and that command brings the agreeing extension's guidance up to
+    date itself (`--only`), so the block is not one step behind what was just answered. Asking first would
+    do it too, and would put a question that waits for a person above everything this run then prints, and
+    make a run with nobody there differ from one with somebody for no gain."""
     for name, arguments in (("guard_harness.py", []), ("guard_offer.py", ["--ask"])):
         script = HERE / name
         if not script.is_file():

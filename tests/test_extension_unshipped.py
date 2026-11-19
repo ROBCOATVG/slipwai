@@ -127,5 +127,30 @@ class ListTest(Case):
         self.assertNotIn("not in the package", self.listed())
 
 
+class HooksTest(Case):
+    """`slipwai hooks` lists who is on each point, and says so where the script that point runs is not there (#126)."""
+
+    def listed(self) -> list[str]:
+        with mock.patch.dict(os.environ, {"SLIPWAI_LANGUAGES": str(self.area)}):
+            return cli_extension.hooks_listing()
+
+    def on(self, point: str) -> str:
+        lines = self.listed()
+        return lines[lines.index(f"  {point}") + 3].strip()
+
+    def test_a_point_whose_script_is_missing_says_so_in_the_words_extension_list_uses(self) -> None:
+        declaring(self.area, "holed", hooks={"after-stage": "hooks/sync.py"})
+        whole = declaring(self.area, "whole", hooks={"after-stage": "hooks/sync.py"})
+        (whole / "hooks").mkdir()
+        (whole / "hooks/sync.py").write_text("", encoding="utf-8")
+        self.assertEqual(self.on("after-stage"),
+                         "holed (hooks/sync.py is not in the package, so it never runs), whole")
+        self.assertEqual(self.on("init"), "holed, whole", "a point whose script is there is listed bare")
+
+    def test_a_missing_guard_script_is_not_said_of_a_hook_point(self) -> None:
+        declaring(self.area, "open", guards={"before-search": "guards/search.py"})
+        self.assertEqual(self.on("init"), "open")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,11 @@ surface with a state somebody approved and no evidence at all that it is built. 
 sources by their words — a preview's file names, a frame's name, the component a route renders, a route's
 last segment — and each row says what it matched, because a match by name is a reading and not a fact.
 
+**It says where to start.** Where the hand-over conversation named the surfaces it thought this feature touches
+(`docs/intake/<slug>/surfaces.json`), each name is listed beside the surface it names, or as naming none
+(`surface_hint.py`). A suggestion, said to be one, that the drawing may change; this reads the file and never
+edits it.
+
     python3 scripts/agents/existing.py 002-export --check    # the storyboard's marks, held to what is checkable
 """
 from __future__ import annotations
@@ -41,6 +46,9 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import surface_hint  # noqa: E402 — carried beside this script: the surfaces the hand-over suggested, a hint
 
 
 def project_root(script: Path) -> Path:
@@ -407,6 +415,7 @@ def listing(feature: str, root: Path = ROOT) -> dict[str, Any]:
     surfaces = classified(earlier, browser, modelled, photographs, root)
     return {"feature": feature, "storyboards": earlier, "apps": browser, "frames": modelled, "model": unread,
             "surfaces": surfaces, "counts": counted(surfaces),
+            "suggested": surface_hint.listed(surface_hint.read(root, feature), surfaces),
             "photographs": photographs, "design": "docs/design.md" if (root / "docs/design.md").is_file() else "",
             "handed": handed, "look": look,
             "storyboard": "extend" if earlier else "from-what-exists" if built else "first"}
@@ -462,8 +471,8 @@ def said(found: dict[str, Any]) -> str:
            '`data-surface="planned"` where it is approved for an earlier feature and not built; draw what this '
            'feature changes or adds as a page of its own, `data-surface="changed"` or `data-surface="new"`. A '
            'built surface with no picture is a plain labelled box, `data-surface="built" data-picture="none"`: '
-           "nothing is invented about how it looks.", ""]
-    out += surfaces_said(found.get("surfaces", []))
+           "nothing is invented about how it looks.", surface_hint.line(found.get("suggested", {})), ""]
+    out += surfaces_said(found.get("surfaces", [])) + surface_hint.said(found.get("suggested", {}))
     for one in found["storyboards"]:
         out += [f"## Earlier feature {one['feature']}", "",
                 f"Storyboard: {one['storyboard'] or 'none; its surface pages are below'}", ""]

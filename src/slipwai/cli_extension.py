@@ -89,11 +89,21 @@ def attached_to(reader) -> dict[str, list[str]]:
 
 
 def hooks_listing() -> list[str]:
-    """Every point, what fires it, what it is given, and which installed extension attaches to it."""
+    """Every point, what fires it, what it is given, and which installed extension attaches to it — each one whose
+    script is not in its package saying so, in the words `extension list` uses (#126)."""
     attached = attached_to(declared)
+    missing: dict[tuple[str, str], str] = {}
+    for key, manifest in catalogue(directory()):
+        try:
+            missing.update({(key, name): path for kind, name, path in absent(directory() / key, manifest)
+                            if kind == "hook"})
+        except (ValueError, KeyError):  # a manifest the loader already refused attaches to nothing above
+            continue
     lines: list[str] = []
     for point in POINTS:
-        who = ", ".join(sorted(attached.get(point.name, []))) or "nothing attached"
+        who = ", ".join(f"{key} ({missing[key, point.name]} is not in the package, so it never runs)"
+                        if (key, point.name) in missing else key
+                        for key in sorted(attached.get(point.name, []))) or "nothing attached"
         lines.append(f"  {point.name}")
         lines.append(f"      fires {point.when}")
         lines.append(f"      given {', '.join(point.given)}")

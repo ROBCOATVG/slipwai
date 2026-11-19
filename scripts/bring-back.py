@@ -199,6 +199,9 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "framed", "storyboard_kinds",
        # A feature with no surface ends the mock-up stage cleanly, on grounds. The experiment had no such stage.
        "no_surface",
+       # The surfaces a hand-over suggested a feature touches, read for the stage that draws it. The experiment
+       # had no hand-over conversation, so nothing suggested any.
+       "surface_hint",
        # A prototype or a storyboard as one file to send. The experiment's pages never left the board.
        "page_copy"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will

@@ -11,12 +11,17 @@ tree records for it. So an untracked file, an ignored one and an empty directory
 clone holds, and two clones of one commit build one file. Outside a repository there is nothing to ask, and
 `language_release.files_of` walks the directory as it always has.
 
+"Outside a repository" is not "git did not answer". Where a `.git` is at or above the package and git is not
+installed, or refuses the directory — a checkout it takes for another user's, in a container or on a runner — there
+is a tree to ask about and nobody to ask, and a release or a registration is refused with git's own line (#126).
+
 `differences` is the other half. The bytes are still read from the working tree, so a tracked file somebody has edited
 would be released as edited; `package release` and `package register` refuse while anything in the package differs
 from `HEAD`, naming it, as `migrate` and `add-service` refuse a tree with uncommitted changes.
 """
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -27,18 +32,71 @@ LINK, SUBMODULE = "120000", "160000"
 NAMED = 8
 
 
+def ran(root: Path, argv: tuple[str, ...]) -> subprocess.CompletedProcess[bytes]:
+    """Git, run there. The one place it is started, so a case can stand in a git that fails as git does."""
+    return subprocess.run(["git", "--no-optional-locks", *argv], cwd=root, capture_output=True, check=False)
+
+
+def asked(root: Path, *argv: str) -> tuple[str | None, str | None]:
+    """What git answers there; or None and what it said in refusing; or None twice where it could not be run."""
+    try:
+        done = ran(root, argv)
+    except OSError:
+        return None, None
+    if done.returncode == 0:
+        return done.stdout.decode("utf-8", "surrogateescape"), None
+    return None, done.stderr.decode("utf-8", "replace")
+
+
 def git(root: Path, *argv: str) -> str | None:
     """What git answers there, or None where it refuses or is not installed."""
-    try:
-        done = subprocess.run(["git", "--no-optional-locks", *argv], cwd=root, capture_output=True, check=False)
-    except OSError:
-        return None
-    return done.stdout.decode("utf-8", "surrogateescape") if done.returncode == 0 else None
+    return asked(root, *argv)[0]
+
+
+def checkout(root: Path) -> Path | None:
+    """The nearest directory at or above `root` that holds a `.git`: a directory in a clone, a file in a worktree or
+    a submodule. Read off the disk, so it is known where git itself will not say."""
+    here = root.resolve()
+    return next((place for place in (here, *here.parents) if (place / ".git").exists()), None)
+
+
+def line_of(said: str) -> str:
+    """Git's own line out of what it printed: its `fatal:` one, or the first it wrote."""
+    lines = [line.strip() for line in said.splitlines() if line.strip()]
+    return next((line for line in lines if line.startswith("fatal:")), lines[0] if lines else "nothing")
+
+
+def unanswered(root: Path, said: str | None) -> GenerationError:
+    """The refusal where `root` is in a checkout and git did not answer for it, quoting git and naming the fix.
+
+    Not walked instead: a walk holds whatever the clone holds, which is the release nobody published of #117, and
+    the machines git refuses on — a container, a runner with a mounted checkout — are the ones a release is cut on
+    (#126)."""
+    top = checkout(root)
+    where = f"{root} is in a git checkout ({top})"
+    held = "A release is what the tag holds, so it is not packed from the directory instead"
+    if said is None:
+        return GenerationError(f"{where} and git could not be run, so what HEAD holds of it cannot be read. {held}. "
+                               f"Install git, or put it on PATH, and run this again")
+    if "safe.directory" in said or "dubious ownership" in said:
+        named = re.search(r"safe\.directory[ \t]+(\S.*)", said)
+        path = named.group(1).strip() if named else (top or root.resolve()).as_posix()
+        fix = f"Tell git the checkout is yours, `git config --global --add safe.directory {path}`"
+    else:
+        fix = f"Ask it yourself, `git -C {root} status`, mend what it names"
+    return GenerationError(f"{where} and git would not answer for it: {line_of(said)}. {held}. {fix}, and run "
+                           f"this again")
 
 
 def prefix(root: Path) -> str | None:
-    """Where `root` is inside its repository's working tree (`''` at the top), or None where it is in none."""
-    if not root.is_dir() or (git(root, "rev-parse", "--is-inside-work-tree") or "").strip() != "true":
+    """Where `root` is inside its repository's working tree (`''` at the top), or None where it is in none. Where
+    there is a `.git` at or above it and git is missing or refuses, that is not "in none", and it is refused."""
+    if not root.is_dir():
+        return None
+    inside, said = asked(root, "rev-parse", "--is-inside-work-tree")
+    if inside is None and checkout(root) is not None:
+        raise unanswered(root, said)
+    if (inside or "").strip() != "true":
         return None
     return (git(root, "rev-parse", "--show-prefix") or "").strip().rstrip("/")
 
@@ -89,7 +147,10 @@ def differences(root: Path) -> list[str]:
     here = prefix(root)
     if here is None:
         return []
-    fields = (git(root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ".") or "").split("\0")
+    answered, said = asked(root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", ".")
+    if answered is None:  # it said this is a working tree, and will not say what differs in it
+        raise unanswered(root, said)
+    fields = answered.split("\0")
     found = []
     while fields:
         entry = fields.pop(0)
@@ -103,6 +164,13 @@ def differences(root: Path) -> list[str]:
     return sorted(found)
 
 
+def only_release_output(found: list[str]) -> bool:
+    """Whether all that differs is an untracked `dist/` holding a release: what a package scaffolded before its
+    scaffold ignored `dist/` is left with by its own first `make release` (#126)."""
+    return (all(line.startswith("dist/") and line.endswith(" (untracked)") for line in found)
+            and any(line.endswith(".tar.gz (untracked)") for line in found))
+
+
 def refuse_differences(root: Path) -> None:
     """Refuse a release of a package whose working tree is not what `HEAD` holds, naming what differs.
 
@@ -113,6 +181,12 @@ def refuse_differences(root: Path) -> None:
     if prefix(root) is None:
         return
     found = differences(root)
+    if found and only_release_output(found):
+        raise GenerationError(
+            f"{root} differs from what its repository holds at HEAD only by `dist/`, which holds an earlier "
+            f"release and is not ignored: {'; '.join(found[:NAMED])}. A release is what the tag holds, so it is "
+            f"refused rather than packed around. Ignore it, once: `echo dist/ >> .gitignore && git add .gitignore "
+            f"&& git commit -m 'Ignore dist/'`, and run this again")
     if found:
         named = "; ".join(found[:NAMED]) + (f"; and {len(found) - NAMED} more" if len(found) > NAMED else "")
         raise GenerationError(

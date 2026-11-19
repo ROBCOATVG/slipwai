@@ -193,6 +193,10 @@ class DirtTest(unittest.TestCase):
         self.assertEqual(len(run_folder.dirt(said)), 3)
 
 
+    def test_version_1s_run_files_are_not_dirt_and_a_person_s_file_beside_them_is(self) -> None:
+        said = "?? .specify/cruise-run.log\n?? specs/cruise-checkpoint.md\n?? .specify/notes.md"
+        self.assertEqual(run_folder.dirt(said), ["?? .specify/notes.md"])
+
 
 class StagingTest(unittest.TestCase):
     """What `migrate` commits: its own ignore rewrite, and never the run's state left at the old place."""
@@ -231,6 +235,48 @@ class StagingTest(unittest.TestCase):
         done = migrate.refresh(self.root, "demo", reignored=True)
         self.assertEqual(self.git("status", "--porcelain").strip(), "", done)
         self.assertIn("rewritten", self.git("show", "HEAD:.gitignore"))
+
+    def crossed(self) -> None:
+        """What a crossing from version 1 leaves: its cruise's files where they lay, and no line ignoring them."""
+        for name in (".specify/cruise-run.log", ".specify/cruise-stream.jsonl", ".specify/cruise-watch.cursor",
+                     "specs/cruise-checkpoint.md"):
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / name).write_text(f"{name}\n", encoding="utf-8")
+
+    def test_version_1s_run_files_move_under_the_run_folder_and_nothing_is_left_to_sweep_in(self) -> None:
+        """manda-pir: one `git add -A` while resolving the crossing's merge committed 55,000 lines of run log."""
+        self.crossed()
+        (self.root / ".specify/cruise.json").write_text("{}\n", encoding="utf-8")
+        self.assertEqual(len(run_folder.version_1(self.root)), 4)
+        moved, left, _ = run_folder.move_in(self.root)
+        self.assertEqual(left, ())
+        self.assertIn(".specify/cruise-run.log -> .slipwai/run/v1/cruise-run.log", moved)
+        self.assertEqual((self.root / ".slipwai/run/v1/cruise-checkpoint.md").read_text(encoding="utf-8"),
+                         "specs/cruise-checkpoint.md\n")
+        self.git("add", "-A")
+        self.assertEqual(self.git("diff", "--cached", "--name-only").split(), [".specify/cruise.json"],
+                         "the settings file is the project's; every run file is under the ignored folder")
+        self.assertEqual(run_folder.move_in(self.root)[0], (), "a second pass finds nothing to do")
+
+    def test_a_run_file_the_project_tracks_or_already_moved_is_never_written_over(self) -> None:
+        self.crossed()
+        self.git("add", "-f", "--", "specs/cruise-checkpoint.md")
+        self.git("commit", "--quiet", "-m", "theirs to track")
+        (self.root / ".slipwai/run/v1").mkdir(parents=True)
+        (self.root / ".slipwai/run/v1/cruise-run.log").write_text("an earlier move\n", encoding="utf-8")
+        moved, left = run_folder.move_version_1(self.root)
+        self.assertEqual(len(moved), 2)
+        self.assertTrue((self.root / "specs/cruise-checkpoint.md").is_file(), "tracked: the project's record")
+        self.assertEqual(len(left), 1)
+        self.assertIn(".specify/cruise-run.log (already at .slipwai/run/v1/cruise-run.log", left[0])
+        self.assertEqual((self.root / ".slipwai/run/v1/cruise-run.log").read_text(encoding="utf-8"),
+                         "an earlier move\n")
+
+    def test_run_files_staged_before_they_moved_are_taken_back_out_of_the_index(self) -> None:
+        self.crossed()
+        self.git("add", "-A")
+        self.assertEqual(len(run_folder.unstage_run_state(self.root)), 4)
+        self.assertEqual(self.git("diff", "--cached", "--name-only").split(), [])
 
 
 if __name__ == "__main__":

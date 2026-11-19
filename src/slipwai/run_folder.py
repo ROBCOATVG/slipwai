@@ -13,6 +13,10 @@ project's own `.gitignore` still has — an adopted repository's marked block is
 moves only what git does not track, never overwrites a file already at the new place (that one is left and
 named), and a second pass finds nothing to do.
 
+**Version 1's run files go with it.** A crossing from version 1 drops nine ignore lines for what its cruise
+wrote under `.specify/` and `specs/`; those files move to `.slipwai/run/v1/` (`VERSION_1`), at the crossing
+and at any later migration that still finds one, and are never dirt nor a projection in between.
+
 **It refuses while a fleet is out.** A harbourmaster or a captain appending to a deck log while its folder is
 moved loses the lines written in between, and nothing would say which. A live pid under `running/`, at
 either place, stops the migration before the merge, with the command that stops the fleet.
@@ -35,6 +39,14 @@ LINE = f"{RUN}/"
 OLD = ".slipwai"
 #: What stops a fleet, said at the end of the refusal.
 STOP = "python3 scripts/agents/fleet.py stop"
+#: What version 1's cruise wrote about a run, each ignored by a line of its own in version 1's `.gitignore`.
+#: 2.1's ignore file has one line, for `.slipwai/run/`, so a crossing left these where they lay and no longer
+#: ignored: one `git add -A` while resolving the merge committed fifty-five thousand lines of run log (manda-pir).
+VERSION_1 = ("specs/cruise-checkpoint.md", ".specify/cruise.stop", ".specify/cruise.pid", ".specify/cruise-run.log",
+             ".specify/cruise-stream.jsonl", ".specify/cruise-watch.cursor", ".specify/cruise-last-response.txt",
+             ".specify/cruise-inbox.jsonl", ".specify/cruise-told.jsonl")
+#: Where they go: beside this version's run state and under the one ignore line, and never among it.
+V1 = f"{RUN}/v1"
 #: An ignore line naming something under `.slipwai/`, and which name.
 IGNORED = re.compile(r"^/?\.slipwai/(?P<name>[^/\s]+/?)\S*\s*$")
 
@@ -72,6 +84,8 @@ def stays(name: str, is_dir: bool) -> bool:
 def run_state(path: str) -> bool:
     """Whether a project-relative path is the run's state left at the old place under `.slipwai/`, and never
     the record `COMMITTED` names nor the run folder itself."""
+    if path in VERSION_1:
+        return True  # version 1's, left where a crossing found them
     if not path.startswith(f"{OLD}/"):
         return False
     top, _, rest = path.removeprefix(f"{OLD}/").partition("/")
@@ -144,6 +158,34 @@ def ignore_lines(text: str) -> str:
     return "\n".join(out) + "\n"
 
 
+def version_1(root: Path) -> list[str]:
+    """Version 1's run files this project still has where version 1 wrote them, and git does not track."""
+    return [name for name in VERSION_1 if (root / name).is_file() and not tracked(root, name)]
+
+
+def move_version_1(root: Path) -> tuple[list[str], list[str]]:
+    """Move them under `.slipwai/run/v1/`: what moved, and what was left because a file is already there."""
+    moved: list[str] = []
+    left: list[str] = []
+    for name in version_1(root):
+        before = len(left)
+        merged(root / name, root / V1 / Path(name).name, left, root)
+        if len(left) == before:
+            moved.append(f"{name} -> {V1}/{Path(name).name}")
+    return moved, left
+
+
+def version_1_section(names: list[str]) -> str:
+    """The catch-up page's account of that move, or nothing where the project has none of them."""
+    if not names:
+        return ""
+    return ("## Version 1's run files, moved\n\n"
+            "Version 1 ignored each of these by name and this version ignores one folder, so left where they "
+            f"were they would be untracked files a `git add -A` commits. They are under `{V1}/`, which is "
+            "ignored; nothing in this version reads them, and they are yours to keep or delete.\n\n"
+            + "".join(f"- `{name}` → `{V1}/{Path(name).name}`\n" for name in names) + "\n")
+
+
 def move_in(root: Path, *, ignore: bool = True) -> tuple[tuple[str, ...], tuple[str, ...], bool]:
     """Move this project's run state into `.slipwai/run/` and say so in its `.gitignore`.
 
@@ -169,4 +211,5 @@ def move_in(root: Path, *, ignore: bool = True) -> tuple[tuple[str, ...], tuple[
         merged(path, root / RUN / path.name, left, root)
         if len(left) == before:
             moved.append(f"{relative} -> {RUN}/{path.name}")
-    return tuple(moved), tuple(left), changed
+    crossed, kept = move_version_1(root)  # a project that crossed before the crossing moved them itself
+    return tuple(moved + crossed), tuple(left + kept), changed

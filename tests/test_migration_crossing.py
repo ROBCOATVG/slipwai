@@ -253,6 +253,15 @@ class CatchUpTest(unittest.TestCase):
         self.assertIn("## What this crossing could not do", page)
         self.assertIn("`project.json` conflicted", page)
 
+    def test_version_1s_run_files_are_named_with_where_each_went(self) -> None:
+        document = {"name": "orders", "layout": {"delivery": "."}}
+        page = catch_up("orders", "1.5.1", "1.5.1", Flight(), layout_of(document), {}, [],
+                        run_files=[".specify/cruise-run.log", "specs/cruise-checkpoint.md"])
+        self.assertIn("## Version 1's run files, moved", page)
+        self.assertIn("- `.specify/cruise-run.log` → `.slipwai/run/v1/cruise-run.log`", page)
+        self.assertIn("- `specs/cruise-checkpoint.md` → `.slipwai/run/v1/cruise-checkpoint.md`", page)
+        self.assertNotIn("## Version 1's run files", self.page([]))
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

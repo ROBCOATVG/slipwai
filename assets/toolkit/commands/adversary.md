@@ -161,7 +161,7 @@ or `deferred` with the person's name and their reason, in their words.
 
 **One round, and a bar.** The pass runs once per capability — and per slice only for the per-slice exception —
 not until it converges: in the experiment it ran 21 rounds and produced 129 findings, 64 of them LOW and most of those about wording, and slice S20 still ended
-with five open. A finding at or above the fairway's severity bar closes before the person's demo, in a follow-up slice in
+with five open. A finding at or above the fairway's severity bar closes before the capability is accepted, in a follow-up slice in
 the same fairway — or, for the per-slice exception, before the slice's push. One below it is **stowed** — a row
 in `fairways/<name>/careen.md` naming the capability or the slice — and the work goes on. The careen is a
 hardening slice the fairway runs when its planned slices are done, and its demo is that the findings are

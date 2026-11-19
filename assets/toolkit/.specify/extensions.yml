@@ -108,7 +108,7 @@ hooks:
   after_implement:
     - extension: "convergence"
       command: "speckit-converge"
-      description: "Say when the codebase is checked against the artifacts: at the capability, or now under open"
+      description: "Say when the codebase is checked against the artifacts: at the capability, or now where the project reads each slice"
       optional: true
       enabled: true
       prompt: >-
@@ -119,7 +119,7 @@ hooks:
 
         It is append-only — its single write is new tasks, never spec, plan, existing tasks, or application
         code — so running it costs a read and repeating it is safe. Implement whatever it appends and converge
-        again, until it reports converged.
+        again, until it reports converged or has run the two passes `commands/sail.md` allows.
 
 
         **Not after every slice.** Converge runs once the capability this slice belongs to is whole — the

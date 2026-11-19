@@ -42,8 +42,8 @@ class Stage:
     """One rung of `/sail`'s ladder: the role that runs it and, where it is delegated, what that delegate may do.
 
     `writes` and `commands` are declared for exactly the stages the ladder sends to a fresh context, which is
-    what makes a stage delegable: tasks from a complete plan, implementation from a complete task, converge,
-    post-implementation gaps, adversary and mutation. A conversational stage — one that may have to ask the
+    what makes a stage delegable: tasks from a complete plan, implementation from a complete task, the review,
+    converge, post-implementation gaps, adversary and mutation. A conversational stage — one that may have to ask the
     user a product question — has neither and stays on the host, so there is nothing to project for it and
     nothing to enforce.
     """

@@ -5,7 +5,7 @@ readings  3fd3ef57eecc91ba  2  assets/pages/docs/workflow.md
 readings  3fd3ef57eecc91ba  2  assets/profiles/event-modelling/.specify/presets/event-modelling/templates/tasks-template.md
 readings  3fd3ef57eecc91ba  1  assets/profiles/event-modelling/docs/speckit-preset.md
 readings  3fd3ef57eecc91ba  1  assets/profiles/standard/docs/speckit-preset.md
-readings  3fd3ef57eecc91ba  3  assets/toolkit/.specify/extensions.yml
+readings  3fd3ef57eecc91ba  4  assets/toolkit/.specify/extensions.yml
 readings  3fd3ef57eecc91ba  1  assets/toolkit/agents/sail-converge-navigator.md
 readings  3fd3ef57eecc91ba  4  assets/toolkit/agents/sail-demo-hand.md
 readings  3fd3ef57eecc91ba  1  assets/toolkit/agents/sail-gaps-lookout.md
@@ -56,22 +56,22 @@ push-when  65c516a5f4cc4cff  1  docs/guide/runsheet-adopt.md
 push-when  65c516a5f4cc4cff  1  src/slipwai/project/demo_stop.py
 push-when  65c516a5f4cc4cff  1  src/slipwai/project/sail_adoption.py
 push-when  65c516a5f4cc4cff  1  src/slipwai/project/whats_next.py
-release-modes  d454e7a4962b02cc  1  assets/adoption/docs/strategies/in-place.md
-release-modes  d454e7a4962b02cc  1  assets/adoption/scripts/check-convergence.py
-release-modes  d454e7a4962b02cc  2  assets/guidance/agents.md
-release-modes  d454e7a4962b02cc  1  assets/toolkit/.specify/extensions.yml
-release-modes  d454e7a4962b02cc  1  assets/toolkit/commands/chart.md
-release-modes  d454e7a4962b02cc  5  assets/toolkit/commands/sail.md
-release-modes  d454e7a4962b02cc  1  assets/toolkit/scripts/agents/capabilities.py
-release-modes  d454e7a4962b02cc  1  assets/toolkit/scripts/agents/harbourmaster.py
-release-modes  d454e7a4962b02cc  1  assets/toolkit/scripts/agents/release_state.py
-release-modes  d454e7a4962b02cc  1  docs/guide/first-feature.md
-release-modes  d454e7a4962b02cc  2  docs/guide/the-workflow.md
-release-modes  d454e7a4962b02cc  4  src/slipwai/project/capability_gates.py
-release-modes  d454e7a4962b02cc  3  src/slipwai/project/cruise_stops.py
-release-modes  d454e7a4962b02cc  4  src/slipwai/project/flags.py
-release-modes  d454e7a4962b02cc  1  src/slipwai/project/ladder.py
-release-modes  d454e7a4962b02cc  1  src/slipwai/project/stage_models.py
+release-modes  f3ab9065e8339190  1  assets/adoption/docs/strategies/in-place.md
+release-modes  f3ab9065e8339190  1  assets/adoption/scripts/check-convergence.py
+release-modes  f3ab9065e8339190  2  assets/guidance/agents.md
+release-modes  f3ab9065e8339190  1  assets/toolkit/.specify/extensions.yml
+release-modes  f3ab9065e8339190  1  assets/toolkit/commands/chart.md
+release-modes  f3ab9065e8339190  5  assets/toolkit/commands/sail.md
+release-modes  f3ab9065e8339190  1  assets/toolkit/scripts/agents/capabilities.py
+release-modes  f3ab9065e8339190  1  assets/toolkit/scripts/agents/harbourmaster.py
+release-modes  f3ab9065e8339190  1  assets/toolkit/scripts/agents/release_state.py
+release-modes  f3ab9065e8339190  1  docs/guide/first-feature.md
+release-modes  f3ab9065e8339190  2  docs/guide/the-workflow.md
+release-modes  f3ab9065e8339190  4  src/slipwai/project/capability_gates.py
+release-modes  f3ab9065e8339190  3  src/slipwai/project/cruise_stops.py
+release-modes  f3ab9065e8339190  4  src/slipwai/project/flags.py
+release-modes  f3ab9065e8339190  1  src/slipwai/project/ladder.py
+release-modes  f3ab9065e8339190  1  src/slipwai/project/stage_models.py
 slice-hardening  2c800d800f031e4e  1  assets/adoption/blocks/agents.md
 slice-hardening  2c800d800f031e4e  2  assets/event-model/first-slice.md
 slice-hardening  2c800d800f031e4e  3  assets/guidance/agents.md
@@ -107,3 +107,5 @@ walk-bound  584539f6cb83c2c0  1  assets/toolkit/scripts/agents/deck_line.py
 walk-bound  584539f6cb83c2c0  3  assets/toolkit/scripts/agents/try_it.py
 walk-bound  584539f6cb83c2c0  1  src/slipwai/project/harbour.py
 # reread: 2026-11-19 readings, gates-when, push-when, release-modes, slice-hardening, walk-bound: the first record, taken after the copies of gates-when, push-when, release-modes and slice-hardening were read and corrected against their owners (issue 103); readings was read for pull request 111
+# reread: 2026-11-19 readings: the converge hook's description now names the readings setting where it said 'under open'; one more mention in extensions.yml, read
+# reread: 2026-11-19 release-modes: the keystone bullet now names specs/<feature>/keystones.yaml, which is what check-slice-scope reads, where it said the chart's entry: key; chart.md and the scope gate already said keystones.yaml, and no other copy names the file

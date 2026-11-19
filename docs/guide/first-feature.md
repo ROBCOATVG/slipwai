@@ -260,20 +260,21 @@ Each stage writes its artefact under `specs/booking/slices/BOK-01/`. This is how
 to if you close the terminal. Analyze is the exception: a clean reading means that there is no finding, so
 there is no file.
 
-## The demo stops for you
+## The demo, and who accepts it
 
-The demo is a run of the slice that an actor can see, in front of a person:
+No slice stops for you. A slice proves each of its examples with a test and records it, and that record is
+what lets it be pushed:
 
 ```
-demo of BOK-01 — a guest holds 19:30 for four
+BOK-01 — a guest holds 19:30 for four
 
-  POST /bookings  { "at": "19:30", "covers": 4 }  →  201  held until 19:45
-  the restaurant's list now shows it
-
-accept this? [y/n/notes]
+  POST /bookings  { "at": "19:30", "covers": 4 }  →  201  held until 19:45     proven by BookingHeldTest
+  the restaurant's list now shows it                                           proven by BookingListTest
 ```
 
-If you say yes, the line goes into the log. If you say no with notes, the notes go back into the slice.
+What is demonstrated is a capability, once all its slices are built. By default the hand walks it as the
+actor and its verdict accepts it. If `.specify/cruise.json` says `demos: person`, the capability waits for
+you on the board: accept it, or send it back with notes, and the notes go back into the slice that owns them.
 
 You see a capability when its gates have passed on its last slice's branch and that slice has merged. These are the gates:
 

@@ -80,7 +80,7 @@ proven by a test, and one review of the slice's own diff; then `/adversary` for 
 which attacks nothing — `commands/adversary.md` says how — then `make verify`. A capability's gates run once, on its last
 slice's branch and before that slice merges: the installed Spec Kit converge command over its diff until it reports
 converged or reaches its bound, `/gaps`, the design review, one adversary pass where any slice widened a
-trigger, `/mutation`, and the hand's walk, then the person's demo. Nothing is read per slice in any release
+trigger, `/mutation`, and the hand's walk; then the hand's verdict accepts the capability, or a person's demo follows where `.specify/cruise.json` says `demos: person`. Nothing is read per slice in any release
 mode, `open` included: only where `harbour.json` says `"readings": "slice"` do converge, the gaps trace, design
 review and walk run per slice as well, and a slice that widened authorisation, identity or money is attacked
 before its push; the capability's converge, adversary pass and mutation still run. Stop earlier only for a product decision or unavailable external input.
@@ -92,7 +92,8 @@ before its push; the capability's converge, adversary pass and mutation still ru
 The loop starts when any per-slice command is invoked: `/sail`, `/example-map`, or the installed Spec Kit
 plan, tasks, and implement commands. Naming one stage requests that stage and what follows it. A
 stage's own done condition is stage completion, not permission to end the delivery loop, and an optional
-extension hook is not a gate.
+extension hook is not a gate. The one exception is a session a captain dispatched: it ends its turn at the
+handovers its prompt names, and the captain starts the next part in a new session.
 
 Continue until the actor-visible path is ready for a demo, a product decision or unavailable external input
 blocks progress, or the ordered split is exhausted. Before the push, prove every example with a test and

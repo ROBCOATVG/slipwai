@@ -294,8 +294,10 @@ def sail_ladder(
                     "pass has not yet covered is dark until it has"),
         capability_gates_stage(bool(web)),
         """**Merge to main** — the slice is on trunk. Rebase first, run the full `make verify` on the
-   rebased branch, and merge. This is the only rung that runs the full gate, and the only one a person
-   holds: until a captain enforces the stage boundaries, nothing here merges itself. In the same breath as
+   rebased branch, and merge. This is the only rung that runs the full gate. Under a fleet the
+   harbourmaster performs it: the captain asks, and the harbourmaster rebases the branch in a scratch
+   worktree of its own, runs the gate there and advances trunk, one merge at a time. A person running
+   `/sail` by hand with no fleet does the same three steps themselves. In the same breath as
    the push, `make try-update` where Try it is running: it moves to the trunk this merge made, keeps its
    data, and seeds this slice's story, so whatever this slice made observable is reachable from the card
    at once — under `/cruise` the harbourmaster does the same after every merge it grants.""",

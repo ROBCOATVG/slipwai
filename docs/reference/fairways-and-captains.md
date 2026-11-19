@@ -265,7 +265,8 @@ because the machine ahead takes some minutes. The wait bound does not catch a bu
 dead one: a machine that took the ref and was killed before it gave it back. A person has to read that
 case, so the harbourmaster reports it instead of waiting for ever.
 
-**It is not a merge queue.**
+**It performs the merge and chooses none.** A slice lands because its captain asked and the gate passed, in
+the order of the asking.
 
 ---
 

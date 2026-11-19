@@ -70,6 +70,14 @@ DEFAULT_BUDGET = "5s"
 REFUSE = 2
 
 
+#: What a `before-search` guard reads on its stdin: one JSON object with these keys, in this order, each
+#: left out where the search did not say. `scripts/agents/tool_event.py` builds it in a project, and
+#: `docs/extensions.md` lists it for whoever writes a guard; `tests/test_guard_event.py` holds the three to
+#: one another, because a field promised and not sent is a guard somebody writes that cannot decide (#121).
+SEARCH_EVENT = ("v", "point", "tool", "query", "pattern", "path", "glob", "type", "command", "cwd", "session",
+                "agent", "agent_type", "stage", "slice", "fairway")
+
+
 @dataclass(frozen=True)
 class Guard:
     """One moment a tool call may be refused, what the guard is handed, and what refusing it does."""
@@ -87,7 +95,7 @@ GUARDS: tuple[Guard, ...] = (
           ("stage", "slice", "fairway", "berth"),
           "the session does not start, and the stage is dispatched again without this extension's guard"),
     Guard("before-search", "a delegate is about to search the tree — grep, find, a file read by glob",
-          ("stage", "slice", "fairway", "query", "tool"),
+          tuple(word for word in SEARCH_EVENT if word not in ("v", "point")),
           "that search does not run, and the agent is told what to ask instead"),
     Guard("before-write", "a delegate is about to write or edit a file",
           ("stage", "slice", "fairway", "path", "tool"),

@@ -176,7 +176,7 @@ So a guard is a separate kind. It has three differences from a hook, and they ar
 | Guard | Fires | Given | If the guard refuses |
 |---|---|---|---|
 | `session` | when a delegate's session opens, before its first tool call | `stage`, `slice`, `fairway`, `berth` | the session does not start |
-| `before-search` | just before a delegate searches the tree | `stage`, `slice`, `fairway`, `query`, `tool` | the search does not run, and the agent is told what to ask instead |
+| `before-search` | just before a delegate searches the tree | [the search event](#what-a-before-search-guard-is-handed) | the search does not run, and the agent is told what to ask instead |
 | `before-write` | just before a delegate writes or edits a file | `stage`, `slice`, `fairway`, `path`, `tool` | the file is not written |
 | `before-command` | just before a delegate runs a shell command | `stage`, `slice`, `fairway`, `command`, `tool` | the command does not run |
 | `before-fetch` | just before a delegate reads a URL | `stage`, `slice`, `fairway`, `url`, `host`, `tool` | the fetch does not happen |
@@ -193,6 +193,59 @@ guard is 5s, not 30s, because somebody is waiting for the tool call.
   }
 }
 ```
+
+### How a guard is handed what it is given
+
+A guard receives the given values as environment variables, in the same way as a hook: `SLIPWAI_STAGE`,
+`SLIPWAI_QUERY`, `SLIPWAI_TOOL` and so on. `SLIPWAI_POINT` names the guard point. A variable is set only
+where the value exists. For example, a person's own session has no stage, so `SLIPWAI_STAGE` is not set.
+
+A guard runs with the project root as its working directory. Slipwai ends a guard that is over its budget,
+and the call goes ahead. A guard that crashes, exits with any code except 2, or is not in the project also
+lets the call go ahead. A guard can never keep a tool call waiting for longer than its budget.
+
+### What a `before-search` guard is handed
+
+A search guard must decide about *this* search: which tool made it, where it looks, and whose it is. So
+`before-search` also hands the guard one JSON object on its stdin. This object is the contract. Write a
+guard against it.
+
+| Field | What it is |
+|---|---|
+| `v` | The version of this contract: `1`. A new field does not change it. A field whose meaning changes does. |
+| `point` | `before-search`. |
+| `tool` | The tool that makes the search, in the harness's own spelling: `Grep`, `Glob` or `Bash` on Claude Code. |
+| `query` | The same string as `SLIPWAI_QUERY`: the pattern, or the command for a shell search. |
+| `pattern` | What a search tool looks for: a regular expression for `Grep`, a file pattern for `Glob`. |
+| `path` | Where a search tool looks, exactly as the agent wrote it. It can be relative to `cwd`. |
+| `glob` | The file filter of a `Grep`, for example `*.md`. |
+| `type` | The file type of a `Grep`, for example `py`. |
+| `command` | The whole shell command, for a search that comes through the shell. Slipwai does not parse it. |
+| `cwd` | The directory that the session is in. |
+| `session` | The harness's identifier for the session. |
+| `agent` | The harness's identifier for the sub-agent that made the call. It is absent for the session itself. |
+| `agent_type` | The type of that sub-agent, for example `sail-implement-shipwright`. |
+| `stage` | The rung, in a session that a captain dispatched. |
+| `slice` | The slice, in a session that a captain dispatched. |
+| `fairway` | The fairway, in a session that a captain dispatched. |
+
+**A field that the search did not name is absent.** It is never an empty string. A `Grep` with no `path`
+has no `path` key, and a call by the session itself has no `agent` key. Read a field with `.get()`.
+
+Every shell command reaches `before-search`, and not only the commands that search. A `grep` in the shell
+is the same search through another door, and slipwai cannot tell which commands search without parsing
+the shell. So a guard receives `tool: "Bash"` and the `command`, and decides for itself.
+
+**A guard is handed the search, not the session.** The harness's own event also names the transcript of
+the conversation, the permission mode and the identifier of the call. Slipwai copies none of them.
+
+`SLIPWAI_QUERY` is the only thing that a guard received before this event existed. It still carries the
+same string, so a guard that reads only `SLIPWAI_QUERY` works as before. Slipwai cuts it at 16,000
+characters, because a platform refuses a process whose arguments are too long. The event carries the
+whole string.
+
+The other guards receive no event on stdin. `tests/test_guard_event.py` holds this table to the code that
+builds the event.
 
 **A person agrees to a guard. Installing the extension is not enough.** A hook runs wherever an extension
 is elected. A guard can also refuse things that a person asked for. So `./init` asks once, and names in

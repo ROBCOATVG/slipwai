@@ -10,6 +10,10 @@ then does something else. The rung completes either way. No guard can end one.
 
     python3 scripts/extensions/guards.py before-search --query "def place_order" --stage implement
 
+`scripts/agents/session.py` is what fires it for real, from a harness's own event, and where the point has
+an event it adds `--event stdin` and writes the event there: one JSON object, which each guard is handed on
+its own stdin. Fired by hand as above there is none, and a guard reads the `SLIPWAI_<WORD>` variables.
+
 Exit 0: nothing refused, the call goes ahead. Exit 2: refused, and stderr is the reason the agent is given.
 Anything a guard does other than exit 2 — a crash, a timeout, a non-zero code that is not 2 — is a hook's
 behaviour: said on stderr, and the call goes ahead. A guard that cannot run is not a reason a delegate
@@ -38,6 +42,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -210,12 +215,45 @@ def reason(run: subprocess.CompletedProcess) -> str:
     return said or "refused, and said nothing about why"
 
 
-def fire(name: str, given: dict[str, str]) -> int:
+def ran(script: Path, environment: dict[str, str], budget: float, told: str = "") -> subprocess.CompletedProcess:
+    """One guard, run with `told` on its stdin. Raises `TimeoutExpired` once it is over `budget` and ended.
+
+    **The budget is the longest a call can wait, whatever the guard did** — so nothing here is a pipe. A
+    pipe has a far end somebody has to service: an event longer than a pipe holds blocks its writer until a
+    guard that never reads it exits, and output is not finished until every process holding it open has
+    gone, so a guard that started something and was then ended at its budget could leave this waiting on a
+    process nobody had a budget for. The event is a file the guard may read, and what it prints goes to two
+    more. Its streams are UTF-8 unless it asked for something else, so the reason it printed reaches the
+    agent as it was written, and not as the machine's code page read it.
+    """
+    command = [sys.executable, str(script)]
+    with tempfile.TemporaryFile() as given, tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        given.write(told.encode("utf-8"))
+        given.seek(0)
+        process = subprocess.Popen(command, stdin=given, stdout=out, stderr=err, cwd=ROOT,
+                                   env={"PYTHONIOENCODING": "utf-8", **environment})
+        try:
+            code = process.wait(timeout=budget)
+        except subprocess.TimeoutExpired:
+            process.kill()  # it, and only it: what it started is its own, and is not waited for
+            process.wait()
+            raise
+        out.seek(0)
+        err.seek(0)
+        return subprocess.CompletedProcess(command, code, out.read().decode("utf-8", "replace"),
+                                           err.read().decode("utf-8", "replace"))
+
+
+def fire(name: str, given: dict[str, str], told: dict | None = None) -> int:
     """Run every guard on `name`. 2 as soon as one refuses; 0 otherwise.
 
     In extension-name order and stopping at the first refusal, because the call is already not happening and
     a second opinion about a call nobody is making is noise a person has to read.
+
+    `given` reaches a guard as `SLIPWAI_<WORD>` variables, and `told` — the event, where the point has one —
+    as one JSON object on its stdin. A guard that reads only the variables is handed what it always was.
     """
+    event = json.dumps(told) if told is not None else ""
     for body in read(REGISTRY).get("guards", {}).get(name, []):
         key, script = body.get("extension", "?"), body.get("run", "")
         if not applies(body, given):
@@ -224,10 +262,10 @@ def fire(name: str, given: dict[str, str]) -> int:
         if not path.is_file():
             print(f"guard {key} {name}: {path} is not in this project", file=sys.stderr)
             continue
-        environment = {**os.environ, **{f"SLIPWAI_{word.upper()}": value for word, value in given.items()}}
+        environment = {**os.environ, "SLIPWAI_POINT": name,
+                       **{f"SLIPWAI_{word.upper()}": value for word, value in given.items()}}
         try:
-            run = subprocess.run([sys.executable, str(path)], capture_output=True, text=True, cwd=ROOT,
-                                 timeout=seconds(body.get("budget", DEFAULT_BUDGET)), env=environment)
+            run = ran(path, environment, seconds(body.get("budget", DEFAULT_BUDGET)), event)
         except subprocess.TimeoutExpired:
             # Not a refusal. A guard that ran out of time has said nothing, and a tool call stopped by
             # silence is a delegate blocked by a bug in something it was never told about.
@@ -263,7 +301,18 @@ def main(argv: list[str]) -> int:
     for index in range(0, len(rest) - 1, 2):
         if rest[index].startswith("--"):
             given[rest[index][2:]] = rest[index + 1]
-    return fire(argv[0], given)
+    # Only when told one is there: fired by hand, stdin is a keyboard, and nobody is going to type an event.
+    told = sent() if given.pop("event", "") == "stdin" else None
+    return fire(argv[0], given, told)
+
+
+def sent() -> dict | None:
+    """The event `session.py` wrote to this script's stdin, or nothing where it is not one."""
+    try:
+        read = json.loads(sys.stdin.buffer.read().decode("utf-8", "replace") or "null")
+    except (OSError, ValueError):
+        return None
+    return read if isinstance(read, dict) else None
 
 
 if __name__ == "__main__":

@@ -54,6 +54,9 @@ def main(argv: list[str]) -> int:
               f"agrees it is a new feature before this runs. Write that file as `yes` and who answered, "
               f"then `make assess SLUG={slug}`", file=sys.stderr)
         return 2
+    if (folder / "not-discussed").is_file():
+        print(f"assess: {slug} was captured with no agent to talk it through (docs/intake/{slug}/not-discussed); "
+              f"the assessment asks first what a conversation would have", flush=True)
     try:
         chosen, said = harness.choose()
     except harness.NoHarness as refusal:

@@ -3,8 +3,8 @@
 A page cannot hand over a path (`folder_choice.py` says why), so the Next features tab reads the chosen file
 in the browser and posts its name and its text, as the first page's file input does. Everything posted is a
 stranger's: the name is held to a plain file name, so it cannot climb out of the folder it is written to or
-stand in for a file intake reads as an answer (`confirmed`, `specified.json`, `brief.md`); the text is held to
-text, and to a size a conversation can carry.
+stand in for a file intake reads as an answer (`confirmed`, `specified.json`, `brief.md`, `not-discussed`); the
+text is held to text, and to a size a conversation can carry.
 
 A document that passes is written under the run's own folder, where the hand-over's session can read it and
 nothing reads it as part of the project. `project/intake.py`'s `capture` copies it beside `brief.md` from
@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .project.intake import BRIEF, CONFIRMED, RECEIPT
+from .project.intake import BRIEF, CONFIRMED, RECEIPT, SURFACES, UNDISCUSSED
 
 #: Bytes one document, or one message, may be, as UTF-8: a long requirements document is a tenth of this, and
 #: the whole of it rides in an agent's context when it is read.
@@ -31,7 +31,7 @@ NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,79}$")
 DEVICES = frozenset(("con", "prn", "aux", "nul", *(f"com{n}" for n in range(1, 10)),
                      *(f"lpt{n}" for n in range(1, 10))))
 #: What intake itself writes in an idea's folder; a document called one of these would be read as it.
-RESERVED = frozenset(one.lower() for one in (BRIEF, CONFIRMED, RECEIPT, TRANSCRIPT))
+RESERVED = frozenset(one.lower() for one in (BRIEF, CONFIRMED, RECEIPT, TRANSCRIPT, UNDISCUSSED, SURFACES))
 #: Control characters text does not carry: everything below a space but tab, line feed, form feed and return.
 BINARY = re.compile(r"[\x00-\x08\x0b\x0e-\x1f]")
 

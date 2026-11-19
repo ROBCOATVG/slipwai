@@ -13,7 +13,9 @@ confirms here, and confirming adds `confirmed` and `became`: what it was handed 
 
 **Confirming hands the item to what already exists**, never to anything new:
 
-- *scope* is captured as an intake idea, the same `docs/intake/<slug>/brief.md` `/sail` writes;
+- *scope* is captured as an intake idea, the same `docs/intake/<slug>/brief.md` `/sail` writes. On the board
+  that is the hand-over's conversation, started from the item's words (`intake_feedback.py`), and the item is
+  confirmed when its idea is captured: `became` is the link from one to the other, either way;
 - *note* goes under `## From feedback` in `docs/design.md`, which every slice with a screen reads first;
 - *defect*, *change* and *planned* are a message in that slice's inbox, `from: feedback`, which its driver
   delivers and receipts. Addressed, so it is not a note under *Waiting on you*; not a person's, so it
@@ -223,8 +225,9 @@ def note_design(root: Path, item: Item) -> str:
 
 
 def confirm(root: Path, number: str, rows: list[dict[str, str]], route: str = "", hold: str = "",
-            slice_id: str = "") -> str:
-    """Hand one item on, as triage proposed it or as the person routed it instead, and record which."""
+            slice_id: str = "", idea: Path | None = None) -> str:
+    """Hand one item on, as triage proposed it or as the person routed it instead, and record which. `idea`
+    is the intake idea a *scope* already became, where the board's hand-over captured it."""
     from .project.intake import capture as intake
     from .talk_said import tell
 
@@ -243,7 +246,7 @@ def confirm(root: Path, number: str, rows: list[dict[str, str]], route: str = ""
             raise ValueError(f"{slice_id!r} is not a slice id")
         item.fields["slice"] = slice_id
     if chosen == "scope":
-        folder, _ = intake(root, item.said)
+        folder = idea or intake(root, item.said)[0]
         became = folder.relative_to(root).as_posix()
     elif chosen == "note":
         became = note_design(root, item)
@@ -268,3 +271,15 @@ def confirm(root: Path, number: str, rows: list[dict[str, str]], route: str = ""
     item.fields.update(confirmed=now(), became=became)
     write(item)
     return f"feedback {item.number}: {became}"
+
+
+def became_idea(root: Path, number: str, folder: Path) -> str:
+    """The item a hand-over was started from, confirmed as the idea it was captured as: a sentence for the
+    page, empty where the conversation came from no item. Never raises: the idea is written by then."""
+    if not number:
+        return ""
+    try:
+        confirm(root, number, [], "scope", idea=folder)
+    except ValueError as refused:
+        return f" Feedback {number} was not marked as having become it: {refused}."
+    return f" Feedback {number} is recorded as having become it."

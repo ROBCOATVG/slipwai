@@ -24,6 +24,13 @@ every agreement already there; `--remove <key>...` takes one back and keeps the 
 *elected* by being installed and *agreed to* by answering a question, because a guard refuses things a
 person asked for. An extension that declares a guard nobody agreed to fires none.
 
+**Either one leaves everything derived from the agreement current before it returns** (`current`): the
+harness's row, the guidance of the extension whose agreement changed — its `project` hook, fired for it
+alone — and the copy of that guidance a harness reads. An extension's block in `AGENTS.md` may say whether
+its guard is agreed to, so a command that changed the answer and stopped there left `make check-extensions`
+red for a person who had done exactly what they were told. What it brought up to date it says; a hook that
+failed is said by name with `make agents` as the retry, and is never why agreeing exited non-zero.
+
 A guard may also be **told** that a tool was used, where its declaration `sees` that tool: `guards.py
 tool-use --tool <name>` runs it with the event on stdin and discards what it exits with. That is how an
 extension knows its own MCP tool was called, and it cannot refuse the call by it.
@@ -128,7 +135,7 @@ def elect(keys: list[str]) -> int:
         else:
             agreed.pop(key, None)
             print(f"guards: {key} offers no guard in this project, so there is nothing of its to agree to")
-    return write_registry(agreed)
+    return write_registry(agreed, changed=sorted(set(keys)))
 
 
 def remove(keys: list[str]) -> int:
@@ -141,10 +148,10 @@ def remove(keys: list[str]) -> int:
     gone = [key for key in sorted(set(keys)) if agreed.pop(key, None) is not None]
     for key in sorted(set(keys) - set(gone)):
         print(f"guards: {key} has no guard agreed to here, so nothing was removed")
-    return write_registry(agreed) if gone else 0
+    return write_registry(agreed, changed=gone) if gone else 0
 
 
-def write_registry(agreed: dict[str, dict[str, dict]]) -> int:
+def write_registry(agreed: dict[str, dict[str, dict]], changed: list[str] | None = None) -> int:
     """`.slipwai/guards.json` from exactly what is agreed: per extension, each of its guards that may fire.
 
     Per guard rather than per extension, because an agreement is per guard from 13.4 on. An extension that
@@ -162,6 +169,7 @@ def write_registry(agreed: dict[str, dict[str, dict]]) -> int:
     firing = sum(1 for names in agreed.values() if names)
     print(f"guards: {firing} extension(s) may refuse at {attached}")
     matched()
+    current(changed or [])
     return 0
 
 
@@ -171,10 +179,51 @@ def matched() -> None:
     script = HERE / "guard_harness.py"
     if not script.is_file():
         return
+    sys.stdout.flush()  # what this said so far, before what that process says
     try:
         subprocess.run([sys.executable, str(script)], cwd=ROOT, check=False)
     except OSError:
         return
+
+
+def current(keys: list[str]) -> None:
+    """Bring the guidance of the extensions whose agreement just changed up to date, and say what was.
+
+    `--elect` and `--remove` name them; `--offer` names none, because `./init` projects everything after it
+    has asked. `project.py --only` fires each one's `project` hook, for it alone and with what `make agents`
+    hands it, and says what that did. Where `AGENTS.md` moved, the harnesses that read a copy of its
+    extension guidance are given the new one, by the pass `./init` makes for the same reason.
+
+    **Never a reason the agreement is not recorded, and never this command's exit code**: the registry is
+    written by now. What could not be brought up to date is said with the one command that does it."""
+    if not keys:
+        return
+    stands = "The agreement is recorded and stands"
+    agents, projector, harnesses = ROOT / "AGENTS.md", HERE / "project.py", HERE.parent / "agents/project.py"
+    before = agents.read_bytes() if agents.is_file() else None
+    sys.stdout.flush()
+    try:
+        why = None if projector.is_file() else f"{projector.relative_to(ROOT).as_posix()} is not in this project"
+        if why is None:
+            done = subprocess.run([sys.executable, str(projector), "--only", *keys], cwd=ROOT, check=False)
+            why = f"{projector.name} --only exited {done.returncode}" if done.returncode else None
+    except OSError as error:
+        why = type(error).__name__
+    if why is not None:
+        print(f"guards: what {', '.join(keys)} says in AGENTS.md could not be brought up to date from here "
+              f"({why}). {stands}; `make agents` brings it up to date.", file=sys.stderr)
+    after = agents.read_bytes() if agents.is_file() else None
+    if after == before or not harnesses.is_file() or not (ROOT / ".specify/integration.json").is_file():
+        return
+    try:
+        code: object = subprocess.run([sys.executable, str(harnesses), "--context"], cwd=ROOT,
+                                      check=False).returncode
+    except OSError as error:
+        code = type(error).__name__
+    if code:
+        print(f"guards: AGENTS.md says what is agreed to now, but the copy of its extension guidance a harness "
+              f"reads could not be written ({harnesses.name} --context: {code}). {stands}; `make agents` writes "
+              f"the copy.", file=sys.stderr)
 
 
 def agreed_already() -> dict[str, list[str]]:

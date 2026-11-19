@@ -148,7 +148,9 @@ def announce(terminal: bool, ask: Callable[[str], str] = input, say: Callable[[s
     if answer in ("y", "yes"):
         done = subprocess.run([sys.executable, str(RUNNER), "--elect", *sorted(gained)], cwd=ROOT,
                               capture_output=True, text=True, check=False)
-        say((done.stdout or done.stderr).strip() or "guards: the registry was not written")
+        # Everything it said: what it agreed to, what it brought up to date, and a hook that did not finish.
+        said = [part.strip() for part in (done.stdout, done.stderr) if part and part.strip()]
+        say("\n".join(said) or "guards: the registry was not written")
     for line in lines():  # whatever is still owed: everything on a no, a changed guard either way
         say(line)
     return 0

@@ -84,6 +84,8 @@ SLOW += test_migration_withheld
 SLOW += test_extension_remove
 # A git repository made per case, and git itself made to refuse one, for a release that says so (#126).
 SLOW += test_release_git_refuses
+# The project's own guard runner per case, which fires a stand-in extension's `project` hook and its gate.
+SLOW += test_guard_agreed_is_current
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

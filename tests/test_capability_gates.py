@@ -129,6 +129,28 @@ class OpenModeTest(unittest.TestCase):
         self.assertIn("Converge, the adversary pass and mutation still run here, over the whole capability", rung)
 
 
+    def test_nothing_shipped_still_ties_a_slice_s_readings_to_the_open_mode(self) -> None:
+        """Version 2.1's first cut moved the rule in the ladder and left thirteen sentences saying the old one.
+
+        `AGENTS.md`, the tasks template, the converge hook and three lines of `/sail` still said *under the
+        `open` release mode* the slice is converged, walked and attacked, and lean-coffee-club's sessions
+        quoted them: every slice was still walked and attacked "because the product is pre-launch in release
+        mode `open`". The one sentence left is about flags, not readings.
+        """
+        assets = TOOLKIT_ROOT.parent
+        kept = {"toolkit/scripts/agents/capabilities.py"}
+        found = sorted(path.relative_to(assets).as_posix() for path in assets.rglob("*")
+                       if path.is_file() and path.suffix in (".md", ".yml", ".yaml", ".py", ".json")
+                       and "under the `open` release mode" in flat(path.read_text(encoding="utf-8")).replace(
+                           "Under", "under"))
+        self.assertEqual([one for one in found if one not in kept], [])
+
+    def test_the_demo_line_is_owed_without_a_walk(self) -> None:
+        page = flat((TOOLKIT_ROOT / "commands/sail.md").read_text(encoding="utf-8"))
+        self.assertIn("**Nobody walks a slice to write it**", page)
+        self.assertIn("the verdict is `accepted`, with no `--by`", page)
+
+
 class ScopeTest(unittest.TestCase):
     """A slice's own reviews read only what it added or changed; that is what keeps a slice small."""
 

@@ -186,8 +186,8 @@ folds into the task that produces the behaviour it guards.
 green, every example in `examples.md` is named under `## Examples proven` against the test that drives it
 through the slice's outermost boundary, with the command and commit of the run that passed. Do not count an
 internal test or a backend behind an unbuilt modelled white box as proving an example. The hand walks the
-whole capability once its last slice has merged, and the person's demo follows; under the `open` release
-mode the hand walks this slice here as well. Feed defects and small adjustments within agreed scenarios back
+whole capability once its last slice has merged, and the person's demo follows; only where
+`harbour.json` says `"readings": "slice"` does the hand walk this slice here as well. Feed defects and small adjustments within agreed scenarios back
 through RED-GREEN-REFACTOR; changed rules back to `/example-map`; newly exposed boundaries within the
 specified product to `/story-splitting`; new product scope to `/speckit-specify` and its downstream stages;
 and new event names, fields or stream identity to event modelling. Resume Phase 4 only when every example is
@@ -206,7 +206,7 @@ the command and commit of the passing run — or the example and why no test can
 
 *Written by `/sail`, not by hand: a `Designed:` line per screen before its first RED, then `Reviewed with
 capability <name>` — the screens are reviewed once the capability is whole, in its `gates.md` — or `No screen in
-this slice`. Under the `open` release mode a `Reviewed:` line per screen goes here instead, before the push.*
+this slice`. Only where `harbour.json` says `"readings": "slice"` does a `Reviewed:` line per screen go here instead, before the push.*
 
 ---
 

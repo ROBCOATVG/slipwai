@@ -25,3 +25,6 @@ class Migration:
     # changed anything, whatever the versions crossed asked.
     unwritten: str | None = None
 
+    # What a crossing says about the untracked files it moved and seeded, which no `git` undo puts back: the
+    # command for each, printed last whether the merge committed or stopped (`run_folder.walking_away`).
+    put_back: tuple[str, ...] = ()

@@ -17,6 +17,12 @@ named), and a second pass finds nothing to do.
 wrote under `.specify/` and `specs/`; those files move to `.slipwai/run/v1/` (`VERSION_1`), at the crossing
 and at any later migration that still finds one, and are never dirt nor a projection in between.
 
+**Walking away is the person's, and so is putting the files back.** `git merge --abort` and `git reset --hard
+ORIG_HEAD` restore what git tracks; these files are untracked, so they stay where the move put them, under a
+version 1 `.gitignore` that ignores neither `.slipwai/run/v1/` nor the deck logs a crossing seeds. `migrate` does
+not guess that somebody walked away. It says, as it moves them, the command that puts each back
+(`walking_away`), and the catch-up page says the same.
+
 **It refuses while a fleet is out.** A harbourmaster or a captain appending to a deck log while its folder is
 moved loses the lines written in between, and nothing would say which. A live pid under `running/`, at
 either place, stops the migration before the merge, with the command that stops the fleet.
@@ -24,8 +30,10 @@ either place, stops the migration before the merge, with the command that stops 
 from __future__ import annotations
 
 import re
+import shlex
 import shutil
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 from .errors import GenerationError
@@ -184,6 +192,39 @@ def version_1_section(names: list[str]) -> str:
             f"were they would be untracked files a `git add -A` commits. They are under `{V1}/`, which is "
             "ignored; nothing in this version reads them, and they are yours to keep or delete.\n\n"
             + "".join(f"- `{name}` → `{V1}/{Path(name).name}`\n" for name in names) + "\n")
+
+
+def walking_away(names: Sequence[str], decks: Sequence[str] = ()) -> list[str]:
+    """What a crossing says as it moves version 1's run files and seeds deck logs: that walking away from it
+    moves none of them back, and the command that does, a line each. Nothing where it did neither.
+
+    `names` are the files as version 1 wrote them and `decks` the deck logs holding its history, both relative
+    to the project. One sentence opens it whichever of the two there is, because either alone is still an
+    untracked file version 1's ignore file does not name."""
+    away = ("Walking away from this crossing — `git merge --abort` while it is in progress, `git reset --hard "
+            "ORIG_HEAD` once it is committed — moves none of them back, and nothing here will guess that you did.")
+    again = ("A crossing run again writes no line twice, so leave them if you will cross again. To leave none of it "
+             "behind:")
+    remove = "  rm " + " ".join(shlex.quote(name) for name in decks)
+    if not names:
+        return [f"This crossing wrote version 1's history into {len(decks)} deck log(s) under {RUN}/logs/, which "
+                f"this version ignores and version 1 does not. {away} {again}", remove] if decks else []
+    said = [f"Version 1's run files are now under {V1}/, which this version ignores and version 1 does not. "
+            f"{away} To put each back where version 1 reads it:",
+            *[f"  mv {shlex.quote(f'{V1}/{Path(name).name}')} {shlex.quote(name)}" for name in names]]
+    if decks:
+        said += [f"The crossing also wrote version 1's history into {len(decks)} deck log(s), which stay as well. "
+                 f"{again}", remove]
+    return said
+
+
+def walking_away_section(names: Sequence[str], decks: Sequence[str] = ()) -> str:
+    """The catch-up page's copy of those words, or nothing where the crossing moved and seeded nothing."""
+    said = walking_away(names, decks)
+    if not said:
+        return ""
+    body = "\n".join(f"    {line.strip()}" if line.startswith("  ") else f"\n{line}\n" for line in said)
+    return f"## If you walk away from this crossing\n{body}\n\n"
 
 
 def move_in(root: Path, *, ignore: bool = True) -> tuple[tuple[str, ...], tuple[str, ...], bool]:

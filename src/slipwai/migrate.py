@@ -295,8 +295,8 @@ def commit_says(refresh: Refresh, *, merge: bool = False) -> str:
 def report(done: Migration) -> str:
     """What happened and what to do next, for the person who ran it."""
     text = report_of(done)
-    left = [f"Left alone: {page}." for page in done.refresh.skipped]
-    return "\n".join([text, *left]) if left and not done.conflicts else text
+    left = [f"Left alone: {page}." for page in done.refresh.skipped] if not done.conflicts else []
+    return "\n".join([text, *left, *done.put_back])  # last: how to put back what no `git` undo moves
 
 
 def report_of(done: Migration) -> str:

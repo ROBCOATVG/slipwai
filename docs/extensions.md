@@ -116,10 +116,23 @@ You can declare a hook in a short form, `"hooks": {"init": "init.py"}`, or in a 
 ```json
 {
   "hooks": {
-    "after-stage": {"run": "hooks/sync.py", "stages": ["implement", "converge"], "budget": "30s"}
+    "after-stage": {"run": "hooks/sync.py", "stages": ["drive"], "budget": "30s"}
   }
 }
 ```
+
+**`stages` is matched against the name the captain fires the point with, and it fires two.** `before-stage`
+and `after-stage` fire around a session, not around each rung inside it:
+
+- `drive` is the session that takes one slice up the ladder.
+- `decide` is the session that answers the questions a slice stopped on.
+
+A hook that names no `stages` runs at both. A hook that names any other stage — `implement` or `converge`,
+which this page once gave as its example — never runs, and nothing reports it.
+
+**Every script a manifest names must be in the package.** A hook or a guard whose file is missing never
+runs in any project. Conformance fails such a package and names the point and the path, and
+`slipwai extension list` says so for an installed package in that state.
 
 The hook receives the given values as environment variables: `SLIPWAI_STAGE`, `SLIPWAI_SLICE` and so on.
 `SLIPWAI_POINT` names the point itself.

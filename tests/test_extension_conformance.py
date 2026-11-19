@@ -166,15 +166,17 @@ class SuiteTest(unittest.TestCase):
         package(self.area, "kind", body)
         self.assertEqual(check(self.area / "kind").findings["recovers"], [])
 
-    def test_an_entry_point_the_package_does_not_ship_is_not_run_rather_than_failed(self) -> None:
+    def test_an_entry_point_the_package_does_not_ship_fails_and_the_six_are_said_not_to_have_run(self) -> None:
+        """Until #117 this passed: nothing was checked, so nothing failed, and a package with no entry point
+        at all could be published. The six still cannot be run; what fails is that the package is not whole."""
         place = package(self.area, "absent", "")
         (place / "init.py").unlink()
         report = check(place)
-        self.assertEqual(report.findings, {})
+        self.assertEqual(list(report.findings), ["ships"])
+        self.assertEqual(len(report.findings["ships"]), 2, "`init`, and `project` which defaults to it")
         self.assertEqual(len(report.not_run), 6)
         self.assertIn("init.py", report.not_run["idempotent"])
-        self.assertTrue(report.passed, "nothing was checked, so nothing failed; the report says so instead")
-
+        self.assertFalse(report.passed)
 
 if __name__ == "__main__":
     unittest.main()

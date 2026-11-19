@@ -190,18 +190,32 @@ def described(given: dict) -> str:
     return " ".join(command[0].split()[:6]) if command else ""
 
 
-def extensions(script: Path, point: str, given: dict[str, str]) -> int:
+def tool() -> dict[str, str]:
+    """The tool a call was made with, as the harness names it, where its event says. Every tool-call guard
+    is promised it, and a guard that is handed `Glob` does not have to guess that a pattern was a file name."""
+    name = event().get("tool_name")
+    return {"tool": name} if isinstance(name, str) and name.strip() else {}
+
+
+def extensions(script: Path, point: str, given: dict[str, str], told: dict[str, object] | None = None) -> int:
     """Run the extensions attached at `point`, and hand back what they said.
 
     A runner that is not in this project, cannot be started, or dies is said on stderr and treated as having
     refused nothing. An extension registry is a convenience; a stage that could not run because one of them
     was missing would be the control plane both closed sets are written to prevent.
+
+    `told` is the event a guard reads on its stdin, where the point has one. It goes down a pipe rather than
+    along the command line because a shell command can be longer than a platform lets an argument be.
     """
     if not script.is_file():
         return 0
     arguments = [part for word, value in sorted(given.items()) for part in (f"--{word}", value)]
+    if told is not None:
+        arguments += ["--event", "stdin"]
     try:
-        run = subprocess.run([sys.executable, str(script), point, *arguments], cwd=ROOT, text=True)
+        # ASCII whatever the search held, so no platform's idea of a pipe's encoding is part of the contract.
+        run = subprocess.run([sys.executable, str(script), point, *arguments], cwd=ROOT, text=True,
+                             input=json.dumps(told) if told is not None else None)
     except OSError as error:
         print(f"slipwai: {script.name} {point} could not run ({type(error).__name__}); carrying on",
               file=sys.stderr)
@@ -318,7 +332,7 @@ def before_write() -> int:
         if shown:
             print(REFUSAL.format(path=shown), file=sys.stderr)
             return REFUSE
-    return extensions(GUARDS, "before-write", {**about(), "path": path})
+    return extensions(GUARDS, "before-write", {**about(), **tool(), "path": path})
 
 
 def before_command(command: str = "") -> int:
@@ -341,7 +355,7 @@ def before_command(command: str = "") -> int:
             if control in text:
                 print(REFUSAL.format(path=control), file=sys.stderr)
                 return REFUSE
-    return extensions(GUARDS, "before-command", {**about(), "command": text})
+    return extensions(GUARDS, "before-command", {**about(), **tool(), "command": text})
 
 
 def before_fetch() -> int:
@@ -349,7 +363,7 @@ def before_fetch() -> int:
     given = event().get("tool_input")
     url = (given.get("url") if isinstance(given, dict) else "") or ""
     host = str(url).split("//", 1)[-1].split("/", 1)[0]
-    return extensions(GUARDS, "before-fetch", {**about(), "url": str(url), "host": host})
+    return extensions(GUARDS, "before-fetch", {**about(), **tool(), "url": str(url), "host": host})
 
 
 def before_search() -> int:
@@ -358,11 +372,31 @@ def before_search() -> int:
     A shell command reaches here as well as the search tools, because a `grep` or an `rg` typed into Bash is
     the same search by another door, and a guard that saw only the search tools would be a rule with a gap
     in it the size of the shell.
+
+    What a guard is handed is `tool_event.search`: the tool, what it searched for and where, and whose
+    call it is — on stdin, whole. `query` is the one string a guard was handed before that, kept as it was
+    for the guards already written against it.
     """
-    given = event().get("tool_input")
-    given = given if isinstance(given, dict) else {}
-    query = str(given.get("pattern") or given.get("query") or given.get("command") or "")
-    return extensions(GUARDS, "before-search", {**about(), "query": query})
+    # Asked for here and not at the top: every other verb answers with this module missing from a project
+    # half way through a merge, and a search that could not be described is a search nobody refuses.
+    import tool_event
+    told = tool_event.search(event(), about())
+    query = tool_event.query(event())[:tool_event.QUERY_LIMIT]
+    return extensions(GUARDS, "before-search", {**about(), **tool(), "query": query}, told)
+
+
+def tool_use() -> int:
+    """A tool some guard asked to see is being used. Told to that guard, and never a refusal.
+
+    This is how *the session has asked the index* becomes something an extension can know: its guard
+    declares its own tools under `sees`, the harness's matcher is written from what was agreed to, and the
+    use arrives here. It is its own verb and not a guard point because seeing is not judging — the runner
+    discards whatever the guard exits with, and so does this, so a guard cannot stop a tool by being told
+    about it.
+    """
+    import tool_event  # as `before_search` asks for it, and for the same reason
+    extensions(GUARDS, "tool-use", {**about(), **tool()}, tool_event.used(event(), about()))
+    return 0
 
 
 def session() -> int:
@@ -623,6 +657,7 @@ VERBS = {
     "waiting": lambda: said_aloud("waiting"),
     "session": session,
     "before-search": before_search,
+    "tool-use": tool_use,
     "before-write": before_write,
     "before-command": before_command,
     "before-fetch": before_fetch,

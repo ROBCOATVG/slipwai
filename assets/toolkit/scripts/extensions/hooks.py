@@ -111,6 +111,21 @@ def applies(body: dict, given: dict[str, str]) -> bool:
     return not isinstance(stages, list) or given.get("stage") in stages
 
 
+def guards_held(point: str) -> dict[str, str]:
+    """`SLIPWAI_GUARDS_HELD` at `init` and `project`: per installed harness, the moments a guard holds at.
+
+    Those two points are where an extension writes what it tells the agent, and *a guard refuses that
+    search here* is true on one harness and false on the next. Handed as JSON so the guidance can say which,
+    and left out wherever it could not be worked out — a hook is never failed for a variable."""
+    if point not in ("init", "project"):
+        return {}
+    try:
+        import guard_harness  # beside this script; asked for here so every other point runs without it
+        return {"SLIPWAI_GUARDS_HELD": json.dumps(guard_harness.held())}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def fire(point: str, given: dict[str, str], fatal: bool = False) -> int:
     """Run everything attached to `point`. 0 unless `fatal` and something failed — see the module docstring."""
     failed = 0
@@ -126,7 +141,7 @@ def fire(point: str, given: dict[str, str], fatal: bool = False) -> int:
         # `SLIPWAI_POINT` is how one script answers two points: an extension's entry point is the default
         # declaration for both `init` and `project`, and at `project` it re-projects its block and installs
         # nothing, because a re-projection happens on every `make agents` and is not an election.
-        environment = {**os.environ, "SLIPWAI_POINT": point,
+        environment = {**os.environ, "SLIPWAI_POINT": point, **guards_held(point),
                        **{f"SLIPWAI_{name.upper()}": value for name, value in given.items()}}
         try:
             run = subprocess.run([sys.executable, str(path)], capture_output=True, text=True, cwd=ROOT,

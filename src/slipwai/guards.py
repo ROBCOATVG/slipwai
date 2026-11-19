@@ -56,6 +56,7 @@ And there is no point after a write, because a refusal after the fact is a repor
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 #: Where the resolved registry is written. A controlled file, for the same reason the hook registry is: a
@@ -68,6 +69,45 @@ BLOCK = "guards"
 DEFAULT_BUDGET = "5s"
 #: The exit code that refuses the call. Every other code is a hook's behaviour — said, and the call goes on.
 REFUSE = 2
+
+
+#: What a `before-search` guard reads on its stdin: one JSON object with these keys, in this order, each
+#: left out where the search did not say. `scripts/agents/tool_event.py` builds it in a project, and
+#: `docs/extensions.md` lists it for whoever writes a guard; `tests/test_guard_event.py` holds the three to
+#: one another, because a field promised and not sent is a guard somebody writes that cannot decide (#121).
+SEARCH_EVENT = ("v", "point", "tool", "query", "pattern", "path", "glob", "type", "command", "cwd", "session",
+                "agent", "agent_type", "stage", "slice", "fairway")
+
+
+#: What a guard may declare under `sees`: the tools whose use it is told about, so that *this session has
+#: used my tool* is something it can know. One MCP server's tools, by name or all of that server's — a
+#: literal `mcp__<server>__` and then a tool's name or `.*`. Deliberately not a pattern language: with no
+#: alternation and no wildcard before the server's name, nothing an extension can write here matches a
+#: search, a write, a shell command or every MCP call, so no extension can put a guard in front of every
+#: tool call. The runner in a project holds the same expression over the registry it reads.
+SEES = re.compile(r"mcp__[A-Za-z0-9_-]+__(?:[A-Za-z0-9_-]+|\.\*)")
+#: How many a guard may declare. One server is one line; this is room for a handful of named tools.
+SEES_LIMIT = 8
+#: What the guard is handed on stdin when one of them is used: who and which tool, and never its arguments.
+TOOL_USE_EVENT = ("v", "point", "tool", "cwd", "session", "agent", "agent_type", "stage", "slice", "fairway")
+
+
+def seen(name: str, declared_sees: object) -> list[str]:
+    """A guard's `sees`, normalised, or a refusal saying what may be declared."""
+    limit = (f"the `{name}` guard's `sees` is a list of at most {SEES_LIMIT} tool patterns, each "
+             "`mcp__<server>__<tool>` or `mcp__<server>__.*`: one MCP server's tools, by name or all of them. "
+             "Nothing wider is accepted, so that no extension can be run in front of every tool call")
+    if not isinstance(declared_sees, list) or len(declared_sees) > SEES_LIMIT:
+        raise ValueError(limit)
+    found: list[str] = []
+    for pattern in declared_sees:
+        # `tools` spells all of a server's as `mcp__<server>__*`; whoever copied that meant the same tools.
+        spelled = pattern[:-1] + ".*" if isinstance(pattern, str) and pattern.endswith("__*") else pattern
+        if not isinstance(spelled, str) or SEES.fullmatch(spelled) is None:
+            raise ValueError(f"{limit}; `{pattern}` is not one")
+        if spelled not in found:
+            found.append(spelled)
+    return found
 
 
 @dataclass(frozen=True)
@@ -87,7 +127,7 @@ GUARDS: tuple[Guard, ...] = (
           ("stage", "slice", "fairway", "berth"),
           "the session does not start, and the stage is dispatched again without this extension's guard"),
     Guard("before-search", "a delegate is about to search the tree — grep, find, a file read by glob",
-          ("stage", "slice", "fairway", "query", "tool"),
+          tuple(word for word in SEARCH_EVENT if word not in ("v", "point")),
           "that search does not run, and the agent is told what to ask instead"),
     Guard("before-write", "a delegate is about to write or edit a file",
           ("stage", "slice", "fairway", "path", "tool"),
@@ -134,9 +174,11 @@ def declared(manifest: dict) -> dict[str, dict]:
             found[name] = {"run": body, "budget": DEFAULT_BUDGET}
         elif isinstance(body, dict) and body.get("run"):
             found[name] = {"budget": DEFAULT_BUDGET, **body}
+            if "sees" in body:
+                found[name]["sees"] = seen(name, body["sees"])
         else:
             raise ValueError(f"the `{name}` guard names no script to run. A guard is a path, or an object "
-                             f"with `run` and optionally `stages` and `budget`")
+                             f"with `run` and optionally `stages`, `budget` and `sees`")
     return found
 
 

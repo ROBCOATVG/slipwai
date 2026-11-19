@@ -10,6 +10,9 @@ What is still read from the module is `GUIDANCE`, and that is *data* rather than
 text of the block, which `--check` compares against what is in `AGENTS.md`. A drift check has to know what
 the block should say, and a subprocess that writes it cannot answer that question.
 
+Last, `guard_offer.py` says which elected extension has a guard nobody has agreed to, with the command that
+agrees — and asks, where somebody is at a terminal. It never agrees for anybody.
+
 And after the point has fired, a block still drifted is written from that same data (`rewrite_drifted`), so
 an extension that attaches nothing to `project` is re-projected too and the fix `--check` names is one.
 """
@@ -110,7 +113,25 @@ def main() -> int:
         print("check-extensions: no extension elected; nothing to project")
     elif arguments.check:
         print(f"check-extensions: {len(adopted)} elected extension block(s) match")
+    if not arguments.check:
+        offer_guards()
     return 0
+
+
+def offer_guards() -> None:
+    """Say which elected extension has a guard nobody agreed to, and ask where somebody is at a terminal.
+
+    First `guard_harness.py` has the harness tell an agreed guard about the tools it declared it `sees`,
+    which is a row of a file a clone does not have until this runs. Then `guard_offer.py` says the line and the command and changes nothing unless a person answers yes; it is
+    its own script, with this process's terminal, and never a reason `make agents` fails."""
+    for name, arguments in (("guard_harness.py", []), ("guard_offer.py", ["--ask"])):
+        script = HERE / name
+        if not script.is_file():
+            continue
+        try:
+            subprocess.run([sys.executable, str(script), *arguments], cwd=ROOT, check=False)
+        except OSError:
+            continue
 
 
 if __name__ == "__main__":

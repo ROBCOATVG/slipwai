@@ -131,6 +131,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "migration_manifest",
                   # An elected extension's copy in a project against the installed package, for the catch-up page.
                   "extension_copies",
+                  # A guard an elected extension has and nobody agreed to, said by `migrate` and never agreed for.
+                  "guards_offered",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",

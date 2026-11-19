@@ -80,6 +80,7 @@
 # why: 2026-11-19 1ca41a609f2799ac moorings.py, the same on every platform and on purpose: a berth cut before a migration takes the files that migration changed, checked out from trunk and committed, where it merged the whole of trunk and gave up on a conflict.
 # why: 2026-11-19 7dffd61a360791b6 mender.py, the same on every platform and on purpose: a need's change may land anywhere but a gate, the cloud under infra/ other than a flag's declaration, a slice's own folder, and source and tests, where it could land only on six listed places.
 # why: 2026-11-19 79e385b51c5bf065 Three branches brought together (#120, #121): the guard changes in session.py, tool_event.py, guards.py, project.py, guard_offer.py, guard_harness.py, hooks.py and registry.json (#121, gaps 1 to 5); the storyboard changes in existing.py, surfaces.py, check-surfaces.py and the new no_surface.py (#120, decisions 6 to 9); and assess.py saying where an idea was captured with no agent (#120, decision 4). Each is the same on every platform and on purpose, as its own branch recorded; nothing platform-specific moved.
+# why: 2026-11-19 56116f19fa921229 The extension leftovers brought in beside the guard changes (#119): hooks.py gains --remove (un-elect: fire one extension's remove hook, name the recorded paths still present, rewrite the registry), --elect records each elected extension's declared writes, fire takes only= for one extension, and guidance.py gains remove_block; hooks.py also keeps guards_held from #121. Firing a point and --elect give the same output and registry bytes on macOS and Linux as before; nothing platform-specific moved.
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -160,6 +161,10 @@
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  standard-postgres-toy-serve  scripts/check-chart.py
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-memory-none  scripts/event-model/drawio.test.ts
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-postgres-toy-serve  scripts/event-model/drawio.test.ts
+4800276087348cc65e5403390883d07c5aa1cd7e518905523842aedf30c1b2b2  event-modelling-memory-none  scripts/extensions/hooks.py
+4800276087348cc65e5403390883d07c5aa1cd7e518905523842aedf30c1b2b2  event-modelling-postgres-toy-serve  scripts/extensions/hooks.py
+4800276087348cc65e5403390883d07c5aa1cd7e518905523842aedf30c1b2b2  standard-memory-none  scripts/extensions/hooks.py
+4800276087348cc65e5403390883d07c5aa1cd7e518905523842aedf30c1b2b2  standard-postgres-toy-serve  scripts/extensions/hooks.py
 4b15c5d768f4263f0ecfe51d8cd2fab545720ce41ffae2993195b9db83163031  event-modelling-memory-none  scripts/agents/claims.py
 4b15c5d768f4263f0ecfe51d8cd2fab545720ce41ffae2993195b9db83163031  event-modelling-postgres-toy-serve  scripts/agents/claims.py
 4b15c5d768f4263f0ecfe51d8cd2fab545720ce41ffae2993195b9db83163031  standard-memory-none  scripts/agents/claims.py
@@ -250,16 +255,16 @@
 7a8864a5300387335abf23e3accd4f39baa059764abd05607dc2507823956099  event-modelling-postgres-toy-serve  scripts/check-migration.py
 7a8864a5300387335abf23e3accd4f39baa059764abd05607dc2507823956099  standard-memory-none  scripts/check-migration.py
 7a8864a5300387335abf23e3accd4f39baa059764abd05607dc2507823956099  standard-postgres-toy-serve  scripts/check-migration.py
+7b7eb3e9d8a10312dfb38011b185e9e163b7d723d983f9c04dfbce22cf3c4690  event-modelling-memory-none  scripts/extensions/guidance.py
+7b7eb3e9d8a10312dfb38011b185e9e163b7d723d983f9c04dfbce22cf3c4690  event-modelling-postgres-toy-serve  scripts/extensions/guidance.py
+7b7eb3e9d8a10312dfb38011b185e9e163b7d723d983f9c04dfbce22cf3c4690  standard-memory-none  scripts/extensions/guidance.py
+7b7eb3e9d8a10312dfb38011b185e9e163b7d723d983f9c04dfbce22cf3c4690  standard-postgres-toy-serve  scripts/extensions/guidance.py
 821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  event-modelling-memory-none  init
 821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  standard-memory-none  init
 86738d3e275d5bf14528f900c4366d19b11206c5b8fda8b33de76086fe834f82  event-modelling-memory-none  scripts/event-model/package.json
 86738d3e275d5bf14528f900c4366d19b11206c5b8fda8b33de76086fe834f82  event-modelling-postgres-toy-serve  scripts/event-model/package.json
 8858776d582cdf8288b54f726332df78adc8b6f02a0c761f309df0bcc0561b41  event-modelling-memory-none  scripts/event-model/mermaid.ts
 8858776d582cdf8288b54f726332df78adc8b6f02a0c761f309df0bcc0561b41  event-modelling-postgres-toy-serve  scripts/event-model/mermaid.ts
-88f6da0747011d4c102bd46ae74aa17bd475822b34b7440beacaa69dfedec604  event-modelling-memory-none  scripts/extensions/guidance.py
-88f6da0747011d4c102bd46ae74aa17bd475822b34b7440beacaa69dfedec604  event-modelling-postgres-toy-serve  scripts/extensions/guidance.py
-88f6da0747011d4c102bd46ae74aa17bd475822b34b7440beacaa69dfedec604  standard-memory-none  scripts/extensions/guidance.py
-88f6da0747011d4c102bd46ae74aa17bd475822b34b7440beacaa69dfedec604  standard-postgres-toy-serve  scripts/extensions/guidance.py
 90a03201cc9d9bbf3812097a12f0523e6cdf931b229dd264594bb316e7707025  event-modelling-memory-none  scripts/agents/launch.py
 90a03201cc9d9bbf3812097a12f0523e6cdf931b229dd264594bb316e7707025  event-modelling-postgres-toy-serve  scripts/agents/launch.py
 90a03201cc9d9bbf3812097a12f0523e6cdf931b229dd264594bb316e7707025  standard-memory-none  scripts/agents/launch.py
@@ -367,15 +372,19 @@ c9cb52d08cf244999081e20480101529a701c776e4b3fcc43a45eb2c70f579b8  standard-memor
 c9cb52d08cf244999081e20480101529a701c776e4b3fcc43a45eb2c70f579b8  standard-postgres-toy-serve  scripts/check-slice-scope.py
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-memory-none  scripts/extensions/available-guards.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-memory-none  scripts/extensions/available-tools.json
+ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-memory-none  scripts/extensions/available-writes.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-memory-none  scripts/extensions/available.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-postgres-toy-serve  scripts/extensions/available-guards.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-postgres-toy-serve  scripts/extensions/available-tools.json
+ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-postgres-toy-serve  scripts/extensions/available-writes.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-postgres-toy-serve  scripts/extensions/available.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-memory-none  scripts/extensions/available-guards.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-memory-none  scripts/extensions/available-tools.json
+ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-memory-none  scripts/extensions/available-writes.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-memory-none  scripts/extensions/available.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-postgres-toy-serve  scripts/extensions/available-guards.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-postgres-toy-serve  scripts/extensions/available-tools.json
+ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-postgres-toy-serve  scripts/extensions/available-writes.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  standard-postgres-toy-serve  scripts/extensions/available.json
 ce440f2b9aac3cc42a956aa6888224378278bb01bbeaa4c8c7a24d8bd8287a7d  event-modelling-postgres-toy-serve  scripts/backing-services.py
 ce440f2b9aac3cc42a956aa6888224378278bb01bbeaa4c8c7a24d8bd8287a7d  standard-postgres-toy-serve  scripts/backing-services.py
@@ -389,10 +398,6 @@ d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  event-modellin
 d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  event-modelling-postgres-toy-serve  scripts/agents/assess.py
 d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  standard-memory-none  scripts/agents/assess.py
 d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  standard-postgres-toy-serve  scripts/agents/assess.py
-db0d05a61fc7d8266fe9e96eea2a4abf9136047fb8905c11511ec9c92dfcdea4  event-modelling-memory-none  scripts/extensions/hooks.py
-db0d05a61fc7d8266fe9e96eea2a4abf9136047fb8905c11511ec9c92dfcdea4  event-modelling-postgres-toy-serve  scripts/extensions/hooks.py
-db0d05a61fc7d8266fe9e96eea2a4abf9136047fb8905c11511ec9c92dfcdea4  standard-memory-none  scripts/extensions/hooks.py
-db0d05a61fc7d8266fe9e96eea2a4abf9136047fb8905c11511ec9c92dfcdea4  standard-postgres-toy-serve  scripts/extensions/hooks.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  event-modelling-memory-none  scripts/agents/stuck.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  event-modelling-postgres-toy-serve  scripts/agents/stuck.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  standard-memory-none  scripts/agents/stuck.py

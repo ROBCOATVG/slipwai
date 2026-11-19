@@ -277,7 +277,7 @@ def main(argv: list[str], languages: Callable[[bool, bool, bool], list[str]] | N
         epilog="Asks the registry what the newest version is, then runs the upgrade for an installed "
         "command; a standalone executable and a checkout cannot be upgraded from inside themselves, so "
         "those are told what to do instead. Then each installed language: current and available, held back and "
-        "why, and moved where one reaches it (with --check, what would run); and each extension against published.",
+        "why, and moved where one reaches it (with --check, what would run); then each extension, the same way.",
     )
     parser.add_argument(
         "--check", action="store_true", help="say what is installed and what is published, and change nothing"

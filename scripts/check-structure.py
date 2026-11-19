@@ -81,6 +81,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.
     ("contract", ("registry", "family_only", "renamed", "language_shape", "language_directory", "extension_directory",
+                  # What a project is given of an extension, and what stays the package repository's (#119).
+                  "extension_given",
                   "features", "extensions", "extension_shape", "extension_tools", "hooks", "guards",
                   "telegraph", "targets", "target_shape", "target_protocol", "target_directory",
                   "axes", "catalog", "rungs",
@@ -129,6 +131,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "migration_renames",
                   # `project.json` merged as a record: a key order is not a change either side made.
                   "migration_manifest",
+                  # An extension file a project is no longer given, kept where the project changed it (#119).
+                  "migration_withheld",
                   # An elected extension's copy in a project against the installed package, for the catch-up page.
                   "extension_copies",
                   # A guard an elected extension has and nobody agreed to, said by `migrate` and never agreed for.
@@ -152,7 +156,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # `upgrade`'s extension step: installed against published.
               "extension_upkeep",
               # The other kind of package: its install, its scaffold, and the two verbs over them.
-              "extension_install", "target_install", "cli_target", "cli_install",
+              "extension_install", "extension_removal", "target_install", "cli_target", "cli_install",
               "package_new", "package_templates", "language_templates", "target_templates", "package_release",
               "package_version", "package_sources", "cli_extension", "cli_package",
               "trust", "cli_trust", "channel", "channel_new", "channel_page", "cli_channel",

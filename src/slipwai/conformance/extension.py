@@ -27,6 +27,7 @@ from pathlib import Path
 
 from ..assets import TOOLKIT_ROOT
 from ..extension_directory import MANIFEST, absent, files
+from ..extension_given import given
 from ..extension_shape import obligations
 from ..hooks import declared
 
@@ -81,7 +82,9 @@ def scratch(root: Path, key: str, package: Path) -> Path:
             target = project / "scripts" / shared.relative_to(TOOLKIT_ROOT / "scripts")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(shared.read_bytes())
-    for relative in files(package):
+    # What a project is given and no more (#119): an entry point that needs a file a project never holds
+    # fails here, on the publisher's machine, and not in every project that elects it.
+    for relative in given(package, json.loads((package / MANIFEST).read_text(encoding="utf-8"))):
         target = place / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((package / relative).read_bytes())

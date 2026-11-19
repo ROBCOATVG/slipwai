@@ -67,11 +67,12 @@ def cloned(url: str, into: Path) -> Path:
 CAME_FROM: dict[str, str] = {}
 
 
-def from_index(name: str, area: Path, accept_publisher: bool = False) -> Path:
+def from_index(name: str, area: Path, accept_publisher: bool = False, prerelease: bool | None = None) -> Path:
     """One named extension, fetched from the chandlery and unpacked. Raises with the reason it could not be.
 
     Imported here rather than at the top: the index client reaches the network, and a verb installing from a
-    directory should not pay for a module that exists to talk to a server.
+    directory should not pay for a module that exists to talk to a server. `prerelease` is whether a snapshot
+    counts, where the caller was told (`upgrade --pre`); None is whatever this copy follows.
     """
     from .catalog import CORE
     from .language_index import Unreachable, download, newest, read_index, snapshots
@@ -80,7 +81,8 @@ def from_index(name: str, area: Path, accept_publisher: bool = False) -> Path:
     except Unreachable as error:
         raise GenerationError(f"{error}. `{this_command()} extension install <path-or-url>` installs one "
                               f"from a directory, a release file or a git URL without the index") from None
-    release = newest(found, name, CORE["schemaVersion"], snapshots(), lambda one: one.kind == EXTENSION)
+    counting = snapshots() if prerelease is None else prerelease
+    release = newest(found, name, CORE["schemaVersion"], counting, lambda one: one.kind == EXTENSION)
     if release is None:
         raise GenerationError(f"{found.name} lists no extension `{name}` this keel can install. "
                               f"`{this_command()} search --kind extension` lists what it does")
@@ -100,7 +102,7 @@ def from_index(name: str, area: Path, accept_publisher: bool = False) -> Path:
     return unpacked
 
 
-def sourced(request: str, area: Path, accept_publisher: bool = False) -> Path:
+def sourced(request: str, area: Path, accept_publisher: bool = False, prerelease: bool | None = None) -> Path:
     """One request as a directory holding an `extension.json`, whatever form it arrived in."""
     if is_remote(request):
         return cloned(request, area)
@@ -114,7 +116,7 @@ def sourced(request: str, area: Path, accept_publisher: bool = False) -> Path:
     if is_path(request):
         raise GenerationError(f"{request} is neither a package directory nor a release file. A name with no "
                               f"separator in it is looked up in the chandlery instead")
-    return from_index(request, area, accept_publisher)
+    return from_index(request, area, accept_publisher, prerelease)
 
 
 def is_path(request: str) -> bool:
@@ -168,7 +170,8 @@ def admit(key: str, root: Path, directory: Path, replacing: bool) -> None:
                               f"rename one, or `{this_command()} language remove {key}` first")
 
 
-def install(requests: list[str], directory: Path, accept_publisher: bool = False) -> list[str]:
+def install(requests: list[str], directory: Path, accept_publisher: bool = False,
+            prerelease: bool | None = None) -> list[str]:
     """Install each request, and return a line each saying what landed. Every refusal names a fix."""
     if not requests:
         raise GenerationError(f"`{this_command()} extension install` takes a path, a release file or a git URL")
@@ -176,7 +179,7 @@ def install(requests: list[str], directory: Path, accept_publisher: bool = False
     said: list[str] = []
     for request in requests:
         with tempfile.TemporaryDirectory(dir=directory, prefix=STAGING) as area:
-            root = sourced(request, Path(area), accept_publisher)
+            root = sourced(request, Path(area), accept_publisher, prerelease)
             key = key_of(root, request)
             place = directory / key
             holding = staged(root, key, Path(area))

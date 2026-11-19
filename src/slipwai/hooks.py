@@ -76,7 +76,13 @@ POINTS: tuple[Point, ...] = (
     Point("project", "every re-projection: `make agents`, `migrate`, `./init --integration`",
           ("root", "harnesses", "guards_held"), "`project_guidance()`"),
     Point("check", "`make verify`, as one more gate", ("root",), "`scripts/check-<key>.py`"),
-    # The four below are new. Version 1 had no way to reach a rung at all, which is why `codegraph` went
+    # The other end of `init` (#119). An extension may write outside its own directory — `codegraph` writes
+    # `scripts/codegraph` — and had no moment at which to take it back: un-electing did not exist, and removing
+    # the package from the machine left every project's files where they were. Not in `DEFAULTS`: an entry
+    # point installs, and running it at a removal would install again.
+    Point("remove", "un-electing an extension: `python3 scripts/extensions/hooks.py --remove <key>`, which "
+          "`slipwai extension remove <key>` runs in a project that elected it", ("root",), "nothing"),
+    # The four below were new in version 2. Version 1 had no way to reach a rung at all, which is why `codegraph` went
     # through one harness's own hooks and did nothing on the rest.
     Point("before-stage", "before each rung of the ladder", ("stage", "slice", "fairway", "berth"), "nothing"),
     Point("after-stage", "after each rung of the ladder", ("stage", "slice", "fairway", "berth"), "nothing"),

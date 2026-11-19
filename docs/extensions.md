@@ -24,6 +24,7 @@ If this page and the code disagree, the gate is red.
 |---|---|---|
 | What a manifest declares, and the six obligations | `src/slipwai/extension_shape.py` | contract |
 | Reading a package from disk | `src/slipwai/extension_directory.py` | contract |
+| What a project is given of a package | `src/slipwai/extension_given.py` | contract |
 | Adding a package to the catalogue | `src/slipwai/extensions.py` | contract |
 | The points that a hook can attach to | `src/slipwai/hooks.py` | contract |
 | Installing and removing a package | `src/slipwai/extension_install.py` | edge |
@@ -51,6 +52,8 @@ The manifest is `extension.json`, at the root of the package directory.
 | `hooks` | no | The points that the extension attaches to. See [The hook points](#the-hook-points). |
 | `guards` | no | What the extension can refuse, and with what message. See [The guards](#the-guards). |
 | `tools` | no | The tool names that a headless session must be allowed to call to reach the extension. See [The tools](#the-tools). |
+| `writes` | no | The paths that the extension writes in a project outside its own directory. See [Taking it back](#taking-it-back). |
+| `withhold` | no | Paths of the package that a project is not given, beyond the conventional ones. See [Where the files land](#where-the-files-land). |
 
 `key` and `name` are separate fields because they are different things. In a language's manifest, one
 name is both. This is the only way that an extension's manifest differs from a language's. The catalogue
@@ -102,6 +105,7 @@ with what is attached to each point.
 | `init` | `./init --extension <key>`, once per election | `root`, `guards_held` |
 | `project` | every re-projection: `make agents`, `migrate`, `./init --integration` | `root`, `harnesses`, `guards_held` |
 | `check` | `make check-extensions`, as one more gate | `root` |
+| `remove` | un-electing the extension: `python3 scripts/extensions/hooks.py --remove <key>` | `root` |
 | `before-stage` | before each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
 | `after-stage` | after each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
 | `boundary` | every captain boundary, after the captain reads the inbox | `slice`, `fairway`, `lines` |
@@ -427,12 +431,54 @@ not carry a live configuration value that belongs to an extension.
 
 ## Where the files land
 
-Slipwai writes every file of the package except `extension.json` into a generated project at
-`scripts/extensions/<key>/`. Three files sit beside them:
+Slipwai writes what a project runs or reads of the package into a generated project at
+`scripts/extensions/<key>/`. Four files sit beside them:
 
 - `scripts/extensions/available.json` carries each offered extension's hooks.
 - `available-guards.json` carries what each extension can refuse.
 - `available-tools.json` carries the tool names that each extension needs allowed.
+- `available-writes.json` carries the paths that each extension says it writes outside its own directory.
+
+**A project is not given the package's repository.** A package is a repository as well as a tool. These
+paths at the package root stay in the package, for every extension, with no line in any manifest:
+
+| Not given | Why |
+|---|---|
+| `.github/` | A workflow outside a project's own `.github/` is run by nobody. |
+| `tests/` | Nothing in a project runs a package's tests. |
+| `changelog.d/`, `CHANGELOG.md` | `VERSION` says which release the copy is. What earlier releases changed is the repository's history. |
+| `.gitignore`, `.gitattributes` | They describe the package's checkout. A project ignores an extension's local state through `ignore` in the manifest. |
+| `__pycache__/`, at any depth | What an interpreter left in the publisher's checkout. |
+
+A manifest can add to that list with `withhold`, and cannot take anything off it:
+
+```json
+{"withhold": ["fixtures/", "MAINTAINING.md"]}
+```
+
+Each entry is a path from the package root, with `/` between its parts. An entry that ends in `/` is a
+folder and everything in it.
+
+Three things are always given, whatever either list says:
+
+- **Every script the manifest declares** at a hook or a guard, wherever the script sits.
+- **Every module of the package that such a script imports**, followed through. Slipwai reads the `import`
+  statements, and looks beside the importing file and at the package root. Slipwai does not see a module
+  that is loaded by a computed name, or a file that is opened as data. Keep those outside the paths above.
+- **`README.md`, a licence and a notice.** The README is what a person or an agent in the project reads to
+  learn what the folder is. A licence travels with the code that it covers, and a project holds a copy of
+  that code.
+
+`slipwai extension check <dir>` prints how many files a project is given, and names the ones it is not.
+`slipwai conformance --extension` runs the entry point in a project that holds only what is given. So a
+script that needs a withheld file fails on the publisher's machine, not in a project.
+
+None of this changes what a release packs. The archive, its checksum and the installed package are still
+the whole package.
+
+**An existing project loses those files at its next `slipwai migrate`.** The merge removes each one that
+the project left as it was given. A file that somebody changed in the project stays as it is, the merge
+does not stop on it, and the catch-up page names it.
 
 Slipwai does not copy the manifest. Nothing reads a manifest inside a project. A copy there would be a
 decoy that nothing reads and everybody edits.
@@ -441,6 +487,83 @@ The project receives the files at **generation**, not at election. `./init` buil
 catalogue, and the election happens inside the project, where there is no keel to fetch anything. So the
 menu offers exactly what `./init` can run. If you install an extension after a project was generated, the
 extension reaches that project at the next `slipwai migrate`.
+
+## Taking it back
+
+An extension can write outside its own directory. For example, an entry point can write a command at
+`scripts/<key>` that its `AGENTS.md` block names. Two declarations let a project take such a file back.
+
+**`writes` names the paths.** The record is declared, not observed: slipwai does not watch what a hook
+does.
+
+```json
+{
+  "hooks": {"init": "init.py", "remove": "hooks/remove.py"},
+  "writes": ["scripts/indexer"]
+}
+```
+
+Each entry is a path from the project root, with `/` between its parts, and outside
+`scripts/extensions/<key>/`. Declare the files that are wholly the extension's. Do not declare a file that
+the extension shares, such as `AGENTS.md` or a harness's MCP file. The extension holds one entry in such a
+file, and the `remove` hook takes that entry back.
+
+An election records the paths in `.slipwai/hooks.json`, under `writes`.
+
+**`remove` is the point where the extension takes them back.** It has no default declaration, because an
+entry point installs. Slipwai fires it for one extension, when a person un-elects that extension:
+
+```sh
+python3 scripts/extensions/hooks.py --remove <key>
+```
+
+The un-election does these things, in this order:
+
+1. It fires the extension's `remove` hook, if the extension declares one.
+2. It names each recorded path that is still in the project. It removes no file itself. A file that an
+   extension wrote can since have become a file that somebody depends on, so a person decides.
+3. It takes the extension out of `.slipwai/hooks.json`, out of `.slipwai/extensions.json`, and takes its
+   block out of `AGENTS.md`.
+
+A `remove` hook that fails never blocks the un-election. Slipwai reports it as a `hook` line, and
+continues. The extension's copy under `scripts/extensions/<key>/` stays, because the extension is still
+offered. The un-election does not withdraw a guard that somebody agreed to. `.slipwai/guards.json` holds
+that agreement.
+
+**`slipwai extension remove <key>` runs the un-election first** when you run it in a project that elected
+the extension. Then it removes the package from the machine. It changes no other project. Run anywhere
+else, it prints the un-election command to run in each project that elected the extension. Run that
+command before the project's next `slipwai migrate`, because the migration takes the copy away, and the
+`remove` hook is in the copy.
+
+## Keeping one current
+
+`slipwai upgrade` moves an installed extension as it moves an installed language. Its `extensions:` section
+has one line for each:
+
+| The line says | What happens |
+|---|---|
+| `<key> 1.0.0 → 1.0.1 available` | A newer release that this keel can load is published. `upgrade` installs it. With `--check`, it prints `would run: slipwai extension upgrade <key>` and installs nothing. |
+| `<key> 1.0.0 (newest compatible)` | Nothing moves. |
+| `<key> 1.0.0 held back: 2.0.0 needs another core schema than 9.0 — slipwai upgrade, once a slipwai that speaks it is published` | Nothing moves. The newer release is for another keel. |
+
+`slipwai extension upgrade <key>` is the same move for the extensions that you name. With no name, it moves
+every installed extension.
+
+An upgrade agrees to nothing for you:
+
+- If the release comes from a publisher that this machine has not accepted, `upgrade` refuses it and names
+  the command that accepts the publisher. The upgrade then exits non-zero. An upgrade that left an
+  extension behind did not succeed.
+- A guard is agreed to in a project, at election. If a newer package declares a guard, no project's
+  agreement changes.
+
+The newer release is admitted as an install admits it. Slipwai stages the release, reads its manifest
+under this keel's schema, and only then renames it into place. A release that does not load never replaces
+one that does.
+
+Moving the installed package does not move a project's copy. A project takes the installed package at its
+next `slipwai migrate`.
 
 ## Writing one
 
@@ -451,6 +574,7 @@ slipwai package release <dir>              # the release file, its digest and it
 slipwai package register <dir> --channel <checkout>   # both of those, into a channel
 slipwai extension check <dir>              # just the manifest, and the six it is held to
 slipwai extension install <key>            # into the package directory
+slipwai extension upgrade [<key>...]       # each installed one to its newest compatible release
 slipwai extension list                     # what is installed, and what each attaches to
 slipwai hooks                              # every point, and what is on it
 python3 scripts/extensions/guards.py --elect <keys>   # in a project: one more may refuse a tool call

@@ -140,11 +140,11 @@ def files(root: Path) -> list[Path]:
     Stable because this list becomes the files of a generated project, and a project whose contents depend on
     the order a directory happened to be walked in is a project two generations disagree about.
     """
-    return sorted(
-        path.relative_to(root)
-        for path in root.rglob("*")
-        if path.is_file() and path.name != MANIFEST and ".git" not in path.parts
-    )
+    found = (path.relative_to(root) for path in root.rglob("*")
+             if path.is_file() and path.name != MANIFEST and ".git" not in path.parts)
+    # On the string and not the `Path`: Windows compares a path without case, so the same package was listed in
+    # another order there, and a promise of a stable order is a promise about every platform.
+    return sorted(found, key=lambda path: path.as_posix())
 
 
 def absent(root: Path, manifest: dict[str, Any]) -> list[tuple[str, str, str]]:

@@ -83,6 +83,18 @@ class ReadTest(unittest.TestCase):
         place = written(self.area, "thing")
         self.assertEqual([path.as_posix() for path in files(place)], ["init.py"])
 
+    def test_the_files_are_in_one_order_on_every_platform(self) -> None:
+        """Sorted as `Path` objects they were not: Windows compares a path without case, so `README.md` came after
+        `bin/` there and before it everywhere else, and a path is compared part by part, so `hooks/check.py` came
+        before `hooks.py`. The order is the POSIX string's, which no platform reads differently (#117)."""
+        place = written(self.area, "thing")
+        for name in ("README.md", "bin/tool", "hooks/check.py", "hooks.py", "Zed.md", "a-b/c.py", "a/b.py"):
+            (place / name).parent.mkdir(parents=True, exist_ok=True)
+            (place / name).write_text("", encoding="utf-8")
+        self.assertEqual([path.as_posix() for path in files(place)],
+                         ["README.md", "Zed.md", "a-b/c.py", "a/b.py", "bin/tool", "hooks.py", "hooks/check.py",
+                          "init.py"])
+
 
 class InstallTest(unittest.TestCase):
     def setUp(self) -> None:

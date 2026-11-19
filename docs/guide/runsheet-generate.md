@@ -96,7 +96,7 @@ where no command covers the step.
 - **2.7: per slice.** Each slice goes through clearance, the claim, the example map, plan and tasks, and
   `/speckit-analyze`. Then it goes through RED-GREEN-REFACTOR one increment at a time, with the examples
   proven by tests, a review of the slice's own diff, its trigger record, and the merge. When a capability's
-  last slice has merged, the capability's gates run once: converge, gaps, design review, adversary (where a
+  last slice is built and before it merges, the capability's gates run once: converge, gaps, design review, adversary (where a
   slice widened a trigger), mutation, and the hand's walk. Then its demo runs.
   [Your first feature](first-feature.md) goes through every stage.
   [From the board](first-feature.md#from-the-board) shows the same ladder from the Voyage tab.

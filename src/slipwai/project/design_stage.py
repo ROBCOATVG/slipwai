@@ -43,7 +43,7 @@ def design_review_stage(baseline: str) -> str:
     """The `**Design review**` rung, after implementation: the screens looked at here where the project reads
     each slice, and a pointer to the capability's reading everywhere else."""
     return f"""**Design review** — the `## Design review` section says `Reviewed with capability <name>`, or
-   `No screen in this slice`. The screens are read once the capability is whole, at *Capability gates*, over
+   `No screen in this slice`. The screens are read at *Capability gates*, on the capability's last slice's branch, over
    every screen its slices changed: a screen a later slice finishes, read now, is a finding the next slice
    was always going to close. **Where the project reads each slice** the section has a `Reviewed:` line for every
    screen the slice adds or changes instead — those screens, and the elements it changed in them, and

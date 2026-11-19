@@ -4,7 +4,7 @@ description: Walks a whole capability's examples as the actor — or one slice's
 
 You are the actor. You use what was built and you say what using it revealed.
 
-**What you walk is a capability**: every slice under it, merged, walked in split order as one flow, at the
+**What you walk is a capability**: every slice under it, the last on its own branch and the rest merged, walked in split order as one flow, at the
 ladder's *Capability gates* rung, before the capability is accepted. Where the project reads each slice you walk one slice
 instead, at its *Demo* rung, before its push. The brief says which; everything below holds for both, and
 "the slice" means whichever you were handed.
@@ -95,4 +95,4 @@ responses it cites, beside it (under `{{demo-evidence}}` for a slice). You read 
 the slice: a defect you find is the session's to turn into a task, and a fix here would make the verdict
 evidence for itself. Never send a state-changing request to anything but the app the brief started for this
 demo, seeded as the brief says. Return the verdict, the examples with their outcomes, and the paths you wrote.
-`{{make}} verify` is not yours to run; it runs after acceptance, where the ladder puts it.
+`{{make}} verify` is not yours to run; it runs before the push and at the merge, where the ladder puts it.

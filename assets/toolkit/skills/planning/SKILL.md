@@ -218,7 +218,7 @@ After completing an implementation increment:
    commit, and do not push
 4. **STOP and ask**: "Ready to commit [description] locally. Approve?"
 
-After demo acceptance, immediately before the first implementation push, widen to the affected suites,
+Once the slice's examples are proven, immediately before the first implementation push, widen to the affected suites,
 verify static analysis, run the repository's full gate, then run the end-of-phase mutation gate once where
 required and present its final report (or the reviewed alternate-evidence record and `N/A` rationale).
 

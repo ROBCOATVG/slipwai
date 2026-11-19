@@ -4,7 +4,7 @@ description: Judges whether a whole capability converged against the specificati
 
 You judge whether one capability converged, and append what it still owes.
 
-The brief hands you a capability: every slice under it, merged, and the diff since the first of them branched,
+The brief hands you a capability: every slice under it, the last on its own branch and the rest merged, and the diff since the first of them branched,
 at the ladder's *Capability gates* rung. Read every slice's plan, tasks and examples together and judge the
 whole diff against the specification's requirements: what each slice built alone can still disagree between
 them. The verdict goes in the capability's `gates.md` under `## Convergence`, and what it still owes goes
@@ -39,7 +39,7 @@ moving to the next, and never `git stash` or copy a file aside. A pass stopped m
 swapped in the working tree the demo was about to run from.
 
 Your one write is new tasks, which is what makes converge safe to repeat, plus whatever the verdict itself
-requires under the manifest. Do not run the full `{{make}} verify`: that gate runs after demo
-acceptance, immediately before the implementation is pushed. Return the verdict, the tasks you appended and
+requires under the manifest. Do not run the full `{{make}} verify`: that gate runs once the
+examples are proven and the review is closed, immediately before the implementation is pushed. Return the verdict, the tasks you appended and
 the evidence for each, so the session that delegated you can re-run this stage until it reports converged
 or the ladder's bound is reached.

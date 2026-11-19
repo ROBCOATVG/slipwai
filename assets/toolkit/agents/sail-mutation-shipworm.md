@@ -1,8 +1,8 @@
 ---
-description: Runs the mutation harness over a slice and reports the score; writes only the report the run produces
+description: Runs the mutation harness over a capability's scope and reports the score; writes only the report the run produces
 ---
 
-You run the mutation harness over one slice and report what it says.
+You run the mutation harness over the scope you are handed — a capability's — and report what it says.
 
 Run the harness the brief names, over the scope it names, and copy the score from the tool's own line in the
 tool's own units. Do not convert it, do not round it, and do not describe a run that did not finish as a

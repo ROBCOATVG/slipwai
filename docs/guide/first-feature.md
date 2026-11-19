@@ -275,7 +275,7 @@ accept this? [y/n/notes]
 
 If you say yes, the line goes into the log. If you say no with notes, the notes go back into the slice.
 
-You see a capability when its last slice has merged and its gates have passed. These are the gates:
+You see a capability when its gates have passed on its last slice's branch and that slice has merged. These are the gates:
 
 - converge, and the gaps trace over the capability's whole diff
 - the design review, from screenshots

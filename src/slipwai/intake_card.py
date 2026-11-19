@@ -58,7 +58,7 @@ STYLE = """
   border:1px solid var(--rule);background:var(--paper);color:var(--ink-2)}
 #handover label.file:focus-within .pick{outline:2px solid var(--teal);outline-offset:1px}
 #handover .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-#handover .said,#handover .warn{color:var(--brass);font-size:.88rem;margin:0}
+#handover .said,#handover .warn,#handover .alone{color:var(--brass);font-size:.88rem;margin:0}
 """
 
 SCRIPT = """
@@ -75,7 +75,7 @@ document.addEventListener('click', event => {
     const go = home.querySelector('button[type=submit]'), stop = home.querySelector('button.stop');
     const take = home.querySelector('[data-capture]'), fault = home.querySelector('.said');
     const on = home.querySelector('.on'), again = home.querySelector('[data-clear]');
-    const warn = home.querySelector('.warn');
+    const warn = home.querySelector('.warn'), alone = home.querySelector('.alone');
     let at = 0, busy = false, timer = null;
     const post = (where, body) => fetch(where, {method: 'POST', headers: {'Content-Type': 'application/json'},
                                                  body: JSON.stringify(body)});
@@ -85,7 +85,9 @@ document.addEventListener('click', event => {
       go.disabled = busy; stop.hidden = !busy;
       go.textContent = busy ? (said && said.thinking ? 'Thinking…' : 'Reading…') : 'Say';
       if (!said) return;
-      take.hidden = !said.ready; again.hidden = !said.open;
+      take.hidden = !(said.ready || (said.raw && said.open)); again.hidden = !said.open;
+      take.textContent = said.ready || !said.raw ? 'Capture this idea' : 'Capture as an idea, not discussed';
+      alone.hidden = !said.raw;
       warn.textContent = said.overlap || ''; warn.hidden = take.hidden || !said.overlap;
       on.textContent = said.agent ? 'on ' + said.agent + (said.model ? ' · ' + said.model : '') : '';
     };
@@ -146,6 +148,10 @@ def handover_html() -> str:
             '<p class="empty">Say what it is, or attach its document. The project\'s agent reads it, asks what '
             "it needs to, and says when it is one clear idea; Capture this idea then writes it under "
             f"<code>{PLACE}/</code>. Nothing is assessed or built until you press Continue the next feature.</p>"
+            '<p class="alone" role="note" hidden>No agent can be launched from this board, so there is no '
+            "conversation here. Say what the feature is, attach its document, and capture it: the idea is marked "
+            "not discussed, and the assessment is told to ask what a conversation would have. Make an agent ready "
+            'on the Settings tab to talk it through instead.</p>'
             '<div class="log turns" role="log" aria-live="polite"></div>'
             '<form><label for="handover-said">The feature, in your words</label>'
             '<textarea id="handover-said" placeholder="What it is and who it is for. Text from a document can be '
@@ -200,6 +206,7 @@ def route_get(bridge: Any, where: str, query: str) -> bool:
     since = parameter(query, "since")
     talk = for_root(bridge.root)
     talk.resume()
+    talk.look()
     bridge.send(200, json.dumps(talk.said(int(since) if since.isdigit() else 0)), "application/json; charset=utf-8")
     return True
 

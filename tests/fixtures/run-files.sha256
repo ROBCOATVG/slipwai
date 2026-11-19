@@ -77,6 +77,7 @@
 # why: 2026-11-19 21dd92eec61a759a captain.py, the same on every platform and on purpose: a merge request whose id was asked before is answered only by a granted or refused line written at or after the request, so an earlier run's refusal no longer answers it.
 # why: 2026-11-19 3dc4712bacfc8837 logs.py: the paused docstring reworded to fit the module's size budget; no behaviour changes.
 # why: 2026-11-19 1f221288ab16ea02 scripts/extensions/project.py: behaviour changes on purpose on every platform alike (#109, defect 5) — after firing the project point, make agents rewrites an elected extension's AGENTS.md block from its GUIDANCE where it still differs, so an extension with no project hook is re-projected; --check's message says so. Nothing platform-specific moved: no path, process or shell handling changed.
+# why: 2026-11-19 85778fdce542e08f assess.py says where an idea was captured with no agent to talk it through (docs/intake/<slug>/not-discussed), before it starts the session; nothing else it does moved
 
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
@@ -378,10 +379,10 @@ d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  standard-memor
 d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  standard-postgres-toy-serve  scripts/verify
 d704ee36fa6848ddb16afe8c44c50033855b73a71243dcd0029ef67e627eca06  event-modelling-memory-none  scripts/event-model/chart.py
 d704ee36fa6848ddb16afe8c44c50033855b73a71243dcd0029ef67e627eca06  event-modelling-postgres-toy-serve  scripts/event-model/chart.py
-d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  event-modelling-memory-none  scripts/agents/assess.py
-d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  event-modelling-postgres-toy-serve  scripts/agents/assess.py
-d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  standard-memory-none  scripts/agents/assess.py
-d84ea2a1a85e892ccfce9e990937d6853d387c9ea22e2db32c783b0bf9d3b64a  standard-postgres-toy-serve  scripts/agents/assess.py
+d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  event-modelling-memory-none  scripts/agents/assess.py
+d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  event-modelling-postgres-toy-serve  scripts/agents/assess.py
+d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  standard-memory-none  scripts/agents/assess.py
+d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  standard-postgres-toy-serve  scripts/agents/assess.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  event-modelling-memory-none  scripts/agents/stuck.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  event-modelling-postgres-toy-serve  scripts/agents/stuck.py
 db205c2224f2a3778a8b58a10a5d5b1dc494c49c1607c8209397f67bf8882cb1  standard-memory-none  scripts/agents/stuck.py

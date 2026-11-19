@@ -12,13 +12,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 PLACE = "docs/intake"
 BRIEF = "brief.md"
 CONFIRMED = "confirmed"
 RECEIPT = "specified.json"
+#: Beside the brief of an idea nobody talked through: captured on the board where it could launch no agent.
+UNDISCUSSED = "not-discussed"
 ASSESSMENTS = ".specify/assessments"
 README = "docs/intake/README.md"
 #: What Spec Kit's `assess` extension writes as its last word. Anything else is still being decided.
@@ -37,6 +39,7 @@ class Idea:
     state: str
     feature: str = ""
     detail: str = ""
+    discussed: bool = True  # False where `not-discussed` is beside the brief: raw words, shaped by nobody
 
 
 def slug_of(words: str, taken: set[str]) -> str:
@@ -52,11 +55,13 @@ def slug_of(words: str, taken: set[str]) -> str:
     return name
 
 
-def capture(root: Path, request: str, sources: tuple[Path, ...] | list[Path] = ()) -> tuple[Path, tuple[str, ...]]:
+def capture(root: Path, request: str, sources: tuple[Path, ...] | list[Path] = (),
+            discussed: bool = True) -> tuple[Path, tuple[str, ...]]:
     """Write the request under `docs/intake/` and copy every source the session can read.
 
     A source that is not a file is named in the second result and not invented. The caller stops on that
-    list: a specification built from a document nobody could open would be a guess.
+    list: a specification built from a document nobody could open would be a guess. `discussed` is False
+    where no agent read the idea with the person: the mark is written for the assessment to find.
     """
     home = root / PLACE
     taken = {path.name for path in home.iterdir() if path.is_dir()} if home.is_dir() else set()
@@ -64,6 +69,9 @@ def capture(root: Path, request: str, sources: tuple[Path, ...] | list[Path] = (
     folder.mkdir(parents=True)
     text = request.strip()
     (folder / BRIEF).write_text(f"# {text}\n\n{text}\n", encoding="utf-8")
+    if not discussed:
+        (folder / UNDISCUSSED).write_text("not discussed\ncaptured on the board, which could launch no agent to "
+                                          "talk it through\n", encoding="utf-8")
     missing: list[str] = []
     for source in sources:
         path = Path(source)
@@ -147,7 +155,8 @@ def ideas(root: Path) -> list[Idea]:
             found.append(Idea(folder.name, "assessing", detail="assessment has not decided"))
         else:
             found.append(Idea(folder.name, verdict, detail=f"verdict: {verdict}"))
-    return found
+    return [replace(one, discussed=False, detail=f"{one.detail}; not discussed with an agent")
+            if (home / one.slug / UNDISCUSSED).is_file() else one for one in found]
 
 
 def pending(root: Path) -> list[str]:
@@ -172,6 +181,8 @@ starts.
 
 `brief.md` is the request, exactly as it was handed over. Any other file beside it is a document that
 came with it; `conversation.md` is what was asked and answered on the board before it was captured.
+`not-discussed` is there where the board could launch no agent: the words and documents are as the person
+left them, nobody asked whether they are one clear idea, and the assessment is told to ask first.
 `confirmed` is the yes that this is a new feature — a person in the session, or the skipper
 when `/cruise` is driving — and it is written before Spec Kit assesses the idea.
 

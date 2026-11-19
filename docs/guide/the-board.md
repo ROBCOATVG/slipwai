@@ -186,7 +186,15 @@ The agent in this conversation can read the project and cannot change it: the bo
 command it asks leave for, and the board itself writes the idea. **Start again** drops the conversation and
 what was attached. A conversation left open is kept under the run folder and picked up when the window is
 opened again, after a board restart too. What you have typed and not sent is never cleared by the window
-updating itself. With no agent the board can launch, the card says so; hand the feature to `/sail` instead.
+updating itself.
+
+**With no agent the board can launch** there is no conversation, and the card says so before you type. What
+you say and attach is kept all the same, and the button reads **Capture as an idea, not discussed**: it writes
+the idea with a `not-discussed` file beside the brief, the tab lists it as *not discussed with an agent*, and
+the assessment is told to ask first what a conversation would have — one feature or several, and what the
+words do not say — and to answer `needs-clarification` rather than guess. Where an agent can be launched the
+conversation is the only way in: there is no button that skips it. Handing the feature to `/sail` still works
+either way.
 
 **A document that repeats what is specified.** Where a document you attached names requirement ids that a
 specification under `specs/` already lists (`FR-003`, `SC-001` and the like), the card lists them beside

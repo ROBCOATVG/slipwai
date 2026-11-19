@@ -116,6 +116,13 @@ class ReadingTest(unittest.TestCase):
         held.states()
         self.assertEqual(held.started.count("node"), 2)
 
+    def test_one_asking_reads_the_login_path_once_and_asks_every_tool_on_it(self) -> None:
+        with mock.patch.object(machine_probe, "login_environment", return_value={"PATH": "/login"}) as login, \
+                mock.patch.object(machine_probe, "found", side_effect=lambda tool, path: has(tool)) as real:
+            Machine(start=lambda work: work()).read()
+        login.assert_called_once_with()
+        self.assertEqual([call.args for call in real.call_args_list], [(tool, "/login") for tool in TOOLS])
+
     def test_real_threads_are_single_flight_too(self) -> None:
         """The same, with the threads a board uses: every tool waits on one event, so the readers below
         are all answered while every asking is out, and the count is of askings started."""

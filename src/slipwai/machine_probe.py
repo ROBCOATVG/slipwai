@@ -31,11 +31,27 @@ from collections.abc import Callable
 from functools import partial
 
 from .prerequisites import TOOLS, Found, Tool, found
+from .shell_environment import login_environment
 
 #: The two things a tool can be besides what `Found` already says: asked and not heard from yet, and not
 #: heard from within the bound.
 CHECKING, UNANSWERED = "checking", "unanswered"
 KEEP, RETRY, BOUND = 300.0, 5.0, 15.0
+
+
+def asking() -> Callable[[Tool], Found]:
+    """How this machine's tools are asked, for one asking of them: the login shell's `PATH` read once, by
+    whichever tool's thread is first to want it, rather than a login shell started per tool."""
+    lock = threading.Lock()
+    read: list[str] = []
+
+    def look(tool: Tool) -> Found:
+        with lock:
+            if not read:
+                read.append(login_environment().get("PATH", ""))
+        return found(tool, read[0])
+
+    return look
 
 
 def on_a_thread(work: Callable[[], None]) -> None:
@@ -69,17 +85,18 @@ class Machine:
             if stale:
                 self.began, self.out = now, len(stale)
             began = self.began
+        look = self.look or asking()
         for tool in stale:  # outside the lock: an asking that answers at once takes it to say so
-            self.start(partial(self.ask, tool, began))
+            self.start(partial(self.ask, tool, began, look))
         with self.lock:
             now = self.clock()
             return [self.kept[tool.key][1] if tool.key in self.kept
                     else Found(tool, UNANSWERED if now - self.began >= BOUND else CHECKING) for tool in TOOLS]
 
-    def ask(self, tool: Tool, began: float) -> None:
+    def ask(self, tool: Tool, began: float, look: Callable[[Tool], Found]) -> None:
         one = None
         try:
-            one = (self.look or found)(tool)
+            one = look(tool)
         finally:  # whatever became of it, it is no longer out: an asking that faulted must not be the last
             with self.lock:
                 self.out -= 1

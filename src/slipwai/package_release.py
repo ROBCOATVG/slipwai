@@ -32,7 +32,9 @@ import base64
 import binascii
 import hashlib
 import json
+import re
 import tempfile
+import urllib.parse
 from pathlib import Path
 
 from . import ed25519
@@ -40,6 +42,7 @@ from .assets import this_command
 from .errors import GenerationError
 from .index_schema import BLOCK, EXTENSION, LANGUAGE, QUICKSTART, TARGET
 from .language_release import ReleaseError, pack, read_package
+from .release_tracked import refuse_differences
 from .trust import ED25519
 
 #: Where a channel keeps one file per release, and the document built from them.
@@ -174,6 +177,7 @@ def release(root: Path, out: Path, publisher: str = "", file_url: str = "",
     at install time and never on behalf of somebody who did not ask for it, so no key means no signature
     and an entry that honestly says it has none.
     """
+    refuse_differences(root)
     try:
         archive = pack(root, out)
     except ReleaseError as error:
@@ -226,12 +230,43 @@ def rebuild(channel: Path, name: str = "", base: str = "") -> Path:
     return path
 
 
-def register(root: Path, channel: Path, publisher: str = "",
-             file_url: str = "", key: Path | None = None) -> tuple[Path | None, Path, Path]:
+def published(entry_file: Path, name: str) -> dict:
+    """The entry a release already wrote, read back to be registered as it stands, or the refusal saying why not.
+
+    This is what registering by hand is for (#117). CI built the file off the tag and attached it and its entry to
+    the tag; what the channel must list is that file's digest, and the only place it is written down is that entry.
+    Building the package again and hoping for the same bytes is how `codegraph` 1.0.1 was nearly listed under the
+    digest of a file nobody had published. So the entry has to say where the file is: one naming a file beside the
+    index is half of a release whose other half this was not given.
+    """
+    try:
+        entry = json.loads(entry_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError) as error:
+        raise GenerationError(f"{entry_file} cannot be read as an entry: {error}") from None
+    if not isinstance(entry, dict) or entry.get("name") != name:
+        raise GenerationError(f"{entry_file} is not an entry for {name}: `{this_command()} package release` "
+                              f"writes one as dist/{ENTRIES}/{name}-<version>.json, and a release built in CI "
+                              f"attaches it to the tag")
+    version, held = entry.get("version"), str(entry.get("sha256") or "")
+    if not isinstance(version, str) or not version or not re.fullmatch(r"[0-9a-f]{64}", held):
+        raise GenerationError(f"{entry_file} gives no version or no sha256, so it names no release file")
+    if urllib.parse.urlsplit(str(entry.get("file") or "")).scheme not in ("http", "https", "file"):
+        raise GenerationError(f"{entry_file} names its file as {entry.get('file')!r}, beside an index, and the "
+                              f"file was not given with it. Release with `--file-url <where the file is>`, or "
+                              f"register the package itself: `{this_command()} package register <directory> "
+                              f"--channel <a channel checkout>`")
+    return {key: value for key, value in entry.items() if key != "name"}
+
+
+def register(root: Path, channel: Path, publisher: str = "", file_url: str = "", key: Path | None = None,
+             entry_file: Path | None = None) -> tuple[Path | None, Path, Path]:
     """Build a release of `root` and add it to `channel`. (file or None, entry file, index).
 
     With `file_url` the tarball is built into a temporary place and only its digest is kept: the channel
     gets the entry and nothing else, which is what keeps it from growing a copy of every version for ever.
+
+    With `entry_file` nothing is built at all: the entry a release already wrote is what is listed, so the
+    digest in the channel is of the file that was published and not of a second build of it (`published`).
 
     Refuses a version the channel already lists with different bytes. A release file is immutable by the
     time anyone has installed it, and replacing one silently is how a digest somebody checked stops meaning
@@ -239,15 +274,19 @@ def register(root: Path, channel: Path, publisher: str = "",
     twice has not got a problem to solve.
     """
     name = read_package(root).name
-    serving = channel / DOCUMENT.rsplit("/", 1)[0]
     kept: Path | None = None
-    with tempfile.TemporaryDirectory() as elsewhere:
-        try:
-            archive = pack(root, Path(elsewhere) if file_url else serving)
-        except ReleaseError as error:
-            raise GenerationError(str(error)) from None
-        entry = entry_for(root, archive, publisher, file_url, signature_for(archive, key))
-        kept = None if file_url else archive
+    if entry_file is not None:
+        entry = published(entry_file, name)
+    else:
+        refuse_differences(root)
+        serving = channel / DOCUMENT.rsplit("/", 1)[0]
+        with tempfile.TemporaryDirectory() as elsewhere:
+            try:
+                archive = pack(root, Path(elsewhere) if file_url else serving)
+            except ReleaseError as error:
+                raise GenerationError(str(error)) from None
+            entry = entry_for(root, archive, publisher, file_url, signature_for(archive, key))
+            kept = None if file_url else archive
     standing = channel / ENTRIES / f"{name}-{entry['version']}.json"
     if standing.is_file():
         held = json.loads(standing.read_text(encoding="utf-8"))

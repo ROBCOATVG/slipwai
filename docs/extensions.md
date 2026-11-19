@@ -280,6 +280,20 @@ The scaffold ships a `Makefile` with `check`, `release` and `register`. It also 
 calls the keel's reusable workflow. So inside the package, you run `make check` and
 `make register CHANNEL=...`.
 
+**A release is what the tag holds.** In a git repository, the release file holds the files that `HEAD`
+tracks under the package and nothing else: no untracked file, no ignored file and no empty directory. So
+two clones of one commit build the same bytes. `package release` and `package register` refuse while the
+package's working tree differs from `HEAD`, and they name what differs; commit it or stash it. Outside a
+repository, the directory is read as it stands.
+
+A package's CI builds the release from its tag and attaches the file and its entry to the tag. If you
+finish that publication by hand, register the entry that CI wrote, so that nothing is built a second time:
+
+```sh
+gh release download v<version> -R <owner>/<repo> -p '<name>-<version>.json'
+slipwai package register . --entry <name>-<version>.json --channel <checkout>
+```
+
 A channel is a directory. It holds `entries/<name>-<version>.json`, one file per release, and
 `slipwai-languages/index.json`, which is built from those files. If two publishers release on the same
 afternoon, they change two different files and never conflict. The index is regenerated, not merged. This

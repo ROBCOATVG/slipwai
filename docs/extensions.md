@@ -52,6 +52,7 @@ The manifest is `extension.json`, at the root of the package directory.
 | `hooks` | no | The points that the extension attaches to. See [The hook points](#the-hook-points). |
 | `guards` | no | What the extension can refuse, and with what message. See [The guards](#the-guards). |
 | `tools` | no | The tool names that a headless session must be allowed to call to reach the extension. See [The tools](#the-tools). |
+| `writes` | no | The paths that the extension writes in a project outside its own directory. See [Taking it back](#taking-it-back). |
 | `withhold` | no | Paths of the package that a project is not given, beyond the conventional ones. See [Where the files land](#where-the-files-land). |
 
 `key` and `name` are separate fields because they are different things. In a language's manifest, one
@@ -104,6 +105,7 @@ with what is attached to each point.
 | `init` | `./init --extension <key>`, once per election | `root` |
 | `project` | every re-projection: `make agents`, `migrate`, `./init --integration` | `root`, `harnesses` |
 | `check` | `make check-extensions`, as one more gate | `root` |
+| `remove` | un-electing the extension: `python3 scripts/extensions/hooks.py --remove <key>` | `root` |
 | `before-stage` | before each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
 | `after-stage` | after each rung of the ladder | `stage`, `slice`, `fairway`, `berth` |
 | `boundary` | every captain boundary, after the captain reads the inbox | `slice`, `fairway`, `lines` |
@@ -263,11 +265,12 @@ not carry a live configuration value that belongs to an extension.
 ## Where the files land
 
 Slipwai writes what a project runs or reads of the package into a generated project at
-`scripts/extensions/<key>/`. Three files sit beside them:
+`scripts/extensions/<key>/`. Four files sit beside them:
 
 - `scripts/extensions/available.json` carries each offered extension's hooks.
 - `available-guards.json` carries what each extension can refuse.
 - `available-tools.json` carries the tool names that each extension needs allowed.
+- `available-writes.json` carries the paths that each extension says it writes outside its own directory.
 
 **A project is not given the package's repository.** A package is a repository as well as a tool. These
 paths at the package root stay in the package, for every extension, with no line in any manifest:
@@ -317,6 +320,54 @@ The project receives the files at **generation**, not at election. `./init` buil
 catalogue, and the election happens inside the project, where there is no keel to fetch anything. So the
 menu offers exactly what `./init` can run. If you install an extension after a project was generated, the
 extension reaches that project at the next `slipwai migrate`.
+
+## Taking it back
+
+An extension can write outside its own directory. For example, an entry point can write a command at
+`scripts/<key>` that its `AGENTS.md` block names. Two declarations let a project take such a file back.
+
+**`writes` names the paths.** The record is declared, not observed: slipwai does not watch what a hook
+does.
+
+```json
+{
+  "hooks": {"init": "init.py", "remove": "hooks/remove.py"},
+  "writes": ["scripts/indexer"]
+}
+```
+
+Each entry is a path from the project root, with `/` between its parts, and outside
+`scripts/extensions/<key>/`. Declare the files that are wholly the extension's. Do not declare a file that
+the extension shares, such as `AGENTS.md` or a harness's MCP file. The extension holds one entry in such a
+file, and the `remove` hook takes that entry back.
+
+An election records the paths in `.slipwai/hooks.json`, under `writes`.
+
+**`remove` is the point where the extension takes them back.** It has no default declaration, because an
+entry point installs. Slipwai fires it for one extension, when a person un-elects that extension:
+
+```sh
+python3 scripts/extensions/hooks.py --remove <key>
+```
+
+The un-election does these things, in this order:
+
+1. It fires the extension's `remove` hook, if the extension declares one.
+2. It names each recorded path that is still in the project. It removes no file itself. A file that an
+   extension wrote can since have become a file that somebody depends on, so a person decides.
+3. It takes the extension out of `.slipwai/hooks.json`, out of `.slipwai/extensions.json`, and takes its
+   block out of `AGENTS.md`.
+
+A `remove` hook that fails never blocks the un-election. Slipwai reports it as a `hook` line, and
+continues. The extension's copy under `scripts/extensions/<key>/` stays, because the extension is still
+offered. The un-election does not withdraw a guard that somebody agreed to. `.slipwai/guards.json` holds
+that agreement.
+
+**`slipwai extension remove <key>` runs the un-election first** when you run it in a project that elected
+the extension. Then it removes the package from the machine. It changes no other project. Run anywhere
+else, it prints the un-election command to run in each project that elected the extension. Run that
+command before the project's next `slipwai migrate`, because the migration takes the copy away, and the
+`remove` hook is in the copy.
 
 ## Keeping one current
 

@@ -89,6 +89,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "release_tracked",
        # What a project is given of an extension, and its changed copy kept across the migration. Version 2's.
        "extension_given", "migration_withheld",
+       # An extension taken back in the project it is removed from. Version 2's.
+       "extension_removal",
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",

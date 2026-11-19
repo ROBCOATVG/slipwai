@@ -185,8 +185,14 @@ def extension_main(argv: list[str]) -> None:
             print(f"`./init --extension <key>` elects one in a project; a project generated before this "
                   f"install does not offer it until `{this_command()} migrate` is run in it")
         elif parsed.verb == "remove":
-            for line in remove(parsed.arguments, directory()):
-                print(line)
+            from pathlib import Path
+
+            from .extension_removal import taken_back
+            for name in parsed.arguments:
+                # Taken back in this project first, while the package that says how is still here (#119).
+                if (directory() / name / MANIFEST).is_file():
+                    print("\n".join(taken_back(Path.cwd(), name)))
+                print("\n".join(remove([name], directory())))
         else:
             if len(parsed.arguments) != 1:
                 raise GenerationError(f"`{this_command()} extension check <directory>` takes one directory")

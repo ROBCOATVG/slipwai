@@ -76,6 +76,8 @@ SLOW += test_release_tracked
 SLOW += test_machine_probe
 # A git repository and a merge per case: a project's copy of an extension losing the package's repository files.
 SLOW += test_migration_withheld
+# The project's own runner, started per case, to un-elect an extension and fire its `remove` hook.
+SLOW += test_extension_remove
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

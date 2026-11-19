@@ -37,7 +37,7 @@ KIND = "extension"
 REQUIRED = ("key", "name", "description", "kind", "core")
 #: Declarable and not required. `ignore` is the gitignore text its local state needs — version 1's catalogue
 #: entry carried exactly this and nothing else, which is why it is still spelled the same.
-OPTIONAL = ("ignore", "publisher", "tags", "hooks", "guards", "tools", "withhold")
+OPTIONAL = ("ignore", "publisher", "tags", "hooks", "guards", "tools", "withhold", "writes")
 #: The six, in the order `docs/extensions.md` sets them, each as the conformance suite names its check.
 OBLIGATIONS = (
     ("idempotent", "running it twice does what running it once did"),
@@ -85,6 +85,8 @@ def validate(manifest: dict) -> None:
     declared_tools(manifest)
     # What a project is not given of the package, beyond the conventional repository-only paths (#119).
     withheld(manifest)
+    # What it writes in a project outside its own directory, so an un-election can name what is left (#119).
+    written(manifest)
 
 
 #: What a manifest names its own repository-only paths under.
@@ -106,6 +108,33 @@ def withheld(manifest: dict) -> tuple[str, ...]:
                 or ".." in rule.split("/"):
             raise ValueError(f"{wrong}; `{rule}` is not one")
     return tuple(rule.strip() for rule in block)
+
+
+#: What a manifest names the project paths it writes outside its own directory under.
+WRITES = "writes"
+
+
+def written(manifest: dict) -> tuple[str, ...]:
+    """The paths an extension says it writes in a project outside `scripts/extensions/<key>/`, in one order, or a
+    refusal saying what one is.
+
+    Declared, not observed: the keel does not watch what a hook does, so this is the extension's own word, and
+    the record an un-election reads to name what is still there. A file the extension shares with others —
+    `AGENTS.md`, a harness's MCP file — is not one of these; it holds an entry, and the `remove` hook takes
+    that back."""
+    block = manifest.get(WRITES)
+    if block is None:
+        return ()
+    wrong = (f"`{WRITES}` is a list of the paths this extension writes in a project outside its own directory, "
+             f"each relative to the project root with `/` between its parts")
+    if not isinstance(block, list):
+        raise ValueError(wrong)
+    own = f"scripts/extensions/{manifest.get('key')}/"
+    for path in block:
+        if not isinstance(path, str) or not path.strip() or "\\" in path or path.startswith("/") \
+                or ".." in path.split("/") or path.strip().startswith(own):
+            raise ValueError(f"{wrong}; `{path}` is not one")
+    return tuple(sorted({path.strip() for path in block}))
 
 
 def catalogue_entry(manifest: dict) -> dict:

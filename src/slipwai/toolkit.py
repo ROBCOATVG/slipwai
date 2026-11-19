@@ -15,6 +15,7 @@ from .capabilities import declared_for, pruning_capabilities, serves
 from .catalog import CATALOG, EXTENSIONS, family_of, framework_of
 from .examples import Speaker, resolve_canonical_examples, resolve_examples_for, stamp_pseudocode_notes
 from .extension_given import given
+from .extension_shape import written as writes_declared
 from .extension_tools import declared as tools_declared
 from .guards import declared as guards_declared
 from .hooks import declared
@@ -218,6 +219,9 @@ EXTENSION_GUARDS = f"{EXTENSION_ROOT}/available-guards.json"
 #: in the first, because `available.json` is keyed by hook point and `tools` is not a point: a reader that
 #: walked it as one would be asking the closed set about a name that was never in it.
 EXTENSION_TOOLS = f"{EXTENSION_ROOT}/available-tools.json"
+#: And the paths each one says it writes outside its own directory, which an election records and an
+#: un-election reads to name what is still there (#119). A fourth file for the third's reason.
+EXTENSION_WRITES = f"{EXTENSION_ROOT}/available-writes.json"
 
 
 def extension_files() -> dict[str, str]:
@@ -239,10 +243,12 @@ def extension_files() -> dict[str, str]:
     attached: dict[str, dict] = {}
     guarding: dict[str, dict] = {}
     calling: dict[str, list[str]] = {}
+    writing: dict[str, list[str]] = {}
     for extension in EXTENSIONS:
         attached[extension.name] = declared(extension.manifest)
         guarding[extension.name] = guards_declared(extension.manifest)
         calling[extension.name] = list(tools_declared(extension.manifest))
+        writing[extension.name] = list(writes_declared(extension.manifest))
         for relative in given(extension.root, extension.manifest):
             try:
                 text = (extension.root / relative).read_text(encoding="utf-8")
@@ -252,6 +258,7 @@ def extension_files() -> dict[str, str]:
     written[EXTENSION_HOOKS] = json.dumps(attached, indent=2, sort_keys=True) + "\n"
     written[EXTENSION_GUARDS] = json.dumps(guarding, indent=2, sort_keys=True) + "\n"
     written[EXTENSION_TOOLS] = json.dumps(calling, indent=2, sort_keys=True) + "\n"
+    written[EXTENSION_WRITES] = json.dumps(writing, indent=2, sort_keys=True) + "\n"
     return written
 
 

@@ -26,6 +26,6 @@ runs `unittest` suites as they are), as a slice on the map's Platform row: never
 never an upgrade decided in passing.
 
 **One pull request per slice.** The adoption commit merges alone, before any slice; each slice is its own pull
-request, and a slice's after-acceptance commits — the adversary pass, the archive — ride in its own PR, never
+request, and a slice's closing commits — its trigger record, its done mark — ride in its own PR, never
 the next one's. A first PR of five slices and 566 files was reviewed by nobody, and a framework's major version
 moved inside it unseen.

@@ -154,7 +154,10 @@ class InboxTest(Fixture):
         waiting = self.board()["inbox"]
         self.assertEqual(len(waiting), 1)
         self.assertEqual(waiting[0]["what"], "look at this")
-        self.assertIn("waiting on you: 1", "\n".join(lines(self.root)))
+        said = "\n".join(lines(self.root))
+        # Listed, and not counted as a wait: a note holds nothing up, and the page has always said so.
+        self.assertIn("waiting on you: nothing", said)
+        self.assertIn("left for you to read, holding nothing up: 1", said)
 
     def test_an_answered_message_is_not_waiting_on_anybody(self) -> None:
         """A `read` carries the `t` of the `told` it answers, which is what makes it a receipt."""

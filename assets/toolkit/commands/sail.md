@@ -204,8 +204,8 @@ delegate's manifest; a project that has adopted none answers with a text search 
 When the tasks are done, go straight to the examples: record each of this slice's examples against the
 test that proves it, from the unpushed slice branch, and have the slice's diff reviewed once. **Nobody is
 stopped here, nothing converges, and no browser is opened.** Converge, the gaps trace, the design review,
-the adversary pass and the hand's walk are the capability's — *Capability gates*, once its last slice has
-merged — and the capability's acceptance follows them, usually several slices later: the hand's verdict,
+the adversary pass and the hand's walk are the capability's — *Capability gates*, on its last slice's branch before
+that slice merges — and the capability's acceptance follows them, usually several slices later: the hand's verdict,
 or a person's under `demos: person`, is given on the whole thing rather than its instalments. No release mode changes that, `open` included. Only where `harbour.json` says `"readings": "slice"`, for a product whose merges
 reach the actor at once, the slice converges and is traced by `/gaps` at the end of *Implementation*, the
 hand walks its examples here as well and the push waits for its verdict, and a slice that widened
@@ -231,7 +231,7 @@ cannot say so.
 
 {{demo-stop}}
 
-### After the examples are proven, and after Phase 4 clears
+### After the examples are proven, and after the slice is done
 
 With the examples proven and the review closed, run `/adversary` for the slice's trigger record: its
 trigger table, written into `specs/<feature>/adversary-log.md`, attacking nothing — `make check-decisions`
@@ -240,7 +240,7 @@ or money trigger `widened` attacked here as well: close that adversary benchmark
 are triaged, and implement confirmed defects through failing tests, each in an `implement` entry. Then run
 `make verify`. `commands/adversary.md` owns the trigger table and the decision, so do not make it here.
 **The capability gates are not run here**: converge over the capability's diff, gaps over it, the design review, the capability's adversary
-pass where a slice widened a trigger, `/mutation` and the hand's walk run once per capability, when its last slice has merged and before the demo
+pass where a slice widened a trigger, `/mutation` and the hand's walk run once per capability, on its last slice's branch before that slice merges and before the demo
 stop accepts it (*What the demo stop has to contain*) — the *Capability gates* rung says what this slice
 records meanwhile, and what the last slice of a capability starts. The order holds when they run: the
 adversary pass adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
@@ -391,7 +391,7 @@ from that line until a `decision` carries the same `id`, and it is never guessed
 **Refill at every boundary.** The ready set is not read once at the top and remembered. It is recomputed —
 `python3 scripts/agents/clearance.py` again — at every one of these, and the free slots filled from what it
 says: a delegate returning, prepared or proven; a `mark-set` landing in any log; a `decision` answering a
-question; a demo verdict; a merge and its Phase 4 clearing; a claim refused because another session got
+question; a demo verdict; a merge; a claim refused because another session got
 there. Each of those changes what may start, and a host that revisits its siblings only when its current
 slice is finished is a host whose siblings waited for nothing. **Where eligible work waits with a slot free,
 say why**, in the line that names the ready set: the schedule's own reasons are the only ones there are —
@@ -468,16 +468,16 @@ commits first (and, only where `harbour.json` says `"readings": "slice"`, have t
 pushed a lock ref from `main`; leave the increment commits local until every example is proven. Then: bring
 the code index up to the tree if the project has adopted one, `{{make}} verify` green, then push the slice's
 commits and merge into `main` in split order — never in finishing order. That is the first implementation
-push, and it is what starts CI. A slice whose capability is whole runs that capability's gates next; once they
-clear the hand's verdict accepts the capability, or, under `demos: person`, the capability is *awaiting-demo*
+push, and it is what starts CI. The last slice of a capability ran that capability's gates on its branch before this merge (*Capability
+gates*); once it has merged the hand's verdict accepts the capability, or, under `demos: person`, the capability is *awaiting-demo*
 for a person; its siblings are not. The composition root and the cumulative
 artifacts are where two merges meet, and split order is what makes those resolutions predictable;
 regenerate the Mermaid diagrams (`{{make}} model`) after a merge, never in a branch, and the canvas
-(`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. No slice's Phase 4 runs until its
-examples are proven, and a sibling never waits on another's Phase 4. Phase 4 itself — the trigger record,
-`{{make}} verify`, marking the slice done — runs here, on `main`, one slice at a time; the gates are
-the capability's, once, before its demo stop. Delete the
-`slice/<id>` branch once its Phase 4 clears: the claim is spent.
+(`{{make}} model-drawio`) after each merge as well, taking both sides' blocks. A slice's closing work — its trigger
+record, its done mark and `{{make}} verify` — is done on its own branch once its examples are proven, before the
+push, and a sibling never waits on another's; the gates are
+the capability's, once, on its last slice's branch before that slice merges. Delete the
+`slice/<id>` branch once the slice has merged: the claim is spent.
 
 **Where the harness cannot delegate**, run one slice at a time here — claim the earliest in split order,
 name the rest — and say so in the line that says which model ran (`harness cannot delegate`). **That is a
@@ -565,11 +565,15 @@ another walk, opened the same way with their words.
 
 A push to `main` is a production deploy here: `verify` passes, `deploy.yml` applies staging, smokes it,
 applies production and smokes that, with nobody in between. So the last thing before pushing is to say, in
-the turn that pushes, what holds this change back from the actor — the flag key, and that it is `off` in
-both environments.
+the turn that pushes, what holds this change back from the actor. That follows from the mode the slice's
+*Release constraint* rung read (`python3 scripts/agents/release_state.py`) and wrote in its plan. Under
+**open** nothing holds it back and nothing has to: nobody uses the product yet, so say that and push, and
+ask nobody. Under **keystone** the capability's entry point holds it, until the capability's last slice
+wires it. Under **flagged**, and where no state is recorded, a flag does — name the flag key, and that it
+is `off` in both environments.
 
-**If nothing does — no flag, or a flag that is already on — stop and ask the user to confirm that this is a
-release they want now.** Do not push and mention it afterwards, and do not decide on their behalf that the
+**Under flagged, if nothing does — no flag, or a flag that is already on — stop and ask the user to confirm
+that this is a release they want now.** Do not push and mention it afterwards, and do not decide on their behalf that the
 change is small enough to be safe: there is no later gate at which somebody would catch it, which is the
 whole reason the question is asked here. A refactor with no actor-visible behaviour is not a release and
 needs no flag; say that it is one, rather than saying nothing.

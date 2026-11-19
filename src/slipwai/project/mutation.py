@@ -71,8 +71,8 @@ than a red one.
 
 ## Once per capability, bounded
 
-The run is the capability's, not the slice's: it runs when a capability's last slice has merged and before
-the person's demo stop walks it (`commands/sail.md`, *What the demo stop has to contain*), over every
+The run is the capability's, not the slice's: it runs on a capability's last slice's branch, before that slice
+merges and before the person's demo stop walks it (`commands/sail.md`, *What the demo stop has to contain*), over every
 production file the capability's slices changed since the first of them branched. Per slice it took hours
 apiece — one project's owner took it out of the loop by hand — and measured a fraction of what a person
 accepts.

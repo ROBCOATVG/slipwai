@@ -145,7 +145,7 @@ builds, write its examples — together or one at a time, as the implementer jud
 run the quickest relevant tests in the same file or area. Then start the next rule.
 
 **Do not write the next rule's examples until the current rule is green and refactored** (Principle
-V). Commit each increment locally. Do not push those commits until the actor has accepted the demo; that is
+V). Commit each increment locally. Do not push those commits until every example is under `## Examples proven`; that is
 when the full suite runs. The history choice never permits writing this whole list as tests first and then
 implementing against them: that fixes the design before the first test result arrives and turns a one-line
 attribution into a debugging session. The map's rules are the list of increments to drive, their examples the
@@ -186,7 +186,7 @@ folds into the task that produces the behaviour it guards.
 green, every example in `examples.md` is named under `## Examples proven` against the test that drives it
 through the slice's outermost boundary, with the command and commit of the run that passed. Do not count an
 internal test or a backend behind an unbuilt modelled white box as proving an example. The hand walks the
-whole capability once its last slice has merged, and the person's demo follows; only where
+whole capability once, on its last slice's branch before that slice merges, and the person's demo follows; only where
 `harbour.json` says `"readings": "slice"` does the hand walk this slice here as well. Feed defects and small adjustments within agreed scenarios back
 through RED-GREEN-REFACTOR; changed rules back to `/example-map`; newly exposed boundaries within the
 specified product to `/story-splitting`; new product scope to `/speckit-specify` and its downstream stages;
@@ -205,16 +205,17 @@ the command and commit of the passing run — or the example and why no test can
 ## Design review
 
 *Written by `/sail`, not by hand: a `Designed:` line per screen before its first RED, then `Reviewed with
-capability <name>` — the screens are reviewed once the capability is whole, in its `gates.md` — or `No screen in
+capability <name>` — the screens are reviewed at the capability's gates, on its last slice's branch, in its `gates.md` — or `No screen in
 this slice`. Only where `harbour.json` says `"readings": "slice"` does a `Reviewed:` line per screen go here instead, before the push.*
 
 ---
 
 ## Phase 4: Polish
 
-- [ ] Run `/adversary` and record the full attempt log; fix every confirmed violation of an existing
-      scenario through a failing `adversarial: <attack>` test, asking only where behaviour is undefined
-- [ ] T049 Run mutation testing on this slice's Decider; address surviving mutants or record a documented reason with mutation marked N/A
+- [ ] Run `/adversary` for this slice's trigger record: the trigger table in
+      `specs/<feature>/adversary-log.md`, each trigger `widened`, `already covered` or `not present`. It
+      attacks nothing. The attack and mutation testing are the capability's, once, at the ladder's
+      *Capability gates* rung, so neither is a task of this slice
 - [ ] T050 [P] Verify the append-only guarantee as a test, not an assumption
 - [ ] T051 [P] Walk this slice's quickstart section by hand and correct any drift
 - [ ] T052 [P] Record any capability shipped incomplete, what substitutes for it, and the consequence of shipping it as-is (a deferral — not to be confused with a provider stub under `tests/stubs/`)
@@ -248,8 +249,8 @@ On the event profile, the same `depends_on` list lives on this slice in `docs/ev
 
 ### Parallel opportunities
 
-**Across slices:** siblings in `parallel_ok_with` whose `depends_on` are already archived may run in
-parallel across sessions; one `/sail` session still drives one slice.
+**Across slices:** siblings in `parallel_ok_with` whose `depends_on` are already done may run in
+parallel, each on its own `slice/<id>` branch.
 
 **Inside this slice — Phase 3 has none, by construction.** Its tasks are RED-GREEN-REFACTOR increments and
 are strictly sequential: each one starts after the prior increment's local quick tests are green.
@@ -264,17 +265,17 @@ file are never parallel, however independent they look.
 ## Implementation Strategy
 
 1. Phases 1–2 — foundation. Nothing user-visible; do not ship alone.
-2. Phase 3 — **the slice ships**, one increment at a time, each committed locally. Push after demo
-   acceptance. State its release constraint.
+2. Phase 3 — **the slice ships**, one increment at a time, each committed locally. Push once its examples are
+   proven and its review is closed. State its release constraint.
 3. Phase 4 — evidence. Required before "done", not before "demonstrable".
-4. Archive the slice-scoped artifacts, then automatically select the next **ready** slice (earliest in the
-   split among those whose `depends_on` are archived; name any parallel siblings), map if necessary, plan
+4. Mark the slice done, then automatically select the next **ready** slice (earliest in the
+   split among those whose `depends_on` are done; name any parallel siblings), map if necessary, plan
    and generate tasks. Stop only for required input, the next demo, or an exhausted / fully blocked split.
 
 ### Notes
 
 - One file or one tightly-scoped change per task. Commit each green Phase 3 increment locally; push the
-  slice after demo acceptance.
+  slice once its examples are proven and its review is closed.
 - A Phase 3 task is not done when its test is written. It is done when its test is green, the refactor
   step has been taken, and the quickest relevant tests in the same file or area pass.
 - A version conflict is a return value, never an exception. Contention is expected under load.

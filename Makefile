@@ -76,6 +76,8 @@ SLOW += test_release_tracked
 SLOW += test_machine_probe
 # A harness's event through `session.py` to a stand-in extension's guard, two processes per case.
 SLOW += test_guard_event test_guard_agreement test_guard_offer test_guard_seen test_guard_harnesses
+# And the stage run with a stand-in session, to see it refuse a box that draws a surface nobody has seen.
+SLOW += test_storyboard_unseen test_storyboard_no_surface
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

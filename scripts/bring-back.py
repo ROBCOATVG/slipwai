@@ -190,6 +190,11 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # A storyboard a person can talk about without a verdict: the conversation kept, the hold a word puts on
        # the board, the review read for them, and the card. The experiment's storyboard had no session.
        "stage_talk", "review_reading", "storyboard_card", "storyboard_script", "step_record",
+       # What a storyboard says each surface is — built, planned, changed or new — and the card's chips for
+       # them. The experiment drew each feature alone, so its storyboards had one kind of surface.
+       "framed", "storyboard_kinds",
+       # A feature with no surface ends the mock-up stage cleanly, on grounds. The experiment had no such stage.
+       "no_surface",
        # A prototype or a storyboard as one file to send. The experiment's pages never left the board.
        "page_copy"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will

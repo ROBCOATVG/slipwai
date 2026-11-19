@@ -235,18 +235,22 @@ Under it is the verdict form:
 
 Both buttons lock when the storyboard has a verdict. To change a verdict, edit `mock-states.md`.
 
-Where the storyboard says what each surface is, a list above the verdict form shows the three kinds apart:
+Where the storyboard says what each surface is, a list above the verdict form shows the four kinds apart:
 
 | Chip | Means | Verdict |
 |---|---|---|
-| **Built** | The project has it already. The storyboard frames the app's own preview, or an earlier feature's page | None. It is shown for the flow |
+| **Built** | The project has it already. The storyboard frames the app's own preview | None. It is shown for the flow |
+| **Planned** | An earlier feature had it approved, and it is not built yet. The storyboard frames that feature's page | None here. The earlier feature's verdict stands |
 | **Changed** | A built surface as this feature alters it | **Approve storyboard** marks its states |
 | **New** | A surface this feature adds | **Approve storyboard** marks its states |
 
-**Approve storyboard** then writes only the changed and new states as `approved`. For each built surface
-`mock-states.md` gets one line that says it was shown and that no verdict was asked. A later change to a
-built preview does not withdraw a verdict. A storyboard that frames only built surfaces has no verdict
-form, because nothing on it is new.
+**Approve storyboard** then writes only the changed and new states as `approved`. For each built or planned
+surface `mock-states.md` gets one line that says it was shown and that no verdict was asked. A later change
+to a built preview does not withdraw a verdict. A storyboard that frames only built and planned surfaces
+has no verdict form, because nothing on it is new.
+
+A built surface that the project has no picture of is counted with **Built** and listed by its route, with
+*(no picture)* after it. The storyboard shows it as a plain labelled box.
 
 The board serves a browser app's `screens/` and `src/styles/` directories to the storyboard, so that a
 built frame shows the real screen and a new surface can link the app's own stylesheet. It serves nothing

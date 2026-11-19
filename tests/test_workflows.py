@@ -157,7 +157,8 @@ class PackageWorkflowTest(unittest.TestCase):
         """A package proves itself against a keel it installs, so a package's CI does not need a
         checkout of the keel and must not quietly depend on one."""
         self.assertIn("pip install", self.workflow)
-        self.assertNotIn("slipwai_v2_Fork", self.workflow)
+        # Nor on another copy of this repository: only `ROBCOATVG/slipwai` itself, or a package beside it.
+        self.assertNotRegex(self.workflow, r"ROBCOATVG/slipwai(?![-/@'\s])")
 
 
 

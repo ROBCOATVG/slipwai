@@ -276,8 +276,8 @@ def main(argv: list[str], languages: Callable[[bool, bool, bool], list[str]] | N
         description="Upgrade this slipwai to the newest version published to the forge, and its installed languages",
         epilog="Asks the registry what the newest version is, then runs the upgrade for an installed "
         "command; a standalone executable and a checkout cannot be upgraded from inside themselves, so "
-        "those are told what to do instead. Then each installed language: current and available, held back "
-        "and why, and moved where a compatible release reaches it (with --check, what would run).",
+        "those are told what to do instead. Then each installed language: current and available, held back and "
+        "why, and moved where one reaches it (with --check, what would run); and each extension against published.",
     )
     parser.add_argument(
         "--check", action="store_true", help="say what is installed and what is published, and change nothing"

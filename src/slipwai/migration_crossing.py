@@ -19,6 +19,7 @@ from pathlib import Path
 from .adopt_report import survey_page
 from .assets import NOTES, VERSION
 from .catch_up_page import archive, set_up, stated
+from .extension_copies import copies
 from .infra_check import check as infra_check
 from .layout import layout_of
 from .logs import Entry, deck_path
@@ -326,7 +327,8 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         archive(root)
         notes = root / NOTES
         notes.parent.mkdir(parents=True, exist_ok=True)
-        notes.write_text(f"{message}\n{stated(recorded, VERSION, datetime.now(UTC))}\n", encoding="utf-8")
+        differing = "\n".join(copies(root, document))  # elected extensions whose merged copy is not the package
+        notes.write_text(f"{message}{differing}\n{stated(recorded, VERSION, datetime.now(UTC))}\n", encoding="utf-8")
         if not result.conflicts:
             from .project.intake_cleanup import write_proposal
             write_proposal(root)

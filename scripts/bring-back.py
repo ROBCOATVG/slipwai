@@ -76,7 +76,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",
        "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_sentence",
        "migration_slices", "migration_crossing", "migration_result", "migration_merge", "migration_renames",
-       "migration_manifest",
+       "migration_manifest", "extension_copies", "extension_upkeep",
        "catalog_checks", "catalog_options",
        "cli_offered", "cli_search",
        "project.briefs", "project.prose", "project.sail_section", "project.write_model_prose",

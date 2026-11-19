@@ -264,7 +264,7 @@ def unlisted(was: str | None, now: str) -> tuple[str, str, list[Entry]]:
 
 def notes(
     name: str, was: str | None, now: str = VERSION, languages: list[Moved] | tuple[Moved, ...] = (),
-    conflicts: Sequence[str] = (), when: datetime | None = None,
+    conflicts: Sequence[str] = (), when: datetime | None = None, extensions: Sequence[str] = (),
 ) -> str:
     """The page `migrate` writes into the project.
 
@@ -299,6 +299,7 @@ def notes(
     lines += listing(listed)
     for moved in languages:
         lines += language_section(moved)
+    lines += extensions  # `extension_copies.copies`: each elected extension whose copy here differs
     lines += [
         "",
         "## Then",

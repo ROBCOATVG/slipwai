@@ -18,11 +18,11 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
-# budget: 410 — the ignore rewrite staged where it is made, and run state kept out of the projections;
+# budget: 411 — the ignore rewrite staged where it is made, and run state kept out of the projections;
 # and the plain-sentence rule's instant written once, on every path a migration ends by
 # commit (2.1); a clean merge also leaves the intake proposal beside the catch-up notes, moves the run's state into
 # `.slipwai/run/` (refusing while a fleet is out), and moves the records
-# a newer keel keeps elsewhere (`relocate`) in the commit after it.
+# a newer keel keeps elsewhere (`relocate`) in the commit after it; the notes name a differing extension copy.
 from __future__ import annotations
 
 import subprocess
@@ -35,6 +35,7 @@ from .assets import NOTES, VERSION
 from .catch_up import moved_languages, notes
 from .catch_up_page import ARCHIVE, after_conflicts, archive
 from .errors import GenerationError
+from .extension_copies import copies
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
 from .migration_manifest import settled
@@ -162,7 +163,7 @@ def write_notes(
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(notes(name, was, languages=moved_languages(document) if document else (),
-                                     conflicts=conflicts), encoding="utf-8")
+                                     conflicts=conflicts, extensions=copies(root, document)), encoding="utf-8")
     except Exception as error:  # the merge is committed: whatever a recorded value did, say so and never raise
         return str(error) or type(error).__name__
     return None

@@ -55,6 +55,7 @@ from .cli_target import target_main
 from .cli_telegraph import telegraph_main
 from .cli_trust import trust_main
 from .errors import GenerationError, failure, refuse
+from .extension_upkeep import with_extensions
 from .init_run import here as run_init
 from .init_run import init_flag
 from .language_directory import Package, refusal
@@ -153,7 +154,7 @@ def dispatch(argv: list[str]) -> None:
     # installed package the new keel would refuse — an upgrade that left them behind would leave a
     # working copy that generates nothing.
     if argv[:1] == ["upgrade"]:
-        upgrade_main(argv[1:], languages=after_core)
+        upgrade_main(argv[1:], languages=with_extensions(after_core))
         return
     # "Where am I?" asked the ways people ask it — `slipwai status`, `slipwai --next` — is `adopt --next`.
     if argv[:1] in (["status"], ["next"], ["--status"], ["--next"]):

@@ -253,7 +253,10 @@ def after_core(check: bool, prerelease: bool, moved: bool, run: Runner = subproc
     a run was to move and did not are `LanguagesNotUpgraded`, with the lines to say."""
     where = directory()
     resolver = Resolver(where, None, prerelease)
-    have = [package for name, package in resolver.have.items() if name not in resolver.built]
+    # Languages only: the directory holds extensions and targets too, and each was listed here as a language
+    # that could not be upgraded. An extension has its own step (`extension_upkeep`), a target its own verb.
+    have = [package for name, package in resolver.have.items() if name not in resolver.built
+            and not any((package.root / other).is_file() for other in ("extension.json", "target.json"))]
     if not have:
         return ["languages: no language is installed"]
     try:

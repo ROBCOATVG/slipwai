@@ -129,6 +129,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "migration_renames",
                   # `project.json` merged as a record: a key order is not a change either side made.
                   "migration_manifest",
+                  # An elected extension's copy in a project against the installed package, for the catch-up page.
+                  "extension_copies",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
     # The command line, and the entry point the executable is built from.
     ("edge", ("cli", "__main__", "preflight", "upgrade", "cli_confirm", "cli_init",
@@ -143,6 +145,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # transaction, the plan a verb shows first, and upkeep after a keel moves.
               "index_schema", "language_index", "language_release", "language_install", "language_plan",
               "language_upkeep", "browser_app",
+              # `upgrade`'s extension step: installed against published.
+              "extension_upkeep",
               # The other kind of package: its install, its scaffold, and the two verbs over them.
               "extension_install", "target_install", "cli_target", "cli_install",
               "package_new", "package_templates", "language_templates", "target_templates", "package_release",

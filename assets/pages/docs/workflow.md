@@ -125,14 +125,15 @@ For one small vertical slice:
 3. Create or resume `plan.md` and `tasks.md` with the Spec Kit commands installed by `./init`.
 4. Run `/speckit-analyze` over `spec.md`, `plan.md` and `tasks.md`. It writes nothing. A finding goes back
    to the plan or the tasks; a clean reading is what lets implementation start.
-5. Implement each task RED-GREEN-REFACTOR, keeping `make verify` green.
+5. Implement each task RED-GREEN-REFACTOR, keeping the quick tests of its file or area green. The full
+   `make verify` runs once, before the slice's push.
 6. Prove every example in the slice's `examples.md` with a passing test.
 7. Review the slice's diff against its merge base once — only what it added or changed.
 8. Run `/adversary` for the slice's trigger record — which attack-surface triggers it widened, attacking
    nothing — then `make verify`, and merge.
 9. On a capability's last slice's branch, before that slice merges, run its gates once: converge over its diff, `/gaps`, the design
    review from screenshots, one adversary pass where any slice widened a trigger, `/mutation`, and the hand's
-   walk of every example. Then the person's demo. Where the project reads each slice converge, the gaps trace, the
+   walk of every example. Then the hand's verdict accepts the capability, or a person's demo follows where `.specify/cruise.json` says `demos: person`. Where the project reads each slice converge, the gaps trace, the
    design review and the walk run per slice as well, after step 5, and a slice that widened authorisation,
    identity or money is attacked before its push; the capability's converge, adversary pass and mutation
    still run.

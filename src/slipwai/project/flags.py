@@ -139,8 +139,9 @@ def flag_stage(apps: list[App]) -> str:
      no key to `infra/service/flags.auto.tfvars`.
    - **keystone** (pilot: known pilot users) — no flag either. The capability's entry point — the route,
      menu item or command an actor reaches it by — is wired by the capability's last slice in
-     `specs/<feature>/chart.yaml`, and every slice before it lands unreachable. Where the chart names the
-     entry under the capability's `entry:`, `make check-slice-scope` refuses it to any earlier slice.
+     `specs/<feature>/chart.yaml`, and every slice before it lands unreachable. Where
+     `specs/<feature>/keystones.yaml`, beside the chart, names the capability's entry as globs,
+     `make check-slice-scope` refuses it to any earlier slice.
      Demo an earlier slice at the `http` or `cli` rung, which reaches it without the entry.
    - **flagged** (live: real users use what trunk deploys), and a project with no state recorded — the
      flag decision below.

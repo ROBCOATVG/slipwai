@@ -252,10 +252,11 @@ On the event profile, the same `depends_on` list lives on this slice in `docs/ev
 **Across slices:** siblings in `parallel_ok_with` whose `depends_on` are already done may run in
 parallel, each on its own `slice/<id>` branch.
 
-**Inside this slice — Phase 3 has none, by construction.** Its tasks are RED-GREEN-REFACTOR increments and
-are strictly sequential: each one starts after the prior increment's local quick tests are green.
-Parallelising them is the
-batched-tests anti-pattern wearing a `[P]` marker.
+**Inside this slice — only where files are disjoint.** A Phase 3 task is a RED-GREEN-REFACTOR increment
+that starts from a green, committed suite, so two increments that share a file, or where one builds on the
+other, are strictly sequential: running them together is the batched-tests anti-pattern wearing a `[P]`
+marker. Mark `[P]` on a task whose files are disjoint from its siblings', and say here what may run
+alongside what — `/sail` reads both to decide how many delegates to send.
 
 Domain primitives in Phase 2 are parallel, as are the independent Polish tasks. Tasks touching the same
 file are never parallel, however independent they look.

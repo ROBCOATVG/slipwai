@@ -88,7 +88,7 @@ python3 scripts/agents/models.py implement   # keyed by the command the stage ru
 ```
 
 The line chooses the model; it does not require that model to inherit this session's context. Prefer a fresh
-sub-agent whenever the stage can get all of its inputs from artifacts on disk. Six stages are exactly that,
+sub-agent whenever the stage can get all of its inputs from artifacts on disk. The stages in the table below are exactly that,
 and each is a **named agent type** this project carries in `agents/`, projected into the installed harness by
 `{{make}} agents` with its model and as much of its scope as that harness can enforce:
 
@@ -245,6 +245,11 @@ stop accepts it (*What the demo stop has to contain*) — the *Capability gates*
 records meanwhile, and what the last slice of a capability starts. The order holds when they run: the
 adversary pass adds tests, and mutation measures whatever exists when it runs. Stop earlier only for a product decision or
 unavailable input.
+
+**A session a captain dispatched ends its turn at the two handovers its prompt names** — once `tasks.md` is
+committed, and once the implementation is committed with its review findings closed. That is not ending the
+loop: the captain starts the slice's next part at once, in a new session. Everything here about continuing
+on the same run is said of a person's own `/sail`, and of a dispatched session between its handovers.
 
 Once that evidence is clean, **continue on the same run**: mark the finished slice done —
 {{done-marker}} — and confirm its
@@ -444,7 +449,9 @@ event-modelling profile, the chart `specs/<feature>/chart.yaml` re-rendered the 
 which `check-chart` holds to the model), the mockups, the code and tests of the service that owns it — one bounded context where the service holds
 several — the context's events module *additively*, **new** migration files named by a timestamp
 (`date -u +%Y%m%d%H%M`, so two slices never mint the same name), a **new** ADR under `docs/adr/` at
-`Proposed` (never an edit to one that stands), and the composition root. Nothing else —
+`Proposed` (never an edit to one that stands), the composition root, its own flag's declaration in
+`infra/service/flags.auto.tfvars` — additively and seeded `off`, in the same change as the code that reads it
+— and its own dispatch ledger file. `scripts/check-slice-scope.py` is the exact list. Nothing else —
 `Makefile`, `project.json`, the workspace's root manifests and locks, the local services' files under
 `docker/`, `scripts/`, `skills/`, `agents/`, the other docs — is a slice's to write. **The manifest and lock
 of the service that owns the slice are that service's code, and are the slice's**: a dependency or a build

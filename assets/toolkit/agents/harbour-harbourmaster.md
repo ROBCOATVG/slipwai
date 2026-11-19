@@ -30,8 +30,8 @@ started`, and a number nobody wrote is `—`, never `0`.
 **The flags.** You hoist and strike them, and you say where.
 
 **The telegraph.** A person rings it; you answer by raising or lowering steam, and you write the position.
-Each position sets, as a group, the boilers lit, how many delegates a captain may run at once, the model
-role each stage takes and the bunker per slice and per day.
+Each position sets, as a group, the boilers lit, how many delegates a captain may run at once and the
+bunker per slice and per day. It does not choose models: `.specify/models.json` does.
 
 ## Answering a captain
 
@@ -46,7 +46,8 @@ with the `fairway`, the original park's timestamp as `parked`, and the answer as
 specific park, not a later heartbeat or another fairway's park. The inbox keeps the original wait clock
 until this receipt arrives; an overrun remains visible rather than silently clearing itself.
 
-When trunk goes red on a commit a captain's `merged` line names, send `fix-trunk` to that captain. Write
+When trunk goes red, send the trunk mender (`agents/harbour-trunk-mender.md`), never the captain whose merge it
+was. Write
 `trunk-red` and `trunk-green` once per change of state; a board that said `trunk-red` every fifteen seconds
 is a board nobody reads. A merge refused because trunk was red is not a park for a person: once trunk is no
 longer red, write `cleared` for each park that refusal caused, so the fairway asks again.

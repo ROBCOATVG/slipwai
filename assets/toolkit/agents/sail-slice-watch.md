@@ -28,7 +28,8 @@ the `/gaps` command does.
 Your commits touch this slice's own `specs/<feature>/slices/<id>/`, the feature's cumulative artifacts — among
 them `specs/<feature>/people/`, one file per person your story signs in as — its block of `model.yaml` and the
 canvas regenerated from it, the code and tests of the service that owns it, the context's events module
-*additively*, new timestamped migrations and the composition root. The shared-surface rule in
+*additively*, new timestamped migrations, the composition root, and its own flag's declaration in
+`infra/service/flags.auto.tfvars`, additively and seeded `off`. The shared-surface rule in
 `commands/sail.md` is exact and `{{make}} check-slice-scope` holds it on your branch; `Makefile`,
 `project.json`, the workspace's root manifests and locks, `scripts/`, `skills/`, `agents/`, the local services'
 files under `docker/` and the other docs are not a slice's to write — the manifest and lock of the service

@@ -6,6 +6,10 @@ same way every time (`contracts/language-index.md`, *A release file*), so a dige
 source is a release file or an unpacked package directory, a checkout of a language's own repository included: what
 it installs as is the `name` its `language.json` gives, whatever the directory is called.
 
+What a release of a directory holds depends on where the directory is (`released`): in a git repository, what `HEAD`
+tracks under it and nothing else (`release_tracked`), so that a release is what its tag holds; anywhere else, the
+directory as it stands.
+
 Unpacking never asks `tarfile` to extract: every member is held to the format first, and only then is any byte
 written, so an archive with one bad member writes nothing.
 """
@@ -26,6 +30,7 @@ from typing import Any
 from .errors import GenerationError
 from .language_directory import parse_fragment
 from .language_shape import name_fault
+from .release_tracked import tracked
 
 # What a package directory holds that is not the package: version control, and what tools leave behind.
 EXCLUDED = frozenset({".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".venv"})
@@ -229,27 +234,50 @@ def files_of(root: Path) -> list[Path]:
             if path.is_symlink():
                 raise ReleaseError(f"{path} is a link, and a release holds regular files and directories only")
             found.append(path)
-    return sorted(found)
+    return sorted(found, key=lambda path: path.parts)  # on strings, so the order is the same on every platform
+
+
+def released(root: Path) -> list[Path]:
+    """Every file and directory a release of `root` holds, in the order they are written.
+
+    In a git repository, the files `HEAD` tracks and the directories that hold them (`release_tracked`): no
+    untracked file, no ignored one and no empty directory, so two clones of one commit build one file whatever else
+    either holds. Outside one — an unpacked release, a directory nobody committed — the directory as it stands.
+    `EXCLUDED` is held to either way, so a clean checkout builds the bytes it always did."""
+    held = tracked(root)
+    if held is None:
+        return files_of(root)
+    found: set[tuple[str, ...]] = set()
+    for parts in held:
+        if EXCLUDED.isdisjoint(parts):
+            found.update(parts[:depth] for depth in range(1, len(parts) + 1))
+    for parts in sorted(found):
+        if not root.joinpath(*parts).exists():
+            raise ReleaseError(f"{root.joinpath(*parts)} is tracked at HEAD and is not in the working tree, so "
+                               f"the release cannot hold it. Bring it back: `git checkout HEAD -- .`")
+    return [root.joinpath(*parts) for parts in sorted(found)]
 
 
 RELEASE_VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+_-]*")
 
 
 def pack(root: Path, out: Path) -> Path:
-    """`<out>/<name>-<version>.tar.gz` from a package directory of either kind, the same bytes every time. A
-    publisher's `.env` or `.env.*` anywhere in it refuses the release, naming the file, and a `VERSION` that is not a
+    """`<out>/<name>-<version>.tar.gz` from a package directory of either kind, the same bytes every time: what
+    `released` says it holds, which in a git repository is what `HEAD` tracks. A publisher's `.env` or `.env.*`
+    anywhere in it refuses the release, naming the file, and a `VERSION` that is not a
     file name's worth of letters, digits and `.+_-` refuses it too: it becomes part of the file's name."""
     source = read_package(root)
     if not RELEASE_VERSION.fullmatch(source.version):
         raise ReleaseError(f"{root}: VERSION {source.version!r} cannot be part of a release file's name")
-    for path in files_of(root):
+    holds = released(root)
+    for path in holds:
         if path.name == ".env" or path.name.startswith(".env."):
             raise ReleaseError(f"{path} is a secrets file, and a release is public: move it out of {root}")
     out.mkdir(parents=True, exist_ok=True)
     target = out / f"{source.name}-{source.version}.tar.gz"
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w", format=tarfile.GNU_FORMAT) as tar:
-        for path in [root, *files_of(root)]:
+        for path in [root, *holds]:
             relative = PurePosixPath(source.name, *path.relative_to(root).parts)
             info = tarfile.TarInfo(str(relative))
             info.mtime, info.uid, info.gid, info.uname, info.gname = 0, 0, 0, "", ""
@@ -260,7 +288,10 @@ def pack(root: Path, out: Path) -> Path:
             data = path.read_bytes()
             info.size, info.mode = len(data), 0o755 if os.access(path, os.X_OK) else 0o644
             tar.addfile(info, io.BytesIO(data))
-    with target.open("wb") as handle, gzip.GzipFile(filename="", mode="wb", fileobj=handle, mtime=0) as zipped:
+    # The level is said, not defaulted: the default moved from 9 in a later Python, and a digest that depends on
+    # which interpreter built the file is a digest a publisher cannot reproduce.
+    with target.open("wb") as handle, gzip.GzipFile(filename="", mode="wb", fileobj=handle, mtime=0,
+                                                    compresslevel=9) as zipped:
         zipped.write(buffer.getvalue())
     return target
 

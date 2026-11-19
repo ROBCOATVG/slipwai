@@ -11,7 +11,7 @@ their first CI run failed. The keel has had `make release` since 8.1 doing preci
 is the same thing, for a package, through a verb.
 
 **Cutting and building are different actions, and stay apart.** This rewrites the working tree: a person
-runs it, reads the entry, commits and tags. `package release` builds a tarball from whatever the tree says
+runs it, reads the entry, commits and tags. `package release` builds a tarball from what that commit holds
 and is what CI runs from the tag — and a CI job that rewrote the changelog would be rewriting the commit
 the tag already points at.
 """

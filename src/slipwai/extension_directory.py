@@ -20,6 +20,7 @@ be generated because something optional is malformed has the dependency backward
 from __future__ import annotations
 
 import os
+import posixpath
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -139,8 +140,25 @@ def files(root: Path) -> list[Path]:
     Stable because this list becomes the files of a generated project, and a project whose contents depend on
     the order a directory happened to be walked in is a project two generations disagree about.
     """
-    return sorted(
-        path.relative_to(root)
-        for path in root.rglob("*")
-        if path.is_file() and path.name != MANIFEST and ".git" not in path.parts
-    )
+    found = (path.relative_to(root) for path in root.rglob("*")
+             if path.is_file() and path.name != MANIFEST and ".git" not in path.parts)
+    # On the string and not the `Path`: Windows compares a path without case, so the same package was listed in
+    # another order there, and a promise of a stable order is a promise about every platform.
+    return sorted(found, key=lambda path: path.as_posix())
+
+
+def absent(root: Path, manifest: dict[str, Any]) -> list[tuple[str, str, str]]:
+    """Every hook and guard the manifest declares whose script the package does not ship, as (`hook` or `guard`,
+    the point, the path it names), in that order.
+
+    A hook is run as `scripts/extensions/<key>/<run>` in a project, and what a project is given is `files`; so a
+    script that is not in that list is a hook that never runs, in every project, and nothing says so but one line
+    per rung in a log (`codegraph` 1.0.0 and `hooks/sync.py`, #117). The default declarations are held to as written
+    ones are: `project` fires `init.py` whether or not the manifest says it. Compared as the strings a project on a
+    case-sensitive file system would look for, so a package that passes here passes there. A manifest's `tools` are
+    names an agent calls, not files, and there is nothing of theirs to ship.
+    """
+    shipped = {path.as_posix() for path in files(root)}
+    declarations = (("guard", guards_declared(manifest)), ("hook", declared(manifest)))
+    return sorted((kind, name, str(body["run"])) for kind, found in declarations for name, body in found.items()
+                  if posixpath.normpath(str(body["run"]).replace("\\", "/")) not in shipped)

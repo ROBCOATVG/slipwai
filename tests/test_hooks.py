@@ -7,11 +7,16 @@ A convention is a thing each extension rediscovers and each harness breaks diffe
 """
 from __future__ import annotations
 
+import json
+import re
 import unittest
+from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
 from slipwai import hooks
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class PointTest(unittest.TestCase):
@@ -100,12 +105,33 @@ class DeclarationTest(unittest.TestCase):
         self.assertEqual(declared["init"]["run"], "init.py")
 
 
+class StagesTest(unittest.TestCase):
+    """`stages` is matched against the name a captain fires the point with. The page's example named
+    `implement` and `converge`, which no captain fires, so it described a hook that never ran (#117)."""
+
+    def fired(self) -> set[str]:
+        captain = (ROOT / "assets/toolkit/scripts/agents/captain.py").read_text(encoding="utf-8")
+        return set(re.findall(r'fire\("(?:before|after)-stage", stage="([^"]+)"', captain))
+
+    def test_a_captain_fires_the_stage_points_with_two_names(self) -> None:
+        self.assertEqual(self.fired(), {"drive", "decide"})
+
+    def test_the_page_s_example_and_its_list_name_only_stages_that_are_fired(self) -> None:
+        page = (ROOT / "docs/extensions.md").read_text(encoding="utf-8")
+        example = re.search(r'"after-stage": (\{[^}]*\})', page)
+        assert example is not None
+        named = set(json.loads(example.group(1))["stages"])
+        self.assertTrue(named and named <= self.fired(), named)
+        for stage in self.fired():
+            self.assertIn(f"`{stage}`", page)
+
+
 class RegistryTest(unittest.TestCase):
     def registry(self) -> dict:
         return hooks.registry({
             "uipro": {"hooks": {"check": "hooks/check.py"}},
             "codegraph": {"hooks": {"check": "hooks/check.py",
-                                    "after-stage": {"run": "hooks/sync.py", "stages": ["implement"]}}},
+                                    "after-stage": {"run": "hooks/sync.py", "stages": ["drive"]}}},
         })
 
     def test_the_points_are_in_firing_order_not_in_manifest_order(self) -> None:

@@ -16,7 +16,7 @@ import argparse
 from .assets import this_command
 from .catalog import REFUSALS
 from .errors import GenerationError, refuse
-from .extension_directory import MANIFEST
+from .extension_directory import MANIFEST, absent
 from .extension_install import catalogue, install, remove
 from .extension_shape import OBLIGATIONS
 from .guards import GUARDS
@@ -40,16 +40,30 @@ def rows() -> list[str]:
         if isinstance(description, str) and description:
             lines.append(f"      {description}")
         try:
-            points = ", ".join(sorted(declared(manifest)))
+            missing = {(kind, point): path for kind, point, path in absent(directory() / key, manifest)}
+            points = attached(declared(manifest), "hook", missing)
         except (ValueError, KeyError) as error:  # a manifest the loader already refused, said once more here
-            points = f"unreadable ({error})"
+            missing, points = {}, f"unreadable ({error})"
         lines.append(f"      hooks: {points or 'none'}")
         try:
-            may_refuse = ", ".join(sorted(declared_guards(manifest)))
+            may_refuse = attached(declared_guards(manifest), "guard", missing)
         except (ValueError, KeyError) as error:
             may_refuse = f"unreadable ({error})"
         lines.append(f"      guards: {may_refuse or 'none'}")
+        if missing:
+            lines.append(f"      this package is not whole; install a release that is: "
+                         f"`{this_command()} extension install {key}`")
     return lines
+
+
+def attached(found: dict[str, dict], kind: str, missing: dict[tuple[str, str], str]) -> str:
+    """The points one extension declares, each one whose script is not in the package saying so.
+
+    Listed bare, a hook whose file is missing reads as a hook that is there — which is what `codegraph` 1.0.0's
+    `after-stage` did for the life of that version while it ran in no project (#117).
+    """
+    return ", ".join(f"{name} ({missing[kind, name]} is not in the package, so it never runs)"
+                     if (kind, name) in missing else name for name in sorted(found))
 
 
 def list_extensions() -> None:
@@ -135,9 +149,10 @@ def check_main(path: str) -> None:
     print(f"  key          {manifest['key']}  — `./init --extension {manifest['key']}`")
     print(f"  shown as     {manifest['name']}")
     print(f"  core         {manifest['core']}")
-    print(f"  hooks        {', '.join(sorted(declared(manifest))) or 'none'}")
-    print(f"  guards       {', '.join(sorted(declared_guards(manifest))) or 'none'}  — these may refuse a "
-          f"tool call, and are agreed to at election")
+    missing = {(kind, point): script for kind, point, script in absent(root, manifest)}
+    print(f"  hooks        {attached(declared(manifest), 'hook', missing) or 'none'}")
+    print(f"  guards       {attached(declared_guards(manifest), 'guard', missing) or 'none'}  — these may "
+          f"refuse a tool call, and are agreed to at election")
     print("  obligations, which `slipwai conformance --extension` runs:")
     for name, said in OBLIGATIONS:
         print(f"    {name:<10} {said}")

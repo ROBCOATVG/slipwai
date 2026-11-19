@@ -85,6 +85,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "project.wiring", "project.berth_commands", "extension_shape", "extension_directory", "extension_tools",
        "extension_install", "package_new", "package_templates", "language_templates", "package_release",
        "package_version", "package_sources", "cli_extension", "cli_package",
+       # What a release holds of a package in a git repository: the files `HEAD` tracks. Version 2's.
+       "release_tracked",
        "conformance.extension", "index_schema", "trust", "cli_trust", "ed25519", "rungs", "renamed",
        "channel", "channel_new", "channel_page", "cli_channel", "telegraph", "cli_telegraph", "fleet", "cli_fleet",
        "bridge", "bridge_page", "cli_bridge", "cli_start", "whats_new", "deck", "brand",

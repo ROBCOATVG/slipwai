@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..assets import TOOLKIT_ROOT
-from ..extension_directory import MANIFEST, files
+from ..extension_directory import MANIFEST, absent, files
 from ..extension_shape import obligations
 from ..hooks import declared
 
@@ -42,6 +42,8 @@ TROUBLE = re.compile(r"\b(cannot|could not|couldn't|failed|failing|missing|not f
 REMEDY = re.compile(r"`[^`]+`"
                     r"|(?:\b(?:brew|npm|pip|pipx|uv|cargo|go|apt|dnf|make|slipwai)\b|\./init)[ \t]+\S")
 BUDGET = 120.0
+#: Held before the six and beside them: not something the entry point does, but whether the package is whole.
+SHIPS = ("ships", "every hook and guard the manifest declares names a file the package ships")
 
 
 @dataclass
@@ -176,11 +178,24 @@ def gated(package: Path, manifest: dict) -> list[str]:
             f"everybody rebuilds"]
 
 
+def unshipped(package: Path, manifest: dict) -> list[str]:
+    """A finding for each declared hook or guard whose script is not in the package, naming the point and the path.
+
+    Only `init` used to be looked for, and a package missing that one was reported as not run, which is a pass. So a
+    package could declare a hook at any point, not ship its file, pass here and be published: the hook then never
+    runs in any project (#117).
+    """
+    return [f"the `{name}` {kind} names {path}, which the package does not ship. Nothing is run at `{name}` in "
+            f"any project that elects this: add the file, or take the declaration out of {MANIFEST}"
+            for kind, name, path in absent(package, manifest)]
+
+
 def check(package: Path) -> Report:
     """Run the six against the package in `package`, and say what each found."""
     manifest = json.loads((package / MANIFEST).read_text(encoding="utf-8"))
     key = manifest["key"]
     report = Report(key)
+    report.findings[SHIPS[0]] = unshipped(package, manifest)
     script = entry_point(manifest)
     with tempfile.TemporaryDirectory() as area:
         project = scratch(Path(area), key, package)
@@ -243,4 +258,4 @@ def non_fatal(package: Path, key: str, script: str) -> list[str]:
             f"a reason a project cannot be set up: say what is missing and leave the project working"]
 
 
-__all__ = ["Report", "check"]
+__all__ = ["SHIPS", "Report", "check"]

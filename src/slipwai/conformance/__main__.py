@@ -13,6 +13,7 @@ from pathlib import Path
 
 from ..assets import VERSION
 from ..extension_shape import OBLIGATIONS
+from .extension import SHIPS
 from .extension import check as check_extension
 from .run import CHECKS, Report, check, require_package_name, shown
 from .target import CHECKS as TARGET_CHECKS
@@ -44,7 +45,7 @@ def extension_report(parser: argparse.ArgumentParser, package: Path) -> int:
         print(f"conformance: the suite could not run: {error}", file=sys.stderr)
         return 3
     print(f"conformance: extension {report.key} in {package}, against slipwai {VERSION}")
-    for name, said in OBLIGATIONS:
+    for name, said in (SHIPS, *OBLIGATIONS):
         if name in report.not_run:
             print(shown(name, report.not_run[name]))
             continue

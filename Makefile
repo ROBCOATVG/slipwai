@@ -70,6 +70,8 @@ SLOW += test_intake_card test_intake_talk
 SLOW += test_event_names_parity
 # The list of what exists, run as the command a project runs, and against a git checkout made for the case.
 SLOW += test_existing_surfaces
+# A git repository made per case, and a submodule cloned into two of them, to pack what `HEAD` tracks.
+SLOW += test_release_tracked
 # Stands up boards: the start pages answered while every tool is still out (#118).
 SLOW += test_machine_probe
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))

@@ -333,8 +333,13 @@ jobs:
           set -eu
           if [ -z "${GH_TOKEN:-}" ]; then
             printf '%s\n' "no chandlery_token, so nothing was offered to ${{ inputs.channel }}." >&2
-            printf '%s\n' "The release is attached to this tag. To publish it:" >&2
-            printf '%s\n' "  slipwai package register . --channel <a checkout of ${{ inputs.channel }}>" >&2
+            # The entry, not a rebuild: the digest the channel must list is of the file this job built, and
+            # the entry attached beside it is where that digest is written. A second build in somebody's
+            # clone is a second file, and its digest beside this file's URL installs for nobody (#117).
+            entry="${{ inputs.package }}-${{ steps.built.outputs.version }}.json"
+            printf '%s\n' "The release and its entry are attached to this tag. To publish it, register that entry:" >&2
+            printf '%s\n' "  gh release download ${{ github.ref_name }} -R ${{ github.repository }} -p $entry" >&2
+            printf '%s\n' "  slipwai package register . --entry $entry --channel <a checkout of ${{ inputs.channel }}>" >&2
             exit 0
           fi
           name="${{ inputs.package }}"

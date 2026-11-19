@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import json
 import secrets
 from pathlib import Path
 
@@ -151,7 +152,10 @@ def release_package(parsed: argparse.Namespace) -> None:
     print(f"  sha256        {entry['sha256']}")
     print(f"  entry         {entry_file}")
     print(f"  signature     {entry.get('signature', '') and 'ed25519' or 'none (--key signs it)'}")
-    print(f"  register it   {this_command()} package register {root} --channel <a channel checkout>")
+    # Given a URL, the file is somebody else's to host and this entry is the only record of its digest: so it
+    # is the entry that is registered, never a second build that might not be the same bytes (#117).
+    entry_flag = f" --entry {entry_file}" if parsed.file_url else ""
+    print(f"  register it   {this_command()} package register {root}{entry_flag} --channel <a channel checkout>")
 
 
 def key_path(parsed: argparse.Namespace) -> Path | None:
@@ -163,12 +167,22 @@ def key_path(parsed: argparse.Namespace) -> Path | None:
 def register_package(parsed: argparse.Namespace) -> None:
     root = Path(parsed.name).expanduser()
     channel = Path(parsed.channel).expanduser()
-    archive, entry_file, index = register(root, channel, parsed.publisher, parsed.file_url,
-                                          key_path(parsed))
+    if parsed.entry and (parsed.file_url or parsed.key or parsed.publisher):
+        raise GenerationError("`--entry` registers an entry a release already wrote, which says where its file "
+                              "is, who published it and how it is signed. Leave out `--file-url`, `--key` and "
+                              "`--publisher`, or leave out `--entry` to build the release here")
+    archive, entry_file, index = register(root, channel, parsed.publisher, parsed.file_url, key_path(parsed),
+                                          Path(parsed.entry).expanduser() if parsed.entry else None)
+    entry = json.loads(entry_file.read_text(encoding="utf-8"))
     print(f"registered in {channel}:")
-    print(f"  file          {archive.relative_to(channel) if archive else parsed.file_url}")
+    print(f"  file          {archive.relative_to(channel) if archive else entry['file']}")
+    print(f"  sha256        {entry['sha256']}")
     print(f"  entry         {entry_file.relative_to(channel)}")
     print(f"  index         {index.relative_to(channel)}")
+    if parsed.file_url:
+        print(f"That digest is of a file built here, listed beside a URL this did not read. Where a release "
+              f"wrote an entry for that file, register it instead (`--entry <file>`); either way "
+              f"`{this_command()} channel check {channel} --fetch` holds the file at the URL to the digest")
     print(f"Serve {channel} and name it in SLIPWAI_CHANDLERY to install from it; "
           f"{this_command()} search lists what it holds")
 
@@ -211,6 +225,11 @@ def package_main(argv: list[str]) -> None:
     parser.add_argument("--file-url", default="", metavar="<url>",
                         help="where the release file is, where that is not beside the index — the asset on "
                              "the tag that built it, usually. The channel then holds the entry alone")
+    parser.add_argument("--entry", default="", metavar="<file>",
+                        help="`register` only: the entry a release already wrote (`<out>/entries/<name>-"
+                             "<version>.json`, which a release built in CI attaches to its tag). It is listed "
+                             "as it stands and nothing is built, so the digest in the channel is of the file "
+                             "that was published")
     parsed = parser.parse_args(argv)
     try:
         if parsed.verb == "new":

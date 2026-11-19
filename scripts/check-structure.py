@@ -145,6 +145,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # transaction, the plan a verb shows first, and upkeep after a keel moves.
               "index_schema", "language_index", "language_release", "language_install", "language_plan",
               "language_upkeep", "browser_app",
+              # What a release holds of a package in a git repository: what `HEAD` tracks, asked of git.
+              "release_tracked",
               # `upgrade`'s extension step: installed against published.
               "extension_upkeep",
               # The other kind of package: its install, its scaffold, and the two verbs over them.

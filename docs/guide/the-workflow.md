@@ -101,6 +101,23 @@ A project that has built screens and no storyboard gets its first storyboard thi
 state of a project that crossed from version 1. The storyboard frames the part of the flow that the new
 feature touches and names the rest, each with a link to its preview.
 
+### A feature with no screen
+
+Some features add and change no surface: a migration, a scheduled job, a change behind an interface. The
+mock-up stage used to end such a feature as a failure, and you wrote `surfaces: none` by hand. The stage
+now records `surfaces: none` itself, with the reason, and ends successfully, so the feature moves on. It
+does so only when all of these hold:
+
+- the drawing's `research.md` says `Surfaces: none`, with a reason
+- no requirement line in the specification asks for something that a person or another system meets, such
+  as a screen, a form, something shown or displayed, an email, a report or a webhook
+- no slice of the feature names a surface in the split or carries a `ui` frame in the event model
+- nothing is drawn, and `mock-states.md` holds no verdict
+
+When one of these does not hold, the stage stops as before and says which. Run `/mockups <feature>` in the
+agent to settle it. To draw a surface after all, delete `specs/<feature>/mockups/mock-states.md` and run
+`/mockups <feature>`.
+
 There is still one storyboard per feature. The newest one shows the whole flow as it will stand.
 
 This stop exists for a reason. A screen that nobody saw becomes a read model, a route and a set of tests.

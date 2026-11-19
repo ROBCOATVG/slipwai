@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from . import harness_cli, step_record
-from .drawn import surface_pages
+from .drawn import undrawn, unsurfaced
 from .logs import run_dir
 from .process_alive import alive
 from .session_log import Folder
@@ -529,7 +529,7 @@ def start(where: Path, harness: str | None = None, said: list[str] | None = None
 
 def stage_step(where: Path, command: str, argument: str, argv: list[str], announced: str, over: str,
                ended: Callable[[int], str], key: str, limit: float = 1800.0,
-               prompt: str | Callable[[], str] | None = None, done: str = "", undone: str = "",
+               prompt: str | Callable[[], str] | None = None, done: str | Callable[[], str] = "", undone: str = "",
                **held: Any) -> Step:
     """A stage: over the protocol where this board can launch the project's agent, so the agent can ask the
     person what only they can decide and the board can see it work; the headless child where it cannot.
@@ -548,7 +548,7 @@ def stage_step(where: Path, command: str, argument: str, argv: list[str], announ
     session = StageSession(where, command, argument, limit=limit, prompt=words or "", **held)
     if done:
         def ended(code: int) -> str:
-            return done if code == 0 else undone
+            return (done() if callable(done) else done) if code == 0 else undone
     return Step([], over, ended, key, session=session.run, about=argument)
 
 
@@ -650,17 +650,6 @@ def triaged(code: int) -> str:
     return f"`make triage` exited {code}. Its last lines say why; Triage on the Feedback card tries again."
 
 
-def undrawn(where: Path, feature: str) -> str:
-    """What a drawing that drew nothing a person can approve says: no surface page, or a storyboard that shows
-    none. A real failure, and nothing to do with the counts its note declares, which never fail a drawing."""
-    home = where / "specs" / feature / "mockups"
-    if feature and home.is_dir() and surface_pages(home):
-        return ""
-    return (f"The session ended with no surface page under specs/{feature}/mockups/ — "
-            + ("a storyboard.html that shows no page per surface, " if (home / "storyboard.html").is_file() else "")
-            + "so there is nothing to approve; Draw the storyboard again, and read its lines above.")
-
-
 def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitting:
     """The surfaces drawn, in the background: what the board's Draw the storyboard button starts.
 
@@ -669,10 +658,12 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     """
     argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
     named = feature or first_feature(where)
-    step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP, drew,
+    step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP,
+                      lambda code: (not code and unsurfaced(where, named)) or drew(code),
                       "surfaces", limit=900.0, pid="surfaces.pid", stage="", after=lambda: undrawn(where, named),
-                      done="The surfaces are drawn. The storyboard is below: open it, then Approve or "
-                           "Disapprove it on this page. That verdict is what the model and the chart read.",
+                      done=lambda: unsurfaced(where, named) or
+                      "The surfaces are drawn. The storyboard is below: open it, then Approve or "
+                      "Disapprove it on this page. That verdict is what the model and the chart read.",
                       undone="The drawing stopped short; nothing was approved. Its lines above say where.")
     fitting = Fitting(where, [step], said)
     fitting.thread.start()

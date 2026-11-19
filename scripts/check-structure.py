@@ -189,7 +189,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # A surface page read as the board reads it, in one place: the Voyage window, the upstream
               # stop and `brief check` all approve or count the same states.
               # And what its storyboard says each surface is — built, planned, changed or new — read from the marks.
-              "framed", "drawn",
+              # And a feature with no surface at all: the grounds for saying so, and the record of it.
+              "framed", "no_surface", "drawn",
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",

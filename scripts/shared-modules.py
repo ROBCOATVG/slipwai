@@ -39,6 +39,9 @@ SHARED = {
     "src/slipwai/release_state.py": "assets/toolkit/scripts/agents/release_state.py",
     # What the harbour has spent, from the stages' own records: the board's tile and the harbourmaster's bunker.
     "src/slipwai/spend.py": "assets/toolkit/scripts/agents/spend.py",
+    # Whether a feature adds and changes no surface, on grounds: the board's check of a drawing it ran over the
+    # protocol, and `surfaces.py`'s of one it ran headless. One reading, or the two ends of one stage disagree.
+    "src/slipwai/no_surface.py": "assets/toolkit/scripts/agents/no_surface.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

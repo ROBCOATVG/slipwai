@@ -30,6 +30,11 @@ frames — into `specs/<feature>/mockups/existing.md`, and the session is told w
 further feature is drawn into that flow and in that look; what the storyboard frames as built — or as planned,
 approved for an earlier feature and not built yet — is not counted as drawn here, and is not put up for a
 verdict on the board.
+
+**A feature with no surface ends cleanly.** Where the drawing's research note says `Surfaces: none — <why>` and
+nothing stands against it (`no_surface.py` says what is read), this writes `mock-states.md` as `surfaces: none`
+with that reason and exits 0. Where the note says so and something does stand against it, or the note says
+nothing and nothing was drawn, it still stops, and says which.
 """
 from __future__ import annotations
 
@@ -49,6 +54,7 @@ import harness  # noqa: E402
 
 ROOT = harness.ROOT
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+import no_surface  # noqa: E402 — whether a feature has no surface at all, on grounds; the board reads the same
 COMMAND = ROOT / "commands/mockups.md"
 SPECS = ROOT / "specs"
 MOCKUPS = "mockups"
@@ -269,11 +275,19 @@ def main(argv: list[str]) -> int:
         return exited
     written = [path for path in drawn(feature) if path not in before]
     if not written and not drawn(feature):
+        # A feature with no surface is a clean end, where the stage has positive grounds and only there: the
+        # drawing said so with its reason, and nothing in the specification, the split or the model says
+        # otherwise. Nothing drawn is not grounds — a session that crashed draws nothing too.
+        stands, said = no_surface.settle(ROOT, feature)
+        if stands or said:
+            print(f"surfaces: {said}", file=sys.stdout if stands else sys.stderr, flush=True)
+            return 0 if stands else 1
         alone = (SPECS / feature / MOCKUPS / "storyboard.html").is_file()
         if set(existing.FRAMED) & set(existing.kinds(SPECS / feature / MOCKUPS).values()):
             print(f"surfaces: the storyboard under specs/{feature}/{MOCKUPS}/ frames what is built or planned and draws "
-                  f"nothing this feature changes or adds, so there is nothing new to approve; a feature with no "
-                  f"surface of its own is `surfaces: none`, which /mockups {feature} writes with you",
+                  f"nothing this feature changes or adds, so there is nothing new to approve; and its research "
+                  f"note does not say `Surfaces: none — <why>`, so nothing says this feature has no surface of "
+                  f"its own. /mockups {feature} settles it with you",
                   file=sys.stderr)
             return 1
         print(f"surfaces: the session ended with no surface pages under specs/{feature}/{MOCKUPS}/"

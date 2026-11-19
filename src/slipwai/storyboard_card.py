@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from . import stage_talk
-from .drawn import decided_states, withdrawn_parts
+from .drawn import decided_states, unsurfaced, withdrawn_parts
 from .init_run import outside_session, resumed
 from .page_copy import ROUTE
 from .page_shell import esc
@@ -245,6 +245,8 @@ def verdict_form(root: Path, feature: str) -> str:
     and the buttons are back: the storyboard waits on a verdict again.
     """
     home = root / "specs" / feature / "mockups"
+    if said := unsurfaced(root, feature):
+        return f'<p class="empty">{esc(said)}</p>'
     built, planned = framed_count(home)
     if (built or planned) and not surface_pages(home):
         return ('<p class="empty">Every surface on this storyboard is built already'

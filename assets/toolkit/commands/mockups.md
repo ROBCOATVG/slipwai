@@ -34,6 +34,25 @@ mock-ups and the storyboard, say what you drew and which surfaces the specificat
 questions from section 1 in the inbox as usual. The person runs `/mockups <feature>` afterwards, in a
 session they are in, and that run picks up at section 2's stop with the drawings already there.
 
+**Where the specification implies no surface at all, say so and stop — that is a clean end, not a failure.**
+A migration, a scheduled job, a change behind an interface nobody new meets: the researcher finds no place a
+person or another system meets this feature. Then draw nothing, and write one line in `research.md`, as
+plain text under the two counts:
+
+```
+Surfaces: none — <why: what the feature is, and why nobody meets it>
+```
+
+Still do not write `mock-states.md`. The stage that dispatched you records `surfaces: none` there itself,
+with your reason, and ends successfully so the feature moves on — **only where it has grounds of its own**:
+your line with its reason; no requirement line of the specification (`FR-…`, `SC-…`, a user story, a
+`Given`/`When`/`Then`) asking for anything shown, seen, displayed, emailed, reported or sent to another
+system; no slice of this feature in the split or the event model that names a surface or carries a `ui`
+frame; nothing drawn and no verdict already given. Where one of those fails it stops, as it used to, and
+says which — so never write the line to get past a surface you could not draw. A feature that changes an
+existing screen has a surface; so does one that sends an email, prints to a command line or answers a
+webhook. Where you cannot tell, draw nothing, leave the line out, and put the question under `## Questions`.
+
 **That session has a budget, and it is ended at it.** `SLIPWAI_BUDGET_MINUTES` is how many minutes you have
 and `SLIPWAI_BUDGET_ENDS` the clock time they run out — fifteen for a first drawing and ten for a redraw,
 scaled by the telegraph like every stage budget in `harbour.json`. Plan to it: the research note and the
@@ -355,10 +374,13 @@ says what was shown; where you write the file by hand, write the same line. A sl
 planned surface is refused by `check-surfaces`: where this feature changes it, it is `changed`, with a page
 and a verdict of its own.
 
-**A feature with no surface at all** — a migration, an integration, a scheduled job — writes the whole file
-as `surfaces: none`, with the sentence saying why, and the stage closes. That is a valid answer and the
-commonest one on a back-end-only feature. It is written down so that the next reader knows the question was
-asked rather than skipped.
+**A feature with no surface at all** — a migration, a scheduled job, a change behind an interface — writes
+the whole file as `surfaces: none — <why>`, and the stage closes. That is a valid answer and the commonest
+one on a back-end-only feature. It is written down so that the next reader knows the question was asked
+rather than skipped. With a person present, write it with them. In a dispatched session the stage writes it
+itself from the `Surfaces: none — <why>` line in `research.md`, on the grounds the opening of this page
+lists, and says in the file that no person recorded it; where the grounds are not there, it stops and the
+person settles it here.
 
 ## What reads this afterwards
 

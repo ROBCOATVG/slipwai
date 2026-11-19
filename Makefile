@@ -71,7 +71,7 @@ SLOW += test_event_names_parity
 # The list of what exists, run as the command a project runs, and against a git checkout made for the case.
 SLOW += test_existing_surfaces
 # And the stage run with a stand-in session, to see it refuse a box that draws a surface nobody has seen.
-SLOW += test_storyboard_unseen
+SLOW += test_storyboard_unseen test_storyboard_no_surface
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

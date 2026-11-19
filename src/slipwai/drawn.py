@@ -15,6 +15,7 @@ import re
 import time
 from pathlib import Path
 
+from . import no_surface
 from .framed import FRAMED, built_pages, planned_pages, surface_kinds, titled
 from .framed import app_look as app_look  # read by name from here by the Voyage window
 
@@ -107,6 +108,32 @@ def surface_pages(home: Path) -> list[Path]:
                 and page not in shown and kinds.get(page) not in FRAMED:
             shown.append(page)
     return shown
+
+
+def undrawn(where: Path, feature: str) -> str:
+    """What a drawing that drew nothing a person can approve says, or `""` where it ended well: a surface page
+    is there, or the feature has no surface and the stage has positive grounds to record that
+    (`no_surface.settle`, which writes `surfaces: none` with the reason). A drawing that says it has no
+    surface and cannot be taken on its word says why; one that says nothing is nothing drawn, as before."""
+    home = where / "specs" / feature / "mockups"
+    if feature and home.is_dir() and surface_pages(home):
+        return ""
+    stands, said = no_surface.settle(where, feature) if feature else (False, "")
+    if stands or said:
+        return "" if stands else said[:1].upper() + said[1:]
+    return (f"The session ended with no surface page under specs/{feature}/mockups/ — "
+            + ("a storyboard.html that shows no page per surface, " if (home / "storyboard.html").is_file() else "")
+            + "so there is nothing to approve; Draw the storyboard again, and read its lines above.")
+
+
+def unsurfaced(where: Path, feature: str) -> str:
+    """What a drawing that ended with no surface to show says in place of "the storyboard is below", or `""`."""
+    home = where / "specs" / feature / "mockups"
+    said = no_surface.read(home / "mock-states.md")
+    if not feature or no_surface.NONE not in said or surface_pages(home):
+        return ""
+    return (f"{feature} adds and changes no surface, and specs/{feature}/mockups/mock-states.md says so: "
+            f"{said.splitlines()[0]}. There is nothing to approve; the build continues from the specification.")
 
 
 def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:

@@ -457,7 +457,8 @@ several — the context's events module *additively*, **new** migration files na
 of the service that owns the slice are that service's code, and are the slice's**: a dependency or a build
 step it needs goes there in the same change as the code that uses it, and is never handed back. For the
 rest: a delegate that needs one of them hands the need back here, and it lands on `main`
-before the fan-out or between merges. **A hand-back that names a shared surface is a need, not a note**:
+before the fan-out or between merges. **A hand-back that names a file is a need, not a note**, and the fleet's mender lands it wherever a
+slice may not write, but for a gate, the cloud under `infra/`, and another slice's work:
 under `/cruise` it is a `told` with `needs`, one item per thing that has to change, each with a `check`
 wherever trunk can prove it landed — a dependency is `text:<manifest>:"<package>"`, a realm user is
 `text:<realm file>:"<username>"`, a flag line is `text:.env.example:<KEY>=` — written with

@@ -283,8 +283,9 @@ You see a capability when its last slice has merged and its gates have passed. T
 - the mutation run
 - the hand's own walk through every example
 
-Under the `open` release mode, a merge reaches the actor at once. So in that mode, converge, the gaps trace,
-the design review and the walk also run for each slice. A slice that widened authorisation, identity or
+No release mode reads each slice. A project whose merges reach the actor at once can ask for it with
+`"readings": "slice"` in `harbour.json`. Then converge, the gaps trace, the design review and the walk also run
+for each slice. A slice that widened authorisation, identity or
 money is also attacked before its push. `/cruise-status booking` shows what the fairway's log says:
 
 ```console

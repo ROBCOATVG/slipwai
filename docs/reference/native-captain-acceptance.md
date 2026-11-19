@@ -130,8 +130,8 @@ python3 scripts/agents/inbox.py NAT
 make check-chart
 git diff main -- apps/service specs/arrival contracts/schemas/ArrivalLabel.json
 git diff --exit-code main -- Makefile scripts tools .github/workflows .gitea/workflows
-PATH=/Users/lukegee/Documents/dev/slipwai_v2_Fork/.python-tools/bin:$PATH \
-PYTHONPATH=/Users/lukegee/Documents/dev/slipwai_v2_Fork/.python-tools \
+PATH=<keel checkout>/.python-tools/bin:$PATH \
+PYTHONPATH=<keel checkout>/.python-tools \
 PYTHONDONTWRITEBYTECODE=1 make unit lint typecheck
 PYTHONDONTWRITEBYTECODE=1 python3 specs/arrival/slices/NAT-01/mutation_harness.py
 ```

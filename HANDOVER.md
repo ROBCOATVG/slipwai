@@ -35,8 +35,7 @@ The caller pins workflow, keel and AWS/Azure source topology to **75c053a86817bd
 
 Core PR12 passed its 2,090-test full local gate and Linux/macOS/Windows/documentation CI. Wheels and
 executables built and passed smoke tests on all three platforms in read-only run **38253116107**,
-against **0178b175a63e7c3df9db0c03f30afa3e2bee1eaa**:
-https://github.com/ROBCOATVG/slipwai_v2_Fork/actions/runs/38253116107
+against **0178b175a63e7c3df9db0c03f30afa3e2bee1eaa**, in the version 2 working repository, since archived.
 This proves that revision, not an arbitrary later release. Initial short-SHA checkout failure was corrected
 by dispatching the full SHA. The publisher workflow itself still needs preparation before spending a tag.
 
@@ -84,10 +83,8 @@ Never bulk copy modules or blindly replay a stacked branch's ancestors onto main
 | Migration WIP | codex/migration-prep / migration-prep | b6ea4441d109a581abe923240485d0db4534649f | be1c842 |
 | Skiff WIP | codex/phase-3-skiff / phase-3-skiff | bd8bcc91beeb323989d38129952434966b537974 | 51c0293 |
 
-Acceptance PRs (attached to this chat):
-- PR11: https://github.com/ROBCOATVG/slipwai_v2_Fork/pull/11
-- PR13, draft: https://github.com/ROBCOATVG/slipwai_v2_Fork/pull/13
-- PR14, draft: https://github.com/ROBCOATVG/slipwai_v2_Fork/pull/14
+Acceptance PRs (attached to this chat): PR11, and PR13 and PR14 as drafts, all in the version 2 working
+repository, since archived.
 
 Rebase only each branch's own changes with git rebase --onto <new-parent> <boundary> <branch>.
 Resolve shared plan summaries with make progress, retaining other fairways' rows and trailers.

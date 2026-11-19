@@ -45,6 +45,12 @@ class Fixture(unittest.TestCase):
         fresh = mock.patch("slipwai.board_read.KEEP", 0.0)
         fresh.start()
         self.addCleanup(fresh.stop)
+        # Nor what this machine has installed: a start page asks `git`, `node`, `python` and `make` for their
+        # versions before it answers, and a Windows runner once took twelve seconds over that while the window
+        # here waited five. `test_prerequisites` holds the line those pages carry, with a machine it describes.
+        equipped = mock.patch("slipwai.machine_card.lacking", return_value=[])
+        equipped.start()
+        self.addCleanup(equipped.stop)
         (self.root / "harbour.json").write_text(harbour_config(), encoding="utf-8")
         self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
 
@@ -80,9 +86,13 @@ class BoardTest(Fixture):
         self.server = serve(self.root, "127.0.0.1", 0)
         self.port = self.server.server_address[1]
         self.seat = "window-one"
-        threading.Thread(target=self.server.serve_forever, daemon=True).start()
-        self.addCleanup(self.server.shutdown)
+        serving = threading.Thread(target=self.server.serve_forever, daemon=True)
+        serving.start()
+        # Cleanups run last first, so these read upwards: stop serving, see the thread out, then close. Closed
+        # first, the socket went from under a thread still selecting on it — WinError 10038, once a case.
         self.addCleanup(self.server.server_close)
+        self.addCleanup(serving.join)
+        self.addCleanup(self.server.shutdown)
 
     def at(self, path: str, seat: str | None = None) -> str:
         """That path on this board, carrying a window's seat — `seat=""` for a request that carries none."""

@@ -202,8 +202,8 @@ class ServedTest(Fixture):
         self.server = serve(self.scratch, "127.0.0.1", 0)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
-        self.addCleanup(self.server.shutdown)
         self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)  # added last, so run first: serving stops before the socket closes
 
     def get(self, path: str) -> str:
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=10) as answer:

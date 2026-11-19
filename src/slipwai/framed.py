@@ -8,7 +8,9 @@ surface and says which each is, on the `<iframe>` or `<a>` that shows it (`data-
 - `changed` and `new` — this feature's pages, and the only two a verdict is asked about.
 
 `built` and `planned` are the two that are **framed**: shown for the flow, never put up for a verdict, never
-counted as drawn.
+counted as drawn. A built surface nothing shows — known only from a route, or from a frame nobody drew — is a
+plain labelled box rather than a frame: `data-surface="built" data-picture="none"`, naming what it is known by
+(`data-route`, `data-frame`). It frames no page, so it is read here by its label and nowhere as a page.
 
 An unmarked page is read as it always was, and a storyboard that says three words reads as it did when there
 were three. `scripts/agents/existing.py` in a generated project reads the same marks, and says which evidence
@@ -28,6 +30,8 @@ FRAMED = ("built", "planned")
 _TAG = re.compile(r"<[a-zA-Z][^<>]*>")
 _KIND = re.compile(r"""\bdata-surface=["'](built|planned|changed|new)["']""", re.IGNORECASE)
 _TARGET = re.compile(r"""(?:src|href)=["']([^"'#?]+\.html)["']""", re.IGNORECASE)
+_UNSEEN = re.compile(r"""\bdata-picture=["']none["']""", re.IGNORECASE)
+_KNOWN_BY = re.compile(r"""\bdata-(?:route|frame)=["']([^"']+)["']""", re.IGNORECASE)
 _TITLE = re.compile(r"<title>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 
 
@@ -59,6 +63,18 @@ def built_pages(home: Path) -> list[Path]:
 
 def planned_pages(home: Path) -> list[Path]:
     return framed_pages(home, "planned")
+
+
+def unseen(home: Path) -> list[str]:
+    """What each built surface with no picture is known by — its route, or its frame's name — in the order the
+    storyboard draws their boxes. A box that does not say is not counted: nothing can be said of it."""
+    found: list[str] = []
+    for tag in _tags(home):
+        kind, known = _KIND.search(tag), _KNOWN_BY.search(tag)
+        if _UNSEEN.search(tag) and kind and kind.group(1).lower() == "built" and known \
+                and html.unescape(known.group(1)) not in found:
+            found.append(html.unescape(known.group(1)))
+    return found
 
 
 def titled(page: Path) -> str:

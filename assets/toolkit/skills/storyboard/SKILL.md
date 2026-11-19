@@ -36,6 +36,7 @@ demonstrated. So in that stage, and only there:
   ```html
   <iframe data-surface="built" sandbox src="../../../apps/web/screens/deal-console-deals.html"></iframe>
   <iframe data-surface="planned" sandbox src="../../001-deals/mockups/export-pack.html"></iframe>
+  <div class="unseen" data-surface="built" data-picture="none" data-route="/settings">/settings — built, no picture</div>
   <iframe data-surface="changed" sandbox src="deal-console.html"></iframe>
   <a data-surface="new" href="export-pack.html" rel="noopener noreferrer">Open in new tab ↗</a>
   ```
@@ -44,7 +45,11 @@ demonstrated. So in that stage, and only there:
   on; a built or a planned frame gets no audit checklist, because nobody is asked about it here. In the flow
   diagram and in the legend the four have four colours and four glyphs — `BUILT`, `PLANNED`, `CHANGED`,
   `NEW` — beside the gap's; draw `PLANNED` as the outline of `BUILT`, so that what is coming reads as not
-  there yet. A planned frame's cell names the feature that approved it. *When NOT to produce
+  there yet. A planned frame's cell names the feature that approved it. **A built surface with no picture
+  is a plain labelled box** — the last line above — where `existing.md` says *built, no picture*: known
+  only from a route, or from a frame nobody drew. Its label is the route or the frame's name and the words
+  *built, no picture*; nothing is invented about how it looks, it frames no page and holds nothing drawn.
+  *When NOT to produce
   one* says a fully built feature needs no storyboard; that is about a storyboard **of** built work. Framing
   built screens **around** a feature that is not built yet is this stage's ordinary case.
 - **Use the app's own stylesheet where there is one.** *Style conventions* below already says to use the

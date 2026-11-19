@@ -119,7 +119,30 @@ feature in a project with nothing built gets a short page saying so, and this st
 | `new` | a surface this feature adds | a page of its own beside the storyboard | yes |
 
 What counts as built is evidence the list gives, in this order: a committed preview, a `ui` frame whose slice
-is `implemented`, a design-review photograph, a route. **`planned` is the word for what is settled and not
+is `implemented`, a design-review photograph, a route.
+
+**A route alone is built, unseen.** A surface known only from a route — or from an implemented frame nobody
+drew or photographed — is `built`: the app has it. But nothing shows how it looks, and `existing.md` says so
+on its row: *built, no picture*. **Draw it as a plain labelled box and invent nothing**: no layout, no
+fields, no copy, no guess at its states. The box is an element of the storyboard itself, not a page —
+
+```html
+<div class="unseen" data-surface="built" data-picture="none" data-route="/workspace/explain">
+  /workspace/explain — built, no picture
+</div>
+```
+
+`data-picture="none"` beside `data-surface="built"` is the mark; `data-route` (or `data-frame`, with the
+frame's name, where it is known from the model and has no route) says what it is known by, and the label
+says the same and no more. It is never a fifth word. Do not draw a page for it, do not frame a similar
+screen in its place, and do not put it up for a verdict. Where this feature changes such a surface, the
+change is a `changed` page as ever, and the box beside it is its original. `python3
+scripts/agents/existing.py <feature> --check` refuses a box that frames a page, is an `<iframe>` or an
+`<img>`, does not say what it is known by, or holds anything drawn — a form, a table, a list, an image;
+`surfaces.py` runs the same check when the drawing ends. What the label's words claim is not something a
+script can judge: that part is this instruction.
+
+**`planned` is the word for what is settled and not
 there yet:** an earlier feature's surface with at least one state a person approved, and no evidence in that
 list that anybody built it. It is framed from that feature's page, exactly as a built surface is framed from
 its preview, and it is treated as a built one is — not drawn again, not asked about, not in this feature's
@@ -259,7 +282,9 @@ never a picture. **Mark every frame and link that shows a surface**, on the `<if
 is what the board reads to show the four apart and to ask a verdict on the last two only; a built or planned
 frame without it is read as a mock-up somebody handed over, and put up for approval as if it were new. **The
 legend the storyboard draws names all four** — built, planned, changed, new — with the gap's beside them, and
-a planned frame's cell says which feature approved it.
+*built, no picture* as the built colour with a dashed edge; a planned frame's cell says which feature
+approved it. Before the stop below, run `python3 scripts/agents/existing.py <feature> --check`, which holds
+the marks to what can be checked and prints how many of each the storyboard shows.
 
 **Where the project has a storyboard, add to that flow; where it has none, this is the first, made from what
 exists.** A project that crossed from version 1 has dozens of built screens and no storyboard: draw the flow

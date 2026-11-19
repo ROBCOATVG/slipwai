@@ -281,6 +281,17 @@ def main(argv: list[str]) -> int:
                  "nothing a person can approve" if alone else "") + f", so there is no storyboard to approve; Draw the storyboard again, and read its last "
               f"lines above", file=sys.stderr)
         return 1
+    faults, notes = existing.held(feature, ROOT)
+    for note in notes:
+        print(f"surfaces: note — {note}", flush=True)
+    if faults:
+        # The one thing about a storyboard's content this stage refuses: a built surface nothing shows, drawn
+        # as if something did. It is checkable from the markup alone, so it is checked.
+        for fault in faults:
+            print(f"surfaces: {fault}", file=sys.stderr)
+        print(f"surfaces: a built surface with no picture is a plain labelled box; nothing was approved. "
+              f"Run: python3 scripts/agents/existing.py {feature} --check", file=sys.stderr)
+        return 1
     if redraw:
         if not touched(feature, started):
             print(f"surfaces: the session ended without redrawing anything under specs/{feature}/{MOCKUPS}/, so "
@@ -295,7 +306,9 @@ def main(argv: list[str]) -> int:
               f"`Questions open: N` with numbers, so a board set to advance by itself will wait for you on this "
               f"storyboard", flush=True)
     marks = list(existing.kinds(SPECS / feature / MOCKUPS).values())
-    framed = ", ".join(f"{marks.count(word)} {word}" for word in existing.FRAMED if word in marks)
+    boxed = len(existing.unseen(SPECS / feature / MOCKUPS))
+    framed = ", ".join([f"{marks.count(word)} {word}" for word in existing.FRAMED if word in marks]
+                       + ([f"{boxed} built with no picture"] if boxed else []))
     print(f"drawn: {len(drawn(feature))} surface(s) under specs/{feature}/{MOCKUPS}/"
           + (f", beside {framed} framed for the flow and not asked about" if framed else "") + " — open the storyboard, "
           f"then /mockups {feature} in the agent walks you through approving each state")

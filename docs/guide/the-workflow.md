@@ -88,6 +88,11 @@ again, and `mock-states.md` says that it was shown and not asked about. A screen
 nothing shows that it is built. When the app has a preview of it, a photograph, an implemented screen in
 the event model or a route, the next feature's storyboard frames it as built.
 
+A built screen is sometimes known only from a route in the app's source, with no preview and no photograph.
+The storyboard shows it as a plain box that carries its route and the words *built, no picture*. The stage
+invents nothing about how such a screen looks. To have it framed, commit a preview of it under the app's
+`screens/` directory.
+
 New and changed screens use the app's own stylesheet and sit in its shell, so they look like screens of
 this product. A direction that you put under `docs/design/` still wins. The stage proposes a look of its
 own only in a project that has no browser app, no `docs/design/` and no earlier storyboard.

@@ -249,6 +249,9 @@ surface `mock-states.md` gets one line that says it was shown and that no verdic
 to a built preview does not withdraw a verdict. A storyboard that frames only built and planned surfaces
 has no verdict form, because nothing on it is new.
 
+A built surface that the project has no picture of is counted with **Built** and listed by its route, with
+*(no picture)* after it. The storyboard shows it as a plain labelled box.
+
 The board serves a browser app's `screens/` and `src/styles/` directories to the storyboard, so that a
 built frame shows the real screen and a new surface can link the app's own stylesheet. It serves nothing
 else of the app.

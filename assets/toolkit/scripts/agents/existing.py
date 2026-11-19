@@ -24,10 +24,14 @@ changes the project, but for the one page `--write` keeps, which says the same t
 
 **It says what each surface is, from that evidence** (`classified`). `built`: a preview, else a `ui` frame whose
 slice is `implemented`, else a design-review photograph, else a route — in that order, and the first that
-applies is named, with the page or photograph that shows the surface where one does. `planned`: an earlier
-feature's surface with a state somebody approved and no evidence at all that it is built. Names are matched
-across the sources by their words — a preview's file names, a frame's name, the component a route renders, a
-route's last segment — and each row says what it matched, because a match by name is a reading and not a fact.
+applies is named. A built surface with nothing to show for how it looks — known only from a route, or from a
+frame nobody drew — is still `built`, and is said to have **no picture**: the storyboard draws it as a plain
+labelled box (`data-surface="built" data-picture="none"`) and invents nothing. `planned`: an earlier feature's
+surface with a state somebody approved and no evidence at all that it is built. Names are matched across the
+sources by their words — a preview's file names, a frame's name, the component a route renders, a route's
+last segment — and each row says what it matched, because a match by name is a reading and not a fact.
+
+    python3 scripts/agents/existing.py 002-export --check    # the storyboard's marks, held to what is checkable
 """
 from __future__ import annotations
 
@@ -64,6 +68,12 @@ TAG = re.compile(r"<[a-zA-Z][^<>]*>")
 KIND = re.compile(r"""\bdata-surface=["'](built|changed|new|planned)["']""", re.IGNORECASE)
 #: The two kinds a storyboard frames and nobody is asked about: the project's own, and an earlier feature's.
 FRAMED = ("built", "planned")
+#: A built surface nothing shows: the mark beside `data-surface="built"`, and what the box is known by.
+UNSEEN = re.compile(r"""\bdata-picture=["']none["']""", re.IGNORECASE)
+KNOWN_BY = re.compile(r"""\bdata-(?:route|frame)=["']([^"']+)["']""", re.IGNORECASE)
+#: What a plain labelled box may not hold: anything that draws a screen nobody has seen.
+DRAWN_IN = re.compile(r"<\s*(img|iframe|svg|canvas|video|object|embed|form|input|button|select|textarea|table|nav|"
+                      r"header|footer|aside|section|article|ul|ol)\b", re.IGNORECASE)
 ELEMENT = re.compile(r"""\b(?:element|component|Component)\s*[=:]\s*\{?\s*<?\s*([A-Z][A-Za-z0-9]*)""")
 WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+")
 #: What a frame or a component is called beside the surface's own name, and the words a title spends on grammar.
@@ -83,6 +93,48 @@ def kinds(home: Path) -> dict[Path, str]:
         if kind and target:
             found.setdefault((home / target.group(1)).resolve(), kind.group(1).lower())
     return found
+
+
+def unseen(home: Path) -> list[dict[str, str]]:
+    """Each plain box a storyboard draws for a built surface nothing shows (`data-picture="none"`): what it is
+    known by — its route, or its frame's name — and what is wrong with it, where that is checkable without
+    judgement. A box is a label: it frames no page, and holds nothing that draws a screen nobody has seen."""
+    board = home / "storyboard.html"
+    text = board.read_text(encoding="utf-8", errors="replace") if board.is_file() else ""
+    found = []
+    for tag in TAG.finditer(text):
+        if not UNSEEN.search(tag.group()):
+            continue
+        name = tag.group()[1:].split()[0].rstrip("/>").lower()
+        kind, known = KIND.search(tag.group()), KNOWN_BY.search(tag.group())
+        close = text.find(f"</{name}", tag.end())
+        inside = DRAWN_IN.search(text[tag.end():close if close >= 0 else tag.end()])
+        label = known.group(1) if known else f"a <{name}> with no data-route or data-frame"
+        target = TARGET.search(tag.group())
+        if not kind or kind.group(1).lower() != "built":
+            fault = 'it is not marked data-surface="built": only a built surface is unseen'
+        elif target:
+            fault = f"it frames {target.group(1)}: a surface with no picture has no page to frame"
+        elif name in ("iframe", "img", "object", "embed"):
+            fault = f"it is an <{name}>, which shows a picture this surface has not got"
+        elif not known:
+            fault = 'it does not say what it is known by: data-route="/…" or data-frame="<the frame\'s name>"'
+        elif inside:
+            fault = f"it holds a <{inside.group(1).lower()}>: a plain labelled box holds its label and nothing drawn"
+        else:
+            fault = ""
+        found.append({"known": label, "fault": fault})
+    return found
+
+
+def held(feature: str, root: Path = ROOT) -> tuple[list[str], list[str]]:
+    """The storyboard's marks against what can be checked without judgement: the faults that refuse it, and
+    the notes that do not. A fault: an unseen box that draws something, frames a page, or does not say what it
+    is known by. Whether a box's *label* says more than is known is a reader's to judge, and is not read here."""
+    home = root / "specs" / feature / MOCKUPS
+    faults = [f"specs/{feature}/{MOCKUPS}/storyboard.html: the box for {one['known']} is marked "
+              f"data-picture=\"none\" and {one['fault']}" for one in unseen(home) if one["fault"]]
+    return faults, []
 
 
 def title_of(page: Path) -> str:
@@ -377,7 +429,7 @@ def surfaces_said(surfaces: list[dict[str, Any]]) -> list[str]:
             shows = (f"approved for {one['feature']} ({one['states']} state(s)) and nothing here says it is built: "
                      f"frame {one['picture']}")
         elif unseen:
-            shows = f"{EVIDENCE[one['evidence']]}, and nothing shows how it looks"
+            shows = f"{EVIDENCE[one['evidence']]}, and nothing shows how it looks: draw a plain labelled box"
         else:
             shows = f"{EVIDENCE[one['evidence']]}: {one['picture']}" \
                 + (f" ({one['states']} state(s))" if one.get("states") else "")
@@ -395,7 +447,9 @@ def said(found: dict[str, Any]) -> str:
            f"- **Storyboard:** {STORYBOARD[found['storyboard']]}.",
            '- **Marking:** frame what is listed here where it lies, `data-surface="built"` — or '
            '`data-surface="planned"` where it is approved for an earlier feature and not built; draw what this '
-           'feature changes or adds as a page of its own, `data-surface="changed"` or `data-surface="new"`.', ""]
+           'feature changes or adds as a page of its own, `data-surface="changed"` or `data-surface="new"`. A '
+           'built surface with no picture is a plain labelled box, `data-surface="built" data-picture="none"`: '
+           "nothing is invented about how it looks.", ""]
     out += surfaces_said(found.get("surfaces", []))
     for one in found["storyboards"]:
         out += [f"## Earlier feature {one['feature']}", "",
@@ -445,6 +499,19 @@ def main(argv: list[str]) -> int:
         print(f"existing: {feature or 'the feature'} has no specification here; this project has {has}. "
               f"Run: python3 scripts/agents/existing.py <feature>", file=sys.stderr)
         return 2
+    if "--check" in argv:
+        faults, notes = held(feature, ROOT)
+        for line in [f"existing: note — {note}" for note in notes] + [f"existing: {fault}" for fault in faults]:
+            print(line, file=sys.stderr if faults else sys.stdout)
+        if faults:
+            print(f"\nRun: python3 scripts/agents/existing.py {feature} --check", file=sys.stderr)
+            return 1
+        found = kinds(ROOT / "specs" / feature / MOCKUPS)
+        print(f"existing: the storyboard for {feature} marks "
+              + ", ".join(f"{sum(kind == word for kind in found.values())} {word}"
+                          for word in ("built", "planned", "changed", "new"))
+              + f" and {len(unseen(ROOT / 'specs' / feature / MOCKUPS))} built with no picture")
+        return 0
     if "--json" in argv:
         print(json.dumps(listing(feature), indent=2))
         return 0

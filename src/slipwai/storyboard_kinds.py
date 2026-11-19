@@ -3,20 +3,20 @@
 The card's verdict covers what this feature changes and adds. What the storyboard frames beside those — the
 project's own surfaces, and an earlier feature's that are approved and not built yet — is shown for the flow,
 and the card says so in counts and by name, so that "Approve storyboard" is never read as approving a screen
-nobody was asked about.
+nobody was asked about. A built surface nothing shows is counted with the built and named as having no picture.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from .drawn import decided_states, surface_pages
-from .framed import built_pages, planned_pages, surface_kinds, titled
+from .framed import built_pages, planned_pages, surface_kinds, titled, unseen
 from .page_shell import esc
 
 
 def framed_count(home: Path) -> tuple[int, int]:
-    """How many surfaces the storyboard frames as built, and as planned."""
-    return len(built_pages(home)), len(planned_pages(home))
+    """How many surfaces the storyboard shows as built — framed, or boxed with no picture — and as planned."""
+    return len(built_pages(home)) + len(unseen(home)), len(planned_pages(home))
 
 
 def not_asked(home: Path) -> str:
@@ -37,10 +37,11 @@ def kinds_html(root: Path, feature: str) -> str:
     there were kinds."""
     home = root / "specs" / feature / "mockups"
     marked = surface_kinds(home)
-    if not marked:
+    boxed = unseen(home)
+    if not marked and not boxed:
         return ""
     judged = surface_pages(home)
-    named = {"built": [titled(page) for page in built_pages(home)],
+    named = {"built": [titled(page) for page in built_pages(home)] + [f"{one} (no picture)" for one in boxed],
              "planned": [titled(page) for page in planned_pages(home)],
              "changed": [decided_states(page)[0] for page in judged if marked.get(page.resolve()) == "changed"],
              "new": [decided_states(page)[0] for page in judged if marked.get(page.resolve()) != "changed"]}

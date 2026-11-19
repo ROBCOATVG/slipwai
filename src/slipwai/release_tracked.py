@@ -164,6 +164,13 @@ def differences(root: Path) -> list[str]:
     return sorted(found)
 
 
+def only_release_output(found: list[str]) -> bool:
+    """Whether all that differs is an untracked `dist/` holding a release: what a package scaffolded before its
+    scaffold ignored `dist/` is left with by its own first `make release` (#126)."""
+    return (all(line.startswith("dist/") and line.endswith(" (untracked)") for line in found)
+            and any(line.endswith(".tar.gz (untracked)") for line in found))
+
+
 def refuse_differences(root: Path) -> None:
     """Refuse a release of a package whose working tree is not what `HEAD` holds, naming what differs.
 
@@ -174,6 +181,12 @@ def refuse_differences(root: Path) -> None:
     if prefix(root) is None:
         return
     found = differences(root)
+    if found and only_release_output(found):
+        raise GenerationError(
+            f"{root} differs from what its repository holds at HEAD only by `dist/`, which holds an earlier "
+            f"release and is not ignored: {'; '.join(found[:NAMED])}. A release is what the tag holds, so it is "
+            f"refused rather than packed around. Ignore it, once: `echo dist/ >> .gitignore && git add .gitignore "
+            f"&& git commit -m 'Ignore dist/'`, and run this again")
     if found:
         named = "; ".join(found[:NAMED]) + (f"; and {len(found) - NAMED} more" if len(found) > NAMED else "")
         raise GenerationError(

@@ -192,6 +192,13 @@ register: check ## Build it and write it into a channel checkout (CHANNEL=<direc
 	slipwai package register . --channel $(CHANNEL)
 """
 
+#: What the package's repository does not track: where `release` writes. A release is what `HEAD` holds and is
+#: refused while the package differs from it, so without this line the second `make release` was refused over the
+#: first one's output (#126).
+GITIGNORE = """# What `make release` builds. A release holds what the tag holds, so its own output is in none.
+dist/
+"""
+
 #: The package's CI: the keel's reusable workflow, called rather than copied, so a fix to it reaches every
 #: package. **It is the package's contract test**, so it runs from the package's side against both ends of the
 #: contract: the newest published keel its `core` range takes, and the keel's `main` — on every push, and

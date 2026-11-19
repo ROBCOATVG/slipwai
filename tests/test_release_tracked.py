@@ -219,5 +219,61 @@ class RefusalTest(GitCase):
         self.assertIn("git add", said)
 
 
+class TwiceTest(GitCase):
+    """A release is written into `dist/` inside the package, so the second one meets the first one's output (#126)."""
+
+    def test_every_kind_of_scaffold_ignores_the_directory_its_release_is_written_into(self) -> None:
+        for kind in package_new.KINDS:
+            package_new.write(kind, f"a-{kind}", self.area, CORE)
+            self.assertIn("dist/", (self.area / f"a-{kind}" / ".gitignore").read_text(encoding="utf-8").split())
+
+    def test_a_scaffolded_package_is_released_twice_into_its_own_dist_and_builds_one_file(self) -> None:
+        root = repository(self.area)
+        first, _, _ = package_release.release(root, root / "dist")
+        held = first.read_bytes()
+        again, _, _ = package_release.release(root, root / "dist")
+        self.assertEqual(again.read_bytes(), held)
+        self.assertEqual([name for name in members(again) if "dist" in name], [])
+
+    def test_a_package_scaffolded_before_is_told_dist_is_all_that_differs_and_the_line_that_ignores_it(self) -> None:
+        root = repository(self.area)
+        git(root, "rm", "-q", ".gitignore")
+        committed(root, "as a package scaffolded before this was")
+        package_release.release(root, root / "dist")
+        for verb in (lambda: package_release.release(root, root / "dist"),
+                     lambda: package_release.register(root, self.area / "channel")):
+            with self.assertRaises(GenerationError) as refused:
+                verb()
+            said = str(refused.exception)
+            self.assertIn("dist/lens-1.0.0.dev0.tar.gz (untracked)", said)
+            self.assertIn("only by `dist/`", said)
+            self.assertIn("echo dist/ >> .gitignore && git add .gitignore && git commit", said)
+        self.assertFalse((self.area / "channel").exists(), "something was built")
+        self.assertFalse((root / ".gitignore").exists(), "the refusal ignored it on the publisher's behalf")
+        self.assertTrue(any((root / "dist").iterdir()), "the refusal deleted the earlier release")
+
+    def test_anything_else_beside_dist_is_the_refusal_it_was(self) -> None:
+        root = repository(self.area)
+        git(root, "rm", "-q", ".gitignore")
+        committed(root, "as a package scaffolded before this was")
+        package_release.release(root, root / "dist")
+        (root / "notes.txt").write_text("\n", encoding="utf-8")
+        with self.assertRaises(GenerationError) as refused:
+            package_release.release(root, root / "dist")
+        self.assertIn("notes.txt (untracked)", str(refused.exception))
+        self.assertIn("git stash --include-untracked", str(refused.exception))
+        self.assertNotIn("only by", str(refused.exception))
+
+    def test_a_dist_that_holds_no_release_is_the_refusal_it_was(self) -> None:
+        root = repository(self.area)
+        git(root, "rm", "-q", ".gitignore")
+        committed(root, "as a package scaffolded before this was")
+        (root / "dist").mkdir()
+        (root / "dist/bundle.js").write_text("\n", encoding="utf-8")
+        with self.assertRaises(GenerationError) as refused:
+            package_release.release(root, self.area / "out")
+        self.assertNotIn("only by", str(refused.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

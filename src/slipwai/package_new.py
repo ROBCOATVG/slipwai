@@ -42,6 +42,7 @@ from .package_templates import (
     ENTRY_POINT,
     FIRST,
     FRAGMENTS,
+    GITIGNORE,
     LANGUAGE_README,
     MAKEFILE,
     QUICKSTART_README,
@@ -288,6 +289,7 @@ def write(kind: str, name: str, into: Path, schema: str, parts: tuple[str, ...] 
         raise GenerationError(f"{root} already holds something. A scaffold writes a whole package, so it "
                               f"writes into an empty directory or none at all")
     files = language_files(name, schema, parts) if kind == "language" else SCAFFOLDS[kind](name, schema)
+    files = {**files, ".gitignore": GITIGNORE}  # every kind: `release` writes into `dist/` whatever it packs
     for path, text in files.items():
         target = root / path
         target.parent.mkdir(parents=True, exist_ok=True)

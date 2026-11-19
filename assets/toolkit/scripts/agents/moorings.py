@@ -197,17 +197,38 @@ def generator(where: Path, ref: str) -> str:
         return ""
 
 
+def migration_files(berth: Path, trunk: str) -> list[str]:
+    """Every file a migration changed on trunk since this berth left it: what `slipwai migrate` brought.
+
+    The commits on trunk's own line that moved `project.json`'s `generator`, each compared with the trunk
+    before it. A migration's merge commit has the project as its first parent, so that comparison is the
+    migration and nothing a slice wrote.
+    """
+    base = git(berth, "merge-base", "HEAD", trunk).stdout.strip()
+    if not base:
+        return []
+    found: set[str] = set()
+    moved = git(berth, "log", "--first-parent", "--format=%H", f"{base}..{trunk}", "--", "project.json")
+    for commit in moved.stdout.split():
+        if generator(berth, commit) != generator(berth, f"{commit}^1"):
+            found |= set(git(berth, "diff", "--name-only", f"{commit}^1", commit).stdout.splitlines())
+    return sorted(found)
+
+
 def caught_up(root: Path, berth: Path, trunk: str) -> str:
-    """Merge trunk into a berth cut before the project's last migration; say what happened, or nothing.
+    """Take a migration into a berth cut before it: its files, as trunk has them. Say what happened, or nothing.
 
     A berth meets trunk when its slice merges and not before, so a slice in flight when `slipwai migrate`
     landed kept the scripts and the ladder it was cut with for the rest of its life. lean-coffee-club was
     migrated on 2026-11-18 to bound its demo walks and stop reading each slice; the one slice cut after it
-    had both, and the four already in flight had neither until a person merged trunk into each by hand.
-    Only a migration is taken — trunk's `generator` in `project.json` differing from the berth's — and never
-    a sibling's work, which the slice meets at its merge as it always has. A merge, not a rebase: the
-    branch has been pushed, and the harbourmaster rebases it when it lands. One that will not go in is
-    walked away from and the slice runs on what it has, because a session is about to start in this tree.
+    had both, and the four already in flight had neither until a person brought trunk into each by hand.
+
+    **Only the migration is taken, never a sibling's work**, which the slice meets at its merge as it always
+    has. The first cut of this merged the whole of trunk, and the next day three of five berths refused it:
+    a sibling's merged code conflicted with the slice's own, the merge was abandoned, and those slices ran
+    on the old pages. So the files the migration changed are checked out as trunk has them, and committed.
+    When the slice lands, the harbourmaster's rebase finds trunk already says the same and drops the commit.
+    A file of the migration that the slice has changed itself is left as the slice has it, and named.
     """
     if not trunk or berth.resolve() == root.resolve():
         return ""
@@ -216,14 +237,33 @@ def caught_up(root: Path, berth: Path, trunk: str) -> str:
         return ""
     if git(berth, "merge-base", "--is-ancestor", trunk, "HEAD").returncode == 0:
         return ""
-    merged = git(berth, "merge", "--no-edit", trunk)
-    if merged.returncode == 0:
-        return f"{berth.name} was cut before the project's last migration and has taken it from {trunk}"
-    said = (merged.stderr or merged.stdout).strip().splitlines()
-    if git(berth, "rev-parse", "--verify", "--quiet", "MERGE_HEAD").returncode == 0:
-        git(berth, "merge", "--abort")
-    return (f"{berth.name} was cut before the project's last migration and could not take it from {trunk} "
-            f"({said[-1] if said else 'git refused'}); it runs on the version it was cut with until it merges")
+    files = migration_files(berth, trunk)
+    base = git(berth, "merge-base", "HEAD", trunk).stdout.strip()
+    own = set(git(berth, "diff", "--name-only", base, "HEAD", "--", *files).stdout.splitlines()) if files else set()
+    own |= {line[3:] for line in git(berth, "status", "--porcelain", "--", *files).stdout.splitlines()} if files else set()
+    taken = [path for path in files if path not in own]
+    if not taken:
+        return (f"{berth.name} was cut before the project's last migration and nothing of it could be taken "
+                f"from {trunk}; it runs on the version it was cut with until it merges")
+    for path in taken:
+        there = git(berth, "cat-file", "-e", f"{trunk}:{path}").returncode == 0
+        done = git(berth, "checkout", trunk, "--", path) if there else git(berth, "rm", "-q", "--ignore-unmatch", "--", path)
+        if done.returncode != 0:
+            said = (done.stderr or done.stdout).strip().splitlines()
+            git(berth, "reset", "-q", "--", *taken)
+            git(berth, "checkout", "--", *[one for one in taken if (berth / one).exists()])
+            return (f"{berth.name} was cut before the project's last migration and could not take it from "
+                    f"{trunk} ({said[-1] if said else 'git refused'}); it runs on the version it was cut "
+                    f"with until it merges")
+    committed = git(berth, "commit", "-q", "-m", f"Take the project's migration from {trunk}: its files only",
+                    "--", *taken)
+    if committed.returncode != 0:
+        said = (committed.stderr or committed.stdout).strip().splitlines()
+        return (f"{berth.name} took the project's last migration from {trunk} and could not commit it "
+                f"({said[-1] if said else 'git refused'})")
+    kept = f"; {', '.join(sorted(own))} it changed itself and kept" if own else ""
+    return (f"{berth.name} was cut before the project's last migration and has taken its {len(taken)} "
+            f"file(s) from {trunk}{kept}")
 
 
 def skills_carried(root: Path, berth: Path) -> list[str]:

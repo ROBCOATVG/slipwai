@@ -77,6 +77,7 @@
 # why: 2026-11-19 21dd92eec61a759a captain.py, the same on every platform and on purpose: a merge request whose id was asked before is answered only by a granted or refused line written at or after the request, so an earlier run's refusal no longer answers it.
 # why: 2026-11-19 3dc4712bacfc8837 logs.py: the paused docstring reworded to fit the module's size budget; no behaviour changes.
 # why: 2026-11-19 1f221288ab16ea02 scripts/extensions/project.py: behaviour changes on purpose on every platform alike (#109, defect 5) — after firing the project point, make agents rewrites an elected extension's AGENTS.md block from its GUIDANCE where it still differs, so an extension with no project hook is re-projected; --check's message says so. Nothing platform-specific moved: no path, process or shell handling changed.
+# why: 2026-11-19 1ca41a609f2799ac moorings.py, the same on every platform and on purpose: a berth cut before a migration takes the files that migration changed, checked out from trunk and committed, where it merged the whole of trunk and gave up on a conflict.
 
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
@@ -157,6 +158,10 @@
 4fb3121474bb558e1f94e559755a42b3dcac972adfc3f654c0fd76d1569e3da9  event-modelling-postgres-toy-serve  scripts/agents/inbox.py
 4fb3121474bb558e1f94e559755a42b3dcac972adfc3f654c0fd76d1569e3da9  standard-memory-none  scripts/agents/inbox.py
 4fb3121474bb558e1f94e559755a42b3dcac972adfc3f654c0fd76d1569e3da9  standard-postgres-toy-serve  scripts/agents/inbox.py
+50469bc31deaccc24570dd9caa3e64394fb6f488723643bb127c7c00fa3a2668  event-modelling-memory-none  scripts/agents/moorings.py
+50469bc31deaccc24570dd9caa3e64394fb6f488723643bb127c7c00fa3a2668  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
+50469bc31deaccc24570dd9caa3e64394fb6f488723643bb127c7c00fa3a2668  standard-memory-none  scripts/agents/moorings.py
+50469bc31deaccc24570dd9caa3e64394fb6f488723643bb127c7c00fa3a2668  standard-postgres-toy-serve  scripts/agents/moorings.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  event-modelling-memory-none  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  event-modelling-postgres-toy-serve  scripts/agents/run-state.py
 50830bc54683b9e6dc297e78648cd1a427acc322a829ca32ed3e1569cb2ff577  standard-memory-none  scripts/agents/run-state.py
@@ -247,10 +252,6 @@
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  event-modelling-postgres-toy-serve  scripts/agents/session.py
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  standard-memory-none  scripts/agents/session.py
 7da119cd1236de970b37b7e17bb1ae3964d8f602d131195342d1a9d526a7a3cf  standard-postgres-toy-serve  scripts/agents/session.py
-7fdeb4dbd264bc20432faa3667b9e882328b53f137f8cb846f4a620f8b17702b  event-modelling-memory-none  scripts/agents/moorings.py
-7fdeb4dbd264bc20432faa3667b9e882328b53f137f8cb846f4a620f8b17702b  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
-7fdeb4dbd264bc20432faa3667b9e882328b53f137f8cb846f4a620f8b17702b  standard-memory-none  scripts/agents/moorings.py
-7fdeb4dbd264bc20432faa3667b9e882328b53f137f8cb846f4a620f8b17702b  standard-postgres-toy-serve  scripts/agents/moorings.py
 821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  event-modelling-memory-none  init
 821f84c24cfa46e50179e2999306ce2b7c4999b02147f5f977e52e2325b7d930  standard-memory-none  init
 86738d3e275d5bf14528f900c4366d19b11206c5b8fda8b33de76086fe834f82  event-modelling-memory-none  scripts/event-model/package.json

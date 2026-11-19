@@ -78,6 +78,9 @@ class BerthTest(unittest.TestCase):
         git(self.root, "add", "-A")
         git(self.root, "commit", "-q", "-m", f"Migrate to {version}")
 
+    IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                "GIT_COMMITTER_EMAIL": "t@t"}
+
     def test_a_berth_cut_before_a_migration_takes_it_before_its_next_session(self) -> None:
         self.migrated("1")
         berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
@@ -86,14 +89,14 @@ class BerthTest(unittest.TestCase):
         git(berth, "commit", "-q", "-m", "L01 T001")
         (berth / "half.txt").write_text("not committed yet\n", encoding="utf-8")
         self.migrated("2")
-        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
-                    "GIT_COMMITTER_EMAIL": "t@t"}
-        with mock.patch.dict("os.environ", identity):
+        with mock.patch.dict("os.environ", self.IDENTITY):
             said = self.module.caught_up(self.root, berth, "main")
-            self.assertIn("has taken it from main", said)
+            self.assertIn("has taken its 2 file(s) from main", said)
             self.assertEqual((berth / "scripts/agents/benchmark.py").read_text(encoding="utf-8"), "WALKS = '2'\n")
             self.assertTrue((berth / "work.txt").is_file() and (berth / "half.txt").is_file())
             self.assertEqual(self.module.caught_up(self.root, berth, "main"), "", "once, not at every session")
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
+        self.assertEqual(status.stdout.strip(), "?? half.txt", "committed, and the slice's own work untouched")
 
     def test_a_sibling_s_merge_is_not_a_migration_and_is_left_for_the_slice_s_own_merge(self) -> None:
         self.migrated("1")
@@ -105,23 +108,52 @@ class BerthTest(unittest.TestCase):
         self.assertFalse((berth / "sibling.txt").exists())
         self.assertEqual(self.module.caught_up(self.root, self.root, "main"), "", "the checkout is trunk")
 
-    def test_a_migration_that_will_not_merge_is_walked_away_from_and_said(self) -> None:
+    def test_a_sibling_s_work_that_conflicts_does_not_keep_the_migration_out(self) -> None:
+        """lean-coffee-club, 2026-11-19: trunk's whole would not merge into three berths, because a sibling's
+        merged code touched what the slice was writing, and they ran on the old pages."""
         self.migrated("1", also="shared.txt")
         berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
         (berth / "shared.txt").write_text("the slice's\n", encoding="utf-8")
         git(berth, "add", "-A")
         git(berth, "commit", "-q", "-m", "L01 T001")
-        (self.root / "shared.txt").write_text("trunk's, again\n", encoding="utf-8")
+        (self.root / "shared.txt").write_text("a sibling's\n", encoding="utf-8")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", "L02 merged")
         self.migrated("2")
-        identity = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
-                    "GIT_COMMITTER_EMAIL": "t@t"}
-        with mock.patch.dict("os.environ", identity):
+        with mock.patch.dict("os.environ", self.IDENTITY):
             said = self.module.caught_up(self.root, berth, "main")
-        self.assertIn("could not take it from main", said)
-        self.assertIn("until it merges", said)
-        self.assertEqual((berth / "shared.txt").read_text(encoding="utf-8"), "the slice's\n")
-        status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
-        self.assertEqual(status.stdout.strip(), "", "no merge is left in progress under the next session")
+        self.assertIn("has taken its 2 file(s) from main", said)
+        self.assertEqual((berth / "scripts/agents/benchmark.py").read_text(encoding="utf-8"), "WALKS = '2'\n")
+        self.assertEqual((berth / "shared.txt").read_text(encoding="utf-8"), "the slice's\n",
+                         "the sibling's work is met at the slice's merge, not here")
+
+    def test_a_file_of_the_migration_the_slice_changed_is_left_as_the_slice_has_it_and_named(self) -> None:
+        self.migrated("1")
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        (berth / "scripts/agents/benchmark.py").write_text("the slice's own edit\n", encoding="utf-8")
+        git(berth, "add", "-A")
+        git(berth, "commit", "-q", "-m", "L01 T001")
+        self.migrated("2")
+        with mock.patch.dict("os.environ", self.IDENTITY):
+            said = self.module.caught_up(self.root, berth, "main")
+        self.assertIn("has taken its 1 file(s) from main", said)
+        self.assertIn("scripts/agents/benchmark.py it changed itself and kept", said)
+        self.assertEqual((berth / "scripts/agents/benchmark.py").read_text(encoding="utf-8"),
+                         "the slice's own edit\n")
+
+    def test_the_commit_it_makes_is_gone_when_the_slice_is_rebased_onto_trunk(self) -> None:
+        """Which is what the harbourmaster does at the merge: trunk already says the same."""
+        self.migrated("1")
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        (berth / "work.txt").write_text("the slice's own\n", encoding="utf-8")
+        git(berth, "add", "-A")
+        git(berth, "commit", "-q", "-m", "L01 T001")
+        self.migrated("2")
+        with mock.patch.dict("os.environ", self.IDENTITY):
+            self.module.caught_up(self.root, berth, "main")
+            git(berth, "rebase", "-q", "main")
+        log = subprocess.run(["git", "log", "--format=%s", "main..HEAD"], cwd=berth, capture_output=True, text=True)
+        self.assertEqual(log.stdout.split("\n")[:-1], ["L01 T001"])
 
     def test_a_merged_berth_s_containers_and_its_branch_go_with_it(self) -> None:
         """lean-coffee-club's MT1 merged, its worktree went, and its database and sign-in server ran on."""

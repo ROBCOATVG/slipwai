@@ -286,6 +286,21 @@ if runs.read_text() != "x":
                          ("green-trunk", "trunk"), done.stdout)
         self.assertEqual(logs.paused(parked), parked)
 
+    def test_yesterday_s_refusal_does_not_answer_today_s_request_of_the_same_id(self) -> None:
+        """Merge requests are numbered from nought at every run, so the id repeats; the answer must not."""
+        old, ahead = "2026-01-01T10:00:00Z", "2099-01-01T00:00:00Z"
+        self.deck("ORD", logs.entry("request", fairway="ORD", id="merge-ORD-01", what="merge", slice="ORD-01",
+                                    detail="merge slice/ORD-01 into trunk after the full gate", t=old))
+        self.harbour(logs.entry("refused", harbour=True, fairway="ORD", request="merge-ORD-01", t=old,
+                                why="trunk is red, and nothing merges onto a red trunk", resolve=False,
+                                waiting="green-trunk"),
+                     logs.entry("granted", harbour=True, fairway="ORD", request="merge-ORD-01", what="merge",
+                                slice="ORD-01", commit="a1b2c3d", t=ahead))
+        done = self.captain("ORD", self.sail(WORKS))
+        self.assertEqual([e for e in self.read("ORD") if e.kind == "parked"], [], done.stdout + done.stderr)
+        landed = [e for e in self.read("ORD") if e.kind == "merged"]
+        self.assertEqual([str(e.fields["commit"]) for e in landed], ["a1b2c3d"], done.stdout + done.stderr)
+
     def test_a_park_on_a_missed_gate_says_gate(self) -> None:
         done = self.captain("ORD", self.sail("import sys\nsys.exit(0)\n"))
         parked = [e for e in self.read("ORD") if e.kind == "parked"]

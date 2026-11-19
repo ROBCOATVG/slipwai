@@ -74,6 +74,7 @@
 # why: 2026-11-18 5f427afbde97aeeb A further feature is drawn into the project's storyboard (#102): scripts/agents/existing.py is new and lists what the project has drawn or built; surfaces.py writes that list before the session and no longer counts a frame marked built as drawn; check-surfaces.py reads the built lines of mock-states.md to say why a slice may not name one. Each does the same on macOS and Linux
 # why: 2026-11-18 fb6dbefd5059e005 moorings.py and captain.py: before a session starts in a berth, the captain merges trunk in where trunk's generator in project.json has moved on (a migration landed while the slice was in flight). Behaviour changes on every platform alike, on purpose; nothing in it is platform-specific.
 # why: 2026-11-19 d0b783000e447017 captain.py and logs.py, the same on every platform and on purpose: a merge refused on a red trunk parks with waiting green-trunk and cause trunk, which logs.paused now reads as lifting by itself; and a harness refusal met while resolving a refused merge is recorded as a pause with its time, as at a first run.
+# why: 2026-11-19 21dd92eec61a759a captain.py, the same on every platform and on purpose: a merge request whose id was asked before is answered only by a granted or refused line written at or after the request, so an earlier run's refusal no longer answers it.
 
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
@@ -95,6 +96,10 @@
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-postgres-toy-serve  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-memory-none  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-postgres-toy-serve  scripts/agents/triage.py
+133758284211cc21a96a7c1e0ba15202eb4279621842510cd99f8d20de5b50ab  event-modelling-memory-none  scripts/agents/captain.py
+133758284211cc21a96a7c1e0ba15202eb4279621842510cd99f8d20de5b50ab  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+133758284211cc21a96a7c1e0ba15202eb4279621842510cd99f8d20de5b50ab  standard-memory-none  scripts/agents/captain.py
+133758284211cc21a96a7c1e0ba15202eb4279621842510cd99f8d20de5b50ab  standard-postgres-toy-serve  scripts/agents/captain.py
 136c1614db4ae612b6d51e0b47db92e6d70c19fbc5d8449ab2e4a52c39715ac1  event-modelling-memory-none  scripts/agents/harbourmaster.py
 136c1614db4ae612b6d51e0b47db92e6d70c19fbc5d8449ab2e4a52c39715ac1  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
 136c1614db4ae612b6d51e0b47db92e6d70c19fbc5d8449ab2e4a52c39715ac1  standard-memory-none  scripts/agents/harbourmaster.py
@@ -200,10 +205,6 @@
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-postgres-toy-serve  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-memory-none  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-postgres-toy-serve  scripts/test_benchmark.py
-6c907fc2b878bb2da3a48b82ebfef7933355de4766414ac3599b22670475fedc  event-modelling-memory-none  scripts/agents/captain.py
-6c907fc2b878bb2da3a48b82ebfef7933355de4766414ac3599b22670475fedc  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-6c907fc2b878bb2da3a48b82ebfef7933355de4766414ac3599b22670475fedc  standard-memory-none  scripts/agents/captain.py
-6c907fc2b878bb2da3a48b82ebfef7933355de4766414ac3599b22670475fedc  standard-postgres-toy-serve  scripts/agents/captain.py
 6ca5c08fd9e5efa52494d52df0badd2dfe366cda4bcbadb8f28718bc79bcc97c  event-modelling-memory-none  scripts/agents/deck_line.py
 6ca5c08fd9e5efa52494d52df0badd2dfe366cda4bcbadb8f28718bc79bcc97c  event-modelling-postgres-toy-serve  scripts/agents/deck_line.py
 6ca5c08fd9e5efa52494d52df0badd2dfe366cda4bcbadb8f28718bc79bcc97c  standard-memory-none  scripts/agents/deck_line.py

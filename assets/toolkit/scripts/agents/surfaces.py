@@ -55,6 +55,7 @@ import harness  # noqa: E402
 ROOT = harness.ROOT
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 import no_surface  # noqa: E402 — whether a feature has no surface at all, on grounds; the board reads the same
+import surface_hint  # noqa: E402 — the surfaces the hand-over suggested, which a drawing of none must answer
 COMMAND = ROOT / "commands/mockups.md"
 SPECS = ROOT / "specs"
 MOCKUPS = "mockups"
@@ -278,7 +279,7 @@ def main(argv: list[str]) -> int:
         # A feature with no surface is a clean end, where the stage has positive grounds and only there: the
         # drawing said so with its reason, and nothing in the specification, the split or the model says
         # otherwise. Nothing drawn is not grounds — a session that crashed draws nothing too.
-        stands, said = no_surface.settle(ROOT, feature)
+        stands, said = no_surface.settle(ROOT, feature, hinted=surface_hint.read(ROOT, feature).names)
         if stands or said:
             print(f"surfaces: {said}", file=sys.stdout if stands else sys.stderr, flush=True)
             return 0 if stands else 1

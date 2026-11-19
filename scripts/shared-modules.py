@@ -42,6 +42,9 @@ SHARED = {
     # Whether a feature adds and changes no surface, on grounds: the board's check of a drawing it ran over the
     # protocol, and `surfaces.py`'s of one it ran headless. One reading, or the two ends of one stage disagree.
     "src/slipwai/no_surface.py": "assets/toolkit/scripts/agents/no_surface.py",
+    # The surfaces a hand-over suggested a feature touches, bounded and matched by name: `existing.py` hands them
+    # to the drawing, and both ends of the stage hold a drawing of no surface to answering them.
+    "src/slipwai/surface_hint.py": "assets/toolkit/scripts/agents/surface_hint.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

@@ -8,6 +8,7 @@ that does not exist yet; these from inside one that does, naming the new applica
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from . import browser_app
@@ -21,6 +22,7 @@ from .converge import converge
 from .converge import report as converge_report
 from .errors import GenerationError, refuse
 from .manifest import read_manifest
+from .migration_crossing import version
 from .npm_workspace import NoBrowserLanguage
 from .registry import registry
 from .replay import replay
@@ -221,6 +223,31 @@ def converge_main(argv: list[str]) -> None:
         raise SystemExit(1)
 
 
+def look_first(root: Path) -> None:
+    """Refuse to replay a version 1 project, and name the look-first that is true for it.
+
+    A replay is "`migrate` without the merge", and for a project version 1 wrote that is not what it was.
+    `migrate` crosses such a project: it installs that release into a throwaway environment to rebuild the
+    base the project really came from, applies the renames, and carries version 1's `eventSourced` answer
+    into the write-model axis. A bare replay does none of it, so it offered an event-sourced service back
+    as state-stored — a repository, `001_states.js`, the event store deleted — and somebody who looked first
+    was shown a deletion the migration never makes. `migrate --check` prepares the real crossing and writes
+    nothing. A manifest that cannot be read here is `replay`'s own to refuse, in its own words.
+    """
+    try:
+        document = json.loads((root / "project.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    recorded = version(document) if isinstance(document, dict) else None
+    if recorded:
+        raise GenerationError(
+            f"this project was last written by slipwai {recorded}, and bringing it to {VERSION} is a crossing, "
+            "not a replay: the base is rebuilt by that release and version 1's answers are carried across, "
+            "which a replay does not do — it would offer this project a different one. To look first, run "
+            "`slipwai migrate --check`, which prepares the crossing, names its conflicts and changes nothing"
+        )
+
+
 def replay_main(argv: list[str]) -> None:
     """`replay`, run inside a generated project: this keel's output for its answers, beside it, as a merge.
 
@@ -235,7 +262,8 @@ def replay_main(argv: list[str]) -> None:
         "as a commit the project can merge — `slipwai migrate` without the merge, to look at first",
         epilog="Nothing in the project is touched: a replay is an offer, and `git merge` is how the project "
         "takes or refuses each part of it. A language installed at a version older than project.json records is "
-        "refused; one that differs is named. docs/upgrading.md in the factory is the recipe.",
+        "refused; one that differs is named. A project version 1 wrote is refused too: its upgrade is a "
+        "crossing, and `slipwai migrate --check` is the look-first for it. docs/upgrading.md is the recipe.",
     )
     parser.add_argument(
         "--into", type=Path, default=None, metavar="DIR",
@@ -248,6 +276,7 @@ def replay_main(argv: list[str]) -> None:
     )
     args = parser.parse_args(argv)
     try:
+        look_first(Path.cwd())
         done = replay(Path.cwd(), args.into, args.base)
     except GenerationError as error:
         refuse(parser.prog, error)

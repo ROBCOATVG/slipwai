@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from dataclasses import replace
@@ -9,6 +12,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
+from slipwai.assets import ROOT
 from slipwai.layout import layout_of
 from slipwai.logs import deck_path, entry
 from slipwai.migration_crossing import (
@@ -261,6 +265,40 @@ class CatchUpTest(unittest.TestCase):
         self.assertIn("- `.specify/cruise-run.log` → `.slipwai/run/v1/cruise-run.log`", page)
         self.assertIn("- `specs/cruise-checkpoint.md` → `.slipwai/run/v1/cruise-checkpoint.md`", page)
         self.assertNotIn("## Version 1's run files", self.page([]))
+
+
+class ReplayTest(unittest.TestCase):
+    """`slipwai replay` is "migrate without the merge, to look at first" — and for a version 1 project it showed
+    a merge `migrate` does not make: the service regenerated state-stored and its event store deleted, against
+    a base only the crossing rebuilds. It refuses, and names the look-first that is true."""
+
+    VERSION_1 = {"name": "slipwai", "generatedWith": "1.5.1", "updatedWith": "1.5.1"}
+    MANIFEST = {"schema": 2, "name": "orders", "profile": "event-modelling", "target": "none",
+                "deployables": {"orders": {"kind": "service", "path": "apps/orders", "language": "toy",
+                                           "eventSourced": True}}}
+
+    def replayed(self, generator: dict) -> subprocess.CompletedProcess:
+        scratch = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(scratch.cleanup)
+        self.root = Path(scratch.name) / "orders"
+        self.root.mkdir()
+        (self.root / "project.json").write_text(json.dumps({**self.MANIFEST, "generator": generator}),
+                                                encoding="utf-8")
+        # The keel by its absolute path: the suite's own `PYTHONPATH` is relative, and this runs somewhere else.
+        return subprocess.run([sys.executable, "-m", "slipwai", "replay"], cwd=self.root, text=True,
+                              capture_output=True, check=False,
+                              env=os.environ | {"PYTHONPATH": str(ROOT / "src")})
+
+    def test_a_version_1_project_is_refused_and_pointed_at_the_check_that_shows_its_crossing(self) -> None:
+        done = self.replayed(self.VERSION_1)
+        self.assertNotEqual(done.returncode, 0, done.stdout)
+        self.assertIn("slipwai 1.5.1", done.stderr)
+        self.assertIn("migrate --check", done.stderr)
+        self.assertEqual([path.name for path in self.root.parent.iterdir()], ["orders"], "nothing was written")
+
+    def test_a_project_this_version_wrote_is_not_refused_for_its_version(self) -> None:
+        done = self.replayed({"name": "slipwai", "generatedWith": "1.5.1", "updatedWith": "2.1.0"})
+        self.assertNotIn("migrate --check", done.stderr)
 
 
 if __name__ == "__main__":  # pragma: no cover

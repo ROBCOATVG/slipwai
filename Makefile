@@ -55,7 +55,7 @@ SLOW += test_harbourmaster_needs test_bridge_needs
 SLOW += test_fence
 SLOW += test_mender test_stop_the_line
 SLOW += test_scaffold_starts_green
-SLOW += test_run_folder
+SLOW += test_run_folder test_migration_manifest test_extension_projection
 SLOW += test_harbourmaster_stop
 SLOW += test_example_map_source
 # The captain as an agent: a captain run per case, and the six captain suites run twice over.

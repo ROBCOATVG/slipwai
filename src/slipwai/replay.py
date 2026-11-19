@@ -40,6 +40,7 @@ from .deployment_shapes import recorded as recorded_shape
 from .errors import GenerationError
 from .layout import Layout, layout_of
 from .manifest import apps_from_manifest, check_known, read_manifest, recorded_languages, refuse_older, wrote_here
+from .migration_manifest import ordered_like
 from .origin import adoption_of
 from .project.adopted import WRITTEN
 from .project.design_page import DESIGN, existing_design_page, starter_design
@@ -131,7 +132,8 @@ def replay(
     used, recorded = manifest["generator"]["languages"], recorded_languages(document) or {}
     manifest["generator"] = wrote_here(document.get("generator"), used)
     differing = tuple((name, recorded.get(name), now) for name, now in used.items() if recorded.get(name) != now)
-    files["project.json"] = json.dumps(manifest, indent=2) + "\n"
+    # In the key order the project's own copy has, so the merge meets a difference only where an answer differs.
+    files["project.json"] = json.dumps(ordered_like(manifest, document), indent=2) + "\n"
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():

@@ -19,6 +19,7 @@ from pathlib import Path
 from .adopt_report import survey_page
 from .assets import NOTES, VERSION
 from .catch_up_page import archive, set_up, stated
+from .extension_copies import copies
 from .infra_check import check as infra_check
 from .layout import layout_of
 from .logs import Entry, deck_path
@@ -32,6 +33,7 @@ from .migration_result import Migration
 from .migration_settings import settings
 from .migration_slices import kept_section, unmodelled_section
 from .replay import Replay, replay
+from .run_folder import move_version_1, version_1, version_1_section
 from .survey import survey
 from .versions import parse
 
@@ -143,7 +145,7 @@ def answers(files: Tree) -> Tree:
 
 def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branches: dict[str, str],
              notes: list[str], infra: Sequence[str] = (), twice: Sequence[str] = (),
-             conflicts: Sequence[str] = ()) -> str:
+             conflicts: Sequence[str] = (), run_files: Sequence[str] = ()) -> str:
     proposed, unplaced = flight.counts
     command = f"python3 {layout.place('scripts/check-migration.py')}"
     # The same opening section an ordinary migration's page has: a crossing that conflicts leaves the same
@@ -165,7 +167,7 @@ def catch_up(name: str, recorded: str, used: str, flight: Flight, layout, branch
             "under `fairways/main/<feature>/`; ADRs retain their paths and numbers. Implementation "
             "was reconciled upward from trunk's slice merges: a slice trunk could not prove keeps the "
             "status the model recorded for it.\n\n" +
-            kept_section(flight.kept) +
+            kept_section(flight.kept) + version_1_section(list(run_files)) +
             # What the crossing would have done to `infra/` and did not. Named rather than silently skipped:
             # a person who upgrades and later finds the factory's stack has moved on should find out here,
             # with the list in front of them, rather than from a plan that proposes to replace a database.
@@ -301,7 +303,7 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         left = settings(root, document, result.files, conflicts=result.conflicts)
         validate(root, result.files)
         message = catch_up(document["name"], recorded, legacy.used, flight, layout_of(document),
-                           branches, left, untouched, twice, tuple(sorted(result.conflicts)))
+                           branches, left, untouched, twice, tuple(sorted(result.conflicts)), version_1(root))
         if check:
             conflict_names = ", ".join(sorted(result.conflicts)) or "none"
             stopping = "".join(f"\n`slipwai migrate` would refuse: {note}" for note in blocking)
@@ -314,6 +316,9 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         install(root, result, tip, f"Migrate {document['name']} from {recorded} to slipwai {VERSION}", executable)
         update(root, prepared)
         seed(root, flight)
+        # Version 1's run files, out from under a merge whose ignore file has stopped naming them: before
+        # anybody resolving a conflict stages the tree. `flight` has read the two it reads by now.
+        move_version_1(root)
         # Last, and never a refusal: the merge is committed by the time this reads anything. The project's
         # own gate cannot run this — `make verify` has no provider plugins and no credential by design — so
         # a crossing is the one moment between a tree being rewritten and a runner finding out.
@@ -322,7 +327,8 @@ def crossing(root: Path, document: dict, *, with_claims: bool = False, check: bo
         archive(root)
         notes = root / NOTES
         notes.parent.mkdir(parents=True, exist_ok=True)
-        notes.write_text(f"{message}\n{stated(recorded, VERSION, datetime.now(UTC))}\n", encoding="utf-8")
+        differing = "\n".join(copies(root, document))  # elected extensions whose merged copy is not the package
+        notes.write_text(f"{message}{differing}\n{stated(recorded, VERSION, datetime.now(UTC))}\n", encoding="utf-8")
         if not result.conflicts:
             from .project.intake_cleanup import write_proposal
             write_proposal(root)

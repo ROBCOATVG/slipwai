@@ -9,6 +9,9 @@ different script at that point was ignored: installed, valid, and silently never
 What is still read from the module is `GUIDANCE`, and that is *data* rather than a point — the canonical
 text of the block, which `--check` compares against what is in `AGENTS.md`. A drift check has to know what
 the block should say, and a subprocess that writes it cannot answer that question.
+
+And after the point has fired, a block still drifted is written from that same data (`rewrite_drifted`), so
+an extension that attaches nothing to `project` is re-projected too and the fix `--check` names is one.
 """
 from __future__ import annotations
 
@@ -20,7 +23,7 @@ from pathlib import Path
 from types import ModuleType
 
 sys.dont_write_bytecode = True
-from guidance import ROOT, adopted_extensions, canonical_block, installed_block
+from guidance import ROOT, adopted_extensions, canonical_block, installed_block, replace_block
 
 HERE = Path(__file__).resolve().parent
 HOOKS = HERE / "hooks.py"
@@ -34,6 +37,7 @@ def extension_module(key: str) -> ModuleType:
     if spec is None or spec.loader is None:
         raise ValueError(f"{key}: cannot load {script.relative_to(ROOT)}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # before it runs: a `@dataclass` in it looks its own module up by name
     spec.loader.exec_module(module)
     return module
 
@@ -48,6 +52,25 @@ def fire_project() -> list[str]:
     return []
 
 
+def rewrite_drifted(adopted: list[str]) -> None:
+    """Write each elected extension's block from its `GUIDANCE` where the `project` point left it drifted.
+
+    The point is still fired first and still the extension's own. But an extension need not attach to it —
+    `codegraph` 1.0.0 declares `init`, `after-stage` and `check` — and for one that does not, nothing here
+    rewrote its block: `--check` named `make agents` as the fix and `make agents` changed nothing, so the
+    only way out was to run the extension's whole set-up again. The block is the factory's region and its
+    text is already read as data below, so the command the gate names now does what the gate says. An
+    extension with no `GUIDANCE`, or one that cannot be loaded, is `--check`'s to report, never a reason the
+    others go unwritten."""
+    for key in adopted:
+        try:
+            guidance = extension_module(key).GUIDANCE
+            if installed_block(key) != canonical_block(key, guidance):
+                replace_block(key, guidance)
+        except Exception:  # noqa: BLE001 — an extension's own module, run at import: anything may be raised
+            continue
+
+
 def project(check: bool) -> list[str]:
     findings: list[str] = []
     try:
@@ -55,7 +78,9 @@ def project(check: bool) -> list[str]:
     except (OSError, ValueError) as error:
         return [str(error)]
     if not check:
-        return fire_project()
+        said = fire_project()
+        rewrite_drifted(adopted)
+        return said
     for key in adopted:
         try:
             # `GUIDANCE` is the block's canonical text, read as data: the drift check has to know what the
@@ -63,8 +88,9 @@ def project(check: bool) -> list[str]:
             canonical = canonical_block(key, extension_module(key).GUIDANCE)
             if installed_block(key) != canonical:
                 findings.append(
-                    f"AGENTS.md: the {key} extension block has drifted; run `make agents` "
-                    "or `slipwai migrate`"
+                    f"AGENTS.md: the {key} extension block has drifted from the GUIDANCE in "
+                    f"{(HERE / key / 'init.py').relative_to(ROOT)}; `make agents` rewrites it, as "
+                    "`slipwai migrate` does after a clean merge"
                 )
         except (AttributeError, OSError, ValueError) as error:
             findings.append(str(error))

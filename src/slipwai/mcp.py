@@ -32,7 +32,7 @@ from typing import IO
 from .assets import VERSION
 from .cli_fleet import config, lines, stream_lines
 from .deck import RECENT
-from .fleet import board, inbox_detail
+from .fleet import board, inbox_detail, inbox_split
 from .project.harbour import CONFIG
 from .shell_environment import project_python
 from .talk_said import tell
@@ -101,8 +101,7 @@ def the_inbox(root: Path, arguments: dict) -> str:
     harbour(root)
     waiting = board(root, config(root))["inbox"]
     assert isinstance(waiting, list)
-    on_you = [row for row in waiting if row.get("paused") != "yes"]
-    resting = [row for row in waiting if row.get("paused") == "yes"]
+    on_you, resting, notes = inbox_split(waiting)
     if not waiting:
         return "waiting on you: nothing"
     said = [f"waiting on you: {len(on_you)}" if on_you else "waiting on you: nothing"]
@@ -112,6 +111,9 @@ def the_inbox(root: Path, arguments: dict) -> str:
     if resting:
         said.append(f"paused, nothing for you to do: {len(resting)}")
         said += [f"  {row['fairway']:<10} {row.get('slice') or '':<7} {inbox_detail(row)}" for row in resting]
+    if notes:
+        said.append(f"left for you to read, holding nothing up: {len(notes)}")
+        said += [f"  {row['fairway']:<10} {row['kind']:<7} {inbox_detail(row)}" for row in notes]
     return "\n".join(said)
 
 

@@ -557,13 +557,16 @@ def cause_of(park: Entry) -> str:
 
 
 def paused(parks: list[Entry], now: str = "") -> list[Entry]:
-    """The open parks that lift by themselves: a `limit`, or any park with an `until` still ahead.
+    """The open parks that lift by themselves: a `limit`, a merge waiting on a red trunk, or any park with
+    an `until` still ahead.
 
     Nobody is asked anything by one of these, so a board calls them paused and a fleet does not wait on a
-    person for them. `now` is an instant in the log's format; the clock where it is not given.
+    person for them. `trunk` is the merge the harbourmaster refused only because trunk was red, which it
+    asks for again the moment trunk turns. `now` is an instant in the log's format; the clock where it is
+    not given.
     """
     at = now or globals()["now"]()
-    return [e for e in parks if cause_of(e) == "limit" or str(e.fields.get("until") or "") > at]
+    return [e for e in parks if cause_of(e) in ("limit", "trunk") or str(e.fields.get("until") or "") > at]
 
 
 def unmerged(deck: list[Entry]) -> list[str]:

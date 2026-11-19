@@ -2149,6 +2149,15 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
         except NeverRan as refused:
             return False, str(refused)
         FLIGHT.setdefault(slice_id, {})["merging"] = True
+        refused_run = FLIGHT.get(slice_id, {}).pop("refusal", None)
+        if refused_run is not None:
+            # The harness said no to the run that would have resolved the merge — a usage limit — which is
+            # a pause with its time on it, as it is at a slice's first run. Read as a run that failed, it
+            # parked lean-coffee-club's access stream on `/sail exited 1` for ten hours, for a person,
+            # while the two streams beside it paused and started again by themselves.
+            record(slice_id, cause=refused_run.cause, until=refused_run.until)
+            return False, (f"the harness would not run {slice_id} ({refused_run.said}). Paused until "
+                           f"{local_clock(refused_run.until)}, no attempt spent")
         if not finished:
             return False, fault
         if FLIGHT.get(slice_id, {}).pop("message_commits", False):
@@ -2336,6 +2345,11 @@ def ask_to_merge(slice_id: str, feature: str, fairway: str,
                        f"indistinguishable from a run that stopped"), False
     if found.kind == "refused":
         why = str(found.fields.get("why", "no reason given"))
+        # What the harbourmaster says the refusal waits on rides to the park: a merge refused only because
+        # trunk was red is cleared by the harbourmaster when trunk turns, and a park with no word for that
+        # was listed as waiting on a person who had nothing to do (lean-coffee-club's MT2 and MT5).
+        if found.fields.get("waiting"):
+            FLIGHT.setdefault(slice_id, {})["waiting"] = str(found.fields["waiting"])
         return False, f"the merge was refused: {why}", bool(found.fields.get("resolve"))
     commit = str(found.fields.get("commit", ""))
     if not commit:

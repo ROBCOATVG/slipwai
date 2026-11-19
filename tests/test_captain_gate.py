@@ -251,6 +251,41 @@ sys.exit(1)
         self.assertIn("ORD is paused until", again.stdout)
         self.assertEqual(runs.read_text(), "x")
 
+    def test_a_limit_met_while_resolving_a_refused_merge_is_a_pause_too(self) -> None:
+        """lean-coffee-club's SI2 was back in its berth resolving a conflict when the usage limit came. That
+        run was read as one that failed, and the stream parked on "`/sail` exited 1" for a person for ten
+        hours while the two streams beside it paused and started again at the reset."""
+        self.refuse("ORD-01", "slice/ORD-01 conflicts with origin/main in decisions.md", resolve=True)
+        runs = self.root / "runs.txt"
+        # The stream-json flag comes before the slice and the fairway, so the fake reads them from the end.
+        body = WORKS.replace("sys.argv[1], sys.argv[2]", "sys.argv[-2], sys.argv[-1]") + f"""
+runs = pathlib.Path({str(runs)!r})
+runs.write_text(runs.read_text() + "x" if runs.exists() else "x")
+if runs.read_text() != "x":
+    print('{{"type":"system","subtype":"init","session_id":"s"}}', flush=True)
+    print('{{"type":"result","subtype":"success","is_error":true,"num_turns":1,'
+          '"result":"You\\'ve hit your session limit · resets 9:40pm (Europe/London)"}}', flush=True)
+    sys.exit(1)
+"""
+        done = self.captain("ORD", self.sail(body) + " --output-format stream-json")
+        parked = [e for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(len(parked), 1, done.stdout + done.stderr)
+        self.assertEqual(parked[0].fields.get("cause"), "limit", done.stdout + done.stderr)
+        self.assertIn("no attempt spent", str(parked[0].fields["why"]))
+        self.assertNotIn("exited 1", str(parked[0].fields["why"]))
+
+    def test_a_merge_refused_on_a_red_trunk_parks_saying_it_waits_on_trunk(self) -> None:
+        """So that every reader can tell it from a wait on a person: the harbourmaster clears it itself."""
+        self.harbour(logs.entry("refused", harbour=True, fairway="ORD", request="merge-ORD-01",
+                                why="trunk is red, and nothing merges onto a red trunk", resolve=False,
+                                waiting="green-trunk"))
+        done = self.captain("ORD", self.sail(WORKS))
+        parked = [e for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(len(parked), 1, done.stdout + done.stderr)
+        self.assertEqual((parked[0].fields.get("waiting"), parked[0].fields.get("cause")),
+                         ("green-trunk", "trunk"), done.stdout)
+        self.assertEqual(logs.paused(parked), parked)
+
     def test_a_park_on_a_missed_gate_says_gate(self) -> None:
         done = self.captain("ORD", self.sail("import sys\nsys.exit(0)\n"))
         parked = [e for e in self.read("ORD") if e.kind == "parked"]

@@ -24,3 +24,10 @@ PATCH
   once before the push. `/sail` said "six stages" above a table of seven.
 
 **Catch-up:** `slipwai migrate` carries the pages, briefs and the template.
+
+**The harbourmaster performs the merge, and every page says so.** Its brief said "you are not a merge queue;
+people hold the merge", and the ladder's *Merge to main* rung called it "the only one a person holds", while
+the harbourmaster had been rebasing, gating and advancing trunk for every slice a captain asked for. The
+brief, the rung, the glossary and the reference page now say what happens: a captain asks, the harbourmaster
+runs the full gate in its own worktree and lands the merge, one at a time, and chooses none of them. A person
+running `/sail` by hand with no fleet does the same steps themselves.

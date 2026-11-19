@@ -93,7 +93,7 @@ class WhatItMayNotDoTest(unittest.TestCase):
         self.assertIn("`request`", said)
 
     def test_the_captain_never_merges_to_trunk(self) -> None:
-        """Rule 10 of the plan: people hold the merge to trunk."""
+        """A captain asks for its merge and the harbourmaster performs it; a captain holds no credential."""
         said = self.body(CAPTAIN).lower()
         self.assertIn("never merges to trunk", said)
 
@@ -106,9 +106,15 @@ class WhatItMayNotDoTest(unittest.TestCase):
         self.assertIn(f"{RUN}/logs/harbour.jsonl", said)
         self.assertIn("only writer", said)
 
-    def test_the_harbourmaster_is_not_a_merge_queue(self) -> None:
-        """`GLOSSARY.md` says so in those words, and the brief is held to the row."""
-        self.assertIn("not a merge queue", self.body(HARBOURMASTER))
+    def test_the_harbourmaster_performs_the_merge_and_chooses_none(self) -> None:
+        """It lands what a captain asked for and the gate passed; `GLOSSARY.md`'s row says the merge is
+        serialised through `refs/slipwai/merge`. The brief said "you are not a merge queue" while the
+        program merged, and `/sail` said slices merge through the harbourmaster's queue."""
+        said = self.body(HARBOURMASTER)
+        self.assertIn("**You perform the merge.**", said)
+        self.assertIn("refs/slipwai/merge", said)
+        self.assertIn("**You do not choose what is merged.**", said)
+        self.assertNotIn("not a merge queue", said)
 
     def test_the_harbourmaster_never_writes_another_fairways_deck_log(self) -> None:
         """One writer per deck log is the whole reason two captains never conflict over one file."""

@@ -175,7 +175,7 @@ class LadderTest(unittest.TestCase):
                          ["decide-skipper", "demo-hand", "unblock-bosun"])
 
     def test_the_merge_rung_exists_and_is_nobody_s_delegate(self) -> None:
-        """Rule 10: a person holds the merge until a captain enforces the boundaries."""
+        """The merge is the harbourmaster's under a fleet and a person's by hand: no session is delegated it."""
         merge = next(stage for stage in stage_models.STAGES if stage.key == "merge")
         self.assertEqual(merge.title, "Merge to main")
         self.assertFalse(merge.delegable)

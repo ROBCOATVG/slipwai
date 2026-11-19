@@ -71,7 +71,7 @@ SLOW += test_event_names_parity
 # The list of what exists, run as the command a project runs, and against a git checkout made for the case.
 SLOW += test_existing_surfaces
 # A harness's event through `session.py` to a stand-in extension's guard, two processes per case.
-SLOW += test_guard_event test_guard_agreement test_guard_offer
+SLOW += test_guard_event test_guard_agreement test_guard_offer test_guard_seen
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

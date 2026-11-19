@@ -53,7 +53,7 @@ class Project:
         home = self.extensions / key
         home.mkdir(parents=True, exist_ok=True)
         for name, body in files.items():
-            target = home / name.replace("__", "/")
+            target = home / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(body, encoding="utf-8")
         offered = json.loads(self.available.read_text(encoding="utf-8")) if self.available.is_file() else {}

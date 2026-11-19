@@ -21,6 +21,9 @@ from __future__ import annotations
 #: Every field a `before-search` guard may find in its event, in the order the contract page lists them.
 FIELDS = ["v", "point", "tool", "query", "pattern", "path", "glob", "type", "command", "cwd", "session",
           "agent", "agent_type", "stage", "slice", "fairway"]
+#: And what a guard that `sees` a tool is handed when the tool is used: which tool and whose call. Never the
+#: call's arguments — they are not a search, they are somebody else's tool's, and they may hold anything.
+USED = ["v", "point", "tool", "cwd", "session", "agent", "agent_type", "stage", "slice", "fairway"]
 #: The contract's own version. A field added is not a new version; a field that changes its meaning is.
 VERSION = 1
 #: What a search names, each under the key the harness's own tool input uses for it.
@@ -64,3 +67,13 @@ def search(raw: dict, about: dict[str, str]) -> dict[str, object]:
     told.update({word: value for word, value in named.items() if value})
     told.update(whose(raw, about))
     return {word: told[word] for word in FIELDS if word in told}
+
+
+def used(raw: dict, about: dict[str, str]) -> dict[str, object]:
+    """A tool being used, as a guard that declared it under `sees` reads it on stdin."""
+    told: dict[str, object] = {"v": VERSION, "point": "tool-use"}
+    name = said(raw.get("tool_name"))
+    if name:
+        told["tool"] = name
+    told.update(whose(raw, about))
+    return {word: told[word] for word in USED if word in told}

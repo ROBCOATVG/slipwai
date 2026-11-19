@@ -38,6 +38,11 @@ SCRIPT = AGENTS / "session.py"
 ACTIVITY_VERBS = {"before-delegate", "agent-started", "agent-stopped", "after-failure", "say", "waiting"}
 
 
+#: And the one that tells a guard a tool it declared was used. Not a point of either set, on purpose: a
+#: guard is told and cannot refuse there, so it is neither a guard point nor something a hook attaches to.
+TOLD_VERBS = {"tool-use"}
+
+
 class VerbTest(unittest.TestCase):
     """Every verb is a point of a set, and every row the keel writes names a verb."""
 
@@ -50,7 +55,8 @@ class VerbTest(unittest.TestCase):
         """`responded` is the one that is neither, and it is plumbing: a harness whose stop event carries no
         text needs its last message kept a moment earlier. An extension has nothing to attach there, and a
         point nothing could use would be a promise with no caller."""
-        self.assertEqual(self.verbs() - set(guards.NAMES) - set(hooks.NAMES), {"responded"} | ACTIVITY_VERBS)
+        self.assertEqual(self.verbs() - set(guards.NAMES) - set(hooks.NAMES),
+                         {"responded"} | ACTIVITY_VERBS | TOLD_VERBS)
 
     def test_every_guard_is_answered(self) -> None:
         """All seven, with no exception — including `after-delegate`, which fires on a harness's post-tool

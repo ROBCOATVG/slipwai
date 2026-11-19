@@ -385,6 +385,20 @@ def before_search() -> int:
     return extensions(GUARDS, "before-search", {**about(), **tool(), "query": query}, told)
 
 
+def tool_use() -> int:
+    """A tool some guard asked to see is being used. Told to that guard, and never a refusal.
+
+    This is how *the session has asked the index* becomes something an extension can know: its guard
+    declares its own tools under `sees`, the harness's matcher is written from what was agreed to, and the
+    use arrives here. It is its own verb and not a guard point because seeing is not judging — the runner
+    discards whatever the guard exits with, and so does this, so a guard cannot stop a tool by being told
+    about it.
+    """
+    import tool_event  # as `before_search` asks for it, and for the same reason
+    extensions(GUARDS, "tool-use", {**about(), **tool()}, tool_event.used(event(), about()))
+    return 0
+
+
 def session() -> int:
     """A session has opened, before its first tool call."""
     return extensions(GUARDS, "session", about())
@@ -643,6 +657,7 @@ VERBS = {
     "waiting": lambda: said_aloud("waiting"),
     "session": session,
     "before-search": before_search,
+    "tool-use": tool_use,
     "before-write": before_write,
     "before-command": before_command,
     "before-fetch": before_fetch,

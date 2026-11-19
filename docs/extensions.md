@@ -247,6 +247,63 @@ whole string.
 The other guards receive no event on stdin. `tests/test_guard_event.py` holds this table to the code that
 builds the event.
 
+### A guard can see its extension's own tools used
+
+Some rules depend on what a session did earlier. The rule for a code index is *refuse a symbol search
+until this session has asked the index*. An ask over MCP is a tool call of its own, and no guard point
+fires for it. So a guard can declare the tools whose use it wants to **see**:
+
+```json
+{
+  "guards": {
+    "before-search": {"run": "guards/ask-the-index.py", "sees": ["mcp__codegraph__.*"]}
+  }
+}
+```
+
+When a session is about to use one of those tools, slipwai runs the same script. It sets `SLIPWAI_POINT`
+to `tool-use`, and `SLIPWAI_GUARD` to the guard that declared the tool. It hands the script this JSON
+object on stdin:
+
+| Field | What it is |
+|---|---|
+| `v` | The version of this contract: `1`. |
+| `point` | `tool-use`. |
+| `tool` | The tool that is being used, for example `mcp__codegraph__codegraph_explore`. |
+| `cwd` | The directory that the session is in. |
+| `session` | The harness's identifier for the session. |
+| `agent` | The harness's identifier for the sub-agent that made the call. It is absent for the session itself. |
+| `agent_type` | The type of that sub-agent. |
+| `stage` | The rung, in a session that a captain dispatched. |
+| `slice` | The slice, in a session that a captain dispatched. |
+| `fairway` | The fairway, in a session that a captain dispatched. |
+
+So one script reads `point`, records the session at `tool-use`, and decides at `before-search`. Three
+rules apply:
+
+- **Seeing is not judging.** `tool-use` is not a guard point. Slipwai discards the exit code, so a guard
+  cannot refuse a tool that it is only told about. If the script exits 2 there, slipwai says so and the
+  call goes ahead. This is why seeing is a separate moment and not one more `before-` point: a script
+  written to refuse wherever it runs would otherwise stop its own extension's tool.
+- **A guard is told which tool, and not what the tool was asked.** The event carries no arguments of the
+  call. They are not a search, and they can hold anything.
+- **`sees` is limited to one MCP server's tools.** Each entry is `mcp__<server>__<tool>` or
+  `mcp__<server>__.*`. Slipwai also reads `mcp__<server>__*`, the spelling that `tools` uses, as the same
+  thing. A guard can declare at most 8 entries. Slipwai refuses anything else when it reads the manifest,
+  and ignores it in a registry that somebody edited by hand. No alternation and no other wildcard is
+  accepted, so no extension can name a search tool, the shell or every MCP call, and no extension can put
+  a guard in front of every tool call.
+
+A person agrees to what a guard sees together with the guard, and the question names the tools. On Claude
+Code, the pre-tool matcher for `tool-use` is exactly the entries of the agreed guards: slipwai writes that
+one row into `.claude/settings.json` when an agreement changes and at every `make agents`, and removes it
+when no agreed guard sees anything. No other harness runs anything at `tool-use`. A shell command that belongs to an extension needs no `sees`: every shell command
+reaches `before-search` already.
+
+`tests/test_guard_seen.py` holds this table to the code, and is the proof that the rule above can be
+written: a stand-in extension refuses a symbol `Grep` of the source, allows it after its tool was used in
+that session, never refuses a `Grep` under `specs/` or a `Glob`, and still refuses another session.
+
 **A person agrees to a guard. Installing the extension is not enough.** A hook runs wherever an extension
 is elected. A guard can also refuse things that a person asked for. So `./init` asks once, and names in
 plain words what each guard could stop. `./init` writes `.slipwai/guards.json` from the answer, not from

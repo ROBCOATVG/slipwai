@@ -89,6 +89,15 @@ def agreed() -> dict[str, dict[str, dict]]:
     return found
 
 
+def would(key: str, name: str) -> str:
+    """What agreeing to this guard allows, whole: what it can stop, and which tools' use it is told about."""
+    declared = read(AVAILABLE).get(key)
+    body = declared.get(name) if isinstance(declared, dict) else None
+    sees = body.get("sees") if isinstance(body, dict) else None
+    told = ", ".join(pattern for pattern in (sees if isinstance(sees, list) else []) if isinstance(pattern, str))
+    return REFUSING.get(name, name) + (f" (and be told when {told} is used)" if told else "")
+
+
 def owed() -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     """Per elected extension: the guards it has gained that nobody agreed to, and the agreed ones that are
     no longer what was agreed to."""
@@ -110,7 +119,7 @@ def lines() -> list[str]:
     gained, changed = owed()
     said = []
     for key, names in gained.items():
-        what = "; ".join(REFUSING.get(name, name) for name in names)
+        what = "; ".join(would(key, name) for name in names)
         said.append(f"guards: {key} can refuse a tool call here, and nobody has agreed to it: it would {what}. "
                     f"It refuses nothing until a person agrees: {COMMAND} --elect {key}")
     for key, names in changed.items():
@@ -130,7 +139,7 @@ def announce(terminal: bool, ask: Callable[[str], str] = input, say: Callable[[s
     say("These extensions can refuse a tool call, and nobody has agreed to it:")
     for key, names in gained.items():
         for name in names:
-            say(f"  {key}: {REFUSING.get(name, name)}")
+            say(f"  {key}: {would(key, name)}")
     say("A guard never ends a stage — it stops one call and tells the agent why.")
     try:
         answer = ask("Allow them? [y/N]: ").strip().lower()

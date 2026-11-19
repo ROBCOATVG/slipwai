@@ -121,15 +121,17 @@ def main() -> int:
 def offer_guards() -> None:
     """Say which elected extension has a guard nobody agreed to, and ask where somebody is at a terminal.
 
-    `guard_offer.py` says the line and the command and changes nothing unless a person answers yes; it is
+    First `guard_harness.py` has the harness tell an agreed guard about the tools it declared it `sees`,
+    which is a row of a file a clone does not have until this runs. Then `guard_offer.py` says the line and the command and changes nothing unless a person answers yes; it is
     its own script, with this process's terminal, and never a reason `make agents` fails."""
-    script = HERE / "guard_offer.py"
-    if not script.is_file():
-        return
-    try:
-        subprocess.run([sys.executable, str(script), "--ask"], cwd=ROOT, check=False)
-    except OSError:
-        return
+    for name, arguments in (("guard_harness.py", []), ("guard_offer.py", ["--ask"])):
+        script = HERE / name
+        if not script.is_file():
+            continue
+        try:
+            subprocess.run([sys.executable, str(script), *arguments], cwd=ROOT, check=False)
+        except OSError:
+            continue
 
 
 if __name__ == "__main__":

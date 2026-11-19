@@ -24,6 +24,10 @@ every agreement already there; `--remove <key>...` takes one back and keeps the 
 *elected* by being installed and *agreed to* by answering a question, because a guard refuses things a
 person asked for. An extension that declares a guard nobody agreed to fires none.
 
+A guard may also be **told** that a tool was used, where its declaration `sees` that tool: `guards.py
+tool-use --tool <name>` runs it with the event on stdin and discards what it exits with. That is how an
+extension knows its own MCP tool was called, and it cannot refuse the call by it.
+
 `--offer <key>...` is that question, asked once by `./init` over the elected extensions: it says what each
 one would be able to refuse and in whose words, then allows the ones agreed to. It reads and writes
 `/dev/tty` rather than stdin and stdout, so a scripted or CI `./init` is not asked and agrees to nothing —
@@ -41,6 +45,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -156,7 +161,20 @@ def write_registry(agreed: dict[str, dict[str, dict]]) -> int:
     attached = ", ".join(sorted(guards)) or "no guard"
     firing = sum(1 for names in agreed.values() if names)
     print(f"guards: {firing} extension(s) may refuse at {attached}")
+    matched()
     return 0
+
+
+def matched() -> None:
+    """Have the harness run `tool-use` for exactly the tools the agreed guards see. Never a reason an
+    agreement is not recorded: the registry is written, and `make agents` writes the row again."""
+    script = HERE / "guard_harness.py"
+    if not script.is_file():
+        return
+    try:
+        subprocess.run([sys.executable, str(script)], cwd=ROOT, check=False)
+    except OSError:
+        return
 
 
 def agreed_already() -> dict[str, list[str]]:
@@ -237,7 +255,9 @@ def offer(keys: list[str]) -> int:
                 tty.write("\nThese extensions can refuse a tool call:\n")
             for key, declared in asked.items():
                 for name in sorted(declared):
-                    tty.write(f"  {key}: {REFUSING.get(name, name)}\n")
+                    told = ", ".join(sees(declared[name]))
+                    tty.write(f"  {key}: {REFUSING.get(name, name)}"
+                              + (f" (and be told when {told} is used)\n" if told else "\n"))
             tty.write("A guard never ends a stage — it stops one call and tells the agent why.\n")
             tty.write("Allow them? [y/N]: ")
             tty.flush()
@@ -293,6 +313,54 @@ def ran(script: Path, environment: dict[str, str], budget: float, told: str = ""
         err.seek(0)
         return subprocess.CompletedProcess(command, code, out.read().decode("utf-8", "replace"),
                                            err.read().decode("utf-8", "replace"))
+
+
+#: The moment a guard is *told* a tool was used, which is not a guard point and refuses nothing.
+TOOL_USE = "tool-use"
+#: What a guard may declare under `sees`, held here over the registry as the keel holds it over a manifest:
+#: one MCP server's tools, by name or all of them. Nothing that could match any other kind of call.
+SEES = re.compile(r"mcp__[A-Za-z0-9_-]+__(?:[A-Za-z0-9_-]+|\.\*)")
+SEES_LIMIT = 8
+
+
+def sees(body: dict) -> list[str]:
+    """The tool patterns this guard may be told about: its `sees`, less anything it may not declare."""
+    declared = body.get("sees")
+    return [pattern for pattern in (declared if isinstance(declared, list) else [])[:SEES_LIMIT]
+            if isinstance(pattern, str) and SEES.fullmatch(pattern)]
+
+
+def saw(given: dict[str, str], told: dict | None = None) -> int:
+    """Tell every agreed guard that `sees` this tool that it is being used. Always 0: seeing is not judging.
+
+    A guard's own tool reaches it this way — `codegraph`'s guard learns that a session asked the index —
+    and the one thing it must never be able to do with that is stop the tool. So the code it exits with is
+    discarded, a 2 included, and said where it was one: a guard written to refuse wherever it is run has
+    refused nothing here.
+    """
+    tool = given.get("tool", "")
+    event = json.dumps(told) if told is not None else ""
+    for point, bodies in sorted(read(REGISTRY).get("guards", {}).items()):
+        for body in bodies if isinstance(bodies, list) else []:
+            if not isinstance(body, dict) or not applies(body, given):
+                continue
+            if not any(re.fullmatch(pattern, tool) for pattern in sees(body)):
+                continue
+            key = body.get("extension", "?")
+            path = ROOT / "scripts/extensions" / key / str(body.get("run", ""))
+            if not path.is_file():
+                continue
+            environment = {**os.environ, "SLIPWAI_POINT": TOOL_USE, "SLIPWAI_GUARD": point,
+                           **{f"SLIPWAI_{word.upper()}": value for word, value in given.items()}}
+            try:
+                run = ran(path, environment, seconds(body.get("budget", DEFAULT_BUDGET)), event)
+            except (subprocess.TimeoutExpired, OSError) as error:
+                print(f"guard {key} {TOOL_USE}: {type(error).__name__}; the call goes ahead", file=sys.stderr)
+                continue
+            if run.returncode == REFUSE:
+                print(f"guard {key} {TOOL_USE}: exited {REFUSE}, and a guard cannot refuse a tool it is only "
+                      f"told about; the call goes ahead", file=sys.stderr)
+    return 0
 
 
 def fire(name: str, given: dict[str, str], told: dict | None = None) -> int:
@@ -356,7 +424,7 @@ def main(argv: list[str]) -> int:
             given[rest[index][2:]] = rest[index + 1]
     # Only when told one is there: fired by hand, stdin is a keyboard, and nobody is going to type an event.
     told = sent() if given.pop("event", "") == "stdin" else None
-    return fire(argv[0], given, told)
+    return saw(given, told) if argv[0] == TOOL_USE else fire(argv[0], given, told)
 
 
 def sent() -> dict | None:

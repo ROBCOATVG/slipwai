@@ -206,8 +206,8 @@ test that proves it, from the unpushed slice branch, and have the slice's diff r
 stopped here, nothing converges, and no browser is opened.** Converge, the gaps trace, the design review,
 the adversary pass and the hand's walk are the capability's — *Capability gates*, once its last slice has
 merged — and the capability's acceptance follows them, usually several slices later: the hand's verdict,
-or a person's under `demos: person`, is given on the whole thing rather than its instalments. Under the `open` release mode, where a merge
-reaches the actor at once, the slice converges and is traced by `/gaps` at the end of *Implementation*, the
+or a person's under `demos: person`, is given on the whole thing rather than its instalments. No release mode changes that, `open` included. Only where `harbour.json` says `"readings": "slice"`, for a product whose merges
+reach the actor at once, the slice converges and is traced by `/gaps` at the end of *Implementation*, the
 hand walks its examples here as well and the push waits for its verdict, and a slice that widened
 authorisation, identity or money is attacked before its push; the capability's converge, adversary pass and
 mutation still run. With every example proven — and only then — a project that has adopted a code index
@@ -220,7 +220,10 @@ reads those lines and nothing else, so each has a writer: `python3 scripts/agent
 --slice <id> --mark <mark>` once a contract the chart says this slice sets exists; `python3
 scripts/agents/try_it.py seed --slice <id> --api <service>` for its story; and `python3
 scripts/agents/deck_line.py demo --slice <id> --verdict <accepted|behaviour|implementation>` for the verdict
-the run ends on, with `--by` and `--log` naming who walked it and the demo log that records it. A mark
+the run ends on. **Nobody walks a slice to write it**: once every example is under `## Examples proven`, the
+verdict is `accepted`, with no `--by`, and it says the tests proved them. Only where `harbour.json` says
+`"readings": "slice"` is it the hand's verdict, with `--by` and `--log` naming who walked it and the demo log
+that records it. A mark
 stands once it is set; the `demo` line is owed by every run a captain dispatches, because it is the one
 that is true of this head. Never append to a `.jsonl` log yourself: a harness that judges each action
 refuses a session editing the record it is judged by, and a refused line is a slice that is built and
@@ -232,8 +235,8 @@ cannot say so.
 
 With the examples proven and the review closed, run `/adversary` for the slice's trigger record: its
 trigger table, written into `specs/<feature>/adversary-log.md`, attacking nothing — `make check-decisions`
-holds every done slice to that row. Under the `open` release mode a record with the authorisation, identity
-or money trigger `widened` is attacked here as well: close that adversary benchmark entry after its findings
+holds every done slice to that row. Only where `harbour.json` says `"readings": "slice"` is a record with the authorisation, identity
+or money trigger `widened` attacked here as well: close that adversary benchmark entry after its findings
 are triaged, and implement confirmed defects through failing tests, each in an `implement` entry. Then run
 `make verify`. `commands/adversary.md` owns the trigger table and the decision, so do not make it here.
 **The capability gates are not run here**: converge over the capability's diff, gaps over it, the design review, the capability's adversary
@@ -461,7 +464,7 @@ root is a link, never committed.
 
 **Prove on the slice branch, then verify, then push.** As delegates report their examples proven, check each slice's
 `## Examples proven` from its unpushed worktree in split order — never from `main`, never by pushing increment
-commits first (and, under the `open` release mode, have the hand walk it there). A claim may already have
+commits first (and, only where `harbour.json` says `"readings": "slice"`, have the hand walk it there). A claim may already have
 pushed a lock ref from `main`; leave the increment commits local until every example is proven. Then: bring
 the code index up to the tree if the project has adopted one, `{{make}} verify` green, then push the slice's
 commits and merge into `main` in split order — never in finishing order. That is the first implementation
@@ -545,7 +548,7 @@ slice left in it, and the next slice's own demo. **A slice having finished is no
 Demo feedback re-enters the ladder at the stage that owns the change, which may sit well above the slice
 loop. Re-derive the entry stage from artifacts instead of assuming the loop resumes where it paused.
 
-**A slice, or a capability, is walked twice at most** — `walks` in `harbour.json`, two where it names none:
+**A capability — and a slice, where `harbour.json` says `"readings": "slice"` — is walked twice at most** — `walks` in `harbour.json`, two where it names none:
 the walk, and one more to see that what it sent back was put right. After the last one allowed, nothing is
 walked again for a finding that is not critical: fix what a test can prove fixed, write the rest into the
 fairway's careen as tasks, one row each with the screenshot or example that shows it, and record the verdict

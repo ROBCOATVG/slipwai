@@ -24,6 +24,7 @@ from captain_fixture import AGENTS, Fixture
 from slipwai import logs
 from slipwai.process_alive import alive
 
+# budget: 365 — a slice held in flight by a file the case lets go of, rather than by a sleep it had to beat
 CHART = ("feature: ordering\nslices:\n  L01: {fairway: LVR, sets: [Opened], steers_by: []}\n"
          + "".join(f"  L0{n}: {{fairway: LVR, sets: [], steers_by: []}}\n" for n in (2, 3, 4)))
 SPLIT = ("## Slice graph\n\n| Slice | depends_on | parallel_ok_with | Notes |\n|---|---|---|---|\n"
@@ -39,6 +40,9 @@ def note(**fields):
     mine = record.with_name(record.stem + "." + slice_id + "." + str(os.getpid()) + "." + fields["event"] + ".json")
     mine.write_text(json.dumps({"slice": slice_id, "pid": os.getpid(), **fields}), encoding="utf-8")
 note(event="start", at=time.time(), cwd=str(pathlib.Path.cwd().resolve()))
+hold, ceiling = os.environ.get("ABREAST_HOLD"), time.monotonic() + 300
+while hold and not pathlib.Path(hold).exists() and time.monotonic() < ceiling:
+    time.sleep(0.1)  # in flight until the test lets go, so what it asserts happened beside this is not a race
 time.sleep(float(os.environ.get("ABREAST_SLEEP", "2")))
 if slice_id in os.environ.get("ABREAST_FAIL", "").split(","):
     note(event="end", at=time.time())
@@ -209,23 +213,32 @@ class ParkTest(Abreast):
         self.deck("LVR", logs.entry("stopped", fairway="LVR", slice="L02", t="2026-10-01T09:03:00Z"))  # fleet stopped
         self.slots(2)
         self.granted("L02", "L03", "L04")
+        # L04 is held in flight by a file, not by a sleep the refill's next look had to beat: twenty seconds
+        # against a look every fifteen left five for a berth and a session, and a Windows runner took 5.7.
+        hold = self.root / "record.hold"
         captain = subprocess.Popen([sys.executable, str(self.script), "LVR", "--once"], cwd=self.root,
-                                   env=self.environment(ABREAST_SLEEP="20"), stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT, text=True)
+                                   env=self.environment(ABREAST_SLEEP="0", ABREAST_HOLD=str(hold)),
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         self.addCleanup(captain.kill)
-        until = time.monotonic() + 60
-        while "L04" not in self.windows():
-            self.assertLess(time.monotonic(), until, "L04 never started")
-            time.sleep(0.2)
+        self.addCleanup(hold.touch)  # whatever fails, no held session outlives the case
+        self.started("L04", "L04 never started")
         self.assertEqual(sorted(self.windows()), ["L04"], "a held slice started before its park was cleared")
         for at in ("2026-10-01T09:01:00Z", "2026-10-01T09:02:00Z"):
             self.harbour(logs.entry("cleared", harbour=True, fairway="LVR", parked=at, what="go"))
+        ran = self.started("L02", "L02 waited for L04 to end: L04 is still held, and L02 has not started")
+        self.assertEqual(ran["L04"][1], float("inf"), "L04 ended while it was held")
+        hold.touch()
         said, _ = captain.communicate(timeout=240)
-        ran = self.windows()
-        self.assertIn("L02", ran, said)
-        self.assertLess(ran["L02"][0], ran["L04"][1], f"L02 waited for L04 to end: {said}")
         for slice_id in ("L02", "L04"):
             self.assertIn(f"{slice_id} is through its gate and merged", said)
+
+    def started(self, slice_id: str, otherwise: str) -> dict[str, tuple[float, float, str]]:
+        """Every run so far, once `slice_id` has started. The bound is how long a failure takes: no pass waits on it."""
+        until = time.monotonic() + 120
+        while slice_id not in (ran := self.windows()):
+            self.assertLess(time.monotonic(), until, otherwise)
+            time.sleep(0.2)
+        return ran
 
 
 class WorkersTest(Abreast):

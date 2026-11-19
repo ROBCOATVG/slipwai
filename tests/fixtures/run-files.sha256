@@ -73,6 +73,7 @@
 # why: 2026-11-18 0958c5a878b59037 Behaviour changes on purpose and the same on every platform (issue 103): the captain starts every run of the ladder in a new session and counts a run that ended at a handover as no attempt; benchmark.py refuses a walk past walks in harbour.json unless it is opened with critical=; deck_line.py takes --stowed on an accepted demo; moorings.leave removes a merged berth's containers and local branch; the mender may land a need under docker/. drive.py and check-slice-scope.py change words only
 # why: 2026-11-18 5f427afbde97aeeb A further feature is drawn into the project's storyboard (#102): scripts/agents/existing.py is new and lists what the project has drawn or built; surfaces.py writes that list before the session and no longer counts a frame marked built as drawn; check-surfaces.py reads the built lines of mock-states.md to say why a slice may not name one. Each does the same on macOS and Linux
 # why: 2026-11-18 fb6dbefd5059e005 moorings.py and captain.py: before a session starts in a berth, the captain merges trunk in where trunk's generator in project.json has moved on (a migration landed while the slice was in flight). Behaviour changes on every platform alike, on purpose; nothing in it is platform-specific.
+# why: 2026-11-19 46ba0130254d1635 scripts/extensions/project.py: behaviour changes on purpose on every platform alike (#109, defect 5) — after firing the project point, make agents rewrites an elected extension's AGENTS.md block from its GUIDANCE where it still differs, so an extension with no project hook is re-projected; --check's message says so. Nothing platform-specific moved: no path, process or shell handling changed.
 
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
@@ -135,10 +136,6 @@
 363538444206c52a636d787f75bbd989f3ab6e50a8857d0095ec38e4eb592b87  event-modelling-postgres-toy-serve  scripts/agents/logs.py
 363538444206c52a636d787f75bbd989f3ab6e50a8857d0095ec38e4eb592b87  standard-memory-none  scripts/agents/logs.py
 363538444206c52a636d787f75bbd989f3ab6e50a8857d0095ec38e4eb592b87  standard-postgres-toy-serve  scripts/agents/logs.py
-40fd1b698705aeaf425fc019d92b3fb7d3f250b5ed84c85da794d67cedad92d3  event-modelling-memory-none  scripts/extensions/project.py
-40fd1b698705aeaf425fc019d92b3fb7d3f250b5ed84c85da794d67cedad92d3  event-modelling-postgres-toy-serve  scripts/extensions/project.py
-40fd1b698705aeaf425fc019d92b3fb7d3f250b5ed84c85da794d67cedad92d3  standard-memory-none  scripts/extensions/project.py
-40fd1b698705aeaf425fc019d92b3fb7d3f250b5ed84c85da794d67cedad92d3  standard-postgres-toy-serve  scripts/extensions/project.py
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  event-modelling-memory-none  scripts/check-chart.py
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  event-modelling-postgres-toy-serve  scripts/check-chart.py
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  standard-memory-none  scripts/check-chart.py
@@ -422,6 +419,10 @@ f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  event-modellin
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  event-modelling-postgres-toy-serve  scripts/agents/abreast.py
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  standard-memory-none  scripts/agents/abreast.py
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  standard-postgres-toy-serve  scripts/agents/abreast.py
+f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  event-modelling-memory-none  scripts/extensions/project.py
+f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  event-modelling-postgres-toy-serve  scripts/extensions/project.py
+f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  standard-memory-none  scripts/extensions/project.py
+f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  standard-postgres-toy-serve  scripts/extensions/project.py
 f61e9a247777509afd32e87d3df288fa6baa42da4ebc6736807524b865eed646  event-modelling-memory-none  scripts/event-model/render.ts
 f61e9a247777509afd32e87d3df288fa6baa42da4ebc6736807524b865eed646  event-modelling-postgres-toy-serve  scripts/event-model/render.ts
 f8dc968dc038470683238bf33dd0de4f78461e9d0cdc43ba6387a6fc987c2786  event-modelling-memory-none  scripts/check-styles.py

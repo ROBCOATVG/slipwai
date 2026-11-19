@@ -19,8 +19,9 @@ Anything a guard does other than exit 2 — a crash, a timeout, a non-zero code 
 behaviour: said on stderr, and the call goes ahead. A guard that cannot run is not a reason a delegate
 cannot search.
 
-`--elect <key>...` writes `.slipwai/guards.json`, and takes only the keys a person agreed to. An extension
-is *elected* by being installed and *agreed to* by answering a question, because a guard refuses things a
+`--elect <key>...` agrees to the guards of the extensions it names, in `.slipwai/guards.json`, and keeps
+every agreement already there; `--remove <key>...` takes one back and keeps the rest. An extension is
+*elected* by being installed and *agreed to* by answering a question, because a guard refuses things a
 person asked for. An extension that declares a guard nobody agreed to fires none.
 
 `--offer <key>...` is that question, asked once by `./init` over the elected extensions: it says what each
@@ -84,14 +85,62 @@ def read(path: Path) -> dict:
         return {}
 
 
+def agreed_now() -> dict[str, dict[str, dict]]:
+    """What the registry records: per extension, each guard a person agreed to, as it was agreed to.
+
+    Read from the file every time and kept whole, down to a field this script does not know, because it is
+    the only record there is of somebody's answer — and it is read in the shape `--elect` has always
+    written, so a registry from before agreeing was additive is still one.
+    """
+    found: dict[str, dict[str, dict]] = {}
+    guards = read(REGISTRY).get("guards")
+    for name, bodies in (guards.items() if isinstance(guards, dict) else ()):
+        for body in (bodies if isinstance(bodies, list) else ()):
+            if isinstance(body, dict) and isinstance(body.get("extension"), str):
+                found.setdefault(body["extension"], {})[name] = {
+                    word: value for word, value in body.items() if word != "extension"}
+    return found
+
+
+def offered_by(available: dict, key: str) -> dict[str, dict]:
+    declared = available.get(key)
+    return {name: body for name, body in declared.items() if isinstance(body, dict)} \
+        if isinstance(declared, dict) else {}
+
+
 def elect(keys: list[str]) -> int:
-    """Write `.slipwai/guards.json` for the extensions `keys` names — the ones a person agreed to."""
-    available = read(AVAILABLE)
-    return write_registry({key: list(available.get(key, {})) for key in set(keys)}, available)
+    """Agree to the guards of the extensions `keys` names, and keep every agreement already made.
+
+    It used to write the registry from `keys` alone, so agreeing to one extension's guard withdrew every
+    other's without a word (#121). An answer to *may this one refuse* is not an answer about the rest;
+    `--remove` is how one is taken back. An extension named here is agreed to as it is offered now.
+    """
+    available, agreed = read(AVAILABLE), agreed_now()
+    for key in sorted(set(keys)):
+        declared = offered_by(available, key)
+        if declared:
+            agreed[key] = declared
+        else:
+            agreed.pop(key, None)
+            print(f"guards: {key} offers no guard in this project, so there is nothing of its to agree to")
+    return write_registry(agreed)
 
 
-def write_registry(allowed: dict[str, list[str]], available: dict) -> int:
-    """`.slipwai/guards.json` from exactly what is allowed: per extension, which of its guards may fire.
+def remove(keys: list[str]) -> int:
+    """Take back the agreement to the guards of the extensions `keys` names, and keep every other."""
+    if not keys:
+        print("guards: name the extension whose guards may no longer refuse a tool call: "
+              "python3 scripts/extensions/guards.py --remove <key>", file=sys.stderr)
+        return 1
+    agreed = agreed_now()
+    gone = [key for key in sorted(set(keys)) if agreed.pop(key, None) is not None]
+    for key in sorted(set(keys) - set(gone)):
+        print(f"guards: {key} has no guard agreed to here, so nothing was removed")
+    return write_registry(agreed) if gone else 0
+
+
+def write_registry(agreed: dict[str, dict[str, dict]]) -> int:
+    """`.slipwai/guards.json` from exactly what is agreed: per extension, each of its guards that may fire.
 
     Per guard rather than per extension, because an agreement is per guard from 13.4 on. An extension that
     was agreed to when a quickstart was written and has *gained* a point since fires the one it was agreed
@@ -99,14 +148,13 @@ def write_registry(allowed: dict[str, list[str]], available: dict) -> int:
     written if the registry is a list of extension keys.
     """
     guards: dict[str, list[dict]] = {}
-    for key in sorted(allowed):
-        for name, body in sorted(available.get(key, {}).items()):
-            if name in allowed[key]:
-                guards.setdefault(name, []).append({"extension": key, **body})
+    for key in sorted(agreed):
+        for name, body in sorted(agreed[key].items()):
+            guards.setdefault(name, []).append({"extension": key, **body})
     REGISTRY.parent.mkdir(parents=True, exist_ok=True)
     REGISTRY.write_text(json.dumps({"v": 1, "guards": guards}, indent=2) + "\n", encoding="utf-8")
     attached = ", ".join(sorted(guards)) or "no guard"
-    firing = sum(1 for key, names in allowed.items() if names and key in available)
+    firing = sum(1 for names in agreed.values() if names)
     print(f"guards: {firing} extension(s) may refuse at {attached}")
     return 0
 
@@ -126,7 +174,7 @@ def agreed_already() -> dict[str, list[str]]:
             for key, names in found.items() if isinstance(key, str) and isinstance(names, list)}
 
 
-def newly(offered: dict[str, dict], already: dict[str, list[str]]) -> dict[str, dict]:
+def newly(offered: dict[str, dict], already: dict[str, dict]) -> dict[str, dict]:
     """Each extension's guards nobody has agreed to yet: what a person is actually asked about.
 
     An extension with nothing new drops out of the question entirely rather than appearing with an empty
@@ -164,19 +212,22 @@ def offer(keys: list[str]) -> int:
     Over `/dev/tty`, so a scripted or CI `./init` is never asked — and agrees to nothing new. A question
     about whether software may refuse what a person told it to do has one safe answer when nobody is there.
     """
-    available = read(AVAILABLE)
-    offered = {key: available.get(key, {}) for key in sorted(set(keys)) if available.get(key)}
+    available, agreed = read(AVAILABLE), agreed_now()
+    offered = {key: offered_by(available, key) for key in sorted(set(keys)) if offered_by(available, key)}
     if not offered:
         return elect([])
     already = agreed_already()
     # Only what this project actually has: a quickstart that agreed to an extension whose guards have gone
     # away carries a yes for nothing, and an entry for it would write a registry naming a guard nobody has.
-    carried = {key: [name for name in already.get(key, []) if name in offered[key]] for key in offered}
+    # And what was agreed to here already stays as it was agreed to: this is asked about the extensions one
+    # `./init` named, and an extension it did not name was not asked about, so it is not withdrawn either.
+    carried = {key: {name: agreed.get(key, {}).get(name, body) for name, body in offered[key].items()
+                     if name in already.get(key, []) or name in agreed.get(key, {})} for key in offered}
     asked = newly(offered, carried)
     if not asked:
         print("guards: carried from this project's quickstart — "
               f"{sum(len(names) for names in carried.values())} already agreed to, nothing asked")
-        return write_registry(carried, available)
+        return write_registry({**agreed, **carried})
     try:
         with open("/dev/tty", "r+", encoding="utf-8") as tty:
             if any(carried.values()):
@@ -194,11 +245,11 @@ def offer(keys: list[str]) -> int:
     except OSError:
         print("guards: nothing new asked and nothing new allowed — `./init` was not run from a terminal; "
               "`python3 scripts/extensions/guards.py --elect <keys>` allows them later", file=sys.stderr)
-        return write_registry(carried, available)
+        return write_registry({**agreed, **carried})
     if answer in ("y", "yes"):
         for key, declared in asked.items():
-            carried[key] = [*carried[key], *declared]
-    return write_registry(carried, available)
+            carried[key] = {**carried[key], **declared}
+    return write_registry({**agreed, **carried})
 
 
 def applies(body: dict, given: dict[str, str]) -> bool:
@@ -296,6 +347,8 @@ def main(argv: list[str]) -> int:
         return elect(argv[1:])
     if argv[0] == "--offer":
         return offer(argv[1:])
+    if argv[0] == "--remove":
+        return remove(argv[1:])
     given: dict[str, str] = {}
     rest = argv[1:]
     for index in range(0, len(rest) - 1, 2):

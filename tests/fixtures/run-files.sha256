@@ -78,6 +78,7 @@
 # why: 2026-11-19 3dc4712bacfc8837 logs.py: the paused docstring reworded to fit the module's size budget; no behaviour changes.
 # why: 2026-11-19 1f221288ab16ea02 scripts/extensions/project.py: behaviour changes on purpose on every platform alike (#109, defect 5) — after firing the project point, make agents rewrites an elected extension's AGENTS.md block from its GUIDANCE where it still differs, so an extension with no project hook is re-projected; --check's message says so. Nothing platform-specific moved: no path, process or shell handling changed.
 # why: 2026-11-19 3b9f97c943c69f2e session.py, guards.py and the new tool_event.py, the same on every platform and on purpose (#121, gap 1): a before-search guard is handed one JSON event on its stdin — tool, pattern, path, glob, type, command, cwd, session and agent — beside SLIPWAI_QUERY, which is unchanged but cut at 16,000 characters; every tool-call guard receives SLIPWAI_TOOL and SLIPWAI_POINT; and a guard's stdin and output are files rather than pipes, so its budget bounds the wait whatever it started. Nothing platform-specific moved.
+# why: 2026-11-19 172c0f1a4a3315a2 scripts/extensions/guards.py, the same on every platform and on purpose (#121, gap 4): --elect adds to the agreements .slipwai/guards.json already records instead of replacing them, --offer leaves an extension it was not given as it was, and --remove <key> is the new verb that takes one back. Nothing platform-specific moved.
 
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
@@ -95,10 +96,6 @@
 0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a  event-modelling-postgres-toy-serve  scripts/event-model/requirements.txt
 0e5bfd8cc725c921cc5d4e62ac852bd7399eb846886e8a0fb50006e8d9aecec8  event-modelling-memory-none  scripts/event-model/workspace.ts
 0e5bfd8cc725c921cc5d4e62ac852bd7399eb846886e8a0fb50006e8d9aecec8  event-modelling-postgres-toy-serve  scripts/event-model/workspace.ts
-10f02e23b8d5ff613ad9fa07e0c38a2ec27fa5e68e3deafac2b4c88090d2628a  event-modelling-memory-none  scripts/extensions/guards.py
-10f02e23b8d5ff613ad9fa07e0c38a2ec27fa5e68e3deafac2b4c88090d2628a  event-modelling-postgres-toy-serve  scripts/extensions/guards.py
-10f02e23b8d5ff613ad9fa07e0c38a2ec27fa5e68e3deafac2b4c88090d2628a  standard-memory-none  scripts/extensions/guards.py
-10f02e23b8d5ff613ad9fa07e0c38a2ec27fa5e68e3deafac2b4c88090d2628a  standard-postgres-toy-serve  scripts/extensions/guards.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-memory-none  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  event-modelling-postgres-toy-serve  scripts/agents/triage.py
 10fe574a5d03ad1aedecd5e806028034cc0c27487c339e153a786a21a5356ce1  standard-memory-none  scripts/agents/triage.py
@@ -351,6 +348,10 @@ c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  event-modellin
 c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  event-modelling-postgres-toy-serve  scripts/agents/models.py
 c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  standard-memory-none  scripts/agents/models.py
 c7ecc2ac3ffdeb1e1e1479398e68dd9e567da5c797ecb3d950383d6cf64bad51  standard-postgres-toy-serve  scripts/agents/models.py
+c8067723991bb809d2f8ffc66cf9e402583d9a1bc7d98b0d46b0b3cb29e38b5d  event-modelling-memory-none  scripts/extensions/guards.py
+c8067723991bb809d2f8ffc66cf9e402583d9a1bc7d98b0d46b0b3cb29e38b5d  event-modelling-postgres-toy-serve  scripts/extensions/guards.py
+c8067723991bb809d2f8ffc66cf9e402583d9a1bc7d98b0d46b0b3cb29e38b5d  standard-memory-none  scripts/extensions/guards.py
+c8067723991bb809d2f8ffc66cf9e402583d9a1bc7d98b0d46b0b3cb29e38b5d  standard-postgres-toy-serve  scripts/extensions/guards.py
 c917daeb3abc8451c8ca7969069c4712e0e6245f82f62cc8630f8c822c1a0fed  event-modelling-memory-none  scripts/agents/acp.py
 c917daeb3abc8451c8ca7969069c4712e0e6245f82f62cc8630f8c822c1a0fed  event-modelling-postgres-toy-serve  scripts/agents/acp.py
 c917daeb3abc8451c8ca7969069c4712e0e6245f82f62cc8630f8c822c1a0fed  standard-memory-none  scripts/agents/acp.py

@@ -254,8 +254,12 @@ the manifests.
 
 `./init` asks this question over the terminal. So a scripted or CI `./init` is never asked, and agrees to
 nothing. No answer means *no*. That is the only safe default for a question about refusing somebody's tool
-calls. If nobody agreed to an extension's guard, the guard never fires. To change the answer later, run
-`python3 scripts/extensions/guards.py --elect <keys>`.
+calls. If nobody agreed to an extension's guard, the guard never fires. To change the answer later:
+
+- `python3 scripts/extensions/guards.py --elect <keys>` agrees to the guards of the extensions it names.
+  It keeps every agreement that is already there.
+- `python3 scripts/extensions/guards.py --remove <keys>` takes the agreement back for the extensions it
+  names. It keeps the others.
 
 **Where guards fire from.** All of a harness's own events arrive at one place: `scripts/agents/session.py`.
 These events are the pre-tool event, the stop event and the compaction events. `session.py` runs the
@@ -326,7 +330,8 @@ slipwai extension check <dir>              # just the manifest, and the six it i
 slipwai extension install <key>            # into the package directory
 slipwai extension list                     # what is installed, and what each attaches to
 slipwai hooks                              # every point, and what is on it
-python3 scripts/extensions/guards.py --elect <keys>   # in a project: who may refuse a tool call
+python3 scripts/extensions/guards.py --elect <keys>   # in a project: one more may refuse a tool call
+python3 scripts/extensions/guards.py --remove <keys>  # in a project: it may not any more
 ```
 
 The scaffold ships a `Makefile` with `check`, `release` and `register`. It also ships a CI workflow that

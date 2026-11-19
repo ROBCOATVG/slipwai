@@ -159,24 +159,6 @@ class InboxTest(Fixture):
         self.assertIn("waiting on you: nothing", said)
         self.assertIn("left for you to read, holding nothing up: 1", said)
 
-    def test_a_merge_waiting_on_a_red_trunk_is_paused_and_not_waiting_on_anybody(self) -> None:
-        """lean-coffee-club said *waiting on you* for MT2 and MT5 while trunk's CI ran; nobody had anything
-        to do, and the harbourmaster asked for both merges again when it went green."""
-        self.deck("ORD", logs.entry("parked", fairway="ORD", slice="L01", cause="trunk", waiting="green-trunk",
-                                    why="L01: the merge was refused: trunk is red", t=when(3)))
-        row = self.board()["inbox"][0]
-        self.assertEqual((row["paused"], row["waiting_on"]), ("yes", "the harness"))
-        said = "\n".join(lines(self.root))
-        self.assertIn("waiting on you: nothing", said)
-        self.assertIn("paused, nothing for you to do: 1", said)
-
-    def test_a_question_and_a_park_on_a_person_are_still_waits(self) -> None:
-        self.deck("ORD", logs.entry("told", fairway="ORD", message="a note", t=when(9)),
-                  logs.entry("parked", fairway="ORD", why="open questions", t=when(5)))
-        on_you, resting, notes = fleet.inbox_split(self.board()["inbox"])
-        self.assertEqual(([row["kind"] for row in on_you], resting, [row["kind"] for row in notes]),
-                         (["parked"], [], ["told"]))
-
     def test_an_answered_message_is_not_waiting_on_anybody(self) -> None:
         """A `read` carries the `t` of the `told` it answers, which is what makes it a receipt."""
         self.deck("ORD", logs.entry("told", fairway="ORD", message="look at this", t=when(5)),

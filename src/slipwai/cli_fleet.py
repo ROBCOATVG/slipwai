@@ -19,10 +19,11 @@ from .assets import this_command
 from .cli_start import start_main
 from .deck import RECENT, recent, streams
 from .errors import GenerationError, refuse
-from .fleet import NOTHING, board, inbox_detail, inbox_split
+from .fleet import NOTHING, board, inbox_detail
 from .fleet_page import headline
 from .fleet_record import clock_of
 from .harbour import config
+from .inbox_rows import inbox_split
 from .project.harbour import CONFIG
 
 CLEAR = "\x1b[H\x1b[2J"

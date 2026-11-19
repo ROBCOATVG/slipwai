@@ -32,7 +32,8 @@ from typing import IO
 from .assets import VERSION
 from .cli_fleet import config, lines, stream_lines
 from .deck import RECENT
-from .fleet import board, inbox_detail, inbox_split
+from .fleet import board, inbox_detail
+from .inbox_rows import inbox_split
 from .project.harbour import CONFIG
 from .shell_environment import project_python
 from .talk_said import tell

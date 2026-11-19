@@ -74,16 +74,19 @@ A second feature is not drawn alone. Before it draws, the stage lists what the p
 - `docs/design.md`, and anything under `docs/design/`
 
 The storyboard for the new feature then shows the product's flow with the new feature in it. Every surface
-on it is one of three kinds:
+on it is one of four kinds:
 
 | Kind | What you see | Are you asked? |
 |---|---|---|
-| **Built** | The real screen: the app's own preview, or an earlier feature's page, shown where it lies | No |
+| **Built** | The real screen: the app's own preview, shown where it lies | No |
+| **Planned** | A screen that an earlier feature had approved and that is not built yet: that feature's page, shown where it lies | No. You approved it under the earlier feature |
 | **Changed** | A built screen as this feature alters it, beside the original | Yes |
 | **New** | A screen this feature adds | Yes |
 
-**Approve storyboard** marks the changed and new states only. A built screen is not approved again, and
-`mock-states.md` says that it was shown and not asked about.
+**Approve storyboard** marks the changed and new states only. A built or planned screen is not approved
+again, and `mock-states.md` says that it was shown and not asked about. A screen is planned only while
+nothing shows that it is built. When the app has a preview of it, a photograph, an implemented screen in
+the event model or a route, the next feature's storyboard frames it as built.
 
 New and changed screens use the app's own stylesheet and sit in its shell, so they look like screens of
 this product. A direction that you put under `docs/design/` still wins. The stage proposes a look of its

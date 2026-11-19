@@ -21,6 +21,13 @@ status. The design review's photographs. `docs/design.md`, and what a person han
 **What it says is evidence, not a verdict.** A preview, a route, a frame whose slice is `implemented`, a
 photograph: each is listed as what it is and where, and the stage decides what to frame. It reads and never
 changes the project, but for the one page `--write` keeps, which says the same thing for the same project.
+
+**It says what each surface is, from that evidence** (`classified`). `built`: a preview, else a `ui` frame whose
+slice is `implemented`, else a design-review photograph, else a route — in that order, and the first that
+applies is named, with the page or photograph that shows the surface where one does. `planned`: an earlier
+feature's surface with a state somebody approved and no evidence at all that it is built. Names are matched
+across the sources by their words — a preview's file names, a frame's name, the component a route renders, a
+route's last segment — and each row says what it matched, because a match by name is a reading and not a fact.
 """
 from __future__ import annotations
 
@@ -54,12 +61,19 @@ SHELL = re.compile(r"^(App|Layout|Shell|Root)\b|Layout\.|Shell\.", re.IGNORECASE
 IMAGES = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 #: What a storyboard says a surface is, on the frame or link that shows it; `drawn.py` on the board reads the same.
 TAG = re.compile(r"<[a-zA-Z][^<>]*>")
-KIND = re.compile(r"""\bdata-surface=["'](built|changed|new)["']""", re.IGNORECASE)
+KIND = re.compile(r"""\bdata-surface=["'](built|changed|new|planned)["']""", re.IGNORECASE)
+#: The two kinds a storyboard frames and nobody is asked about: the project's own, and an earlier feature's.
+FRAMED = ("built", "planned")
+ELEMENT = re.compile(r"""\b(?:element|component|Component)\s*[=:]\s*\{?\s*<?\s*([A-Z][A-Za-z0-9]*)""")
+WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+")
+#: What a frame or a component is called beside the surface's own name, and the words a title spends on grammar.
+SUFFIX = frozenset({"screen", "form", "page", "panel", "control", "dialog", "view", "step", "route"})
+SMALL = frozenset({"a", "an", "the", "your", "my", "of", "to", "with", "for", "is", "who", "this"})
 TARGET = re.compile(r"""(?:src|href)=["']([^"'#?]+\.html)["']""", re.IGNORECASE)
 
 
 def kinds(home: Path) -> dict[Path, str]:
-    """Each page a feature's storyboard marks `built`, `changed` or `new`, by its resolved path."""
+    """Each page a feature's storyboard marks `built`, `planned`, `changed` or `new`, by its resolved path."""
     board = home / "storyboard.html"
     found: dict[Path, str] = {}
     if not board.is_file():
@@ -148,16 +162,23 @@ def apps(root: Path) -> list[dict[str, Any]]:
         app = root / record["path"]
         files = sources(app)
         routes: list[dict[str, str]] = []
+        renders: dict[str, str] = {}
         for path in files:
-            for route in ROUTE.findall(path.read_text(encoding="utf-8", errors="replace")):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for at in ROUTE.finditer(text):
+                route = at.group(1)
                 if route not in [one["path"] for one in routes]:
                     routes.append({"path": route, "file": rel(path, root)})
+                    # The component is on the route's own tag or row: read up to the next route, no further.
+                    after = text[at.end():at.end() + 240]
+                    after = after[:nearer.start()] if (nearer := ROUTE.search(after)) else after
+                    renders[route] = named.group(1) if (named := ELEMENT.search(after)) else ""
         screens = app / "screens"
         found.append({"name": name, "path": record["path"],
                       "styles": sorted(rel(sheet, root) for sheet in (app / "src/styles").glob("*.css")),
                       "shell": [rel(path, root) for path in files
                                 if SHELL.search(path.name) and len(path.relative_to(app).parts) <= 3],
-                      "routes": routes, "screens": rel(screens, root) if screens.is_dir() else "",
+                      "routes": routes, "renders": renders, "screens": rel(screens, root) if screens.is_dir() else "",
                       "committed": tracked(screens, root) if screens.is_dir() else None,
                       "previews": previews(screens, root)})
     return found
@@ -183,8 +204,124 @@ def frames(root: Path) -> tuple[list[dict[str, Any]], str]:
                 shown = [{"state": str(mock.get("state", "")), "at": str(mock.get("at", ""))}
                          for mock in frame.get("mockups") or [] if isinstance(mock, dict)]
                 found.append({"name": str(frame.get("name", "")), "slice": str(one.get("id", "")),
-                              "status": str(one.get("status", "")), "mockups": shown})
+                              "status": str(one.get("status", "")), "mockups": shown,
+                              "code": [str(path) for path in one.get("code") or [] if isinstance(path, str)]})
     return found, ""
+
+
+def words(name: str) -> tuple[str, ...]:
+    """A name as its words, lower-case and singular, however it is spelled: `NewWorkspaceForm`,
+    `new-workspace`, `New workspace` and `/workspaces/new` are compared by these."""
+    return tuple(word.lower().rstrip("s") or word.lower() for word in WORD.findall(name))
+
+
+def key(name: str) -> tuple[str, ...]:
+    """The words that name the surface: without a title's grammar, and without `Screen` or `Form` at the end."""
+    found = [word for word in words(name) if word not in SMALL]
+    while len(found) > 1 and found[-1] in SUFFIX:
+        found.pop()
+    return tuple(found)
+
+
+def shared(stems: list[tuple[str, ...]]) -> tuple[str, ...]:
+    """The words every one of a surface's preview files begins with: `deal-console` of `deal-console-empty`."""
+    first = stems[0] if stems else ()
+    size = next((at for at in range(len(first)) if any(stem[:at + 1] != first[:at + 1] for stem in stems)), len(first))
+    return first[:size]
+
+
+def matched(named: tuple[str, ...], rows: list[dict[str, Any]], within: bool = False) -> dict[str, Any] | None:
+    """The surface a name belongs to, or `None`: the one called exactly that, else the one whose preview files
+    begin with it — the most general of those — else, for a route's last segment (`within`), one whose files
+    have it somewhere in their name. A name of no words matches nothing."""
+    if not named:
+        return None
+    for row in rows:
+        if named in row["keys"]:
+            return row
+    begins = [row for row in rows if any(stem[:len(named)] == named for stem in row["stems"])]
+    if not begins and within:
+        begins = [row for row in rows if any(stem[at:at + len(named)] == named for stem in row["stems"]
+                                             for at in range(len(stem)))]
+    return min(begins, key=lambda row: (len(row["keys"][0]) if row["keys"] else 0, row["name"])) if begins else None
+
+
+def classified(earlier: list[dict[str, Any]], browser: list[dict[str, Any]], modelled: list[dict[str, Any]],
+               photographs: list[str], root: Path) -> list[dict[str, Any]]:
+    """Every surface the evidence names, with what it is — `built` or `planned` — the first evidence in the
+    order preview, implemented `ui` frame, photograph, route, and its picture: the page or photograph that
+    shows it, or `""` where nothing does."""
+    rows: list[dict[str, Any]] = []
+
+    def row(name: str, evidence: str, picture: str, names: list[str], stems: list[str], kind: str = "built",
+            **more: Any) -> dict[str, Any]:
+        rows.append({"name": name, "kind": kind, "evidence": evidence, "picture": picture, "routes": [],
+                     "frames": [], "approved": [], **more, "stems": [words(stem) for stem in stems],
+                     "keys": [one for one in dict.fromkeys(key(name) for name in names) if one]})
+        return rows[-1]
+
+    for app in browser:
+        for one in app["previews"]:
+            stems = [Path(state["page"]).stem for state in one["states"]]
+            made = row(one["name"], "preview", one["states"][0]["page"], [one["name"]], stems,
+                       states=len(one["states"]), pages=[state["page"] for state in one["states"]])
+            made["keys"].insert(0, shared(made["stems"]))
+    previewed = list(rows)
+
+    def shown(path: str, renders: str) -> dict[str, Any] | None:
+        """The previewed surface a route shows: by the component it renders, else by its last literal segment."""
+        last = [part for part in path.split("/") if part and part[0] not in ":*["][-1:]
+        return matched(key(renders), previewed) or matched(words(last[0]) if last else (), previewed, within=True)
+
+    routed = {renders: one for app in browser for path, renders in app.get("renders", {}).items()
+              if renders and (one := shown(path, renders)) is not None}
+    shot: dict[str, list[str]] = {}
+    for path in photographs:  # specs/<feature>/slices/<slice>/design/<photograph>
+        shot.setdefault(path.split("/")[3], []).append(path)
+    by_name: dict[str, list[dict[str, Any]]] = {}
+    for frame in modelled:
+        by_name.setdefault(frame["name"], []).append(frame)
+    for name, group in by_name.items():
+        drawn = [mock["at"] for frame in group for mock in frame["mockups"] if (root / mock["at"]).is_file()]
+        seen = [path for frame in group for path in shot.get(frame["slice"], [])]
+        implemented = any(frame["status"] == "implemented" for frame in group)
+        said = [f"{name} ({', '.join(frame['slice'] + ' ' + (frame['status'] or 'no status') for frame in group)})"]
+        found = next((one for one in previewed if {Path(at).stem for frame in group for at in
+                                                   (mock["at"] for mock in frame["mockups"])}
+                      & {Path(page).stem for page in one["pages"]}), None) or matched(key(name), previewed)
+        # Else by the slice's own `code`: the route component it names, and the previews that route shows.
+        linked = [found] if found is not None else list({id(one): one for frame in group for path in frame["code"]
+                                                         if (one := routed.get(Path(path).stem))}.values())
+        for one in linked:
+            one["frames"] += said
+        if linked:
+            continue
+        if implemented or seen:  # a frame nobody built and nobody photographed is not evidence of anything
+            row(name, "frame" if implemented else "photograph", (drawn or seen or [""])[0], [name], [])["frames"] += said
+    for app in browser:
+        for route in app["routes"]:
+            renders = app.get("renders", {}).get(route["path"], "")
+            found = shown(route["path"], renders) or matched(key(renders), rows)
+            if found is None:
+                found = row(route["path"], "route", "", [renders] if renders else [], [], file=route["file"])
+            found["routes"].append(route["path"] + (f" ({renders})" if renders else ""))
+    for one in earlier:
+        for surface in one["surfaces"]:
+            agreed = [state["state"] for state in surface["states"] if state["verdict"] == "approved"]
+            found = matched(key(surface["name"]), rows) or matched(words(Path(surface["page"]).stem), rows)
+            if found is not None and found["kind"] == "built":
+                found["approved"].append(f"{one['feature']}: {surface['page']}")
+            elif found is None and agreed:  # approved there, and nothing here says anybody built it
+                row(surface["name"], "approved", surface["page"], [surface["name"]], [Path(surface["page"]).stem],
+                    kind="planned", feature=one["feature"], states=len(agreed))
+    return [{name: value for name, value in one.items() if name not in ("stems", "keys", "pages")} for one in rows]
+
+
+def counted(surfaces: list[dict[str, Any]]) -> dict[str, int]:
+    """How many of each: built, how many of those have no picture, and planned."""
+    return {"built": sum(one["kind"] == "built" for one in surfaces),
+            "unseen": sum(one["kind"] == "built" and not one["picture"] for one in surfaces),
+            "planned": sum(one["kind"] == "planned" for one in surfaces)}
 
 
 def listing(feature: str, root: Path = ROOT) -> dict[str, Any]:
@@ -202,7 +339,9 @@ def listing(feature: str, root: Path = ROOT) -> dict[str, Any]:
             else {"follow": "earlier", "files": kept} if kept else {"follow": "proposed", "files": []})
     built = any(app["previews"] or app["routes"] for app in browser) or bool(photographs) \
         or any(frame["status"] == "implemented" for frame in modelled)
+    surfaces = classified(earlier, browser, modelled, photographs, root)
     return {"feature": feature, "storyboards": earlier, "apps": browser, "frames": modelled, "model": unread,
+            "surfaces": surfaces, "counts": counted(surfaces),
             "photographs": photographs, "design": "docs/design.md" if (root / "docs/design.md").is_file() else "",
             "handed": handed, "look": look,
             "storyboard": "extend" if earlier else "from-what-exists" if built else "first"}
@@ -218,6 +357,35 @@ STORYBOARD = {"extend": "this project has a storyboard — frame its surfaces an
               "first": "nothing is drawn or built yet — this is the project's first storyboard"}
 
 
+EVIDENCE = {"preview": "a preview", "frame": "an implemented `ui` frame", "photograph": "a design-review photograph",
+            "route": "a route alone", "approved": "approved, not built"}
+
+
+def surfaces_said(surfaces: list[dict[str, Any]]) -> list[str]:
+    """What each surface is, one row each: the word, the first evidence for it, and the picture to frame."""
+    if not surfaces:
+        return []
+    counts = counted(surfaces)
+    out = ["## What each surface is", "",
+           f"{counts['built']} built, {counts['unseen']} of them with no picture; {counts['planned']} planned. "
+           "Matched by name across the sources, so each row says what it matched: read it as evidence.", ""]
+    for one in surfaces:
+        unseen = one["kind"] == "built" and not one["picture"]
+        rest = [f"route {route}" for route in one["routes"]] + [f"frame {frame}" for frame in one["frames"]] \
+            + [f"approved for {approved}" for approved in one["approved"]]
+        if one["kind"] == "planned":
+            shows = (f"approved for {one['feature']} ({one['states']} state(s)) and nothing here says it is built: "
+                     f"frame {one['picture']}")
+        elif unseen:
+            shows = f"{EVIDENCE[one['evidence']]}, and nothing shows how it looks"
+        else:
+            shows = f"{EVIDENCE[one['evidence']]}: {one['picture']}" \
+                + (f" ({one['states']} state(s))" if one.get("states") else "")
+        out.append(f"- {one['kind']}{', no picture' if unseen else ''} — {one['name']} — {shows}"
+                   + (f"; {'; '.join(rest)}" if rest else ""))
+    return [*out, ""]
+
+
 def said(found: dict[str, Any]) -> str:
     """The list as the page the stage reads: every source, where it is, and what it is evidence of."""
     out = [f"# What exists, for {found['feature']}", "",
@@ -225,8 +393,10 @@ def said(found: dict[str, Any]) -> str:
            "", f"- **Look:** {LOOK[found['look']['follow']]}"
                + (f": {', '.join(found['look']['files'][:6])}" if found["look"]["files"] else "") + ".",
            f"- **Storyboard:** {STORYBOARD[found['storyboard']]}.",
-           '- **Marking:** frame what is listed here where it lies, `data-surface="built"`; draw what this feature '
-           'changes or adds as a page of its own, `data-surface="changed"` or `data-surface="new"`.', ""]
+           '- **Marking:** frame what is listed here where it lies, `data-surface="built"` — or '
+           '`data-surface="planned"` where it is approved for an earlier feature and not built; draw what this '
+           'feature changes or adds as a page of its own, `data-surface="changed"` or `data-surface="new"`.', ""]
+    out += surfaces_said(found.get("surfaces", []))
     for one in found["storyboards"]:
         out += [f"## Earlier feature {one['feature']}", "",
                 f"Storyboard: {one['storyboard'] or 'none; its surface pages are below'}", ""]

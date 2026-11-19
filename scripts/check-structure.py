@@ -188,7 +188,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # model, and who answers at each stop of the run.
               # A surface page read as the board reads it, in one place: the Voyage window, the upstream
               # stop and `brief check` all approve or count the same states.
-              "drawn",
+              # And what its storyboard says each surface is — built, planned, changed or new — read from the marks.
+              "framed", "drawn",
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",
@@ -213,6 +214,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # a person's word to a stage (kept with what was said), or a review with something to discuss —
               # and the storyboard's card on the Screens tab, with what the drawing found and the conversation.
               "stage_talk", "step_record", "review_reading", "upstream", "storyboard_card", "storyboard_script",
+              "storyboard_kinds",
               # And the board kept current: one read of a project shared by every poll, the one poll that
               # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
               "board_read", "voyage_live", "on_you", "fleet_tab",

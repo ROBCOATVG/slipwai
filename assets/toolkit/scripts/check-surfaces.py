@@ -25,6 +25,11 @@ already has, marked `data-surface="built"`, so a reader sees one flow; the verdi
 changes and adds, and `mock-states.md` carries a `<!-- built: … -->` line for each built surface instead of a
 block. Nothing here asks after those. A slice that *names* one is still refused, and told why: it was shown,
 not put up for a verdict, so nothing about it was approved to build.
+
+**A planned surface is the same, for another reason.** `data-surface="planned"` is a surface an earlier feature
+had approved and nobody has built yet, framed here so the flow reads whole; its line is `<!-- planned: … -->`.
+Its verdict was given under the earlier feature and the slice that delivers it is that feature's, so a slice of
+this feature that names it is refused too, and told which of the two it meant.
 """
 from __future__ import annotations
 
@@ -50,6 +55,8 @@ STATE = re.compile(r"^-\s*(?P<state>.+?)\s*—\s*(?P<verdict>approved|parked|n/a
 PAIR = re.compile(r"^(?P<surface>.+?)\s*·\s*(?P<state>.+?)$")
 #: A surface the storyboard framed as built, as the board writes it: its page's title, whole, and where it is.
 BUILT = re.compile(r"^<!-- built: (?P<title>.+) — (?P<page>\S+) \(", re.MULTILINE)
+#: And one it framed as planned: approved for an earlier feature, not built yet, and not this feature's to deliver.
+PLANNED = re.compile(r"^<!-- planned: (?P<title>.+) — (?P<page>\S+) \(", re.MULTILINE)
 NONE = "surfaces: none"
 FIX = "python3 scripts/check-surfaces.py"
 
@@ -80,11 +87,12 @@ def every_state(text: str) -> dict[str, dict[str, str]]:
     return found
 
 
-def built(text: str) -> dict[str, str]:
+def built(text: str, lines: re.Pattern[str] = BUILT) -> dict[str, str]:
     """Every name a built surface answers to — its page's title, and each half of `<surface> — <state>` —
-    against the page that shows it. Only ever read to say why a slice may not name one."""
+    against the page that shows it. Only ever read to say why a slice may not name one. With `PLANNED`, the
+    same of the surfaces framed as planned."""
     found: dict[str, str] = {}
-    for line in BUILT.finditer(text):
+    for line in lines.finditer(text):
         for name in (line.group("title"), *line.group("title").split(" — ")):
             found.setdefault(name.strip(), line.group("page"))
     return found
@@ -124,7 +132,7 @@ def faults(states: str, split: str, where: str) -> list[str]:
                 f"{', '.join(f'{s} · {t}' for s, t in sorted(named))}. One of the two is wrong, and it is a "
                 f"question for the mock-up review rather than a thing to resolve here"] if named else []
     verdicts = every_state(states)
-    standing = built(states)
+    standing, coming = built(states), built(states, PLANNED)
     found: list[str] = []
     claimed: dict[tuple[str, str], list[str]] = {}
     for slice_id, pairs in delivered(split).items():
@@ -135,6 +143,12 @@ def faults(states: str, split: str, where: str) -> list[str]:
                              f"built ({standing[surface]}): it was framed for the flow and never put up for a "
                              f"verdict. Where this feature changes it, draw the change as a page of its own, "
                              f'mark it `data-surface="changed"` in the storyboard and get its verdict')
+            elif surface not in allowed and surface in coming:
+                found.append(f"{where}: {slice_id} delivers `{surface} · {state}` and that surface is shown as "
+                             f"planned ({coming[surface]}): an earlier feature had it approved and has not built "
+                             f"it, so the slice that delivers it is that feature's. Where this feature changes "
+                             f'it, draw the change as a page of its own, mark it `data-surface="changed"` in '
+                             f"the storyboard and get its verdict")
             elif surface not in allowed:
                 found.append(f"{where}: {slice_id} delivers `{surface} · {state}` and no surface of that "
                              f"name is in mock-states.md. Nobody has seen it")

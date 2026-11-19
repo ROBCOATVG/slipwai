@@ -105,21 +105,29 @@ is the list of what to read first, each thing with where it is and what it is ev
    photographs, and anything a person handed over under `docs/design/`.
 
 The page ends its opening with three lines the rest of this stage follows: whose **look** the drawing takes,
-what the **storyboard** is made from, and how a surface is **marked**. A first feature in a project with
-nothing built gets a short page saying so, and this stage runs as it always did.
+what the **storyboard** is made from, and how a surface is **marked**. Under them, *What each surface is*
+lists every surface the evidence names, one row each, with the word it takes and the page to frame. A first
+feature in a project with nothing built gets a short page saying so, and this stage runs as it always did.
 
-**Every surface on the storyboard is one of three things, and says which:**
+**Every surface on the storyboard is one of four things, and says which:**
 
 | | What it is | Where it is | A verdict? |
 |---|---|---|---|
-| `built` | the project's already: a committed preview, an earlier feature's surface | where it lies — never copied, never redrawn | no. It is shown for the flow |
+| `built` | the project's already: a committed preview, an earlier feature's surface that has been built | where it lies — never copied, never redrawn | no. It is shown for the flow |
+| `planned` | approved for an earlier feature and not built yet | the earlier feature's own page, where it lies | no. Its verdict was given there, and it is that feature's to deliver |
 | `changed` | a built surface this feature alters: a new panel, a new state, a different step | a page of its own beside the storyboard, drawing **only the states this feature changes or adds** | yes |
 | `new` | a surface this feature adds | a page of its own beside the storyboard | yes |
 
 What counts as built is evidence the list gives, in this order: a committed preview, a `ui` frame whose slice
-is `implemented`, a design-review photograph, a route. A surface an earlier feature had approved and nothing
-has built yet is framed as `built` too — it is that feature's, settled there — and its cell says in words
-that it is approved and not yet built.
+is `implemented`, a design-review photograph, a route. **`planned` is the word for what is settled and not
+there yet:** an earlier feature's surface with at least one state a person approved, and no evidence in that
+list that anybody built it. It is framed from that feature's page, exactly as a built surface is framed from
+its preview, and it is treated as a built one is — not drawn again, not asked about, not in this feature's
+`mock-states.md` as a block, not this feature's to deliver. The moment a preview, an implemented frame, a
+photograph or a route says it exists, it is `built`. An earlier feature's surface nobody approved — unjudged,
+or parked — is neither: it is a question still open under that feature, and this storyboard names it as a box
+in the flow and frames nothing. `existing.md` says which word each surface takes; where you disagree with a
+row, the row says what it matched, so say in `research.md` what you framed instead and why.
 
 ## 1. The researcher
 
@@ -247,9 +255,11 @@ screen leads to each, and where each leads back — and the page frames the buil
 the app's own preview, or the earlier feature's page, by relative path where it lies
 (`../../../<app>/screens/<page>.html`, `../../<feature>/mockups/<page>.html`). Never a copy, never a redraw,
 never a picture. **Mark every frame and link that shows a surface**, on the `<iframe>` or `<a>` itself:
-`data-surface="built"`, `data-surface="changed"` or `data-surface="new"`. That mark is what the board reads to
-show the three apart and to ask a verdict on the last two only; a built frame without it is read as a mock-up
-somebody handed over, and put up for approval as if it were new.
+`data-surface="built"`, `data-surface="planned"`, `data-surface="changed"` or `data-surface="new"`. That mark
+is what the board reads to show the four apart and to ask a verdict on the last two only; a built or planned
+frame without it is read as a mock-up somebody handed over, and put up for approval as if it were new. **The
+legend the storyboard draws names all four** — built, planned, changed, new — with the gap's beside them, and
+a planned frame's cell says which feature approved it.
 
 **Where the project has a storyboard, add to that flow; where it has none, this is the first, made from what
 exists.** A project that crossed from version 1 has dozens of built screens and no storyboard: draw the flow
@@ -288,12 +298,14 @@ reason. A state with neither is not a decision, it is a blank.
 
 **Only `changed` and `new` surfaces have a block.** A `built` surface was shown for the flow and nobody was
 asked about it, so it has no `## Surface:` block and no state is marked for it: a state marked `approved` here
-is a state the split then has to deliver, and a built screen is delivered already. Ask a person about a
-`changed` surface's changed and added states, and about a `new` surface's states, and about nothing else. The
-board writes one line per built frame above the blocks — `<!-- built: <its title> — <its page> (…) -->` — so
-the file says what was shown; where you write the file by hand, write the same line. A slice that names a
-built surface is refused by `check-surfaces`: where this feature changes it, it is `changed`, with a page and
-a verdict of its own.
+is a state the split then has to deliver, and a built screen is delivered already. A `planned` surface has
+none either: its states were approved under the earlier feature, and the slice that delivers them is that
+feature's. Ask a person about a `changed` surface's changed and added states, and about a `new` surface's
+states, and about nothing else. The board writes one line per framed surface above the blocks —
+`<!-- built: <its title> — <its page> (…) -->`, `<!-- planned: <its title> — <its page> (…) -->` — so the file
+says what was shown; where you write the file by hand, write the same line. A slice that names a built or a
+planned surface is refused by `check-surfaces`: where this feature changes it, it is `changed`, with a page
+and a verdict of its own.
 
 **A feature with no surface at all** — a migration, an integration, a scheduled job — writes the whole file
 as `surfaces: none`, with the sentence saying why, and the stage closes. That is a valid answer and the
@@ -319,6 +331,6 @@ When the specification changes what a surface is for, or adds one. Not when a sl
 built. A re-run reviews only the surfaces that moved, and leaves the rest of `mock-states.md` alone.
 
 **A further feature is not a re-run of an earlier feature's stage.** It runs the stage for itself, under its
-own `specs/<feature>/mockups/`, with the earlier features' surfaces and the built app framed in as `built`
-(section 0). The earlier feature's `mock-states.md` is not reopened and not copied: where the new feature
+own `specs/<feature>/mockups/`, with the built app framed in as `built` and the earlier features' surfaces
+as `built` or `planned`, whichever the evidence says (section 0). The earlier feature's `mock-states.md` is not reopened and not copied: where the new feature
 alters one of its surfaces, that surface is `changed` here, and the verdict on the change is this feature's.

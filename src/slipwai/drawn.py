@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import hashlib
 import html
-import json
 import re
 import time
 from pathlib import Path
+
+from .framed import FRAMED, built_pages, planned_pages, surface_kinds, titled
+from .framed import app_look as app_look  # read by name from here by the Voyage window
 
 _FEATURE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 _ARTICLE = re.compile(r'<article\b(?P<tag>[^>]*\bclass="[^"]*\bstate\b[^"]*"[^>]*)>(?P<body>.*?)</article>',
@@ -28,14 +30,6 @@ _NOT_A_SURFACE = frozenset({"storyboard.html", "index.html"})
 _EMBEDDED = re.compile(r"""(?:src|href)=["']([^"'#?]+\.html)["']""", re.IGNORECASE)
 #: What a page with no state article is: one state, the page as shown.
 SHOWN = "shown"
-#: What a storyboard says a surface is, on the frame or link that shows it (`data-surface`). `built` is the
-#: project's own, framed from where it lies and never put up for a verdict; `changed` and `new` are this
-#: feature's pages. An unmarked page is read as it always was.
-KINDS = ("built", "changed", "new")
-_TAG = re.compile(r"<[a-zA-Z][^<>]*>")
-_KIND = re.compile(r"""\bdata-surface=["'](built|changed|new)["']""", re.IGNORECASE)
-
-
 def _plain(text: str) -> str:
     text = re.sub(r"<[^>]+>", "", text)
     text = html.unescape(text)
@@ -89,45 +83,20 @@ def decided(who: str) -> str:
     return " (decided by a person)" if who.lower() == "person" else f" (decided by {who})"
 
 
-def surface_kinds(home: Path) -> dict[Path, str]:
-    """Each page the storyboard marks, by its resolved path, with what it says the page is; in its order."""
-    board = home / "storyboard.html"
-    found: dict[Path, str] = {}
-    if not board.is_file():
-        return found
-    for tag in _TAG.findall(board.read_text(encoding="utf-8", errors="replace")):
-        kind, target = _KIND.search(tag), _EMBEDDED.search(tag)
-        if kind and target:
-            found.setdefault((home / target.group(1)).resolve(), kind.group(1).lower())
-    return found
-
-
-def built_pages(home: Path) -> list[Path]:
-    """The pages a storyboard frames as built — inside the project, and there — in the order it shows them."""
-    project = home.parents[2].resolve()
-    return [page for page, kind in surface_kinds(home).items()
-            if kind == "built" and page.is_file() and page.is_relative_to(project)]
-
-
-def titled(page: Path) -> str:
-    """A built page's own title, whole: a preview's is `<surface> — <state>`, and both halves are the name."""
-    title = _TITLE.search(page.read_text(encoding="utf-8", errors="replace")[:8192])
-    return (_plain(title.group(1)) if title else "") or page.stem
-
-
 def surface_pages(home: Path) -> list[Path]:
     """The surfaces of one feature's mock-ups: the pages beside the storyboard, else the pages it embeds or links.
 
     Every page but the storyboard and the contents page, where the stage drew them. Where it drew none, because
     a person handed the mock-ups over (`docs/design/`) and the stage storyboarded those instead of redrawing
     them, the surfaces are the pages the storyboard shows — inside the project, and there. Never a page the
-    storyboard marks `built`: that is the project's own, shown for the flow, and nobody is asked about it. The
+    storyboard marks `built` or `planned`: the project's own, or an earlier feature's approved and not built
+    yet, shown for the flow, and nobody is asked about either here. The
     one reading of "drawn" for every question that asks it: two readings were a storyboard the board offered
     to approve and then could not.
     """
     kinds = surface_kinds(home)
     beside = sorted(page for page in home.glob("*.html")
-                    if page.name not in _NOT_A_SURFACE and kinds.get(page.resolve()) != "built")
+                    if page.name not in _NOT_A_SURFACE and kinds.get(page.resolve()) not in FRAMED)
     board = home / "storyboard.html"
     if beside or not board.is_file():
         return beside
@@ -135,26 +104,9 @@ def surface_pages(home: Path) -> list[Path]:
     for target in _EMBEDDED.findall(board.read_text(encoding="utf-8", errors="replace")):
         page = (home / target).resolve()
         if page.is_file() and page.is_relative_to(project) and page.name not in _NOT_A_SURFACE \
-                and page not in shown and kinds.get(page) != "built":
+                and page not in shown and kinds.get(page) not in FRAMED:
             shown.append(page)
     return shown
-
-
-def app_look(root: Path, path: Path) -> bool:
-    """Whether a resolved path is a browser app's own preview or stylesheet: what a storyboard frames as built,
-    and what a new surface links to look like this product. `screens/` and `src/styles/` of a deployable
-    `project.json` records as `web`, and nothing else of the app."""
-    try:
-        held = json.loads((root / "project.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return False
-    apps = held.get("deployables") if isinstance(held, dict) else None
-    for record in apps.values() if isinstance(apps, dict) else []:
-        if isinstance(record, dict) and record.get("kind") == "web" and isinstance(record.get("path"), str):
-            home = (root / record["path"]).resolve()
-            if path.is_relative_to(home / "screens") or path.is_relative_to(home / "src" / "styles"):
-                return True
-    return False
 
 
 def drawn_states(root: Path, feature: str) -> list[tuple[str, list[str]]]:
@@ -175,8 +127,9 @@ def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by:
 
     Approving marks every drawn state approved. Disapproving parks them, and a park with no reason is a
     blank, which is the one mark this file refuses. `by` is a first line saying who gave the verdict, where
-    it was not a person. A surface the storyboard frames as built gets a line saying so and no verdict: it
-    was shown for the flow, and a state marked approved here is a state the split then has to deliver.
+    it was not a person. A surface the storyboard frames as built or planned gets a line saying so and no
+    verdict: it was shown for the flow, and a state marked approved here is a state the split then has to
+    deliver — a planned one is the earlier feature's to deliver, under the verdict it was given there.
     """
     if verdict not in ("approved", "parked"):
         raise ValueError("approve or disapprove the storyboard")
@@ -186,9 +139,14 @@ def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by:
     lines: list[str] = [by, ""] if by else []
     # The same pages `drawn_states` reads, with who decided each state kept: the refusals above are its.
     drawn_states(root, feature)
-    built = built_pages(root / "specs" / feature / "mockups")
-    lines += [f"<!-- built: {titled(page)} — {where_in(root, page)} (shown as built: no verdict was asked "
-              "or given) -->" for page in built] + ([""] if built else [])
+    home = root / "specs" / feature / "mockups"
+    framed = [f"<!-- built: {titled(page)} — {where_in(root, page)} (shown as built: no verdict was asked "
+              "or given) -->" for page in built_pages(home)]
+    # Worded without a dash before "approved": the readers of a verdict line match `— approved`.
+    framed += [f"<!-- planned: {titled(page)} — {where_in(root, page)} (shown as planned: an earlier feature "
+               "had it approved and it is not built yet; no verdict was asked or given here) -->"
+               for page in planned_pages(home)]
+    lines += framed + ([""] if framed else [])
     for page in surface_pages(root / "specs" / feature / "mockups"):
         name, states = decided_states(page)
         # Which page, and what it said, when the verdict was given: a page that says something else since —

@@ -27,8 +27,9 @@ telegraph's `stage_scale` the way those do.
 **It is handed what exists.** Before the session starts, `existing.py` lists what the project has already drawn
 or built — earlier features' mock-ups, the browser app's previews, routes and stylesheets, the model's `ui`
 frames — into `specs/<feature>/mockups/existing.md`, and the session is told where (`SLIPWAI_EXISTING`). A
-further feature is drawn into that flow and in that look; what the storyboard frames as built is not counted
-as drawn here, and is not put up for a verdict on the board.
+further feature is drawn into that flow and in that look; what the storyboard frames as built — or as planned,
+approved for an earlier feature and not built yet — is not counted as drawn here, and is not put up for a
+verdict on the board.
 """
 from __future__ import annotations
 
@@ -114,9 +115,11 @@ def drawn(feature: str) -> list[Path]:
     the pages inside the project the storyboard shows. Never the storyboard itself: counting it reported
     `drawn: 1 surface(s)` for a drawing the board then had nothing in to approve."""
     home = SPECS / feature / MOCKUPS
-    kinds = existing.kinds(home)  # a page the storyboard frames as built is the project's, not this drawing's
+    # A page the storyboard frames as built is the project's, and one framed as planned an earlier feature's:
+    # neither is this drawing's.
+    kinds = existing.kinds(home)
     beside = sorted(page for page in home.glob("*.html")
-                    if page.name not in NOT_A_SURFACE and kinds.get(page.resolve()) != "built")
+                    if page.name not in NOT_A_SURFACE and kinds.get(page.resolve()) not in existing.FRAMED)
     board = home / "storyboard.html"
     if beside or not board.is_file():
         return beside
@@ -124,7 +127,7 @@ def drawn(feature: str) -> list[Path]:
     for target in EMBEDDED.findall(board.read_text(encoding="utf-8", errors="replace")):
         page = (home / target).resolve()
         if page.is_file() and page.is_relative_to(ROOT.resolve()) and page.name not in NOT_A_SURFACE \
-                and page not in shown and kinds.get(page) != "built":
+                and page not in shown and kinds.get(page) not in existing.FRAMED:
             shown.append(page)
     return shown
 
@@ -267,8 +270,8 @@ def main(argv: list[str]) -> int:
     written = [path for path in drawn(feature) if path not in before]
     if not written and not drawn(feature):
         alone = (SPECS / feature / MOCKUPS / "storyboard.html").is_file()
-        if "built" in existing.kinds(SPECS / feature / MOCKUPS).values():
-            print(f"surfaces: the storyboard under specs/{feature}/{MOCKUPS}/ frames what is built and draws "
+        if set(existing.FRAMED) & set(existing.kinds(SPECS / feature / MOCKUPS).values()):
+            print(f"surfaces: the storyboard under specs/{feature}/{MOCKUPS}/ frames what is built or planned and draws "
                   f"nothing this feature changes or adds, so there is nothing new to approve; a feature with no "
                   f"surface of its own is `surfaces: none`, which /mockups {feature} writes with you",
                   file=sys.stderr)
@@ -291,7 +294,10 @@ def main(argv: list[str]) -> int:
         print(f"surfaces: note — specs/{feature}/{MOCKUPS}/research.md does not say `Blockers open: N` and "
               f"`Questions open: N` with numbers, so a board set to advance by itself will wait for you on this "
               f"storyboard", flush=True)
-    print(f"drawn: {len(drawn(feature))} surface(s) under specs/{feature}/{MOCKUPS}/ — open the storyboard, "
+    marks = list(existing.kinds(SPECS / feature / MOCKUPS).values())
+    framed = ", ".join(f"{marks.count(word)} {word}" for word in existing.FRAMED if word in marks)
+    print(f"drawn: {len(drawn(feature))} surface(s) under specs/{feature}/{MOCKUPS}/"
+          + (f", beside {framed} framed for the flow and not asked about" if framed else "") + " — open the storyboard, "
           f"then /mockups {feature} in the agent walks you through approving each state")
     return 0
 

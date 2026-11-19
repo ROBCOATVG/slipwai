@@ -17,13 +17,14 @@ from pathlib import Path
 from typing import Any
 
 from . import stage_talk
-from .drawn import built_pages, decided_states, surface_kinds, titled, withdrawn_parts
+from .drawn import decided_states, withdrawn_parts
 from .init_run import outside_session, resumed
 from .page_copy import ROUTE
 from .page_shell import esc
 from .passage import surface_pages
 from .review_reading import RESEARCH, reading
 from .stage_session import kept_stage
+from .storyboard_kinds import framed_count, kinds_html, not_asked
 from .storyboard_script import SCRIPT as SCRIPT  # the card's look and script, read by name by the Voyage page
 from .storyboard_script import STYLE as STYLE
 from .upstream import NAMED, advancing, held_by
@@ -244,9 +245,10 @@ def verdict_form(root: Path, feature: str) -> str:
     and the buttons are back: the storyboard waits on a verdict again.
     """
     home = root / "specs" / feature / "mockups"
-    built = len(built_pages(home))
-    if built and not surface_pages(home):
-        return ('<p class="empty">Every surface on this storyboard is built already, so there is nothing new to '
+    built, planned = framed_count(home)
+    if (built or planned) and not surface_pages(home):
+        return ('<p class="empty">Every surface on this storyboard is built already'
+                + (", or planned by an earlier feature" if planned else "") + ", so there is nothing new to "
                 "approve: it shows the flow as it stands. A feature that adds or changes a surface draws it as a "
                 "page of its own, which Draw the storyboard does.</p>")
     if not surface_pages(home):
@@ -269,9 +271,7 @@ def verdict_form(root: Path, feature: str) -> str:
                  f"{proposed} proposed.")
     # Either verdict locks both. A refusal (a disapproval with no reason) turns them back on in the page.
     held = " disabled" if parked or where == "approved" else ""
-    asked = (f"Approving marks every changed and new state approved; the {built} built surface"
-             f"{'' if built == 1 else 's'} {'is' if built == 1 else 'are'} shown for the flow and "
-             f"{'is' if built == 1 else 'are'} not asked about." if built
+    asked = (f"Approving marks every changed and new state approved; {not_asked(home)}." if built or planned
              else "Approving marks every drawn state approved.")
     return (f'<form class="verdict" onsubmit="return false"><p class="empty{" verdict-gone" if gone else ""}">'
             f"{esc(note)} {asked} Disapproving draws it again from your "
@@ -281,22 +281,6 @@ def verdict_form(root: Path, feature: str) -> str:
             f'Approve storyboard</button>'
             f'<button type="button" class="install" data-storyboard="{esc(feature)}" data-verdict="parked"{held}>'
             f"Disapprove</button></div></form>")
-
-
-def kinds_html(root: Path, feature: str) -> str:
-    """Built, changed and new, apart, where the storyboard says which each surface is: what is the project's
-    already, and the two a verdict is asked about. Nothing where it marks none, as before there were kinds."""
-    home = root / "specs" / feature / "mockups"
-    marked = surface_kinds(home)
-    if not marked:
-        return ""
-    judged = surface_pages(home)
-    named = {"built": [titled(page) for page in built_pages(home)],
-             "changed": [decided_states(page)[0] for page in judged if marked.get(page.resolve()) == "changed"],
-             "new": [decided_states(page)[0] for page in judged if marked.get(page.resolve()) != "changed"]}
-    rows = "".join(f'<li><span class="chip {kind}">{kind.capitalize()} · {len(names)}</span> '
-                   f'{esc(", ".join(names))}</li>' for kind, names in named.items() if names)
-    return f'<ul class="kinds" id="kinds-{esc(feature)}">{rows}</ul>'
 
 
 def mockups_card(found: list[dict[str, str]], root: Path | None = None) -> str:

@@ -1,4 +1,4 @@
-"""`slipwai extension list|install|remove|check` and `slipwai hooks`: the optional dev tooling, and where it attaches.
+"""`slipwai extension list|install|upgrade|remove|check` and `slipwai hooks`: the optional dev tooling, and its points.
 
 An extension is not a product-architecture choice, so it is not asked at `slipwai generate` and has no verb
 under it. It is installed into the package directory beside the languages, offered by `./init`'s menu in every
@@ -25,7 +25,7 @@ from .guards import declared as declared_guards
 from .hooks import POINTS, declared
 from .language_directory import directory
 
-VERBS = ("list", "install", "remove", "check")
+VERBS = ("list", "install", "upgrade", "remove", "check")
 
 
 def rows() -> list[str]:
@@ -170,9 +170,14 @@ def extension_main(argv: list[str]) -> None:
     parser.add_argument("arguments", nargs="*", metavar="<name-or-path>")
     parser.add_argument("--accept-publisher", action="store_true",
                         help="accept this package's publisher without being asked, and remember it")
+    parser.add_argument("--pre", action="store_true", help="with upgrade: count snapshots in the index")
     parsed = parser.parse_args(argv)
     try:
-        if parsed.verb == "list":
+        if parsed.verb == "upgrade":
+            from .extension_upkeep import upgrade
+            from .language_index import snapshots
+            print("\n".join(upgrade(parsed.arguments, directory(), prerelease=snapshots(parsed.pre))))
+        elif parsed.verb == "list":
             list_extensions()
         elif parsed.verb == "install":
             for line in install(parsed.arguments, directory(), parsed.accept_publisher):

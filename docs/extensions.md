@@ -318,6 +318,35 @@ catalogue, and the election happens inside the project, where there is no keel t
 menu offers exactly what `./init` can run. If you install an extension after a project was generated, the
 extension reaches that project at the next `slipwai migrate`.
 
+## Keeping one current
+
+`slipwai upgrade` moves an installed extension as it moves an installed language. Its `extensions:` section
+has one line for each:
+
+| The line says | What happens |
+|---|---|
+| `<key> 1.0.0 → 1.0.1 available` | A newer release that this keel can load is published. `upgrade` installs it. With `--check`, it prints `would run: slipwai extension upgrade <key>` and installs nothing. |
+| `<key> 1.0.0 (newest compatible)` | Nothing moves. |
+| `<key> 1.0.0 held back: 2.0.0 needs another core schema than 9.0 — slipwai upgrade, once a slipwai that speaks it is published` | Nothing moves. The newer release is for another keel. |
+
+`slipwai extension upgrade <key>` is the same move for the extensions that you name. With no name, it moves
+every installed extension.
+
+An upgrade agrees to nothing for you:
+
+- If the release comes from a publisher that this machine has not accepted, `upgrade` refuses it and names
+  the command that accepts the publisher. The upgrade then exits non-zero. An upgrade that left an
+  extension behind did not succeed.
+- A guard is agreed to in a project, at election. If a newer package declares a guard, no project's
+  agreement changes.
+
+The newer release is admitted as an install admits it. Slipwai stages the release, reads its manifest
+under this keel's schema, and only then renames it into place. A release that does not load never replaces
+one that does.
+
+Moving the installed package does not move a project's copy. A project takes the installed package at its
+next `slipwai migrate`.
+
 ## Writing one
 
 ```sh
@@ -327,6 +356,7 @@ slipwai package release <dir>              # the release file, its digest and it
 slipwai package register <dir> --channel <checkout>   # both of those, into a channel
 slipwai extension check <dir>              # just the manifest, and the six it is held to
 slipwai extension install <key>            # into the package directory
+slipwai extension upgrade [<key>...]       # each installed one to its newest compatible release
 slipwai extension list                     # what is installed, and what each attaches to
 slipwai hooks                              # every point, and what is on it
 python3 scripts/extensions/guards.py --elect <keys>   # in a project: who may refuse a tool call

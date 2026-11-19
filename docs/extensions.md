@@ -261,6 +261,23 @@ calls. If nobody agreed to an extension's guard, the guard never fires. To chang
 - `python3 scripts/extensions/guards.py --remove <keys>` takes the agreement back for the extensions it
   names. It keeps the others.
 
+**A guard that arrives on an upgrade is said, and never agreed to for anybody.** A project can elect an
+extension before the extension has a guard. `slipwai migrate` then brings the guard's files and refreshes
+`available-guards.json` from the installed package, but nobody was asked. So:
+
+- `slipwai migrate` prints one line for each such extension, and writes the same lines to the catch-up
+  page under *Guards nobody has agreed to*.
+- `make agents` prints the same line every time it runs. If it runs at a terminal, it asks the question
+  that `./init` asks, and a `y` agrees. With no terminal it prints the line, changes nothing and exits 0.
+
+Each line ends with the command that agrees: `python3 scripts/extensions/guards.py --elect <key>`. Neither
+command writes `.slipwai/guards.json` unless a person answered. An extension must not write that file
+either, from a hook or from anywhere else. The file *is* the agreement.
+
+The registry holds each guard as it was when a person agreed to it. If an extension later changes that
+guard's declaration, the agreed one still fires. `make agents` and `migrate` say that it changed, with the
+same command, and `make agents` does not ask about it in passing.
+
 **Where guards fire from.** All of a harness's own events arrive at one place: `scripts/agents/session.py`.
 These events are the pre-tool event, the stop event and the compaction events. `session.py` runs the
 keel's answer first, and then the extensions' answers.

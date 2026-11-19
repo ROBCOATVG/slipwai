@@ -79,6 +79,7 @@
 # why: 2026-11-19 1f221288ab16ea02 scripts/extensions/project.py: behaviour changes on purpose on every platform alike (#109, defect 5) — after firing the project point, make agents rewrites an elected extension's AGENTS.md block from its GUIDANCE where it still differs, so an extension with no project hook is re-projected; --check's message says so. Nothing platform-specific moved: no path, process or shell handling changed.
 # why: 2026-11-19 3b9f97c943c69f2e session.py, guards.py and the new tool_event.py, the same on every platform and on purpose (#121, gap 1): a before-search guard is handed one JSON event on its stdin — tool, pattern, path, glob, type, command, cwd, session and agent — beside SLIPWAI_QUERY, which is unchanged but cut at 16,000 characters; every tool-call guard receives SLIPWAI_TOOL and SLIPWAI_POINT; and a guard's stdin and output are files rather than pipes, so its budget bounds the wait whatever it started. Nothing platform-specific moved.
 # why: 2026-11-19 172c0f1a4a3315a2 scripts/extensions/guards.py, the same on every platform and on purpose (#121, gap 4): --elect adds to the agreements .slipwai/guards.json already records instead of replacing them, --offer leaves an extension it was not given as it was, and --remove <key> is the new verb that takes one back. Nothing platform-specific moved.
+# why: 2026-11-19 78b7d87cafb9970d scripts/extensions/project.py and the new guard_offer.py, the same on every platform and on purpose (#121, gap 3): make agents says which elected extension has a guard nobody agreed to, with the command that agrees, and asks only where stdin and stdout are a terminal; it writes .slipwai/guards.json on a typed yes and never otherwise. No device is opened and nothing platform-specific moved.
 
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-memory-none  scripts/agents/existing.py
 05ba8aa7fdc59a09971235c4793e04f64bf9939bc419769d61809e21a0a9ec6e  event-modelling-postgres-toy-serve  scripts/agents/existing.py
@@ -199,6 +200,10 @@
 5f6f7986c7ad31cdfe8537491c40169769478fa06f2f9ec223e84f67a0efc845  event-modelling-postgres-toy-serve  scripts/agents/logs.py
 5f6f7986c7ad31cdfe8537491c40169769478fa06f2f9ec223e84f67a0efc845  standard-memory-none  scripts/agents/logs.py
 5f6f7986c7ad31cdfe8537491c40169769478fa06f2f9ec223e84f67a0efc845  standard-postgres-toy-serve  scripts/agents/logs.py
+5fa16daea5bdb4d120ef489b1a3112eb44921f04cb08a7d70b7a2a516e16acda  event-modelling-memory-none  scripts/extensions/guard_offer.py
+5fa16daea5bdb4d120ef489b1a3112eb44921f04cb08a7d70b7a2a516e16acda  event-modelling-postgres-toy-serve  scripts/extensions/guard_offer.py
+5fa16daea5bdb4d120ef489b1a3112eb44921f04cb08a7d70b7a2a516e16acda  standard-memory-none  scripts/extensions/guard_offer.py
+5fa16daea5bdb4d120ef489b1a3112eb44921f04cb08a7d70b7a2a516e16acda  standard-postgres-toy-serve  scripts/extensions/guard_offer.py
 620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  event-modelling-memory-none  scripts/agents/registry.json
 620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  event-modelling-postgres-toy-serve  scripts/agents/registry.json
 620ed45cf33b3f40d23477fd5018df78b4ebb46e5012b917c3a1861e38301998  standard-memory-none  scripts/agents/registry.json
@@ -400,6 +405,10 @@ dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modellin
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  event-modelling-postgres-toy-serve  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  standard-memory-none  scripts/check-migrations.py
 dfd85c067b5cbdfc76d727a6ae7cba97f151b7007d534d59303f8c52a8f8f5fe  standard-postgres-toy-serve  scripts/check-migrations.py
+e0081ef6295020857857c3fda10196ca8cf3c581e4bef726a5c114fddf99fc84  event-modelling-memory-none  scripts/extensions/project.py
+e0081ef6295020857857c3fda10196ca8cf3c581e4bef726a5c114fddf99fc84  event-modelling-postgres-toy-serve  scripts/extensions/project.py
+e0081ef6295020857857c3fda10196ca8cf3c581e4bef726a5c114fddf99fc84  standard-memory-none  scripts/extensions/project.py
+e0081ef6295020857857c3fda10196ca8cf3c581e4bef726a5c114fddf99fc84  standard-postgres-toy-serve  scripts/extensions/project.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  event-modelling-memory-none  scripts/agents/orders.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  event-modelling-postgres-toy-serve  scripts/agents/orders.py
 e278ff7d2ebffb3e795967495f0561586cd333960cc6ecf3a9b674b5d6a87e5c  standard-memory-none  scripts/agents/orders.py
@@ -428,10 +437,6 @@ f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  event-modellin
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  event-modelling-postgres-toy-serve  scripts/agents/abreast.py
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  standard-memory-none  scripts/agents/abreast.py
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  standard-postgres-toy-serve  scripts/agents/abreast.py
-f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  event-modelling-memory-none  scripts/extensions/project.py
-f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  event-modelling-postgres-toy-serve  scripts/extensions/project.py
-f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  standard-memory-none  scripts/extensions/project.py
-f2dc0679ad40fe6d5e0b78638bd96eda403ea65311fb10ea2bf99bb69061058a  standard-postgres-toy-serve  scripts/extensions/project.py
 f61e9a247777509afd32e87d3df288fa6baa42da4ebc6736807524b865eed646  event-modelling-memory-none  scripts/event-model/render.ts
 f61e9a247777509afd32e87d3df288fa6baa42da4ebc6736807524b865eed646  event-modelling-postgres-toy-serve  scripts/event-model/render.ts
 f8dc968dc038470683238bf33dd0de4f78461e9d0cdc43ba6387a6fc987c2786  event-modelling-memory-none  scripts/check-styles.py

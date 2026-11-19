@@ -35,7 +35,7 @@ from .assets import NOTES, VERSION
 from .catch_up import moved_languages, notes
 from .catch_up_page import ARCHIVE, after_conflicts, archive
 from .errors import GenerationError
-from .extension_copies import copies
+from .guards_offered import owed
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
 from .migration_manifest import settled
@@ -163,7 +163,7 @@ def write_notes(
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(notes(name, was, languages=moved_languages(document) if document else (),
-                                     conflicts=conflicts, extensions=copies(root, document)), encoding="utf-8")
+                                     conflicts=conflicts, extensions=owed(root, document)), encoding="utf-8")
     except Exception as error:  # the merge is committed: whatever a recorded value did, say so and never raise
         return str(error) or type(error).__name__
     return None

@@ -65,7 +65,7 @@ class Project:
         """Which extensions this project elected, as `./init` records it."""
         (self.root / ".slipwai").mkdir(exist_ok=True)
         (self.root / ".slipwai/extensions.json").write_text(
-            json.dumps({"extensions": sorted(keys)}) + "\n", encoding="utf-8")
+            json.dumps({"schemaVersion": 1, "extensions": sorted(keys)}) + "\n", encoding="utf-8")
 
     def guards(self, *arguments: str, given: str | None = None) -> subprocess.CompletedProcess:
         """`scripts/extensions/guards.py`, with nobody at a terminal."""

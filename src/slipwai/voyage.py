@@ -14,12 +14,13 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 574 — a paused slice as queued with the time it lifts, and the park its card answers, beside the fold,
+# budget: 577 — a paused slice as queued with the time it lifts, and the park its card answers, beside the fold,
 # the model, the mock-ups and the screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
 # and a slice claimed and waiting for a slot, queued apart from the ones at work
 # and when the storyboard's files were last written, in what the page is made of, so one rebuilt in place reloads
+# and a slice's files read under the feature that holds them, which a further feature's are not the chart's
 # and a slice's name from the model the drawio captions it with, for any slice-shaped id
 from __future__ import annotations
 
@@ -39,7 +40,7 @@ from .fleet import Fairway, clearance_query, fairways, harbour_log
 from .fleet_record import clock_of
 from .logs import held_slices, paused, run_dir
 from .process_alive import alive
-from .slice_rungs import rung, spans
+from .slice_rungs import rung, slice_home, spans
 
 #: Where the board shows a slice: the four columns, in the order a person reads them.
 COLUMNS = ("todo", "queued", "working", "waiting", "done")
@@ -185,10 +186,12 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
                "why": str(entry.get("why", "")), "fairway": "", "clearance": str(entry.get("state", ""))}
         owner = next((one for one in found if slice_id in one.claimed or slice_id in one.merged), None)
         if owner is not None:
+            # Where the slice's own files are, which is not the chart's feature for a further feature's slice.
+            home = row["feature"] = slice_home(root, feature, str(slice_id))
             row["fairway"] = owner.name
             row.update(spans(owner.entries, str(slice_id)))
             if slice_id in owner.merged:
-                row.update(state="done", examples=card_line(root, feature, str(slice_id), done=True))
+                row.update(state="done", examples=card_line(root, home, str(slice_id), done=True))
             elif slice_id in owner.claimed:  # in flight, one of several: waiting where a park holds it
                 row["state"] = ("waiting" if slice_id not in owner.slices_now or owner.parked
                                 else "working" if slice_id in owner.at_work(now=now) else "queued")
@@ -204,7 +207,7 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
                 else:
                     row.update(held_on(owner, str(slice_id)))
             if row["state"] in ("working", "queued", "waiting"):
-                row.update(rung(root, feature, str(slice_id), owner.entries, harbour))
+                row.update(rung(root, home, str(slice_id), owner.entries, harbour))
         rows.append(row)
     return sorted(rows, key=lambda row: (COLUMNS.index(row["state"]), row["slice"])), ""
 

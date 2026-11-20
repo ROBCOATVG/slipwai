@@ -100,6 +100,7 @@ except ImportError:  # pragma: no cover - a toolkit older than the capability ho
     capabilities = None  # type: ignore[assignment]
 import claims  # noqa: E402
 import inbox  # noqa: E402
+import lockfiles  # noqa: E402 — a lock two slices both wrote is written again, not resolved by hand
 import logs  # noqa: E402
 import mender  # noqa: E402
 import telegraph  # noqa: E402
@@ -626,6 +627,39 @@ def appended_only(path: str) -> bool:
     return git("add", "--", path, where=SCRATCH).returncode == 0
 
 
+#: The locks whose conflict this rebase answered with trunk's copy, and so owes a regeneration.
+LOCKS_OWED: set[str] = set()
+
+
+def lock_taken(path: str) -> bool:
+    """Resolve one conflicted lock in the scratch worktree with trunk's copy, to be written again from the
+    manifests once the rebase has ended (`lockfiles.py`). False where it is not a lock this can regenerate."""
+    if not lockfiles.is_lock(path):
+        return False
+    if git("checkout", "--ours", "--", path, where=SCRATCH).returncode != 0 \
+            or git("add", "--", path, where=SCRATCH).returncode != 0:
+        return False
+    LOCKS_OWED.add(path)
+    return True
+
+
+def locks_regenerated() -> str:
+    """Write every lock this rebase took trunk's copy of again from the merged manifests, and commit what
+    moved. Why one could not be written, or ""."""
+    for path in sorted(LOCKS_OWED):
+        if fault := lockfiles.regenerate(SCRATCH, path):
+            return fault
+        git("add", "--", path, where=SCRATCH)
+    if LOCKS_OWED and git("diff", "--cached", "--quiet", where=SCRATCH).returncode != 0:
+        made = git("commit", "--quiet", "--no-verify", "-m",
+                   f"Write {', '.join(sorted(LOCKS_OWED))} again from the manifests as merged\n\n"
+                   "Two slices each changed the lock; trunk's was taken in the rebase and the lock derived again.",
+                   where=SCRATCH)
+        if made.returncode != 0:
+            return f"the regenerated lock could not be committed ({(made.stderr or made.stdout).strip()})"
+    return ""
+
+
 def appends_resolved(rebased: subprocess.CompletedProcess[str]) -> subprocess.CompletedProcess[str]:
     """A rebase that stopped only on append-only files, carried on to its end; any other stop, as it was.
 
@@ -638,9 +672,13 @@ def appends_resolved(rebased: subprocess.CompletedProcess[str]) -> subprocess.Co
         if rebased.returncode == 0:
             return rebased
         paths = conflicting()
-        if not paths or not all(APPENDED.match(path) for path in paths) or not all(map(appended_only, paths)):
+        if not paths or not all(APPENDED.match(path) or lockfiles.is_lock(path) for path in paths) or not all(
+                appended_only(path) if APPENDED.match(path) else lock_taken(path) for path in paths):
             return rebased
-        rebased = git("-c", "core.editor=true", "rebase", "--continue", where=SCRATCH)
+        # A commit that only touched the lock is empty once trunk's copy is taken: skipped, not continued.
+        emptied = git("diff", "--cached", "--quiet", where=SCRATCH).returncode == 0
+        rebased = git("rebase", "--skip", where=SCRATCH) if emptied else \
+            git("-c", "core.editor=true", "rebase", "--continue", where=SCRATCH)
     return rebased
 
 
@@ -661,7 +699,11 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
             False, "", False
     furnish(SCRATCH)
     try:
+        LOCKS_OWED.clear()
         rebased = appends_resolved(git("rebase", onto, where=SCRATCH))
+        if rebased.returncode == 0 and (fault := locks_regenerated()):
+            return "", (f"{branch} and {onto} each changed a lock, and {fault}. Nothing is half-done; rebase in "
+                        f"your own berth, write the lock again there, and ask again"), True, "", False
         if rebased.returncode != 0:
             paths = conflicting()
             git("rebase", "--abort", where=SCRATCH)
@@ -1575,6 +1617,31 @@ def open_tolds(deck: list[logs.Entry], harbour: list[logs.Entry], fairway: str) 
             and isinstance(e.fields.get("needs"), list) and e.fields["needs"] and e.t not in met]
 
 
+def handed_back(deck: list[logs.Entry], fairway: str, need: object, why: str) -> dict | None:
+    """The check of a need this fairway has already handed to the fleet, where a park's own need names the
+    same thing and carries no check of its own.
+
+    A slice handed a dependency back with a check, reached the wall it was for, and parked on it — the same
+    need written a second time, for a person, with nothing trunk could prove. The mender landed it eighteen
+    seconds later, the hand-back was ticked, and the park waited on somebody to say what trunk already said.
+    Held to a match nobody could make by accident: the park names the file the check reads and the thing
+    the check looks for in it.
+    """
+    text = f"{need.get('what', '') if isinstance(need, dict) else need} {why}"
+    for told in deck:
+        if told.kind != "told" or str(told.fields.get("fairway", "")) != fairway:
+            continue
+        for one in told.fields.get("needs") or []:
+            check = one.get("check") if isinstance(one, dict) else None
+            if not isinstance(check, dict) or check.get("kind") != "text":
+                continue
+            name = Path(str(check.get("path", ""))).name
+            words = [word for word in re.split(r"[^\w.@-]+", str(check.get("has", ""))) if len(word) > 2]
+            if name and name in text and words and max(words, key=len) in text:
+                return check
+    return None
+
+
 def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
     """A `need-met` receipt for every need of an open park that trunk now satisfies or a person has ticked,
     and a `cleared` receipt for every park whose needs are all met. A `told` with needs is walked beside
@@ -1613,11 +1680,12 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                 how = ""
                 if (park.t, index) in ticked:
                     how = "a person ticked it on the board"
-                elif commit and isinstance(need, dict) and isinstance(need.get("check"), dict):
+                elif commit and (check := (need.get("check") if isinstance(need, dict) and isinstance(
+                        need.get("check"), dict) else handed_back(deck, fairway, need, str(park.fields.get("why", "")))
+                        if park.kind == "parked" else None)):
                     key = (fairway, park.t, index, commit)
                     if key not in TRIED:
                         TRIED.add(key)
-                        check = need["check"]
                         passed = (text_check(check, commit) if check.get("kind") == "text"
                                   else make_check(check, commit))
                         how = f"trunk at {commit[:8]}" if passed else ""

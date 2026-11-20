@@ -32,6 +32,7 @@ from typing import Any
 
 from . import harness_cli, step_record
 from .drawn import undrawn, unsurfaced
+from .feature_stages import name_in_hand
 from .logs import run_dir
 from .process_alive import alive
 from .session_log import Folder
@@ -656,8 +657,10 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     `feature` names the one to draw, which a redraw after a disapproval needs: `make surfaces` on its own
     draws the first specification, and the storyboard turned down may not be that one.
     """
-    argv = [*SURFACES, f"FEATURE={feature}"] if feature else SURFACES
-    named = feature or first_feature(where)
+    # Named every time, the feature in hand where nobody named one: `make surfaces` on its own draws what the
+    # project's script picks, and a board that left it to that drew a finished feature for a further one.
+    named = feature or name_in_hand(where) or first_feature(where)
+    argv = [*SURFACES, f"FEATURE={named}"] if named else SURFACES
     step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP,
                       lambda code: (not code and unsurfaced(where, named)) or drew(code),
                       "surfaces", limit=900.0, pid="surfaces.pid", stage="", after=lambda: undrawn(where, named),

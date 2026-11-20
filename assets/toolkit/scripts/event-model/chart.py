@@ -34,6 +34,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def project_root(script: Path) -> Path:
     """Specs and the manifest stay at the repository root when adoption relocates delivery material."""
     for candidate in script.parents:
@@ -193,6 +194,10 @@ def render(model: object, deployables: dict[str, dict], model_path: str = MODEL_
             # model is global — but it is not work: its marks are set by the code existing, and `/sail`
             # must never offer it. `clearance.py` reads this.
             **({"observed": True} if item.get("status") == "observed" else {}),
+            # The feature a slice belongs to, where the model says: the model is global and this is the one
+            # chart, so a further feature's slices are told from the first's by this and nothing else. A slice
+            # that says nothing is the feature's this chart is written under, and is rendered as it always was.
+            **({"feature": str(item["feature"])} if item.get("feature") else {}),
         }
     return {"v": 1, "feature": feature_name(), "fairways": fairways, "marks": marks, "slices": charted}
 

@@ -67,7 +67,7 @@ assess: ## Assess one idea /sail captured, and specify it only after a yes and a
 \tpython3 scripts/agents/assess.py $(SLUG)
 triage: ## Propose where each piece of feedback from the board goes, and change nothing else (N=<numbers>; default all waiting)
 \tpython3 scripts/agents/triage.py $(N)
-surfaces: ## Research, draft and storyboard this feature's surfaces in a headless session, and stop for a person to approve each state (FEATURE=<name>; default the first specified)
+surfaces: ## Research, draft and storyboard this feature's surfaces in a headless session, and stop for a person to approve each state (FEATURE=<name>; default the feature in hand, else the first specified)
 \tpython3 scripts/agents/surfaces.py $(FEATURE)
 model-next: ## Model the product from an approved storyboard, and stop before the chart
 \tpython3 scripts/agents/model.py

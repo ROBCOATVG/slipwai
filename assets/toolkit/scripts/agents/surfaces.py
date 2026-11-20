@@ -7,7 +7,7 @@ so it is not automated here and never will be. What is automated is the wait in 
 has read the specification and wants the screens drawn had to open the agent and type the command, and the
 board, which had just run two headless sessions for them, had nothing to offer.
 
-    python3 scripts/agents/surfaces.py              # the first feature with a specification
+    python3 scripts/agents/surfaces.py              # the feature in hand (.specify/feature.json), else the first
     python3 scripts/agents/surfaces.py 001-thing    # a named one
 
 One headless session with `commands/mockups.md` as its rules, told which stage it is
@@ -53,9 +53,11 @@ import existing  # noqa: E402 — what the project has already drawn or built, l
 import harness  # noqa: E402
 
 ROOT = harness.ROOT
+import feature_stages  # noqa: E402 — carried beside this script; which feature is in hand
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 import no_surface  # noqa: E402 — whether a feature has no surface at all, on grounds; the board reads the same
 import surface_hint  # noqa: E402 — the surfaces the hand-over suggested, which a drawing of none must answer
+
 COMMAND = ROOT / "commands/mockups.md"
 SPECS = ROOT / "specs"
 MOCKUPS = "mockups"
@@ -225,7 +227,9 @@ def main(argv: list[str]) -> int:
         print("surfaces: there is no specs/<feature>/spec.md to draw surfaces for; `make draft` writes the "
               "first one, or /speckit-specify does with the agent", file=sys.stderr)
         return 2
-    feature = argv[0] if argv else specs[0].parent.name
+    # The feature in hand where nobody named one — the first specification only where nothing says which: a
+    # further feature's drawing used to draw the finished feature it came after.
+    feature = argv[0] if argv else (feature_stages.name_in_hand(ROOT) or specs[0].parent.name)
     if not (SPECS / feature / "spec.md").is_file():
         named = ", ".join(path.parent.name for path in specs)
         print(f"surfaces: {feature} has no specification here; this project has {named}", file=sys.stderr)
@@ -293,8 +297,8 @@ def main(argv: list[str]) -> int:
             return 1
         print(f"surfaces: the session ended with no surface pages under specs/{feature}/{MOCKUPS}/"
               + (" — a storyboard.html that neither has a page per surface beside it nor shows one, which is "
-                 "nothing a person can approve" if alone else "") + f", so there is no storyboard to approve; Draw the storyboard again, and read its last "
-              f"lines above", file=sys.stderr)
+                 "nothing a person can approve" if alone else "") + ", so there is no storyboard to approve; Draw the storyboard again, and read its last "
+              "lines above", file=sys.stderr)
         return 1
     faults, notes = existing.held(feature, ROOT)
     for note in notes:

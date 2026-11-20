@@ -268,6 +268,15 @@ const sliceSchema = z.strictObject({
    * produce a chart that passed its own gate.
    */
   capability: z.string().min(1).optional(),
+  /**
+   * The feature this slice belongs to — its directory under `specs/`.
+   *
+   * The model is global and there is one chart, so this is the only thing that tells a further feature's
+   * slices from the ones built before it: the stages above the chart ask whether the model holds *this
+   * feature*, and a model that could not say answered yes for every feature after the first. A slice that
+   * names none belongs to the feature the chart is written under, which is every slice written before this.
+   */
+  feature: z.string().min(1).optional(),
   pattern: z.enum(PATTERNS),
   status: z.enum(STATUSES),
   /**

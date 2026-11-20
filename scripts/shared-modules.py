@@ -45,6 +45,9 @@ SHARED = {
     # The surfaces a hand-over suggested a feature touches, bounded and matched by name: `existing.py` hands them
     # to the drawing, and both ends of the stage hold a drawing of no surface to answering them.
     "src/slipwai/surface_hint.py": "assets/toolkit/scripts/agents/surface_hint.py",
+    # Which feature is in hand, and whether the model and the split hold that feature: the board's buttons and
+    # the scripts they run (`launch.py`, `model.py`, `surfaces.py`) ask it, and have to hear one answer.
+    "src/slipwai/feature_stages.py": "assets/toolkit/scripts/agents/feature_stages.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

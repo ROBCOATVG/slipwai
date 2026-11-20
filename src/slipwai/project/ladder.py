@@ -149,7 +149,12 @@ def sail_ladder(
    on the service, with the user, as `slipwai describe-service <name> --context <context>` (once per
    context; `--purpose` records what the service owns the same way), place each slice with `context:`,
    and write the answer, one context included, as a decision entry with its seam table — `make
-   check-chart` refuses a chart without one."""
+   check-chart` refuses a chart without one. The model is the whole product's, so **a further feature is
+   added to it and this rung is asked of the feature, not of the file**: it is done for a feature when a
+   slice in the model names it (`feature: <its directory under specs/>`; a slice that names none belongs to
+   the feature the chart is written under). Every slice a further feature adds says so, takes an id no
+   slice has, and leaves the slices already there as they are — a model that names slices and none of this
+   feature's is this rung to do."""
             + rung_of_the_slice(apps)
         )
     if not event:

@@ -199,7 +199,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And what its storyboard says each surface is — built, planned, changed or new — read from the marks.
               # And a feature with no surface at all: the grounds for saying so, and the record of it.
               # And the surfaces a hand-over suggested a feature touches, which a drawing of none has to answer.
-              "framed", "no_surface", "surface_hint", "drawn",
+              # And which feature is in hand, and whether the model and the split hold that feature yet.
+              "framed", "no_surface", "surface_hint", "drawn", "feature_stages",
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",

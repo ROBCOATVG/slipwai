@@ -96,6 +96,8 @@ SLOW += test_clearance_further_feature
 SLOW += test_stream_strays
 # A git repository per case, for the worktrees the decision log reads.
 SLOW += test_decisions_two_features
+# `check-try.py` run in a project, for a further feature's story.
+SLOW += test_further_feature_extras
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

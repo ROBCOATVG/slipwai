@@ -145,6 +145,9 @@ def clarifications(feature: str, slice_id: str, marks: set[str], counted: set[st
 def uncertainty(feature: str, charted: dict, slice_id: str) -> tuple[float, list[str]]:
     marks = set(clearance.steered_by(charted, slice_id)) | set(clearance.sets_of(charted, slice_id))
     score, sources, counted = 0.0, [], set()
+    # The slice's own feature: a further feature's decisions, mock states and specification are under it,
+    # and read under the chart's its observables scored as though nothing about them were uncertain.
+    feature = clearance.feature_of_slice(slice_id, charted, feature)
     for entry in decisions(feature):
         if not about(entry, slice_id, marks):
             continue

@@ -85,7 +85,12 @@
 # why: 2026-11-19 123f3c0c3de028a3 The follow-ups to #127, replayed onto main: the storyboard stage reads the hand-over's suggested surfaces (existing.py, surfaces.py and the carried surface_hint.py), and guards.py, project.py and guard_offer.py refresh an extension's guidance when a guard is agreed or taken back. Each the same on every platform and on purpose, as its own commit recorded; nothing platform-specific moved.
 # why: 2026-11-20 f29078ab40c4d69e launch.py, model.py and surfaces.py ask whether the feature in hand is split, modelled and drawn, through the carried feature_stages.py (new); chart.py carries a slice's feature where the model names one; the surfaces target's help line says so. A project with one feature takes every branch it took before (#131)
 # why: 2026-11-20 229023fd52f36997 surfaces.py takes its ceiling from the carried drawing_budget.py (new), which the board reads too: sixty minutes for a first drawing and thirty for a redraw where harbour.json has no surfaces row, in place of fifteen and ten; a row is read as before
+# why: 2026-11-20 9d11278af2c92d57 fleet.py start publishes before it lights anything, through the new published.py: a checkout on trunk and only ahead of the remote is pushed, and one whose chart or model is not the remote's refuses to cast off; a checkout at or behind the remote takes the path it took
 
+008f9d4346406775c93d10c9b38653d894fd90e303750fb0606d7705db6ab063  event-modelling-memory-none  scripts/agents/fleet.py
+008f9d4346406775c93d10c9b38653d894fd90e303750fb0606d7705db6ab063  event-modelling-postgres-toy-serve  scripts/agents/fleet.py
+008f9d4346406775c93d10c9b38653d894fd90e303750fb0606d7705db6ab063  standard-memory-none  scripts/agents/fleet.py
+008f9d4346406775c93d10c9b38653d894fd90e303750fb0606d7705db6ab063  standard-postgres-toy-serve  scripts/agents/fleet.py
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  standard-memory-none  .githooks/pre-push
@@ -203,6 +208,10 @@
 526a3fcaf97d8201724982c3190cf6d4d212f2cfbda0fe2e3219f811d5979962  event-modelling-postgres-toy-serve  scripts/event-model/drawio.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-memory-none  scripts/event-model/check.ts
 52f0245cd6a36d141cbf614ce89c7c36a8770f29ed5928c73741368dd7f93184  event-modelling-postgres-toy-serve  scripts/event-model/check.ts
+52f8624a4034d945acc3c0a2576112cd461e54818df5a6ae8b4f804eb0a05ee5  event-modelling-memory-none  scripts/agents/published.py
+52f8624a4034d945acc3c0a2576112cd461e54818df5a6ae8b4f804eb0a05ee5  event-modelling-postgres-toy-serve  scripts/agents/published.py
+52f8624a4034d945acc3c0a2576112cd461e54818df5a6ae8b4f804eb0a05ee5  standard-memory-none  scripts/agents/published.py
+52f8624a4034d945acc3c0a2576112cd461e54818df5a6ae8b4f804eb0a05ee5  standard-postgres-toy-serve  scripts/agents/published.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-memory-none  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-postgres-toy-serve  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  standard-memory-none  scripts/agents/command_text.py
@@ -319,10 +328,6 @@ a685f15d1e33f81839fe0073823d0131f76679140af7acf1177f1f3296d5caa1  event-modellin
 a685f15d1e33f81839fe0073823d0131f76679140af7acf1177f1f3296d5caa1  event-modelling-postgres-toy-serve  scripts/agents/project.py
 a685f15d1e33f81839fe0073823d0131f76679140af7acf1177f1f3296d5caa1  standard-memory-none  scripts/agents/project.py
 a685f15d1e33f81839fe0073823d0131f76679140af7acf1177f1f3296d5caa1  standard-postgres-toy-serve  scripts/agents/project.py
-a76472ecc3f841efed9969f4f69898c1c2bbeda5996b2f588707554745d4add5  event-modelling-memory-none  scripts/agents/fleet.py
-a76472ecc3f841efed9969f4f69898c1c2bbeda5996b2f588707554745d4add5  event-modelling-postgres-toy-serve  scripts/agents/fleet.py
-a76472ecc3f841efed9969f4f69898c1c2bbeda5996b2f588707554745d4add5  standard-memory-none  scripts/agents/fleet.py
-a76472ecc3f841efed9969f4f69898c1c2bbeda5996b2f588707554745d4add5  standard-postgres-toy-serve  scripts/agents/fleet.py
 ae7a8ac97341c16df955a7c2175c6fcac2c206ed76e49abdd05d952df2f559c3  event-modelling-memory-none  scripts/apply-intake.py
 ae7a8ac97341c16df955a7c2175c6fcac2c206ed76e49abdd05d952df2f559c3  event-modelling-postgres-toy-serve  scripts/apply-intake.py
 ae7a8ac97341c16df955a7c2175c6fcac2c206ed76e49abdd05d952df2f559c3  standard-memory-none  scripts/apply-intake.py

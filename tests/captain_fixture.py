@@ -34,7 +34,7 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "sp
            "claims.py", "travel.py",
            # The captain starts a harbourmaster again where its pid file names one that has gone, through
            # the module that started it and holds the one-harbourmaster rule.
-           "fleet.py",
+           "fleet.py", "published.py",
            # How many of a fairway's slices run at once, and the berth each one is worked in.
            "abreast.py", "moorings.py",
            # The fixed rules each of the captain's choices falls back to, and the captain's agent over them:

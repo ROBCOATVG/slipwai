@@ -86,6 +86,9 @@ def chart_sets(feature: str) -> dict[str, list[str]]:
     """Each charted slice's `sets`, so a story cannot give what its own slice sets."""
     path = SPECS / feature / "chart.yaml"
     if not path.is_file():
+        # A further feature's slices are rows on the project's one chart, written under the first feature.
+        path = next(iter(sorted(SPECS.glob("*/chart.yaml"))), path)
+    if not path.is_file():
         return {}
     loaded = load_yaml(path.read_text(encoding="utf-8"))
     slices = loaded.get("slices") if isinstance(loaded, dict) else None

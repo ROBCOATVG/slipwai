@@ -1169,10 +1169,20 @@ def fairway_of(feature: str, slice_id: str) -> str:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     try:
         import clearance  # type: ignore[import-not-found]  # noqa: PLC0415
-        charted, _ = clearance.chart(feature)
+        # The one chart, where the slice's own feature has none: a further feature's slices are rows on it.
+        charted = clearance.chart(feature)[0] or clearance.chart()[0]
         return str(((charted.get("slices") or {}).get(slice_id) or {}).get("fairway", ""))
     except Exception:  # noqa: BLE001 — no chart is an answer, said below
         return ""
+
+
+def deck_of(feature: str, fairway: str) -> Path:
+    """The stream's one log: where the captain said it is (`SLIPWAI_DECK`), else under the feature the chart
+    is written under, which for a further feature's slice is not its own."""
+    told = os.environ.get("SLIPWAI_DECK", "")
+    if told:
+        return ROOT / told
+    return logs.deck_path(ROOT, logs.charted_feature(ROOT) or feature, fairway)
 
 
 def write_seeded(name: str, records: int, given: int, api: str) -> str:
@@ -1193,7 +1203,7 @@ def write_seeded(name: str, records: int, given: int, api: str) -> str:
         extra["given"] = given
     line = logs.entry("seeded", fairway=fairway, slice=slice_id, records=records, commit=commit,
                       story=f"specs/{feature}/slices/{slice_id}/try-it.json", **extra)
-    path = logs.deck_path(ROOT, feature, fairway)
+    path = deck_of(feature, fairway)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line.line())

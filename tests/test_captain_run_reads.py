@@ -81,6 +81,8 @@ ALLOWED = {
     "logs.py:run_dir": PROJECT,
     "logs.py:read": LOGS,
     "logs.py:harbour_fold": LOGS,
+    "logs.py:stream_lines": LOGS,
+    "captain.py:strays": LOGS,
     "moorings.py:generator": "`project.json` as a commit holds it, printed by `git show`: a tracked file of "
                              "the project, and not read from disk at all",
     "moorings.py:linked_at": "git's own exclude file in the checkout",

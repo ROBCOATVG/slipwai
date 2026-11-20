@@ -397,6 +397,29 @@ def deck(feature: str, fairway: str) -> Path:
     return logs.deck_path(ROOT, feature, fairway)
 
 
+def stream_log(fairway: str) -> str:
+    """The stream's one log, from the project's root, which is a path a berth reads too: under the chart's
+    feature, where this captain writes its claims, whatever feature the slice in hand is of."""
+    feature = ON.get("feature") or clearance.chart()[1]
+    return deck(feature, fairway).relative_to(ROOT).as_posix() if feature else ""
+
+
+def strays() -> list[logs.Entry]:
+    """What sessions wrote to a file of this stream's name under another feature, before they were told where
+    the stream's log is: read for the questions and decisions in it, never written. One nobody can read is none."""
+    fairway = ON.get("fairway", "")
+    if not fairway:
+        return []
+    own, found = deck(ON.get("feature", ""), fairway).resolve(), []
+    for path in logs.streams(ROOT).get(fairway, []):
+        if path.resolve() != own:
+            try:
+                found += logs.fold(path.read_text(encoding="utf-8").splitlines())
+            except (OSError, UnicodeDecodeError, logs.Unreadable):
+                continue
+    return found
+
+
 def entries(feature: str, fairway: str) -> list[logs.Entry]:
     path = deck(feature, fairway)
     if not path.is_file():
@@ -568,11 +591,18 @@ HANDOVER_NOTE = (
     "paragraph — a whole specification read into this session is paid for again on every call after it.")
 
 
+def slice_home(slice_id: str) -> str:
+    """Where a slice keeps its own files, from the project's root: under the feature its chart row names."""
+    return f"specs/{clearance.feature_of_slice(slice_id)}/slices/{slice_id}"
+
+
 def stages_closed(slice_id: str, feature: str) -> int:
     """How many stages this slice's benchmark record holds that were ended by the session that opened them."""
     held = FLIGHT.get(slice_id, {}).get("berth")
     where = held if isinstance(held, Path) else ROOT
-    record = talk.read_json(where / f"specs/{feature}/slices/{slice_id}/benchmark.json")
+    # Under the slice's own feature: a further feature's record was looked for under the chart's, found
+    # nowhere, and every hand-over it made was counted as a run that did nothing.
+    record = talk.read_json(where / slice_home(slice_id) / "benchmark.json")
     stages = record.get("stages") if isinstance(record, dict) else None
     return sum(1 for one in stages if isinstance(one, dict) and "ended" in one and not one.get("cut_off")) \
         if isinstance(stages, list) else 0
@@ -597,6 +627,9 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
         prompt += (f"\n\nYou are already in this slice's berth: the worktree at {berth}, on branch "
                    f"{BRANCH.format(slice=slice_id)}. Work there, and make no other worktree for it; its "
                    f"`.slipwai/run/logs` is the project's own.")
+    if (where := stream_log(fairway)):
+        prompt += (f"\n\nThis stream's deck log is `{where}` (`$SLIPWAI_DECK`), under the chart's feature "
+                   f"whichever feature this slice is of: every line this slice writes goes there.")
     if (decide := cruising()):
         prompt += cruise_note(decide)
     for asked in owed_in_this_fairway(fairway):
@@ -733,6 +766,9 @@ def naming(slice_id: str, fairway: str, retry: str = "", berth: Path | None = No
     `SLIPWAI_SINCE` is the instant the session opened. `before-stop` holds a turn that has written no deck
     log line, and "no line" has to mean *none since this session began*: a fairway with a hundred lines
     behind it would otherwise satisfy the test for ever.
+
+    `SLIPWAI_DECK` is the stream's one log. A session working a further feature's slice took the log to be
+    under that feature, and wrote its questions and marks to a file no captain reads.
     """
     named = {"SLIPWAI_RETRY": retry} if retry else {}
     if berth is not None:
@@ -741,6 +777,8 @@ def naming(slice_id: str, fairway: str, retry: str = "", berth: Path | None = No
         named["SLIPWAI_CRUISE"] = decide
     if told:
         named["SLIPWAI_MESSAGES"] = said_to(told)  # as `SLIPWAI_RETRY` carries the retry: said twice, read once
+    if (where := stream_log(fairway)):
+        named["SLIPWAI_DECK"] = where
     return {"SLIPWAI_FAIRWAY": fairway, "SLIPWAI_SLICE": slice_id, "SLIPWAI_STAGE": "drive",
             "SLIPWAI_SINCE": logs.now(), **test_workers(), **browser_share(), **named}
 
@@ -1129,7 +1167,7 @@ def story_of(slice_id: str, feature: str) -> Path | None:
     """
     held = FLIGHT.get(slice_id, {}).get("berth")
     for where in ([held] if isinstance(held, Path) else []) + [ROOT]:
-        path = where / f"specs/{feature}/slices/{slice_id}/try-it.json"
+        path = where / slice_home(slice_id) / "try-it.json"
         if path.is_file():
             return path
     return None
@@ -1150,14 +1188,20 @@ def unseeded(fresh: list[logs.Entry], slice_id: str, feature: str) -> bool:
 def seed_need(slice_id: str, feature: str) -> list[dict]:
     """The need a park on an unseeded story carries: the static half `check-try` can tick, the live half
     the next run's."""
-    return [{"what": f"the story in specs/{feature}/slices/{slice_id}/try-it.json seeds green against the app "
+    return [{"what": f"the story in {slice_home(slice_id)}/try-it.json seeds green against the app "
                      f"this berth runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"}}]
 
 
 def open_questions(found: list[logs.Entry], slice_id: str) -> list[logs.Entry]:
-    """The `question` lines against this slice no `decision` has answered: open until one carries the `id`."""
-    answered = {str(e.fields.get("id", "")) for e in found if e.kind == "decision"}
-    return [e for e in found if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id
+    """The `question` lines against this slice no `decision` has answered: open until one carries the `id`.
+
+    A question a session wrote to a file of the stream's name under its own feature is asked all the same —
+    it was never seen here, so the slice stopped on it and nothing was put to anyone — and is answered by a
+    decision anywhere in the stream's log, since `found` may be one turn's lines."""
+    elsewhere = strays()
+    known = [*elsewhere, *entries(ON.get("feature", ""), ON.get("fairway", ""))] if elsewhere else []
+    answered = {str(e.fields.get("id", "")) for e in [*known, *found] if e.kind == "decision"}
+    return [e for e in [*elsewhere, *found] if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id
             and str(e.fields.get("id", "")) not in answered]
 
 
@@ -1468,7 +1512,8 @@ def skipper_prompt(slice_id: str, feature: str, fairway: str, asked: list[logs.E
               f"`commands/cruise.md` *Decisions* says: put it to a fresh `{SKIPPER}` delegate "
               f"(`agents/{SKIPPER}.md` is its brief; where this harness cannot delegate, read the brief and "
               f"decide exactly as it says), under a number from `python3 scripts/agents/ids.py reserve "
-              f"decision <count> {slice_id}`. Append each entry to `specs/{feature}/decisions.md`, write the "
+              f"decision <count> {slice_id}`. Append each entry to "
+              f"`specs/{clearance.feature_of_slice(slice_id)}/decisions.md`, write the "
               f"decision into the artifact the stage owns, and append one JSON line per decided question to "
               f"`{where}`: {{\"v\": 1, \"t\": <now, UTC, ...Z>, \"kind\": \"decision\", \"fairway\": "
               f"\"{fairway}\", \"slice\": \"{slice_id}\", \"id\": <the question's id>, \"what\": \"D<n>: <the "
@@ -2457,7 +2502,7 @@ def progress(feature: str, slice_id: str, found: list[logs.Entry]) -> int:
     logged = [LOG_RUNGS.get(e.kind, 0) for e in found if str(e.fields.get("slice", "")) == slice_id
               and (e.kind != "request" or e.fields.get("what") == "merge")]
     listed = subprocess.run(["git", "ls-tree", "--name-only", f"refs/heads/{BRANCH.format(slice=slice_id)}",
-                             f"specs/{feature}/slices/{slice_id}/"], cwd=ROOT, capture_output=True, text=True)
+                             f"{slice_home(slice_id)}/"], cwd=ROOT, capture_output=True, text=True)
     filed = [FILE_RUNGS.get(Path(line).name, 0) for line in listed.stdout.splitlines()]
     return max([0, *logged, *filed])
 
@@ -2484,7 +2529,8 @@ def take_over(feature: str, fairway: str, from_machine: str) -> tuple[list[str],
     it: a lapsed claim whose work never travelled leaves four rungs of it unreachable, and carrying on as
     though it had not would discard them in silence. That is why the lease was refused on its own.
     """
-    travel.land_ref(ROOT, travel.deck_ref(fairway))
+    for ref in travel.stream_refs(ROOT, fairway):  # the stream's log, and any further file of its name
+        travel.land_ref(ROOT, ref)
     slices = resuming(entries(feature, fairway))
     for slice_id in slices:
         ref = travel.wip_ref(fairway, slice_id)

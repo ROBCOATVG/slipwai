@@ -78,6 +78,40 @@ def git(root: Path, *argv: str) -> str:
     return done.stdout if done.returncode == 0 else ""
 
 
+#: Where a slice's own files were found, by project and slice: asked on every poll, and it does not move.
+HOMES: dict[tuple[str, str], str] = {}
+
+
+def slice_home(root: Path, feature: str, slice_id: str, charted: str = "") -> str:
+    """The feature whose directory holds this slice's files: `charted`, the one its chart row names, where the
+    project's clearance said; else `feature` where it does, else the one that does.
+
+    There is one chart per project, written under the first feature, and a further feature's slices are on
+    it. Their example maps, plans, tasks and stage records are under their own feature's `slices/`, so a card
+    that read the chart's feature found none of them and sat on its first rung through a slice's whole build.
+    """
+    if charted:
+        return charted
+    key = (str(root.resolve()), slice_id)
+    if key in HOMES:
+        return HOMES[key]
+    tail = Path("slices") / slice_id
+    for place in (root.parent / f"{root.name}-{slice_id}", root):
+        if (place / "specs" / feature / tail).is_dir():
+            return feature
+        found = sorted(path.parent.parent.name for path in (place / "specs").glob(f"*/slices/{slice_id}")
+                       if path.is_dir()) if (place / "specs").is_dir() else []
+        if found:
+            HOMES[key] = found[-1]
+            return found[-1]
+    ref = f"refs/heads/slice/{slice_id}"
+    for name in reversed(git(root, "ls-tree", "-d", "--name-only", ref, "specs/").splitlines()):
+        if name.strip() and git(root, "ls-tree", "-d", "--name-only", ref, f"{name.strip()}/slices/{slice_id}").strip():
+            HOMES[key] = Path(name.strip()).name
+            return HOMES[key]
+    return feature
+
+
 def branch_facts(root: Path, feature: str, slice_id: str) -> dict[str, str]:
     """What the slice's branch carries: which ladder artifacts, how many tasks are ticked, its last commit."""
     ref = f"refs/heads/slice/{slice_id}"

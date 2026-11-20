@@ -81,9 +81,33 @@ EMPTY_TREE = claims.EMPTY_TREE
 BRANCH = "slice/{slice}"
 
 
-def deck_ref(fairway: str) -> str:
-    """Where one fairway's deck log travels. Its writer is whichever captain holds the claim."""
-    return f"{REFS}/{fairway}"
+def deck_ref(fairway: str, feature: str = "") -> str:
+    """Where one fairway's deck log travels. Its writer is whichever captain holds the claim.
+
+    With a feature, where a second file of that stream's name travels: `<fairway>@<feature>`. A ref carries
+    one file, and a session working a further feature's slice once wrote under that feature's name, so the
+    stream had two files and one ref, and the second was refused at every pass as not an append to the first.
+    """
+    return f"{REFS}/{fairway}@{feature}" if feature else f"{REFS}/{fairway}"
+
+
+def stream_refs(root: Path, fairway: str) -> list[str]:
+    """Every ref that carries lines of this stream: its own, then one for each further file of its name."""
+    beside = f"{deck_ref(fairway)}@"
+    return [deck_ref(fairway), *(ref for ref in log_refs(root) if ref.startswith(beside))]
+
+
+def ref_of(root: Path, name: str, paths: list[Path]) -> list[tuple[Path, str]]:
+    """Each of one stream's files with the ref it travels as. The stream's own ref stays with the file it
+    already carries — a log ref only ever appends, so it is never handed to another file — or, where it
+    carries none yet, goes to the first: the stream's one log, under the chart's feature."""
+    there = carried(root, deck_ref(name))
+    try:
+        on_ref = landed(root, there[0]).resolve() if there else None
+    except ValueError:
+        on_ref = None
+    own = next((path for path in paths if path.resolve() == on_ref), paths[0])
+    return [(path, deck_ref(name) if path == own else deck_ref(name, path.parent.name)) for path in paths]
 
 
 def harbour_ref(machine: str) -> str:
@@ -355,7 +379,7 @@ def land(root: Path, machine: str, held: list[str]) -> list[str]:
     cost of asking is one `git fetch` of a namespace nothing else is in.
     """
     fetch(root)
-    skip = {harbour_ref(machine), *(deck_ref(fairway) for fairway in held)}
+    skip = {harbour_ref(machine), *(ref for fairway in held for ref in stream_refs(root, fairway))}
     return [where for ref in log_refs(root) if ref not in skip
             if (where := land_ref(root, ref))]
 
@@ -509,7 +533,8 @@ def departing(root: Path, machine: str, authored: list[str]) -> list[tuple[Path,
     of every fairway it wrote. Nothing else — a second writer on a ref is the one thing there may never be.
     """
     found = [(logs.harbour_path(root, machine), harbour_ref(machine))]
-    found += [(path, deck_ref(path.stem)) for path in logs.deck_logs(root) if path.stem in authored]
+    for name, paths in logs.streams(root).items():
+        found += ref_of(root, name, paths) if name in authored else []
     return [(path, ref) for path, ref in found if path.is_file()]
 
 

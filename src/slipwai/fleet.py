@@ -17,7 +17,7 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 660 — the clearance answers one read of the board shares, a `read` tied to its `told` by inbox id,
+# budget: 664 — the clearance answers one read of the board shares, a `read` tied to its `told` by inbox id,
 # and today's tokens; every column of the
 # board folded from the logs, an instant read in either shape it is written, including what waits on a person: a park,
 # a deck log nobody can read, a last-seen age said in the unit a person reads it in,
@@ -28,6 +28,7 @@ and where the log is silent the board is silent too.
 # rather than for the person, and whether unread decisions hold anything up
 # and which slices in flight a session is on now, and which are claimed and waiting for a slot, and the
 # lines of its own slice each park opens onto
+# and one row a stream where two files hold its lines
 from __future__ import annotations
 
 import ast
@@ -60,13 +61,14 @@ from .logs import (
     Entry,
     Unreadable,
     cause_of,
-    deck_logs,
     fairway_parks,
     fold,
     harbour_logs,
     held_slices,
     open_parks,
     paused,
+    stream_lines,
+    streams,
     unmerged,
 )
 from .shell_environment import login_environment, project_python
@@ -317,14 +319,14 @@ def state_of(fairway: Fairway, bound: float = STALL_MINUTES, now: datetime | Non
     return "working"
 
 
-def read_log(path: Path, harbour: bool = False) -> tuple[list[Entry], str]:
+def read_log(path: Path | list[Path], harbour: bool = False) -> tuple[list[Entry], str]:
     """One log's entries, or the fault that says why it could not be read.
 
     A log that cannot be read makes the board say so for that fairway rather than drawing it empty. An empty
     row and an unreadable one are different facts and a board that drew both the same would be guessing.
     """
     try:
-        return fold(path.read_text(encoding="utf-8").splitlines(), harbour=harbour), ""
+        return fold(stream_lines([path] if isinstance(path, Path) else path), harbour=harbour), ""
     except (OSError, UnicodeDecodeError) as fault:
         return [], f"{type(fault).__name__}"
     except Unreadable as fault:
@@ -332,15 +334,17 @@ def read_log(path: Path, harbour: bool = False) -> tuple[list[Entry], str]:
 
 
 def fairways(root: Path, receipts: list[Entry] | None = None) -> tuple[list[Fairway], dict[str, str]]:
-    """Every fairway with a deck log, in name order, and a line for each log that could not be read."""
+    """Every fairway with a deck log, in name order, and a line for each log that could not be read. One row
+    a stream, whatever files hold its lines: a further feature's slice once wrote to a file of the stream's
+    name under its own feature, and that drew as a second stream, not started, with its slices uncounted."""
     receipts = harbour_log(root) if receipts is None else receipts
     found: list[Fairway] = []
     faults: dict[str, str] = {}
-    for path in deck_logs(root):
-        entries, fault = read_log(path)
+    for name, paths in streams(root).items():
+        entries, fault = read_log(paths)
         if fault:
-            faults[path.stem] = fault
-        found.append(Fairway(path.stem, path.parent.name, entries, receipts))
+            faults[name] = fault
+        found.append(Fairway(name, paths[0].parent.name, entries, receipts))
     return found, faults
 
 

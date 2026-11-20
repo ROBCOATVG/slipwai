@@ -80,10 +80,13 @@ def checkouts(root: Path) -> list[Path]:
     return [root, *(one for one in others if one.resolve() != root.resolve())]
 
 
-def written(root: Path) -> dict[str, dict[str, str]]:
-    """Every `decisions.md` entry in any checkout. Trunk's copy wins where both have one; a berth adds the ones
-    its slice has taken since it branched."""
-    found: dict[str, dict[str, str]] = {}
+def written(root: Path) -> dict[tuple[str, str], dict[str, str]]:
+    """Every `decisions.md` entry in any checkout, by its feature and its number. Trunk's copy wins where both
+    have one; a berth adds the ones its slice has taken since it branched.
+
+    By feature as well as number: two features that each counted from one have a D3 each, and keyed by the
+    number alone the first feature's hid the second's — it was on no card, and nobody could read it."""
+    found: dict[tuple[str, str], dict[str, str]] = {}
     for place in checkouts(root):
         for path in sorted(place.glob("specs/*/decisions.md")):
             try:
@@ -91,8 +94,19 @@ def written(root: Path) -> dict[str, dict[str, str]]:
             except (OSError, UnicodeDecodeError):
                 continue
             for number, parts in parse(text).items():
-                found.setdefault(number, {**parts, FROM: path.parent.name})
+                found.setdefault((path.parent.name, number), {**parts, FROM: path.parent.name})
     return found
+
+
+def entry_of(book: dict[tuple[str, str], dict[str, str]], number: str, piece: str,
+             feature: str) -> tuple[str, str] | None:
+    """Which entry a deck line's `D<n>` names where several features have one: the one written for the line's
+    slice, else the one under the feature the stream's log is, else the first. None where no feature has it."""
+    held = [key for key in book if key[1] == number]
+    if len(held) > 1:
+        held = ([key for key in held if piece and _slice(book[key].get("Slice", "")) == piece]
+                or [key for key in held if key[0] == feature] or held)
+    return held[0] if held else None
 
 
 def capabilities(root: Path) -> dict[str, str]:
@@ -129,7 +143,7 @@ def decisions(root: Path) -> list[Decision]:
     book = written(root)
     charted = capabilities(root)
     sure = confirmations(root)
-    used: set[str] = set()
+    used: set[tuple[str, str] | None] = set()
     found: list[Decision] = []
     for feature, fairway in streams(root):
         lines, _ = entries(root, fairway, feature)
@@ -141,8 +155,9 @@ def decisions(root: Path) -> list[Decision]:
             # The line's own `id` where its words do not open with the number: a launch's decisions carry
             # `id: D9` and a sentence, and read as "D9 (not in decisions.md)" beside the entry they were.
             number = named.group(1) if named else (ident if is_id(ident) else "")
-            entry = book.get(number, {})
-            used.add(number)
+            held = entry_of(book, number, str(line.fields.get("slice", "")), feature)
+            entry = book[held] if held else {}
+            used.add(held)
             by = str(line.fields.get("decided_by", "")) or entry.get("Decided by", "")
             yours = by == "human"
             parts = _shown(entry)
@@ -157,18 +172,21 @@ def decisions(root: Path) -> list[Decision]:
                                   entry.get(SENTENCE, ""), entry.get("Status", ""), charted.get(piece, ""),
                                   home, sure.get(f"{home}/{number or ident}", "")))
     marked = upstream_read(root)
-    for number, entry in book.items():
-        if number in used:
+    first = {number: home for home, number in reversed(list(book))}
+    for (home, number), entry in book.items():
+        if (home, number) in used:
             continue
+        # The number alone names the first feature's, as it always did; a later feature's says which it is.
+        name = number if first[number] == home else f"{home}/{number}"
         piece = _slice(entry.get("Slice", ""))
         # A person's own answer is theirs whichever place it was read from. Only a deck line's `decided_by`
         # was looked at, so an entry `Decided by: human` with no deck line — an answer given in a
         # conversation and written straight into the record — was shown as somebody else's.
         yours = entry.get("Decided by", "").strip() == "human"
-        found.append(Decision(f"md:{number}", number, entry.get("title", ""), entry.get("Decision", ""),
+        found.append(Decision(f"md:{name}", number, entry.get("title", ""), entry.get("Decision", ""),
                               entry.get("When", ""), piece, entry.get("Stream", ""),
                               "you" if yours else entry.get("Decided by", ""), _shown(entry),
-                              yours or number in marked, yours, entry.get(SENTENCE, ""), entry.get("Status", ""),
+                              yours or name in marked, yours, entry.get(SENTENCE, ""), entry.get("Status", ""),
                               charted.get(piece, ""), entry.get(FROM, ""),
                               sure.get(f"{entry.get(FROM, '')}/{number}", "")))
     return sorted(found, key=lambda one: (one.when, one.number), reverse=True)
@@ -183,13 +201,13 @@ def mark(root: Path, keys: list[str]) -> str:
         if kind == "deck" and ":" in rest:
             fairway, _, stamp = rest.partition(":")
             by_stream.setdefault(fairway, []).append(stamp)
-        elif kind == "md" and is_id(rest):
+        elif kind == "md" and is_id(rest.rpartition("/")[2]):
             upstream.append(rest)
         else:
             raise ValueError(f"{key!r} names no decision")
     said = [mark_read(root, fairway, stamps) for fairway, stamps in by_stream.items()]
     if upstream:
-        known = {one.number for one in decisions(root) if one.key.startswith("md:")}
+        known = {one.key[3:] for one in decisions(root) if one.key.startswith("md:")}
         wanted = sorted(upstream_read(root) | (set(upstream) & known))
         path = logs_dir(root) / UPSTREAM_READ
         path.parent.mkdir(parents=True, exist_ok=True)

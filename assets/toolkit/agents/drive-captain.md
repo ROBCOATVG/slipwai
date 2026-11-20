@@ -100,7 +100,8 @@ ORD-04 ahead of ORD-03: it sets the mark two other slices are waiting on." Not a
 
 ## Reading the state
 
-The deck log, `.slipwai/run/logs/<feature>/<stream>.jsonl`, is the stream's state, and `state.json` gives you
+The deck log, `.slipwai/run/logs/<feature>/<stream>.jsonl` — one a stream, under the chart's feature, which a
+slice's session has in `$SLIPWAI_DECK` — is the stream's state, and `state.json` gives you
 its newest lines. These are its kinds, all written by the program or a slice's session, never by you:
 
 | Kind | What it says | Beyond `fairway` |

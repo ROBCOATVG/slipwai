@@ -971,6 +971,20 @@ def slice_asked(entry: logs.Entry) -> str:
     return given.removeprefix("merge-") if given.startswith("merge-") else ""
 
 
+def clearance_feature(slice_id: str) -> str:
+    """The feature this slice's chart row puts its files under, or `""` where no chart names the slice or
+    none can be read — a harbour without the chart's reader holds as it did, by where the stream's log is."""
+    if capabilities is None:
+        return ""
+    try:
+        charted, feature = capabilities.chart()
+    except Exception:  # noqa: BLE001 — a chart that will not parse is `check-chart`'s to refuse, not a merge's
+        return ""
+    if slice_id not in (charted.get("slices") or {}):
+        return ""
+    return capabilities.clearance.feature_of_slice(slice_id, charted, feature)
+
+
 def unseeded(fairway: str, slice_id: str) -> str:
     """Why this slice may not merge yet because its story never ran green, or "" where nothing stops it.
 
@@ -982,14 +996,18 @@ def unseeded(fairway: str, slice_id: str) -> str:
     the need stays open on the board against it. Any other hand-back is not: recap's LB13 merged on one
     about its design page, with a story whose data belonged to a subject nobody signs in as.
     """
-    path = next((one for one in deck_logs() if one.stem == fairway), None)
-    if path is None:
+    paths = logs.streams(ROOT).get(fairway)
+    if not paths:
         return ""
-    story = f"specs/{path.parent.name}/slices/{slice_id}/try-it.json"
+    path = paths[0]
+    # Under the slice's own feature, where the chart can say: a further feature's story is not under the
+    # feature the stream's log is, and looked for there this hold let every one of its slices through.
+    home = clearance_feature(slice_id) or path.parent.name
+    story = f"specs/{home}/slices/{slice_id}/try-it.json"
     if git("cat-file", "-e", f"{BRANCH.format(slice=slice_id)}:{story}").returncode != 0:
         return ""
-    try:
-        lines = logs.fold(path.read_text(encoding="utf-8").splitlines())
+    try:  # every file that holds the stream's lines: a `seeded` line was once written under the story's feature
+        lines = logs.fold(logs.stream_lines(paths))
     except (OSError, UnicodeDecodeError, logs.Unreadable):
         return ""
     mine = [one for one in lines if str(one.fields.get("slice", "")) == slice_id]
@@ -1028,7 +1046,7 @@ def ungated(slice_id: str) -> str:
         return ""
     if any(member not in merged for member in members if member != slice_id):
         return ""
-    record = f"specs/{feature}/capabilities/{capability}/gates.md"
+    record = f"specs/{capabilities.feature_of(charted, feature, capability)}/capabilities/{capability}/gates.md"
     shown = git("show", f"{BRANCH.format(slice=slice_id)}:{record}")
     if shown.returncode == 0 and capabilities.CLEARED.search(shown.stdout):
         return ""
@@ -1421,10 +1439,11 @@ def cleared_by_decisions(already: list[logs.Entry]) -> list[logs.Entry]:
     done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
             for e in already if e.kind == "cleared"}
     found: list[logs.Entry] = []
-    for path in deck_logs():
-        fairway = path.stem
+    # A stream at a time and not a file: a question a session wrote under its own feature's name and the
+    # decision the skipper wrote in the stream's log are one stream's, and read apart neither answers the other.
+    for fairway, paths in logs.streams(ROOT).items():
         try:
-            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+            deck = logs.fold(logs.stream_lines(paths))
         except (logs.Unreadable, OSError, UnicodeDecodeError):
             continue
         decided = {str(e.fields.get("id", "")) for e in deck if e.kind == "decision"}

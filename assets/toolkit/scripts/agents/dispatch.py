@@ -256,7 +256,8 @@ def claim(found: dict, written: list[dict]) -> list[str]:
             continue
         line = logs.entry("claimed", fairway=fairway, slice=row["slice"], band=row["band"],
                           by="dispatch", machine=row["machine"])
-        path = logs.deck_path(ROOT, feature, fairway)
+        # The stream's one log, under the chart's feature: `chart` where a further feature was asked about.
+        path = logs.deck_path(ROOT, str(found.get("chart") or feature), fairway)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as file:
             file.write(line.line())

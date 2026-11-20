@@ -22,12 +22,13 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 580 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# budget: 616 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
 # and a park written when a need was a sentence, read as the record it now is. And a need
 # the fleet was to tick with no check, read as a person's
+# and a stream's lines read from every file that holds them, the chart feature's first
 from __future__ import annotations
 
 import json
@@ -480,6 +481,41 @@ def deck_logs(root: Path) -> list[Path]:
     older = older_harbour(root).resolve()
     return [path for path in sorted(place.rglob("*.jsonl")) if place.is_dir()
             if path.parent.resolve() != harbour and path.resolve() != older]
+
+
+def charted_feature(root: Path) -> str:
+    """The feature the project's one chart is written under — the first in name order with a `chart.yaml` —
+    or `""`. Found by its path and never parsed: the keel reads no YAML."""
+    found = sorted((root / "specs").glob("*/chart.yaml"))
+    return found[0].parent.name if found else ""
+
+
+def streams(root: Path) -> dict[str, list[Path]]:
+    """Each stream's log files by its name, in name order: its one log, under the chart's feature, first.
+
+    A stream has one log. Until sessions were told where it is, one working a further feature's slice wrote
+    under that feature's name instead, so a stream can have a second file whose lines are as much its own —
+    and the board drew that file as a second stream that never started. Every reader folds them all.
+    """
+    home = charted_feature(root)
+    found: dict[str, list[Path]] = {}
+    for path in deck_logs(root):
+        found.setdefault(path.stem, []).append(path)
+    return {name: sorted(found[name], key=lambda path: path.parent.name != home) for name in sorted(found)}
+
+
+#: The instant a line records, read without parsing it: a line nobody can parse still has a place in the order.
+INSTANT_OF = re.compile(r'"t":\s*"([^"]*)"')
+
+
+def stream_lines(paths: list[Path]) -> list[str]:
+    """One stream's lines from every file that holds them: one file exactly as it is, several interleaved by
+    the instant each line records, as `harbour_fold` reads the machines' logs. Within one second the stream's
+    own log comes last: its captain answers what a session wrote. OSError where one cannot be read."""
+    if len(paths) == 1:
+        return paths[0].read_text(encoding="utf-8").splitlines()
+    found = [line for path in reversed(paths) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return sorted(found, key=lambda line: at.group(1) if (at := INSTANT_OF.search(line)) else "")
 
 
 def harbour_fold(root: Path) -> list[Entry]:

@@ -139,7 +139,7 @@ def features() -> list[str]:
     return sorted(path.name for path in SPECS.iterdir() if path.is_dir()) if SPECS.is_dir() else []
 
 
-def uncharted(answering: str) -> list[str]:
+def uncharted(answering: str, charted: dict | None = None) -> list[str]:
     """The features this answer is **not** about, and that no chart covers either.
 
     A project with two features and one chart answers for the charted one and says nothing about the
@@ -147,6 +147,8 @@ def uncharted(answering: str) -> list[str]:
     every slice it asked about came back queued or blocked, because they are in a chart that is not its.
     """
     charts = {path.parent.name for path in SPECS.glob("*/chart.yaml")} if SPECS.is_dir() else set()
+    # A further feature's slices are rows on this chart, so the chart does cover it and the answer is about it.
+    charts |= set(slice_features(charted)) if charted else set()
     return [name for name in features() if name != answering and name not in charts]
 
 
@@ -172,10 +174,17 @@ def lines(feature: str) -> list[dict]:
     dozen kinds and will grow, and a reader that refused the unfamiliar would break every time one was
     added. A line in a *newer format* is a different matter and stops the read, because guessing which
     fields moved is how a reader reports a run that did not happen.
+
+    **A stream's lines are read from every file that holds them.** A session working a further feature's
+    slice once wrote its marks and questions to a file of the stream's name under that feature, which this
+    never read: the marks stayed unset and every slice steering by them stayed blocked.
     """
     found: list[dict] = []
+    held = logs.streams(ROOT)
     for path in log_paths(feature):
-        for number, text in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        beside = [one for one in held.get(path.stem, []) if one.parent != path.parent] \
+            if path.parent == LOGS / feature else []
+        for number, text in enumerate(logs.stream_lines([path, *beside]), start=1):
             if not text.strip():
                 continue
             try:
@@ -458,7 +467,7 @@ def given_by(charted: dict, slice_id: str) -> set[str]:
     """The marks this slice's story gives — `given[].event` in its `try-it.json`, read from the checkout or
     from the berth that holds it — which it therefore does not wait for. A story not yet written gives
     nothing, and a story that cannot be read gives nothing either: `check-try` is where that is refused."""
-    feature = feature_of(charted)
+    feature = feature_of_slice(slice_id, charted)
     for where in checkouts():
         path = where / f"specs/{feature}/slices/{slice_id}/try-it.json"
         if not path.is_file():
@@ -551,6 +560,27 @@ def feature_of(charted: dict) -> str:
     return named or chart()[1]
 
 
+def feature_of_slice(slice_id: str, charted: dict | None = None, chart_feature: str = "") -> str:
+    """The feature that holds this slice's own files: its chart row's `feature` key, else the chart's.
+
+    There is one chart, written under the first feature, and a further feature's slices are rows on it, each
+    naming its feature. Everything a slice keeps — its story, its plan, its stage record — is under that
+    feature, and a reader that took the chart's found none of it. Read off the row and never searched for.
+    `chart_feature` is the chart's, for a caller that was handed it with the chart and need not ask again.
+    """
+    charted = chart()[0] if charted is None else charted
+    entry = (charted.get("slices") or {}).get(slice_id)
+    named = str(entry.get("feature") or "") if isinstance(entry, dict) else ""
+    return named or chart_feature or feature_of(charted)
+
+
+def slice_features(charted: dict) -> list[str]:
+    """Every feature with a slice on this chart, the chart's own first, then in the order the rows name them."""
+    home = feature_of(charted)
+    return list(dict.fromkeys([home, *(feature_of_slice(str(slice_id), charted, home)
+                                       for slice_id in charted.get("slices") or {})]))
+
+
 def ids_in(cell: str, known: list[str], rest: list[str]) -> list[str]:
     """The slice ids one cell of the slice graph names, in chart order: each id written, each run written
     as `A–B`, and `all others` as every slice no other row's first cell named."""
@@ -582,10 +612,15 @@ def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str]
     **Absent is not a refusal.** A slice no row names has no dependencies here and declares no
     `parallel_ok_with`, so the page's own rule answers for it — slices that share only a contract are
     independent — which is what this file did before it read the graph at all.
+
+    **Each feature with slices on the chart has a split of its own**, and a row's first cell names that
+    feature's slices: `all others` in a later feature's split is the rest of that feature, never of the chart.
+    What a row depends on may be any slice on the chart, since a later feature builds on an earlier one's.
     """
-    feature = feature_of(charted)
+    home = feature_of(charted)
     known = [str(slice_id) for slice_id in (charted.get("slices") or {})]
-    model, split = ROOT / "docs/event-model/model.yaml", SPECS / feature / "story-split.md"
+    model = ROOT / "docs/event-model/model.yaml"
+    splits = {feature: SPECS / feature / "story-split.md" for feature in slice_features(charted)}
 
     def stamp(path: Path) -> float:
         try:
@@ -593,12 +628,16 @@ def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str]
         except OSError:
             return 0.0
 
-    key = (f"{split}|{','.join(known)}", stamp(model), stamp(split))
+    key = (f"{'|'.join(map(str, splits.values()))}|{','.join(known)}", stamp(model),
+           sum(stamp(split) for split in splits.values()))
     if key in GRAPHS:
         return GRAPHS[key]
     depends: dict[str, list[str]] = {}
     parallel: dict[str, set[str] | None] = {}
-    if split.is_file():
+    for feature, split in splits.items():
+        if not split.is_file():
+            continue
+        own = [slice_id for slice_id in known if feature_of_slice(slice_id, charted, home) == feature]
         rows: list[list[str]] = []
         inside = False
         for text in split.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -610,10 +649,10 @@ def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str]
                 if len(cells) >= 2 and cells[0].lower() != "slice" and not set(cells[0]) <= set("-: "):
                     rows.append(cells)
         named = {slice_id for cells in rows if "all other" not in cells[0].lower()
-                 for slice_id in ids_in(cells[0], known, [])}
-        rest = [slice_id for slice_id in known if slice_id not in named]
+                 for slice_id in ids_in(cells[0], own, [])}
+        rest = [slice_id for slice_id in own if slice_id not in named]
         for cells in rows:
-            mine = ids_in(cells[0], known, rest)
+            mine = ids_in(cells[0], own, rest)
             deps = [] if cells[1].lower() in NONE_CELLS else ids_in(cells[1], known, [])
             ok: set[str] | None = None
             if len(cells) > 2:
@@ -969,8 +1008,12 @@ def done_marked(feature: str) -> set[str]:
     say which slices `--baseline-marks` may record. Never to clear a slice.
     """
     found: set[str] = set()
-    register = SPECS / feature / "slices/README.md"
-    if register.is_file():
+    # Each feature keeps a register of its own slices, so every feature with a slice on this chart is read.
+    charted = chart(feature)[0]
+    for home in dict.fromkeys([feature, *(slice_features(charted) if charted else [])]):
+        register = SPECS / home / "slices/README.md"
+        if not register.is_file():
+            continue
         for text in register.read_text(encoding="utf-8").splitlines():
             if text.strip().startswith("|"):
                 first = text.strip().strip("|").split("|")[0].strip().strip("`")
@@ -1141,6 +1184,15 @@ def main(argv: list[str]) -> int:
             return 1
         requested = argv[index]
     charted, feature = chart(requested)
+    # A further feature has no chart of its own: its slices are rows on the project's one chart, each naming
+    # it. Asked about that feature, the answer is those rows — read against the whole chart, since what they
+    # steer by and the slots they wait for are the chart's — and never a refusal that it has no chart.
+    only: set[str] | None = None
+    if requested and not charted:
+        whole, home = chart()
+        mine = {str(one) for one in (whole.get("slices") or {}) if feature_of_slice(str(one), whole, home) == requested}
+        if mine:
+            charted, feature, only = whole, home, mine
     # **Cannot schedule, rather than a calm nothing.** A feature somebody named and no chart covers is the
     # one case where silence is worst: the answer that came back was the *other* feature's, every slice in
     # it read as queued or blocked, and a run took that for "nothing may start" and went its own way.
@@ -1194,24 +1246,34 @@ def main(argv: list[str]) -> int:
         slots = int(argv[index]) if index < len(argv) and argv[index].lstrip("-").isdigit() else slots
         numbers = {**numbers, "slots": slots}
     planned = schedule(states, slots, claims, held)
+    if only is not None:
+        # Scheduled with the rest of the chart and then narrowed, so a slot another feature's slice took is
+        # not offered twice.
+        states = {slice_id: row for slice_id, row in states.items() if slice_id in only}
+        planned = {name: [row for row in rows if row["slice"] in only] for name, rows in planned.items()}
     if "--json" in argv:
         settled = folded_logs.marks | already_set(charted)
         # Keyed in the fairway priority, so a reader takes the first key and has the stream that is
         # meant to go first rather than the one the chart happens to name first.
         ready: dict[str, list[str]] = {}
         of_fairway = fairway_of(charted)
-        for slice_id in sorted(cleared_slices(charted, settled),
+        for slice_id in sorted((one for one in cleared_slices(charted, settled) if only is None or one in only),
                                key=lambda one: order.index(of_fairway.get(one, ""))
                                if of_fairway.get(one, "") in order else len(order)):
             ready.setdefault(of_fairway.get(slice_id, ""), []).append(slice_id)
         try:
             import feedback  # noqa: PLC0415
-            points = [row for row in feedback.rank(feature, charted, folded_logs, settled) if not row["merged"]][:3]
+            points = [row for row in feedback.rank(feature, charted, folded_logs, settled)
+                      if not row["merged"] and (only is None or row["slice"] in only)][:3]
         except Exception:  # noqa: BLE001 — the board's read is never refused for a ranking it can do without
             points = []
-        print(json.dumps({"v": QUERY_VERSION, "feature": feature, "ready": ready, "fairways": order,
+        # `feature` is the one asked about; `chart` says whose chart answered, where that is another's.
+        print(json.dumps({"v": QUERY_VERSION, "feature": requested if only is not None else feature,
+                          **({"chart": feature} if only is not None else {}), "ready": ready, "fairways": order,
+                          # Each row's `feature` is where the slice's own files are, for a board that has no chart.
                           "states": {slice_id: {"state": state, "why": why, "band": BANDS.get(state),
-                                                "fairway": of_fairway.get(slice_id, "")}
+                                                "fairway": of_fairway.get(slice_id, ""),
+                                                "feature": feature_of_slice(slice_id, charted, feature)}
                                      for slice_id, (state, why) in states.items()},
                           "slots": slots, "numbers": numbers, "held": held,
                           "claims": "unreadable" if claims is None else sorted(claims),
@@ -1227,9 +1289,10 @@ def main(argv: list[str]) -> int:
         state, why = position(charted, folded_logs, slice_id, done)
         print(f"clearance: {slice_id} is {state} — {why}")
         return 0 if state in BANDS else 1
-    print(f"clearance: {len(planned['start'])} of {len(states)} slices start now in {feature}"
+    print(f"clearance: {len(planned['start'])} of {len(states)} slices start now in "
+          f"{f'{requested}, on the chart of {feature}' if only is not None else feature}"
           f" (slots: {'unbounded' if slots is None else slots})")
-    if (elsewhere := uncharted(feature)):
+    if only is None and (elsewhere := uncharted(feature, charted)):
         print(f"  this answer is about {feature} alone; {', '.join(elsewhere)} "
               f"{'has' if len(elsewhere) == 1 else 'have'} no chart and nothing here is about "
               f"{'it' if len(elsewhere) == 1 else 'them'}")

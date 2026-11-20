@@ -287,6 +287,15 @@ class KeystoneTest(unittest.TestCase):
         scope = self.module.Scope("ORD-01", "main")
         self.assertIsNotNone(scope.violation("specs/ordering/keystones.yaml", "M"))
 
+    def test_the_workspace_s_one_lock_at_the_root_is_a_slice_s_to_write_and_its_root_manifest_is_not(self) -> None:
+        """A dependency a slice needed cost it a hand-back and a stop for a person, on a file nobody chooses
+        the contents of. The lock is derived; the root manifest still says what the workspace is."""
+        scope = self.module.Scope("ORD-01", "main")
+        for lock in sorted(self.module.WORKSPACE_LOCKS):
+            self.assertIsNone(scope.code_violation(lock, "M"), lock)
+        self.assertIsNotNone(scope.code_violation("package.json", "M"))
+        self.assertIsNotNone(scope.code_violation("Makefile", "M"))
+
 
 class FlagDeclarationTest(unittest.TestCase):
     """A slice declares its own flag in the same change as the code that reads it — `check-flags` will pass

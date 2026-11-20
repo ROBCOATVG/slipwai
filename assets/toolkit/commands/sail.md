@@ -452,10 +452,14 @@ several — the context's events module *additively*, **new** migration files na
 `Proposed` (never an edit to one that stands), the composition root, its own flag's declaration in
 `infra/service/flags.auto.tfvars` — additively and seeded `off`, in the same change as the code that reads it
 — and its own dispatch ledger file. `scripts/check-slice-scope.py` is the exact list. Nothing else —
-`Makefile`, `project.json`, the workspace's root manifests and locks, the local services' files under
+`Makefile`, `project.json`, the workspace's root manifests, the local services' files under
 `docker/`, `scripts/`, `skills/`, `agents/`, the other docs — is a slice's to write. **The manifest and lock
 of the service that owns the slice are that service's code, and are the slice's**: a dependency or a build
-step it needs goes there in the same change as the code that uses it, and is never handed back. For the
+step it needs goes there in the same change as the code that uses it, and is never handed back. **So is
+the workspace's one lock at the root**, where the workspace keeps it there (`package-lock.json`,
+`pnpm-lock.yaml`, `uv.lock`): add the dependency to the service's manifest, run the package manager, and commit
+the lock it wrote with the code that uses it. A lock is derived, so where two slices' locks meet the
+harbourmaster takes trunk's and writes it again from the merged manifests; nobody resolves one by hand. For the
 rest: a delegate that needs one of them hands the need back here, and it lands on `main`
 before the fan-out or between merges. **A hand-back that names a file is a need, not a note**, and the fleet's mender lands it wherever a
 slice may not write, but for a gate, the cloud under `infra/`, and another slice's work:
@@ -467,7 +471,9 @@ harbourmaster ticks each need against trunk as it ticks a park's, the board grou
 you* by need, and a slice that ships a stub around the need still ships with the need open against it,
 which is what keeps a merged slice's dark story from reading as finished. Where the need is why the slice's story cannot
 seed yet, add `--slice <id> --dark`: the line then names the story it keeps dark, and the harbourmaster
-merges a slice with a story only on a `seeded` line or on that hand-back — never on one about something else. The canonical slot at the feature
+merges a slice with a story only on a `seeded` line or on that hand-back — never on one about something else.
+**A slice that reaches the wall it handed back does not park for a person**: where it must wait, its park names
+the same need with the same `check` and `by: fleet`, so the harbourmaster clears it the moment trunk has it. The canonical slot at the feature
 root is a link, never committed.
 
 **Prove on the slice branch, then verify, then push.** As delegates report their examples proven, check each slice's

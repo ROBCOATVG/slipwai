@@ -74,6 +74,26 @@ class NeedsTest(MergeFixture):
         self.assertIn(f"trunk at {self.trunk_was[:8]}", met[0]["how"])
         self.assertEqual([c["what"] for c in self.receipts("cleared")], ["needs met: 1 of 1"])
 
+    def test_a_park_on_a_need_already_handed_to_the_fleet_takes_that_hand_back_s_check(self) -> None:
+        """S68 handed a dependency back with a check, then parked on the same wall for a person with none:
+        the mender landed it eighteen seconds later and the park waited on somebody to say what trunk said."""
+        self.deck("ordering", "ORD", logs.entry(
+            "told", fairway="ORD", message="LB6 needs a dependency", by="session", t="2026-10-21T15:00:00Z",
+            needs=[{"what": "add one to service.txt", "by": "fleet",
+                    "check": {"kind": "text", "path": "service.txt", "has": "one"}}]))
+        self.park({"what": "land service.txt with one in it, then let LB6 carry on", "by": "person"})
+        self.assertEqual(self.run_once().returncode, 0)
+        self.assertEqual([c["what"] for c in self.receipts("cleared")], ["needs met: 1 of 1"])
+
+    def test_a_park_that_names_something_else_still_waits_for_a_person(self) -> None:
+        self.deck("ordering", "ORD", logs.entry(
+            "told", fairway="ORD", message="LB6 needs a dependency", by="session", t="2026-10-21T15:00:00Z",
+            needs=[{"what": "add one to service.txt", "by": "fleet",
+                    "check": {"kind": "text", "path": "service.txt", "has": "one"}}]))
+        self.park({"what": "decide whether refunds are in this release", "by": "person"})
+        self.run_once()
+        self.assertEqual(self.receipts("cleared"), [])
+
     def test_a_need_trunk_does_not_satisfy_yet_stands_and_a_berth_s_edit_does_not_tick_it(self) -> None:
         self.park({"what": "service.txt says two", "by": "fleet",
                    "check": {"kind": "text", "path": "service.txt", "has": "two"}})

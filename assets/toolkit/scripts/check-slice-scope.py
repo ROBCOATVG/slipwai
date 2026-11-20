@@ -29,7 +29,9 @@ What a slice's change may contain — everything since the branch left `main`, c
   model names none — its own build manifest and lock among them: a dependency or a build step the slice
   needs is added where the service declares them, in the same change as the code that uses it, and is
   never handed back (lean-coffee-club's SI1 handed back a line of its own service's `pom.xml`, which this
-  gate would have let it write, and nobody landed it) — and, where the block names a `context`, nothing under another context's directory in
+  gate would have let it write, and nobody landed it). **A workspace's one lock at the root is the slice's
+  too** (`package-lock.json`, `pnpm-lock.yaml`, `uv.lock`): it is derived from the manifests, and where two
+  slices' locks conflict the harbourmaster takes trunk's and writes it again (`scripts/agents/lockfiles.py`) — and, where the block names a `context`, nothing under another context's directory in
   `domain/` or `application/`. A browser app is open to every slice: a white box is one screen;
 - **the context's events module additively**: a line may be added, none removed. It is the contract;
 - **its own flag's declaration**, `infra/service/flags.auto.tfvars`, additively and seeded `off`: a key, a
@@ -55,7 +57,7 @@ Refused, each with what to do instead: the canonical slot at the feature root (`
 `research.md`, `data-model.md`, `quickstart.md`, `tasks.md` — links into `slices/<id>/`, never committed;
 a regular file there is a record about to be lost, on every branch), another slice's directory or model
 block, another context's code, an edited or deleted migration, a numbered new migration, and anything else
-in the repository — `Makefile`, `project.json`, the workspace's root manifests and locks, `docker/`, `scripts/`, `skills/`,
+in the repository — `Makefile`, `project.json`, the workspace's root manifests, `docker/`, `scripts/`, `skills/`,
 `commands/`, `agents/`, CI, the docs other than the model and its canvas — which is the host's: landed on `main`
 before the fan-out, or handed back as the question it is. A refusal is a hand-back, not something to work around.
 
@@ -106,6 +108,9 @@ FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists", "people")
 MIGRATION_DIRECTORIES = ("migrations", "migration")
 MIGRATION_NAME = re.compile(r"^(?:\d+_|V\d+__)")
 MIGRATION_SUFFIXES = {".sql", ".js", ".ts", ".py"}
+#: A workspace's one lock at its root, by name: derived from the manifests, so the slice that changes a
+#: manifest writes it. The names `scripts/agents/lockfiles.py` knows how to write again, and no others.
+WORKSPACE_LOCKS = frozenset({"package-lock.json", "pnpm-lock.yaml", "uv.lock"})
 STAMPED_MIGRATION = re.compile(r"^(?:\d{12}_|V\d{12}__)")
 LAYERS_BY_CONTEXT = ("domain", "application")
 #: What a run writes in any checkout, a slice's berth included: everything under `.slipwai/run/`, which the
@@ -357,6 +362,10 @@ class Scope:
 
     def code_violation(self, path: str, status: str) -> str | None:
         app = self.owning_app(path)
+        if app is None and Path(path).name in WORKSPACE_LOCKS:
+            # Derived from the manifests, so nobody's to choose: the slice writes it with its own service's
+            # manifest line, and the harbourmaster writes it again where two slices' locks meet (`lockfiles.py`).
+            return None
         if app is None:
             return (
                 f"{path}: outside every deployable and not a slice's to write — shared configuration, tooling and "

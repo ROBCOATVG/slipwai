@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import harness_cli, step_record
+from . import drawing_budget, harness_cli, step_record
 from .drawn import undrawn, unsurfaced
 from .feature_stages import name_in_hand
 from .logs import run_dir
@@ -661,13 +661,17 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
     # project's script picks, and a board that left it to that drew a finished feature for a further one.
     named = feature or name_in_hand(where) or first_feature(where)
     argv = [*SURFACES, f"FEATURE={named}"] if named else SURFACES
+    # The ceiling the project's script would take, from the same file: a named feature is a redraw's.
+    allowed = drawing_budget.seconds(where / "harbour.json", redraw=bool(feature))
     step = stage_step(where, "mockups", named, argv, DRAWING, DRAWING_ACP,
                       lambda code: (not code and unsurfaced(where, named)) or drew(code),
-                      "surfaces", limit=900.0, pid="surfaces.pid", stage="", after=lambda: undrawn(where, named),
+                      "surfaces", limit=allowed, pid="surfaces.pid", stage="", after=lambda: undrawn(where, named),
                       done=lambda: unsurfaced(where, named) or
                       "The surfaces are drawn. The storyboard is below: open it, then Approve or "
                       "Disapprove it on this page. That verdict is what the model and the chart read.",
-                      undone="The drawing stopped short; nothing was approved. Its lines above say where.")
+                      undone="The drawing stopped short; nothing was approved. Its lines above say where. What "
+                             "it drew is kept: say what is left to it in the storyboard's conversation and it "
+                             "carries on from there.")
     fitting = Fitting(where, [step], said)
     fitting.thread.start()
     return fitting
@@ -675,7 +679,7 @@ def draw(where: Path, said: list[str] | None = None, feature: str = "") -> Fitti
 
 #: What a stage's session is run with beside its command, where that is not the defaults: the drawing writes
 #: the pid file another window reads and tells its hooks no stage. A resumed session is run the same way.
-RESUMED: dict[str, dict[str, Any]] = {"mockups": {"pid": "surfaces.pid", "stage": "", "limit": 900.0}}
+RESUMED: dict[str, dict[str, Any]] = {"mockups": {"pid": "surfaces.pid", "stage": ""}}
 
 
 def kept_line(command: str) -> str:
@@ -696,7 +700,10 @@ def resumed(where: Path, command: str, said: list[str] | None = None,
     fitting.earlier = earlier
     checks = {"draft": lambda: "" if any((where / "specs").glob("*/spec.md")) else
               "The session ended without a specification under specs/."}
+    # A drawing carried on has a first drawing's ceiling again: it was ended once at one too short for it.
     fitting.stage = StageSession(where, command, after=checks.get(command), **RESUMED.get(command, {}))
+    if command == "mockups":
+        fitting.stage.limit = drawing_budget.seconds(where / "harbour.json", redraw=False)
     fitting.stage.done = True
     fitting.stop(0)
     return fitting

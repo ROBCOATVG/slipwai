@@ -48,6 +48,9 @@ SHARED = {
     # Which feature is in hand, and whether the model and the split hold that feature: the board's buttons and
     # the scripts they run (`launch.py`, `model.py`, `surfaces.py`) ask it, and have to hear one answer.
     "src/slipwai/feature_stages.py": "assets/toolkit/scripts/agents/feature_stages.py",
+    # How long a drawing of the storyboard may take: the board's ceiling on a drawing it runs over the protocol,
+    # and `surfaces.py`'s on one it runs headless. The board once had its own number, and it was not the file's.
+    "src/slipwai/drawing_budget.py": "assets/toolkit/scripts/agents/drawing_budget.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

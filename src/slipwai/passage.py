@@ -307,7 +307,7 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                        else "nobody has seen a surface yet",
                        expect="The surfaces are researched, drawn and storyboarded, then shown to you one "
                               "state at a time. **It stops for you at every surface** \u2014 that is the "
-                              "stage, not a fault. The drawing has a budget \u2014 fifteen minutes, ten for a "
+                              "stage, not a fault. The drawing has a ceiling \u2014 an hour, half an hour for a "
                               "redraw, scaled by the telegraph \u2014 and is ended at it with what it drew kept; "
                               "approving takes as long as you take."))
 

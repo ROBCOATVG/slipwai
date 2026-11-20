@@ -64,12 +64,15 @@ Suggested surfaces: not touched — <why none of the suggested surfaces changes>
 and the record names the suggestion and your answer. Without that line the stage stops and says the two
 disagree, and a person settles it here.
 
-**That session has a budget, and it is ended at it.** `SLIPWAI_BUDGET_MINUTES` is how many minutes you have
-and `SLIPWAI_BUDGET_ENDS` the clock time they run out — fifteen for a first drawing and ten for a redraw,
-scaled by the telegraph like every stage budget in `harbour.json`. Plan to it: the research note and the
+**That session has a ceiling, and it is ended at it.** `SLIPWAI_BUDGET_MINUTES` is how many minutes you have
+and `SLIPWAI_BUDGET_ENDS` the clock time they run out — sixty for a first drawing and thirty for a redraw,
+scaled by the telegraph like every stage budget in `harbour.json`, or the `surfaces` row a person wrote there.
+It is a ceiling for a session that is lost, not a target: a feature with a handful of surfaces is done in a
+fraction of it, and one with twenty needs most of it. Plan to it: the research note and the
 shared stylesheet first, then every surface roughly drawn before any is refined, then the storyboard, so that
 whatever the clock finds is a storyboard with every surface on it rather than three perfect screens and no
-flow. At the budget `surfaces.py` ends the session and every delegate it started, and keeps what is on disk. A
+flow. At the ceiling the session and every delegate it started are ended, and what is on disk is kept; a person
+who says what is left in the storyboard's conversation carries it on from there. A
 run measured without one spent seventy minutes on a redraw, most of it rendering and re-rendering screenshots,
 while the person who asked for it waited.
 
@@ -363,7 +366,7 @@ holds the storyboard to it, and a frame that is on the storyboard and not on the
 not on the storyboard, is a finding. `python3 scripts/agents/existing.py <feature> --check` notes a
 `changed` surface whose original is not framed; it counts no frames and refuses no storyboard for how many
 it shows, because which screen is one step from another is not recorded anywhere a script can read. Two
-hundred frames is not a storyboard, and the budget is the same fifteen minutes. Then run
+hundred frames is not a storyboard, and the ceiling does not grow for one. Then run
 `skills/find-gaps/SKILL.md` over that page in its design-mock mode, writing each answer back as a state the
 mock-up has to show.
 

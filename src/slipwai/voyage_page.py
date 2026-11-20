@@ -268,7 +268,9 @@ function paintPassage(found){
     // Not while somebody is typing an answer into a card: the reload would throw the words away.
     const typing = [...document.querySelectorAll('textarea, input')]
       .some(box => !/^(checkbox|radio|button|submit|hidden)$/.test(box.type) && box.value.trim() && changed(box));
-    if (shape !== null && found.passage.shape !== shape && !typing) { location.reload(); return; }
+    // Nor while a turn of conversation is writing the pages: it ends, and the next poll reloads once.
+    const held = typing || found.passage.writing;
+    if (shape !== null && found.passage.shape !== shape && !held) { location.reload(); return; }
     paintPassage(found.passage);
     // The model is drawn once by draw.io's viewer, and drawing it again under somebody panning it is worse
     // than a colour a moment old: so the poll only says the strokes have moved, and Redraw redraws.
@@ -768,9 +770,9 @@ def now_said(found: list[Stage]) -> str:
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
             stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False,
-            waiting: dict | None = None, draftable: bool = False) -> str:
+            waiting: dict | None = None, draftable: bool = False, writing: bool = False) -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
                        "castable": castable, "stoppable": stoppable, "drawable": drawable, "modelable": modelable,
-                       "draftable": draftable,
+                       "draftable": draftable, "writing": writing,
                        "shape": shape, "now": now_said(found),
                        "waiting": waiting or {"count": 0, "text": "", "href": ""}})

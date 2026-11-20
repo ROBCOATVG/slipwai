@@ -14,11 +14,12 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 570 — a paused slice as queued with the time it lifts, and the park its card answers, beside the fold,
+# budget: 574 — a paused slice as queued with the time it lifts, and the park its card answers, beside the fold,
 # the model, the mock-ups and the screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
 # and a slice claimed and waiting for a slot, queued apart from the ones at work
+# and when the storyboard's files were last written, in what the page is made of, so one rebuilt in place reloads
 # and a slice's name from the model the drawio captions it with, for any slice-shaped id
 from __future__ import annotations
 
@@ -545,6 +546,9 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
     specs = root / "specs"
     drawn = sorted(page.relative_to(specs).as_posix()
                    for page in specs.glob(f"*/{MOCKUPS}/*.html")) if specs.is_dir() else []
+    # And the newest write among them and the stage's notes: a storyboard rebuilt in place keeps its names.
+    written = [page.stat().st_mtime for kept in ("*.html", "research.md", "review.md")
+               for page in specs.glob(f"*/{MOCKUPS}/{kept}")] if specs.is_dir() else []
     photographed = shot_names(root)
     picture = root / DRAWIO
     home = root / "docs/intake"
@@ -564,6 +568,7 @@ def shape(root: Path, rows: list[dict[str, str]], fleet: dict, feature: str, mad
     # Not the slices' states, the berths' or the inbox: those are bands the one poll swaps in place, and a
     # reload on each of them closed every card a person had open. Only whether there are slices at all.
     del fleet
+    drawn.append(f"@{int(max(written, default=0))}")
     return "|".join((feature, "s" if rows else "", ",".join(drawn), ",".join(photographed), ",".join(verdicts),
                      str(int(picture.stat().st_mtime) if picture.is_file() else 0), "f" if made else "",
                      ",".join(intake)))

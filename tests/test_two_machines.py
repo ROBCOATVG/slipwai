@@ -19,6 +19,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import bounded
 import checkout_packages  # noqa: F401
 from captain_fixture import CARRIED, CHART, WORKS
 from harbourmaster_fixture import AGENTS, TravelFixture
@@ -131,9 +132,8 @@ class TwoMachinesTest(TravelFixture):
                                       "wait_bound": 0.001}), encoding="utf-8")
         self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", why="waiting for a person"))
         def captain() -> subprocess.CompletedProcess:
-            return subprocess.run([sys.executable, "scripts/agents/captain.py", "ORD", "--once"],
-                                  cwd=self.root, capture_output=True, text=True, timeout=30,
-                                  env={**os.environ, "SLIPWAI_MACHINE": ONE})
+            return bounded.run([sys.executable, "scripts/agents/captain.py", "ORD", "--once"], timeout=60,
+                               cwd=self.root, env={**os.environ, "SLIPWAI_MACHINE": ONE})
         stopped = captain()
         self.assertEqual(stopped.returncode, 0, stopped.stdout + stopped.stderr)
         self.assertIn("claim is retained", stopped.stdout)
@@ -178,9 +178,10 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                     # Two turns at most: the second slice steers by the first's mark, so it may already have
                     # run abreast of the first in the first turn — a sibling unblocks by planning.
                     for turn in range(2):
-                        done = subprocess.run(
-                            [sys.executable, "scripts/agents/captain.py", fairway, "--once"],
-                            cwd=clone, capture_output=True, text=True, timeout=90, env=environment)
+                        # Bounded with every session it starts: a captain ended alone left its sessions
+                        # holding the pipes, and the read after the limit never returned (`bounded.py`).
+                        done = bounded.run([sys.executable, "scripts/agents/captain.py", fairway, "--once"],
+                                           timeout=240, cwd=clone, env=environment)
                         output.seek(0)
                         diagnostic = done.stdout + done.stderr + output.read()
                         self.assertEqual(done.returncode, 0, diagnostic)

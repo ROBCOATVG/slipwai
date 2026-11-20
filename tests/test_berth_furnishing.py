@@ -187,13 +187,24 @@ class BerthTest(unittest.TestCase):
         self.assertEqual(branches.strip(), "", "the forge holds the branch, so the local one went")
 
     def test_a_berth_that_was_kept_keeps_what_it_is_running_and_its_branch(self) -> None:
+        """Kept for work nobody landed — a tracked file edited and not committed — and for nothing less: a
+        file git does not track is what a build left lying, and went on keeping every merged slice's berth."""
         berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
-        (berth / "half-written.txt").write_text("somebody's\n", encoding="utf-8")
+        tracked = self.module.git(berth, "ls-files").stdout.split()[0]
+        (berth / tracked).write_text("somebody's, and not committed\n", encoding="utf-8")
         with mock.patch.object(self.module, "stop_services") as stopped:
             said = self.module.leave(self.root, berth)
         self.assertIn("was kept", said)
+        self.assertIn(tracked, said)
         stopped.assert_not_called()
         self.assertTrue(berth.exists())
+
+    def test_a_berth_holding_only_what_git_does_not_track_goes_with_it(self) -> None:
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        (berth / "build.log").write_text("output nobody tracks\n", encoding="utf-8")
+        with mock.patch.object(self.module, "stop_services", return_value=0):
+            self.assertEqual(self.module.leave(self.root, berth), "")
+        self.assertFalse(berth.exists())
 
     def test_a_sibling_s_half_made_worktree_is_waited_out_and_not_parked_on(self) -> None:
         """Windows CI parked L03 on `failed to read .git/worktrees/<L04>/commondir`: L04's berth was being

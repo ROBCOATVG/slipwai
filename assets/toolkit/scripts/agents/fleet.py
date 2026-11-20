@@ -41,6 +41,7 @@ sys.path.insert(0, str(HERE))
 
 import clearance  # noqa: E402
 import logs  # noqa: E402
+import moorings  # noqa: E402 — the berths of merged slices are cleared away at cast-off
 import published  # noqa: E402 — the plan is on the trunk the slices are cut from, before any is lit
 import talk  # noqa: E402
 
@@ -194,10 +195,23 @@ def relight_harbourmaster() -> int | None:
         RESTARTING.unlink(missing_ok=True)
 
 
+def cleared_away(say: bool) -> list[str]:
+    """`moorings.tidy` over what the logs and trunk say: the berths of merged slices removed, and — where
+    `say` — every other one listed. Slices in flight are left alone, whatever else is true of them."""
+    try:
+        charted, feature = clearance.chart()
+        state = clearance.with_evidence(charted, clearance.folded(clearance.lines(feature)))
+    except (SystemExit, OSError, ValueError) as fault:
+        return [f"tidy: the logs could not be read ({fault}), so no worktree was touched"]
+    return moorings.tidy(ROOT, set(state.merged), set(state.claimed) - set(state.merged), say)
+
+
 def cast_off(limit: int | None) -> int:
     """Start the harbourmaster and up to `limit` captains. Returns how many processes were started."""
     standing = {name: pid for name, pid in recorded().items() if alive(pid)}
     started = 0
+    for line in cleared_away(say=False):  # merged slices' berths a stopped or refused captain left behind
+        print(f"fleet: {line}")
     if "harbourmaster" not in standing:
         pid = start("harbourmaster", [sys.executable, str(HERE / "harbourmaster.py")])
         print(f"harbourmaster started, pid {pid}")
@@ -546,7 +560,7 @@ def main(argv: list[str]) -> int:
         prog="fleet", description="Start the harbourmaster and a captain per fairway, and exit",
         epilog="This is not a runner. The state of the run is in the logs, the captains read them, and this "
                "starts processes and gets out of the way — so nothing here can be the thing that died.")
-    parser.add_argument("verb", nargs="?", choices=("start", "relight", "stop", "list", "watch", "tell"),
+    parser.add_argument("verb", nargs="?", choices=("start", "relight", "stop", "list", "watch", "tell", "tidy"),
                         default="start",
                         help="`relight` lights whatever should be lit now and starts no harbourmaster — "
                              "what the harbourmaster itself calls once a pass, so a fairway moved up while "
@@ -578,6 +592,10 @@ def main(argv: list[str]) -> int:
         return 0
     if parsed.verb == "list":
         print("\n".join(listing()))
+        return 0
+    if parsed.verb == "tidy":
+        said = cleared_away(say=True)
+        print("\n".join(said) if said else "tidy: no slice's worktree is beside this project")
         return 0
     if parsed.verb == "watch":
         return watch(parsed.minutes)

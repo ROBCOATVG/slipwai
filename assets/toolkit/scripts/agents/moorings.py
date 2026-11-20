@@ -343,7 +343,15 @@ def leave(root: Path, berth: Path) -> str:
             # the junction alone, and the deck logs it joins are not touched.
             os.rmdir(here)
     branch = git(berth, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
-    gone = git(root, "worktree", "remove", str(berth))
+    # Git keeps a worktree that holds anything it does not track, and a merged slice's berth always does: a
+    # build's output, a screenshot, a log. Those were never the slice's work, so they go with it. What stays
+    # is a berth whose *tracked* files were edited and not committed, which is work nobody has landed.
+    edited = unlanded(berth)
+    if edited:
+        return (f"{berth} was kept: {len(edited)} tracked file(s) there are edited and not committed "
+                f"({', '.join(edited[:3])}{', …' if len(edited) > 3 else ''}); commit or discard them, then "
+                f"`python3 scripts/agents/fleet.py tidy`")
+    gone = git(root, "worktree", "remove", "--force", str(berth))
     if gone.returncode != 0:
         said = (gone.stderr or gone.stdout).strip().splitlines()
         return f"{berth} was kept: {said[-1] if said else 'git would not remove it'}"
@@ -352,6 +360,53 @@ def leave(root: Path, berth: Path) -> str:
     if branch and branch != "HEAD" and git(root, "branch", "--remotes", "--contains", branch).stdout.strip():
         git(root, "branch", "--delete", "--force", branch)  # the forge holds every commit of it
     return f"{stopped} container(s) of {berth.name} were still up and were removed" if stopped else ""
+
+
+def unlanded(berth: Path) -> list[str]:
+    """The tracked files of this worktree that are edited or staged and not committed. Untracked files are
+    not work: they are what a build, a demo or a session left lying."""
+    said = git(berth, "status", "--porcelain", "--untracked-files=no").stdout.splitlines()
+    return [line[3:].strip() for line in said if line.strip()]
+
+
+def berths_of(root: Path) -> list[tuple[str, Path]]:
+    """Every slice worktree this project has beside it: (slice id, where), read from git's own list, so a
+    folder that merely has the name is never taken for one."""
+    found: list[tuple[str, Path]] = []
+    where = ""
+    for line in git(root, "worktree", "list", "--porcelain").stdout.splitlines():
+        if line.startswith("worktree "):
+            where = line.partition(" ")[2]
+        elif line.startswith("branch refs/heads/slice/") and where:
+            path = Path(where)
+            if path.resolve() != root.resolve() and path.is_dir():
+                found.append((line.rpartition("/")[2], path))
+    return found
+
+
+def tidy(root: Path, merged: set[str], flying: set[str], say: bool = True) -> list[str]:
+    """Clear away the berths of slices that have merged, and git's record of berths that are gone. One line
+    per berth about what was done with it or why it stays.
+
+    A berth was only ever removed in the moment its slice merged, by the captain that merged it: one that
+    was kept then, or whose captain was stopped first, stayed beside the project for good, and a machine
+    that had run three projects held thirty folders nobody would come back for. A berth whose slice has not
+    merged is never removed here: it is listed, with what it holds, for a person to decide.
+    """
+    lines: list[str] = []
+    git(root, "worktree", "prune")
+    for slice_id, where in berths_of(root):
+        if slice_id in flying:
+            continue
+        if slice_id in merged:
+            kept = leave(root, where)
+            lines.append(kept if kept and "was kept" in kept else f"{where.name}: {slice_id} is merged; removed")
+        elif say:
+            edited = len(unlanded(where))
+            lines.append(f"{where.name}: {slice_id} has not merged, so it stays"
+                         + (f" ({edited} tracked file(s) edited and not committed)" if edited else "")
+                         + f"; `git worktree remove --force {where}` removes it and keeps its branch")
+    return lines
 
 
 #: How long docker is given to answer. A daemon that is not running answers at once; one that hangs is not

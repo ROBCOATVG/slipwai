@@ -16,7 +16,7 @@ from __future__ import annotations
 
 def agent_targets() -> str:
     """The `.PHONY` block between the npm workspace targets and the native gate targets."""
-    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tell draft assess triage surfaces model-next launch check-decisions check-try
+    return """.PHONY: check-python preflight arrive depart dispatch hooks crossing agents agents-list check-extensions check-agents models check-benchmark benchmark cruise cruise-watch cruise-status cruise-stop cruise-tidy cruise-tell draft assess triage surfaces model-next launch check-decisions check-try
 check-python: ## Fail, first, when python3 is older than the 3.11 every gate script is written for
 \t@python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 'check-python: ' + sys.executable + ' is Python ' + sys.version.split()[0] + ', and the gate scripts need 3.11 or newer; put a newer python3 first on PATH (a non-interactive macOS shell finds /usr/bin/python3, which is 3.9, before Homebrew)')"
 preflight: ## Check once, in a fresh worktree, that an increment can run here: toolchains, caches, a socket, the index
@@ -59,6 +59,8 @@ cruise-status: ## What is running: the harbourmaster and each captain, with thei
 \tpython3 scripts/agents/fleet.py list
 cruise-stop: ## Ask the harbourmaster and every captain to stop. A captain stops at its next boundary
 \tpython3 scripts/agents/fleet.py stop
+cruise-tidy: ## Remove the worktrees of slices that have merged, and list every other slice worktree beside the project with what it holds
+\tpython3 scripts/agents/fleet.py tidy
 cruise-tell: ## Tell one stream something; its captain reads it at the next boundary (STREAM=<name> MSG=\"…\"; CRUISE_FLAGS=--everyone tells them all)
 \tpython3 scripts/agents/fleet.py tell $(CRUISE_FLAGS) $(STREAM) $(MSG)
 draft: ## Draft the constitution and the first specification from a PRD in a headless session, and stop for a person to read it (PRD=<path>; default docs/prd.md)

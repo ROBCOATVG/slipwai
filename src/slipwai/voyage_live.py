@@ -96,7 +96,17 @@ def passage(board: Any, found: list, rows: list[dict[str, str]], fleet: dict, fl
                           flags["castable"], flags["stoppable"], flags["drawable"],
                           shaped(board.made_of(rows, fleet)[1], decided, live(board)["running"]),
                           flags["modelable"], waiting=listed,
-                          draftable=flags["draftable"])
+                          draftable=flags["draftable"], writing=writing(board))
+
+
+def writing(board: Any) -> bool:
+    """Whether a turn of conversation with a stage is under way on this board, or in another window of this
+    project: what it writes is the page's shape, and the page reloads once it has ended and not at each file."""
+    fitting = board.fitting
+    said = fitting.said(10 ** 9) if fitting is not None else None
+    if said is not None and not said["done"]:
+        return bool(said.get("talking"))
+    return outside_session(board.root) is not None
 
 
 def voyage_json(board: Any) -> str:

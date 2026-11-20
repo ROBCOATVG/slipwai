@@ -90,6 +90,8 @@ SLOW += test_guard_agreed_is_current
 SLOW += test_further_feature_captain
 # And a repository and a merge per case, for the same slice at its merge.
 SLOW += test_further_feature_merge
+# The project's clearance script, run per case, asked about a feature whose slices are on another's chart.
+SLOW += test_clearance_further_feature
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

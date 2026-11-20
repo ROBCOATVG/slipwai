@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -102,6 +103,8 @@ def try_it_in(root: Path) -> Any:
     for name in ("try_it.py", "logs.py", "clearance.py"):
         shutil.copy(AGENTS / name, place / name)
     (root / "project.json").write_text("{}", encoding="utf-8")
+    # Its `clearance` is this project's: one another suite left in `sys.modules` reads that suite's tree.
+    sys.modules.pop("clearance", None)
     spec = importlib.util.spec_from_file_location("try_it_strays", place / "try_it.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -114,6 +117,7 @@ class SeededTest(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.root, True)
         self.try_it = try_it_in(self.root)
+        self.addCleanup(sys.modules.pop, "clearance", None)
         (self.root / "specs/001-first").mkdir(parents=True)
         (self.root / "specs/001-first/chart.yaml").write_text(
             "slices:\n  S45: {fairway: intake, feature: 002-further, sets: [], steers_by: []}\n", encoding="utf-8")

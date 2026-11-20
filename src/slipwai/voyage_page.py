@@ -269,8 +269,8 @@ function paintPassage(found){
     const typing = [...document.querySelectorAll('textarea, input')]
       .some(box => !/^(checkbox|radio|button|submit|hidden)$/.test(box.type) && box.value.trim() && changed(box));
     // Nor while a turn of conversation is writing the pages: it ends, and the next poll reloads once.
-    const held = typing || found.passage.writing;
-    if (shape !== null && found.passage.shape !== shape && !held) { location.reload(); return; }
+    const writing = found.passage.writing;
+    if (shape !== null && found.passage.shape !== shape && !typing && !writing) { location.reload(); return; }
     paintPassage(found.passage);
     // The model is drawn once by draw.io's viewer, and drawing it again under somebody panning it is worse
     // than a colour a moment old: so the poll only says the strokes have moved, and Redraw redraws.

@@ -76,7 +76,7 @@ class WritingTest(unittest.TestCase):
         self.assertTrue(writing(self.board()))
 
     def test_the_page_holds_its_reload_while_the_poll_says_so(self) -> None:
-        self.assertIn("const held = typing || found.passage.writing;", voyage_page.SCRIPT)
+        self.assertIn("!typing && !writing) { location.reload(); return; }", voyage_page.SCRIPT)
         self.assertIn('"writing": true', voyage_page.payload([], False, False, writing=True))
 
 

@@ -45,6 +45,7 @@ def project_root(script: Path) -> Path:
 ROOT = project_root(Path(__file__).resolve())
 SPECS = ROOT / "specs"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import clearance  # noqa: E402 — which feature holds a slice's own files
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 LOGS = logs.logs_dir(ROOT)
 V = 1
@@ -101,11 +102,18 @@ def slices_by_capability(charted: dict) -> dict[str, list[str]]:
     return grouped
 
 
-def cleared(feature: str, capabilities: list[str]) -> set[str]:
+def feature_of(charted: dict | None, feature: str, capability: str) -> str:
+    """The feature a capability's records are under: its slices', which on a chart several features share is
+    not always the chart's. `feature`, the chart's, where no row says otherwise or no chart was given."""
+    members = slices_by_capability(charted or {}).get(capability)
+    return clearance.feature_of_slice(members[0], charted, feature) if members else feature
+
+
+def cleared(feature: str, capabilities: list[str], charted: dict | None = None) -> set[str]:
     """The capabilities whose gate record carries its `Cleared:` line."""
     found = set()
     for capability in capabilities:
-        record = SPECS / feature / "capabilities" / capability / "gates.md"
+        record = SPECS / feature_of(charted, feature, capability) / "capabilities" / capability / "gates.md"
         if record.is_file() and CLEARED.search(record.read_text(encoding="utf-8")):
             found.add(capability)
     return found
@@ -121,7 +129,7 @@ def demos_setting() -> str:
     return PERSON if isinstance(held, dict) and held.get("demos") == PERSON else HAND
 
 
-def recorded_by_hand(feature: str, grouped: dict[str, list[str]]) -> set[str]:
+def recorded_by_hand(feature: str, grouped: dict[str, list[str]], charted: dict | None = None) -> set[str]:
     """The capabilities whose hand's acceptance is recorded where a voyage recorded it before the line existed.
 
     A project mid-voyage has the hand's verdicts on paper and no `accepted` line, because nothing wrote one:
@@ -130,15 +138,18 @@ def recorded_by_hand(feature: str, grouped: dict[str, list[str]]) -> set[str]:
     says so, so a project that migrates does not lose every capability the hand had already accepted.
     """
     rows: dict[str, str] = {}
-    register = SPECS / feature / "slices" / "README.md"
-    if register.is_file():
+    # Each feature keeps its own register, so every feature a capability here belongs to is read.
+    for home in dict.fromkeys([feature, *(feature_of(charted, feature, one) for one in grouped)]):
+        register = SPECS / home / "slices" / "README.md"
+        if not register.is_file():
+            continue
         for text in register.read_text(encoding="utf-8").splitlines():
             cells = text.strip().strip("|").split("|")
             if text.strip().startswith("|") and cells:
                 rows[cells[0].strip().strip("`").split(" ")[0]] = text
     found = set()
     for capability, members in grouped.items():
-        log = SPECS / feature / "capabilities" / capability / "demo-log.md"
+        log = SPECS / feature_of(charted, feature, capability) / "capabilities" / capability / "demo-log.md"
         heads = [line for line in log.read_text(encoding="utf-8").splitlines()
                  if line.startswith("## ")] if log.is_file() else []
         if heads and " accepted " in f" {heads[-1]} " and WALKER in heads[-1]:
@@ -214,8 +225,8 @@ def due(rows: list[dict]) -> list[dict]:
 
 def rows_of(feature: str, charted: dict) -> list[dict]:
     grouped = slices_by_capability(charted)
-    return state(charted, lines(feature), cleared(feature, list(grouped)),
-                 recorded=recorded_by_hand(feature, grouped))
+    return state(charted, lines(feature), cleared(feature, list(grouped), charted),
+                 recorded=recorded_by_hand(feature, grouped, charted))
 
 
 def main(argv: list[str]) -> int:

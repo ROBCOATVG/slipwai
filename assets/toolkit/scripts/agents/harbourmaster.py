@@ -971,6 +971,20 @@ def slice_asked(entry: logs.Entry) -> str:
     return given.removeprefix("merge-") if given.startswith("merge-") else ""
 
 
+def clearance_feature(slice_id: str) -> str:
+    """The feature this slice's chart row puts its files under, or `""` where no chart names the slice or
+    none can be read — a harbour without the chart's reader holds as it did, by where the stream's log is."""
+    if capabilities is None:
+        return ""
+    try:
+        charted, feature = capabilities.chart()
+    except Exception:  # noqa: BLE001 — a chart that will not parse is `check-chart`'s to refuse, not a merge's
+        return ""
+    if slice_id not in (charted.get("slices") or {}):
+        return ""
+    return capabilities.clearance.feature_of_slice(slice_id, charted, feature)
+
+
 def unseeded(fairway: str, slice_id: str) -> str:
     """Why this slice may not merge yet because its story never ran green, or "" where nothing stops it.
 
@@ -985,7 +999,10 @@ def unseeded(fairway: str, slice_id: str) -> str:
     path = next((one for one in deck_logs() if one.stem == fairway), None)
     if path is None:
         return ""
-    story = f"specs/{path.parent.name}/slices/{slice_id}/try-it.json"
+    # Under the slice's own feature, where the chart can say: a further feature's story is not under the
+    # feature the stream's log is, and looked for there this hold let every one of its slices through.
+    home = clearance_feature(slice_id) or path.parent.name
+    story = f"specs/{home}/slices/{slice_id}/try-it.json"
     if git("cat-file", "-e", f"{BRANCH.format(slice=slice_id)}:{story}").returncode != 0:
         return ""
     try:
@@ -1028,7 +1045,7 @@ def ungated(slice_id: str) -> str:
         return ""
     if any(member not in merged for member in members if member != slice_id):
         return ""
-    record = f"specs/{feature}/capabilities/{capability}/gates.md"
+    record = f"specs/{capabilities.feature_of(charted, feature, capability)}/capabilities/{capability}/gates.md"
     shown = git("show", f"{BRANCH.format(slice=slice_id)}:{record}")
     if shown.returncode == 0 and capabilities.CLEARED.search(shown.stdout):
         return ""

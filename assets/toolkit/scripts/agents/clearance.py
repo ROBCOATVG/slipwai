@@ -551,17 +551,18 @@ def feature_of(charted: dict) -> str:
     return named or chart()[1]
 
 
-def feature_of_slice(slice_id: str, charted: dict | None = None) -> str:
+def feature_of_slice(slice_id: str, charted: dict | None = None, chart_feature: str = "") -> str:
     """The feature that holds this slice's own files: its chart row's `feature` key, else the chart's.
 
     There is one chart, written under the first feature, and a further feature's slices are rows on it, each
     naming its feature. Everything a slice keeps — its story, its plan, its stage record — is under that
     feature, and a reader that took the chart's found none of it. Read off the row and never searched for.
+    `chart_feature` is the chart's, for a caller that was handed it with the chart and need not ask again.
     """
     charted = chart()[0] if charted is None else charted
     entry = (charted.get("slices") or {}).get(slice_id)
     named = str(entry.get("feature") or "") if isinstance(entry, dict) else ""
-    return named or feature_of(charted)
+    return named or chart_feature or feature_of(charted)
 
 
 def slice_features(charted: dict) -> list[str]:

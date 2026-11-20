@@ -94,6 +94,8 @@ SLOW += test_further_feature_merge
 SLOW += test_clearance_further_feature
 # Two clones and a forge, a harbourmaster pass and `try_it.py` loaded from a project: a stream's second file.
 SLOW += test_stream_strays
+# A git repository per case, for the worktrees the decision log reads.
+SLOW += test_decisions_two_features
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

@@ -59,22 +59,32 @@ def ordered(parts: list[str]) -> list[str]:
     return sorted(parts, key=lambda part: (WHEN.search(part) is None, (WHEN.search(part) or [None, ""])[1]))
 
 
-def sources(name: str) -> list[Path]:
+def sources(name: str, where: str = "") -> list[Path]:
+    """A feature's fairway files: `fairways/<fairway>/<feature>/<name>`, and for the first feature the ones a
+    fairway keeps beside them with no feature in the path, which were written when there was one feature."""
     if not FAIRWAYS.is_dir():
         return []
-    return sorted([*FAIRWAYS.glob(f"*/{name}"), *FAIRWAYS.glob(f"*/{feature()}/{name}")])
+    where = where or feature()
+    bare = [*FAIRWAYS.glob(f"*/{name}")] if where == feature() else []
+    return sorted([*bare, *FAIRWAYS.glob(f"*/{where}/{name}")])
+
+
+def features() -> list[str]:
+    """Every feature with a slice record, in name order. Each is folded from its own fairway files: only the
+    first was, and a further feature's decisions stayed in its fairways' copies with no file a reader opens."""
+    return sorted(path.name for path in SPECS.glob("*/") if (path / "slices").is_dir()) if SPECS.is_dir() else []
 
 
 def feature() -> str:
-    """The feature in flight: the one directory under `specs/` with a slice record."""
-    found = sorted(path.name for path in SPECS.glob("*/") if (path / "slices").is_dir()) if SPECS.is_dir() else []
+    """The first feature with a slice record, which a fairway file naming no feature belongs to."""
+    found = features()
     return found[0] if found else ""
 
 
-def rendered(name: str) -> str:
+def rendered(name: str, where: str = "") -> str:
     """What the feature-level file should hold, from every fairway's own copy."""
     parts: list[str] = []
-    for path in sources(name):
+    for path in sources(name, where):
         parts.extend(entries(path.read_text(encoding="utf-8")))
     return BANNER.format(name=name) + "\n" + "\n".join(ordered(parts))
 
@@ -165,11 +175,25 @@ def held(where: str) -> tuple[dict[str, str], str]:
 
 def main(argv: list[str]) -> int:
     checking = "--check" in argv
-    where = feature()
-    if not where:
+    if not feature():
         print("render-fairways: no feature with a slice record yet; nothing to fold")
         return 0
-    drifted = []
+    drifted: list[str] = []
+    for where in features():
+        fold(where, checking, drifted)
+    if drifted:
+        print("render-fairways: a rendered file is not what its sources render to\n", file=sys.stderr)
+        for path in drifted:
+            print(f"  {path}: edited by hand, or a fairway's copy changed since it was folded", file=sys.stderr)
+        print("\nRun: make decisions", file=sys.stderr)
+        return 1
+    if checking:
+        print(f"render-fairways: the feature-level files are what fairways/*/ render to")
+    return 0
+
+
+def fold(where: str, checking: bool, drifted: list[str]) -> None:
+    """One feature's split and its folded files, written or — checking — added to `drifted` where they differ."""
     holders, note = held(where)
     split = SPECS / where / SPLIT
     if split.is_file():
@@ -186,26 +210,17 @@ def main(argv: list[str]) -> int:
         if note:
             print(note)
     for name in FOLDED:
-        if not sources(name):
+        if not sources(name, where):
             continue
         path = SPECS / where / name
-        meant = rendered(name)
+        meant = rendered(name, where)
         if checking:
             if not path.is_file() or path.read_text(encoding="utf-8") != meant:
                 drifted.append(path.relative_to(ROOT).as_posix())
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(meant, encoding="utf-8")
-        print(f"render-fairways: {path.relative_to(ROOT).as_posix()} from {len(sources(name))} fairway(s)")
-    if drifted:
-        print("render-fairways: a rendered file is not what its sources render to\n", file=sys.stderr)
-        for path in drifted:
-            print(f"  {path}: edited by hand, or a fairway's copy changed since it was folded", file=sys.stderr)
-        print("\nRun: make decisions", file=sys.stderr)
-        return 1
-    if checking:
-        print(f"render-fairways: the feature-level files are what fairways/*/ render to")
-    return 0
+        print(f"render-fairways: {path.relative_to(ROOT).as_posix()} from {len(sources(name, where))} fairway(s)")
 
 
 if __name__ == "__main__":

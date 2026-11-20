@@ -25,7 +25,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import stage_talk
+from . import drawing_budget, stage_talk
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
 from .drawn import fingerprints, withdraw
@@ -222,10 +222,14 @@ class StageSession:
         try:
             if marker is not None:
                 marker.parent.mkdir(parents=True, exist_ok=True)
-                marker.write_text(f"{os.getpid()}\n{time.time():.0f}\n", encoding="utf-8")
+                # The ceiling on the third line, as the project's script writes it, so the board's clock can
+                # say how far into its minutes a drawing is.
+                marker.write_text(f"{os.getpid()}\n{time.time():.0f}\n{self.limit:.0f}\n", encoding="utf-8")
             env = {**login_environment(root=self.root), **acp_environment(launch.key)}
             if self.stage:
                 env["SLIPWAI_STAGE"] = self.stage
+            if self.command == "mockups":  # told its minutes, as the headless drawing is: it plans to them
+                env.update(drawing_budget.told(self.limit))
             self.agent = BoardAgent(launch, self.root, "agent", self.say, kept=run_dir(self.root) / KEPT / self.command,
                                     env=env)
             if first:

@@ -16,9 +16,11 @@ and the environment is how it tells them apart. It stops at the storyboard. Noth
 a session nobody was in: the verdicts are what `/mockups` asks a person for, and a file full of approvals
 that nobody gave is the one outcome this stage exists to prevent.
 
-**It has a budget, and the budget ends it.** A storyboard is a sketch a person reviews for flow, content,
+**It has a ceiling, and the ceiling ends it.** A storyboard is a sketch a person reviews for flow, content,
 states and feel, not the product, and a drawing stage with no clock spent seventy minutes on a redraw while
-the person who asked for it waited. So the session is told its minutes (`SLIPWAI_BUDGET_MINUTES`, and the
+the person who asked for it waited. The ceiling is for a session that is lost, not one that is working: at
+fifteen minutes it ended a twenty-surface drawing with its pages half written and no storyboard, so it is an
+hour, and half an hour for a redraw (`drawing_budget.py`, which the board reads too). So the session is told its minutes (`SLIPWAI_BUDGET_MINUTES`, and the
 wall-clock time they run out as `SLIPWAI_BUDGET_ENDS`) so that it can plan to them, and at the end of them it
 is ended — it and every delegate it started — with what it drew left where it is and a line saying so. The
 minutes come from `harbour.json`, the file the captain reads its stage budgets from, and move with the
@@ -53,6 +55,7 @@ import existing  # noqa: E402 — what the project has already drawn or built, l
 import harness  # noqa: E402
 
 ROOT = harness.ROOT
+import drawing_budget  # noqa: E402 — carried beside this script; the board reads the same budget
 import feature_stages  # noqa: E402 — carried beside this script; which feature is in hand
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 import no_surface  # noqa: E402 — whether a feature has no surface at all, on grounds; the board reads the same
@@ -71,39 +74,10 @@ DISAPPROVED = "disapproved.md"
 PID = logs.run_dir(ROOT) / "surfaces.pid"
 #: Where the stage budgets are, which is where the captain reads its own.
 HARBOUR = ROOT / "harbour.json"
-#: Minutes for a first drawing and for a redraw, where `harbour.json` has no `surfaces` or `surfaces-redraw`
-#: row. The generated file has none: its `stages` are the slice ladder's and a test holds them to that table,
-#: which this stage is not on. A person who wants another number writes the row. Fifteen for a first drawing: a short design direction and a handful
-#: of styled surfaces, each rendered once, is minutes of work, and the measured runs that took far longer
-#: were spending the difference on polish nobody had asked for yet. Ten for a redraw, because a redraw
-#: answers one reason, keeps the direction it has and changes only what the reason concerns.
-FIRST_MINUTES = 15
-REDRAW_MINUTES = 10
-
-
 def budget(redraw: bool) -> float:
-    """Seconds this drawing may take: the default scaled by `harbour.json`'s `stage_scale`, or the
-    `surfaces` (or `surfaces-redraw`) row a person wrote there.
-
-    A row is read as it stands, as `captain.stage_bound` reads its rows, because ringing the telegraph scales
-    every row in `stages` in place and scaling it again here would count the telegraph twice. The default has
-    no row to be scaled in, so `stage_scale` is applied to it here: a run rung down to `slow-ahead` draws to
-    three quarters of the clock, like everything else. Never under a minute, which is the floor the
-    telegraph's own scaling keeps: a budget of nothing would read as a drawing that failed.
-    """
-    try:
-        held = json.loads(HARBOUR.read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
-        held = {}
-    held = held if isinstance(held, dict) else {}
-    stages = held.get("stages") if isinstance(held.get("stages"), dict) else {}
-    row = stages.get("surfaces-redraw" if redraw else "surfaces")
-    minutes = row.get("minutes") if isinstance(row, dict) else None
-    if isinstance(minutes, int | float) and not isinstance(minutes, bool) and minutes > 0:
-        return max(1.0, float(minutes)) * 60.0
-    scale = held.get("stage_scale")
-    scale = float(scale) if isinstance(scale, int | float) and not isinstance(scale, bool) else 1.0
-    return max(1.0, (REDRAW_MINUTES if redraw else FIRST_MINUTES) * scale) * 60.0
+    """Seconds this drawing may take: `drawing_budget.py`'s reading of `harbour.json`, which the board takes
+    too — an hour for a first drawing and half an hour for a redraw where no row says otherwise."""
+    return drawing_budget.seconds(HARBOUR, redraw)
 
 
 def specifications() -> list[Path]:
@@ -256,7 +230,7 @@ def main(argv: list[str]) -> int:
           f"ended and whatever it drew is kept", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "surfaces",
-                   "SLIPWAI_BUDGET_MINUTES": minutes, "SLIPWAI_BUDGET_ENDS": ends,
+                   **drawing_budget.told(allowed, started),
                    **({"SLIPWAI_REDRAW": "1"} if redraw else {}), **handed(feature)}
     PID.parent.mkdir(parents=True, exist_ok=True)
     PID.write_text(f"{os.getpid()}\n{started:.0f}\n{allowed:.0f}\n", encoding="utf-8")

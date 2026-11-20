@@ -308,8 +308,8 @@ class BudgetTest(unittest.TestCase):
                 mock.patch.object(harness, "run_bounded", side_effect=bounded), \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             self.module.main(["001-orders"])
-        self.assertEqual(captured["seconds"], 15 * 60)
-        self.assertEqual(captured["env"]["SLIPWAI_BUDGET_MINUTES"], "15")
+        self.assertEqual(captured["seconds"], 60 * 60)
+        self.assertEqual(captured["env"]["SLIPWAI_BUDGET_MINUTES"], "60")
         self.assertRegex(captured["env"]["SLIPWAI_BUDGET_ENDS"], r"^\d\d:\d\d$")
 
     def test_the_budget_is_harbour_json_s_row_as_it_stands(self) -> None:
@@ -320,10 +320,10 @@ class BudgetTest(unittest.TestCase):
         self.assertEqual(self.module.budget(True), 4 * 60)
 
     def test_without_a_row_the_default_is_scaled_by_the_telegraph(self) -> None:
-        self.assertEqual(self.module.budget(False), 15 * 60)
-        self.assertEqual(self.module.budget(True), 10 * 60)
+        self.assertEqual(self.module.budget(False), 60 * 60)
+        self.assertEqual(self.module.budget(True), 30 * 60)
         self.harbour({"stage_scale": 0.5, "stages": {"default": {"minutes": 30}}})
-        self.assertEqual(self.module.budget(False), 7.5 * 60)
+        self.assertEqual(self.module.budget(False), 30 * 60)
 
     def test_a_budget_is_never_under_a_minute(self) -> None:
         """`stop` scales to nothing, and a budget of nothing reads as a drawing that failed."""

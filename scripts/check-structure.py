@@ -200,7 +200,7 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And a feature with no surface at all: the grounds for saying so, and the record of it.
               # And the surfaces a hand-over suggested a feature touches, which a drawing of none has to answer.
               # And which feature is in hand, and whether the model and the split hold that feature yet.
-              "framed", "no_surface", "surface_hint", "drawn", "feature_stages",
+              "framed", "no_surface", "surface_hint", "drawn", "feature_stages", "drawing_budget",
               "passage", "slice_rungs", "voyage", "wheel", "dials", "settings_card", "voyage_page", "landing_page",
               # One captain's own window: its deck and harbour lines as one timeline, and its output.
               "captain_page",

@@ -15,6 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from . import stage_session
+from .feature_stages import modelled_for, name_in_hand, split_for
 from .feedback import items, untriaged
 from .init_run import (
     CRUISE,
@@ -77,10 +78,15 @@ def model_prompt(where: Path) -> str:
 
 def model_step(where: Path) -> Step:
     """The model from an approved storyboard: what approving one starts on an event-modelling project."""
+    feature = name_in_hand(where)
+
     def unmodelled() -> str:
-        return "" if modelled(where) else ("The session ended without a slice in docs/event-model/model.yaml; its "
-                                           "lines above say where it stopped. Model again tries once more.")
-    return stage_step(where, "model", "", MODEL, MODELLING, MODELLING_ACP, began_model, "model",
+        if modelled_for(where, feature) if feature else modelled(where):
+            return ""
+        return ("The session ended without a slice" + (f" of {feature}" if feature and modelled(where) else "")
+                + " in docs/event-model/model.yaml; its lines above say where it stopped. Model again tries "
+                  "once more.")
+    return stage_step(where, "model", feature, MODEL, MODELLING, MODELLING_ACP, began_model, "model",
                       prompt=lambda: model_prompt(where), after=unmodelled, pid="model-next.pid",
                       done="The model is under docs/event-model/. Continue the build charts it once a slice is "
                            "named there.",
@@ -131,11 +137,17 @@ def launch_steps(where: Path) -> list[Step]:
     if stage_session.launchable(where) is None:
         return [Step(LAUNCH, LAUNCHING, launched, "launch")]
     steps: list[Step] = []
-    if not split(where):
+    # The feature in hand, not the project: an earlier feature's chart said a further one was split, and its
+    # launch cast off a fleet with nothing to start and called that continuing the build.
+    feature = name_in_hand(where)
+
+    def done() -> bool:
+        return split_for(where, feature) if feature else split(where)
+    if not done():
         def unsplit() -> str:
-            return "" if split(where) else ("The session ended without a split, so there is nothing to light a "
+            return "" if done() else ("The session ended without a split, so there is nothing to light a "
                                             "captain for; a park in its lines names what you have to decide.")
-        steps.append(stage_step(where, "launch", "", LAUNCH, LAUNCHING, LAUNCHING_ACP, charted, "launch",
+        steps.append(stage_step(where, "launch", feature, LAUNCH, LAUNCHING, LAUNCHING_ACP, charted, "launch",
                                 after=unsplit))
     steps.append(Step([python3(), "scripts/agents/cruise.py", "--set", "enabled=true"], ENABLING, enabled, "launch"))
     steps.append(Step(CRUISE, CRUISING, cast, "launch"))

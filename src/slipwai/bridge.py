@@ -66,6 +66,7 @@ from .deck import dismiss, mark_read, tick_need
 from .dials import set_dial
 from .drawn import withdrawn
 from .errors import Busy, GenerationError
+from .feature_stages import approved_for, in_hand, name_in_hand, split_for
 from .feedback_card import act as feedback_act
 from .film import ranged
 from .fleet import board
@@ -101,8 +102,9 @@ from .page_shell import (
 from .passage import (
     EVENT_PROFILE,
     disapproved,
-    drawn,
+    drawn_in_hand,
     modelled,
+    modelled_in_hand,
     profile_of,
     record_verdict,
     specifications,
@@ -477,19 +479,7 @@ class Bridge(BaseHTTPRequestHandler):
     def active_feature(self) -> Path | None:
         """The feature Continue the build is about: the one `.specify/feature.json` names, else the only
         specification that has no chart yet."""
-        pointer = self.root / ".specify/feature.json"
-        try:
-            held = json.loads(pointer.read_text(encoding="utf-8"))
-            named = (self.root / str(held.get("feature_directory") or "")).resolve()
-            if named.is_relative_to(self.root.resolve()) and (named / "spec.md").is_file():
-                return named
-        except (OSError, ValueError, AttributeError):
-            pass
-        specs = specifications(self.root)
-        uncharted = [path.parent for path in specs if not (path.parent / "chart.yaml").is_file()]
-        if len(uncharted) == 1:
-            return uncharted[0]
-        return specs[0].parent if len(specs) == 1 else None
+        return in_hand(self.root)
 
     def launchable(self) -> bool:
         """Whether the build can be continued from here — which is whether there is no reason it cannot."""
@@ -509,7 +499,7 @@ class Bridge(BaseHTTPRequestHandler):
         if feature is None:
             return ("nothing to continue from here: a specification under specs/, written by `make draft` or "
                     "with the agent, is what the build continues from")
-        if (feature / "chart.yaml").is_file():
+        if (feature / "chart.yaml").is_file() or split_for(self.root, feature.name):
             return f"specs/{feature.name} is charted already: what moves it on now is casting off the fleet"
         running = self.fitting.said() if self.fitting else None
         failed = bool(running and running["done"] and running["code"])
@@ -528,7 +518,10 @@ class Bridge(BaseHTTPRequestHandler):
                 if withdrawn(self.root, one.parent.parent.name)]
         if gone:
             return f"the storyboard for {gone[0]} has changed since its verdict: approve or disapprove it again first"
-        if profile_of(self.root) == EVENT_PROFILE and not modelled(self.root):
+        if profile_of(self.root) == EVENT_PROFILE and not modelled_in_hand(self.root):
+            if modelled(self.root):  # an earlier feature's model, which holds nothing of this one
+                return (f"specs/{feature.name} is not in the model yet: its storyboard and then its model come "
+                        "before the chart; approving the storyboard starts the model, and Model again starts it again")
             return ("nothing is modelled yet: on the event-modelling profile the chart is drawn from the model, "
                     "which approving the storyboard starts and Model again starts again")
         if failed and not retry and running is not None:
@@ -588,7 +581,7 @@ class Bridge(BaseHTTPRequestHandler):
             return "disapproved; drawing it again"
         if said != "approved":
             return said
-        if profile_of(self.root) == EVENT_PROFILE and not modelled(self.root):
+        if profile_of(self.root) == EVENT_PROFILE and not modelled_in_hand(self.root):
             if not specifications(self.root):
                 return said
             self.fitting = begin_model(self.root, self.fitting.said()["lines"] if self.fitting else None)
@@ -613,7 +606,8 @@ class Bridge(BaseHTTPRequestHandler):
         they are disapproved, so a redraw that failed or never started has a button to retry it.
         """
         idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
-        return bool(specifications(self.root)) and (not drawn(self.root) or bool(disapproved(self.root))) and idle
+        undrawn = not drawn_in_hand(self.root)
+        return bool(specifications(self.root)) and (undrawn or bool(disapproved(self.root))) and idle
 
     def modelable(self) -> bool:
         """Whether the model can be started from here: an event-modelling project, a storyboard a person has
@@ -623,9 +617,12 @@ class Bridge(BaseHTTPRequestHandler):
         failed, or an approval given while the board was busy, left nothing to press but a chip that said to
         go to the agent; this is the button back, and it is gone again the moment there is a model.
         """
-        if profile_of(self.root) != EVENT_PROFILE or modelled(self.root) or not specifications(self.root):
+        if profile_of(self.root) != EVENT_PROFILE or modelled_in_hand(self.root) or not specifications(self.root):
             return False
         _, approved, parked = surfaces(self.root)
+        feature = name_in_hand(self.root)
+        if feature and not approved_for(self.root, feature):  # this feature's storyboard, not an earlier one's
+            return False
         idle = (not self.fitting or self.fitting.said()["done"]) and not outside_session(self.root)
         # A verdict a conversation withdrew by changing a page is a storyboard waiting on a person again.
         changed = any(withdrawn(self.root, one.parent.parent.name) for one in storyboards(self.root))

@@ -33,9 +33,10 @@ from typing import Any
 
 from . import stage_talk, step_record
 from .drawn import withdrawn
+from .feature_stages import name_in_hand
 from .init_run import draft, draw, first_feature, outside_session
 from .logs import run_dir
-from .passage import disapproved, record_verdict, specifications, storyboards, surfaces
+from .passage import disapproved, drawn_for, record_verdict, specifications, storyboards, surfaces
 from .review_reading import gate
 from .stage_steps import launch
 from .wheel import orders
@@ -153,8 +154,9 @@ def held_by(board: Any) -> tuple[str, str]:
 
 
 def drawing_of(root: Path) -> str:
-    """The feature a press of Draw the storyboard draws: the one turned down, else the first specification."""
-    return disapproved(root) or first_feature(root)
+    """The feature a press of Draw the storyboard draws: the one turned down, else the one in hand, else the
+    first specification."""
+    return disapproved(root) or name_in_hand(root) or first_feature(root)
 
 
 def next_step(root: Path, idle: bool, drawable: bool, launchable: bool) -> str:
@@ -170,7 +172,8 @@ def next_step(root: Path, idle: bool, drawable: bool, launchable: bool) -> str:
         return ""
     # Drawn once: a stage that found nothing to draw writes its `mock-states.md` and no page, and `drawable`
     # reads pages, so without this it would be drawn again on every poll.
-    if drawable and not storyboards(root):
+    feature = name_in_hand(root)
+    if drawable and not (drawn_for(root, feature) if feature else storyboards(root)):
         return "draw"
     waiting = unjudged(root)
     if waiting:

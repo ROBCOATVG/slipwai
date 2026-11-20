@@ -202,6 +202,9 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        # The surfaces a hand-over suggested a feature touches, read for the stage that draws it. The experiment
        # had no hand-over conversation, so nothing suggested any.
        "surface_hint",
+       # Which feature is in hand, and whether the model and the split hold it. The experiment built one
+       # feature, so every stage could ask the project.
+       "feature_stages",
        # A prototype or a storyboard as one file to send. The experiment's pages never left the board.
        "page_copy"}
 # Present, but in a version 2 shape that is not the experiment's yet: `cli` answers `--version` and will

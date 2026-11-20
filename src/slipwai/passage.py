@@ -29,6 +29,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import feature_stages
+
 # The three the board, the upstream stop and the tests reach through this module: re-exported, not read.
 from .drawn import drawn_states as drawn_states
 from .drawn import record_verdict as record_verdict
@@ -131,6 +133,19 @@ def drawn(root: Path) -> bool:
     return bool(specs.is_dir() and any(surface_pages(home) for home in specs.glob("*/mockups")))
 
 
+def drawn_for(root: Path, feature: str) -> bool:
+    """Whether the mock-up stage has left anything for `feature`: a surface page, or its `mock-states.md`.
+    `drawn` asked of one feature, because a first feature's drawings said a further one was drawn."""
+    place = root / "specs" / feature / "mockups"
+    return bool(feature) and place.is_dir() and ((place / "mock-states.md").is_file() or bool(surface_pages(place)))
+
+
+def drawn_in_hand(root: Path) -> bool:
+    """`drawn`, asked of the feature in hand; of the project where nothing says which feature that is."""
+    feature = feature_stages.name_in_hand(root)
+    return drawn_for(root, feature) if feature else drawn(root)
+
+
 def drawing_clock(root: Path, now: float | None = None) -> str:
     """How far into its budget a running drawing is — "6 of about 15 min" — or `""` where nothing says.
 
@@ -190,6 +205,14 @@ def modelled(root: Path) -> bool:
     return names_slices(root / "docs/event-model/model.yaml")
 
 
+def modelled_in_hand(root: Path) -> bool:
+    """Whether the model holds the feature in hand — never merely whether it holds a slice: an earlier
+    feature's model answered yes for every feature after it, and a further feature was launched past its
+    storyboard, its model and its split. The project's own answer where nothing says which feature."""
+    feature = feature_stages.name_in_hand(root)
+    return feature_stages.modelled_for(root, feature) if feature else modelled(root)
+
+
 def charts(root: Path) -> list[Path]:
     specs = root / "specs"
     return sorted(specs.glob("*/chart.yaml")) if specs.is_dir() else []
@@ -221,6 +244,10 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     specs = specifications(root)
     charted = charts(root)
     found: list[Stage] = []
+    # The feature in hand, where something says which: the three stages below are about that feature, because
+    # a finished first feature read as done for a further one that had only its specification.
+    feature = feature_stages.name_in_hand(root)
+    behind = bool(feature) and len(specs) > 1  # a further feature may be behind what the project already has
 
     prd = root / "docs/prd.md"
     found.append(Stage("prd", "PRD", "done" if prd.is_file() else "skipped", "docs/prd.md",
@@ -262,6 +289,8 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     written = storyboards(root)
     seen, approved, parked = surfaces(root)
     sketched = drawn(root)
+    if behind and not drawn_for(root, feature):  # an earlier feature's storyboard is not this one's
+        written, sketched, seen, approved, parked = [], False, 0, 0, 0
     drawing = step_state(receipt, "surfaces")
     found.append(Stage("storyboard", "Storyboard",
                        drawing or ("waiting" if (written and parked) or (sketched and not written)
@@ -283,12 +312,13 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                               "approving takes as long as you take."))
 
     if event:
-        has_model = modelled(root)
+        has_model = feature_stages.modelled_for(root, feature) if behind else modelled(root)
         modelling = step_state(receipt, "model")
         found.append(Stage("model", "Event model", modelling or ("done" if has_model else "todo"),
                            "docs/event-model/model.yaml",
                            "the event-modeling skill in the agent, then make check-model",
-                           "modelled" if has_model else "a modelling conversation - event first",
+                           "modelled" if has_model else f"{feature} is not in the model yet" if modelled(root)
+                           else "a modelling conversation - event first",
                            expect="A conversation, in the agent, with you in it. It stops for you by "
                                   "definition \u2014 nothing here moves until somebody models."))
     else:
@@ -298,9 +328,11 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
 
     launching = step_state(receipt, "launch")
     split = bool(counts)
-    found.append(Stage("chart", "Chart & split", launching or ("done" if split else "todo"),
+    unsplit = behind and not feature_stages.split_for(root, feature)
+    found.append(Stage("chart", "Chart & split", launching or ("done" if split and not unsplit else "todo"),
                        charted[0].relative_to(root).as_posix() if charted else "specs/<feature>/chart.yaml",
                        "make launch (the board's Continue the build)",
+                       f"{feature} is not charted or split yet" if unsplit else
                        f"{plural(sum(counts.values()), 'slice')} charted" if split else
                        "charted, not split" if charted else "fairways, marks and slices",
                        expect="A headless session draws the chart and splits it into slices \u2014 minutes. "

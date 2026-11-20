@@ -1,6 +1,6 @@
 ---
 description: Continue the build from a drafted specification — chart it, split it, enable /cruise and cast off
-argument-hint: [--boilers <n>]
+argument-hint: [<feature>] [--boilers <n>]
 ---
 
 # Launch
@@ -12,9 +12,18 @@ to build from is given.
 
 **Typed by a person**, run `python3 scripts/agents/launch.py` — `{{make}} launch`, with `CRUISE_FLAGS="--boilers
 <n>"` where you want to bound the fleet — and repeat what it printed. The script refuses where there is no
-`specs/<feature>/spec.md`. Where the chart and the split are already written it only enables `/cruise` and
-casts off; otherwise it dispatches one headless session with this page as its rules, and casts off when that
+`specs/<feature>/spec.md`. Where the chart and the split already hold the feature in hand — the one
+`.specify/feature.json` names — it only enables `/cruise` and casts off; otherwise it dispatches one headless session with this page as its rules, and casts off when that
 session has ended well.
+
+**It is about one feature, and an earlier feature's chart is not that feature's.** The argument names it —
+the directory under `specs/` — and where there is none it is the one `.specify/feature.json` names. A project
+that has built a feature already has a model, a chart and a split, and none of them holds a further feature
+until its own slices are in them: on the event profile the model is global and there is one chart, so each
+slice of a further feature carries `feature: <its directory under specs/>` in `docs/event-model/model.yaml`,
+`{{make}} chart` carries that into the chart, and the split orders those slices and leaves every slice that is
+there as it is. A launch that finds the chart holding nothing of the feature in hand has the chart and the
+split to do, however many slices the chart names.
 
 **In a session that script dispatched** (`SLIPWAI_STAGE=launch` in the environment), this file is the rules.
 Run `commands/sail.md` from *Enter at the first incomplete stage* through the split's first ready set — the

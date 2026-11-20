@@ -21,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import clearance  # noqa: E402
+import feature_stages  # noqa: E402 — carried beside this script; the board asks the same of it
 import harness  # noqa: E402
 
 ROOT = harness.ROOT
@@ -32,8 +33,21 @@ def specified() -> bool:
     return SPECS.is_dir() and any(SPECS.glob("*/spec.md"))
 
 
+def feature() -> str:
+    """The feature this launch is about: the one `.specify/feature.json` names, else the only one it could be."""
+    return feature_stages.name_in_hand(ROOT)
+
+
 def split() -> bool:
-    """Whether a chart with slices in it exists, which is what the fleet lights captains from."""
+    """Whether a chart holds a slice of the feature in hand, which is what the fleet lights captains from.
+
+    Of that feature, not of the project: a finished first feature's chart said a further feature was split,
+    and its launch cast off a fleet with nothing to start. Where nothing says which feature is in hand, the
+    project's own answer is the only one there is.
+    """
+    named = feature()
+    if named:
+        return feature_stages.split_for(ROOT, named)
     charted, _ = clearance.chart()
     return bool(charted.get("slices"))
 
@@ -46,7 +60,7 @@ def chart_and_split() -> int:
         print(f"launch: {refusal}", file=sys.stderr)
         return 2
     template, why = harness.template(chosen)
-    line = template.replace("{prompt}", shlex.quote(harness.prompt_for(chosen, "launch", COMMAND)))
+    line = template.replace("{prompt}", shlex.quote(harness.prompt_for(chosen, "launch", COMMAND, feature() or None)))
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "launch"}
@@ -55,7 +69,8 @@ def chart_and_split() -> int:
         print(f"launch: the session exited {exited}; nothing was cast off", file=sys.stderr)
         return exited
     if not split():
-        print("launch: the session ended without a split, so there is nothing to light a captain for; read its "
+        print(f"launch: the session ended without a split{' of ' + feature() if feature() else ''}, so there is "
+              "nothing to light a captain for; read its "
               "last lines above — a park there names what a person has to decide", file=sys.stderr)
         return 1
     return 0
@@ -67,7 +82,8 @@ def main(argv: list[str]) -> int:
               "requirements document, and `/speckit-specify` writes one with you", file=sys.stderr)
         return 2
     if split():
-        print("charted and split already; enabling /cruise and casting off", flush=True)
+        print(f"{feature() or 'the project'} is charted and split already; enabling /cruise and casting off",
+              flush=True)
     elif (code := chart_and_split()):
         return code
     enabled = subprocess.run([sys.executable, str(HERE / "cruise.py"), "--set", "enabled=true"], cwd=ROOT,

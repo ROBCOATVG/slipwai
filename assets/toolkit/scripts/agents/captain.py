@@ -568,11 +568,18 @@ HANDOVER_NOTE = (
     "paragraph — a whole specification read into this session is paid for again on every call after it.")
 
 
+def slice_home(slice_id: str) -> str:
+    """Where a slice keeps its own files, from the project's root: under the feature its chart row names."""
+    return f"specs/{clearance.feature_of_slice(slice_id)}/slices/{slice_id}"
+
+
 def stages_closed(slice_id: str, feature: str) -> int:
     """How many stages this slice's benchmark record holds that were ended by the session that opened them."""
     held = FLIGHT.get(slice_id, {}).get("berth")
     where = held if isinstance(held, Path) else ROOT
-    record = talk.read_json(where / f"specs/{feature}/slices/{slice_id}/benchmark.json")
+    # Under the slice's own feature: a further feature's record was looked for under the chart's, found
+    # nowhere, and every hand-over it made was counted as a run that did nothing.
+    record = talk.read_json(where / slice_home(slice_id) / "benchmark.json")
     stages = record.get("stages") if isinstance(record, dict) else None
     return sum(1 for one in stages if isinstance(one, dict) and "ended" in one and not one.get("cut_off")) \
         if isinstance(stages, list) else 0
@@ -1129,7 +1136,7 @@ def story_of(slice_id: str, feature: str) -> Path | None:
     """
     held = FLIGHT.get(slice_id, {}).get("berth")
     for where in ([held] if isinstance(held, Path) else []) + [ROOT]:
-        path = where / f"specs/{feature}/slices/{slice_id}/try-it.json"
+        path = where / slice_home(slice_id) / "try-it.json"
         if path.is_file():
             return path
     return None
@@ -1150,7 +1157,7 @@ def unseeded(fresh: list[logs.Entry], slice_id: str, feature: str) -> bool:
 def seed_need(slice_id: str, feature: str) -> list[dict]:
     """The need a park on an unseeded story carries: the static half `check-try` can tick, the live half
     the next run's."""
-    return [{"what": f"the story in specs/{feature}/slices/{slice_id}/try-it.json seeds green against the app "
+    return [{"what": f"the story in {slice_home(slice_id)}/try-it.json seeds green against the app "
                      f"this berth runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"}}]
 
 
@@ -1468,7 +1475,8 @@ def skipper_prompt(slice_id: str, feature: str, fairway: str, asked: list[logs.E
               f"`commands/cruise.md` *Decisions* says: put it to a fresh `{SKIPPER}` delegate "
               f"(`agents/{SKIPPER}.md` is its brief; where this harness cannot delegate, read the brief and "
               f"decide exactly as it says), under a number from `python3 scripts/agents/ids.py reserve "
-              f"decision <count> {slice_id}`. Append each entry to `specs/{feature}/decisions.md`, write the "
+              f"decision <count> {slice_id}`. Append each entry to "
+              f"`specs/{clearance.feature_of_slice(slice_id)}/decisions.md`, write the "
               f"decision into the artifact the stage owns, and append one JSON line per decided question to "
               f"`{where}`: {{\"v\": 1, \"t\": <now, UTC, ...Z>, \"kind\": \"decision\", \"fairway\": "
               f"\"{fairway}\", \"slice\": \"{slice_id}\", \"id\": <the question's id>, \"what\": \"D<n>: <the "
@@ -2457,7 +2465,7 @@ def progress(feature: str, slice_id: str, found: list[logs.Entry]) -> int:
     logged = [LOG_RUNGS.get(e.kind, 0) for e in found if str(e.fields.get("slice", "")) == slice_id
               and (e.kind != "request" or e.fields.get("what") == "merge")]
     listed = subprocess.run(["git", "ls-tree", "--name-only", f"refs/heads/{BRANCH.format(slice=slice_id)}",
-                             f"specs/{feature}/slices/{slice_id}/"], cwd=ROOT, capture_output=True, text=True)
+                             f"{slice_home(slice_id)}/"], cwd=ROOT, capture_output=True, text=True)
     filed = [FILE_RUNGS.get(Path(line).name, 0) for line in listed.stdout.splitlines()]
     return max([0, *logged, *filed])
 

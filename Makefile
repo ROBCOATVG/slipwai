@@ -86,6 +86,8 @@ SLOW += test_extension_remove
 SLOW += test_release_git_refuses
 # The project's own guard runner per case, which fires a stand-in extension's `project` hook and its gate.
 SLOW += test_guard_agreed_is_current
+# A captain run per case, for a slice of a further feature: its files are under its own feature.
+SLOW += test_further_feature_captain
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

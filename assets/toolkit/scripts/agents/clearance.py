@@ -551,6 +551,28 @@ def feature_of(charted: dict) -> str:
     return named or chart()[1]
 
 
+def feature_of_slice(slice_id: str, charted: dict | None = None) -> str:
+    """The feature that holds this slice's own files: its chart row's `feature` key, else the chart's.
+
+    There is one chart, written under the first feature, and a further feature's slices are rows on it, each
+    naming its feature. Everything a slice keeps — its story, its plan, its stage record — is under that
+    feature, and a reader that took the chart's found none of it. Read off the row and never searched for.
+    """
+    charted = chart()[0] if charted is None else charted
+    entry = (charted.get("slices") or {}).get(slice_id)
+    named = str(entry.get("feature") or "") if isinstance(entry, dict) else ""
+    return named or feature_of(charted)
+
+
+def slice_features(charted: dict) -> list[str]:
+    """Every feature with a slice on this chart, the chart's own first, then in the order the rows name them."""
+    found = [feature_of(charted)]
+    for slice_id in charted.get("slices") or {}:
+        if (named := feature_of_slice(str(slice_id), charted)) not in found:
+            found.append(named)
+    return found
+
+
 def ids_in(cell: str, known: list[str], rest: list[str]) -> list[str]:
     """The slice ids one cell of the slice graph names, in chart order: each id written, each run written
     as `A–B`, and `all others` as every slice no other row's first cell named."""

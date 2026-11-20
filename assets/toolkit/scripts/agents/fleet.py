@@ -41,6 +41,7 @@ sys.path.insert(0, str(HERE))
 
 import clearance  # noqa: E402
 import logs  # noqa: E402
+import published  # noqa: E402 — the plan is on the trunk the slices are cut from, before any is lit
 import talk  # noqa: E402
 
 
@@ -597,6 +598,12 @@ def main(argv: list[str]) -> int:
         started = relight(bound, say=True)
         print(f"relight: {started} captain(s) started" if started else "relight: nothing to light")
         return 0
+    # Before anything is lit: a chart committed here and not pushed is a chart no slice's worktree holds.
+    fine, said = published.publish(HERE.parents[1])
+    if said:
+        print(f"fleet: {said}", file=sys.stdout if fine else sys.stderr, flush=True)
+    if not fine:
+        return 2
     cast_off(bound)
     print("`slipwai fleet` shows what they are doing; `slipwai bridge` is the page you answer from")
     return 0

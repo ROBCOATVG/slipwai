@@ -389,7 +389,8 @@ delegate returns at the slice's `mark-set` lines; the same slice, now *implement
 — one that sets nothing, or whose marks a baseline recorded — is handed `whole`. That type takes no stage's
 model, because *Who runs each stage* still chooses one stage by stage inside the delegate, where `[P]` tasks
 still fan out to `sail-implement-shipwright`: the two levels nest. Inside one slice the stages stay strictly
-sequential. A delegate that meets a product question writes a `question` line to the deck log — `fairway`,
+sequential. A delegate that meets a product question writes a `question` line to the stream's deck log — one
+log, under the chart's feature whichever feature the slice is of, which `$SLIPWAI_DECK` holds — `fairway`,
 `slice`, `id`, `what` — records it in the slice's `plan.md`, and returns; the slice reads *awaiting-decision*
 from that line until a `decision` carries the same `id`, and it is never guessed past.
 

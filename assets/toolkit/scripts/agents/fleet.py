@@ -420,8 +420,9 @@ def watch(minutes: float) -> int:
 
 
 def deck_of(stream: str) -> Path | None:
-    """The one log that stream writes, or None where it has not written yet."""
-    return next((path for path in logs_root().glob(f"*/{stream}.jsonl")), None)
+    """The one log that stream writes, or None where it has not written yet: the file under the chart's
+    feature where two hold its lines, never whichever a directory listing happened to give first."""
+    return next(iter(logs.streams(ROOT).get(stream, [])), None)
 
 
 #: How a need's check is spelled on the command line: `text:<path>:<has>` or `make:<target>`.
@@ -489,7 +490,14 @@ def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, 
         if dark:
             # The hand-back is why this slice's story cannot seed yet, named as the story it keeps dark: the
             # harbourmaster lets the slice merge on that, and on no other hand-back it happens to have.
-            extra["story"] = f"specs/{where.parent.name}/slices/{slice_id}/try-it.json"
+            home = where.parent.name
+            try:  # the slice's own feature where the chart names the slice, which is where its story is
+                charted, feature = clearance.chart()
+                home = clearance.feature_of_slice(slice_id, charted, feature) if slice_id in (
+                    charted.get("slices") or {}) else home
+            except Exception:  # noqa: BLE001 — no readable chart: the feature the stream's log is under, as before
+                pass
+            extra["story"] = f"specs/{home}/slices/{slice_id}/try-it.json"
         with where.open("a", encoding="utf-8") as handle:
             handle.write(logs.entry("told", fairway=stream, message=message, by=by, **extra).line())
         written.append(stream)

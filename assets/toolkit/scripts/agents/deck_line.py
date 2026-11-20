@@ -60,6 +60,10 @@ class Refused(Exception):
 def charted(slice_id: str, feature: str = "") -> tuple[str, dict]:
     """The feature whose chart holds this slice, and the slice's own entry in it."""
     found, name = clearance.chart(feature)
+    if not name and feature:
+        # A further feature has no chart of its own: its slices are rows on the one chart, and their lines
+        # go in the log under that chart's feature, where the captain reads them.
+        found, name = clearance.chart()
     body = (found.get("slices") or {}).get(slice_id)
     if not name:
         raise Refused("no feature under specs/ has a chart.yaml, so nothing says which slices there are")
@@ -111,6 +115,8 @@ def capability_line(kind: str, capability: str, feature: str = "", by: str = "")
     them in split order, where its last slice merged; every reader folds every fairway's log of the feature
     (`capabilities.lines`, `clearance.lines`, the board's fold), so the line is seen from all of them."""
     found, name = clearance.chart(feature)
+    if not name and feature:
+        found, name = clearance.chart()  # as for a slice's line: the one chart, whichever feature was named
     if not name:
         raise Refused("no feature under specs/ has a chart.yaml, so nothing says which capabilities there are")
     row = next((one for one in capabilities.rows_of(name, found) if one["capability"] == capability), None)

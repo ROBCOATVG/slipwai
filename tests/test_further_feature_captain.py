@@ -7,10 +7,14 @@ they are not: a hand-over closed nothing it could see and cost an attempt, and a
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import unittest
 
 import checkout_packages  # noqa: F401
 from captain_fixture import CHART, WORKS, Fixture
+
+from slipwai import logs
 
 #: The fixture's chart with ORD-01 a row of a later feature; every other row is the chart's own.
 FURTHER = CHART.replace("  ORD-01:\n", "  ORD-01:\n    feature: later\n", 1)
@@ -55,6 +59,42 @@ class FurtherFeatureTest(Fixture):
         self.assertEqual(len(parks), 1, done.stdout + done.stderr)
         self.assertIn("no `seeded` line", str(parks[0].fields["why"]))
         self.assertIn("specs/later/slices/ORD-01/try-it.json", parks[0].fields["needs"][0]["what"])
+
+    def test_the_session_is_told_the_stream_s_one_log_whichever_feature_its_slice_is_of(self) -> None:
+        self.further()
+        done = self.captain("ORD", self.sail(
+            "import os, pathlib\npathlib.Path('told.txt').write_text(os.environ.get('SLIPWAI_DECK', ''))\n"))
+        self.assertEqual((self.root / "told.txt").read_text(encoding="utf-8"), ".slipwai/logs/ordering/ORD.jsonl",
+                         done.stdout + done.stderr)
+
+    def stray(self, *entries: logs.Entry) -> None:
+        path = logs.deck_path(self.root, "later", "ORD")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("".join(entry.line() for entry in entries), encoding="utf-8")
+
+    def test_a_question_a_session_wrote_under_its_slice_s_feature_is_asked_all_the_same(self) -> None:
+        self.further()
+        self.stray(logs.entry("question", fairway="ORD", slice="ORD-01", id="Q1", what="which carrier?"))
+        done = self.captain("ORD", self.sail("import sys\nsys.exit(0)\n"))
+        parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
+        self.assertEqual(len(parked), 1, done.stdout + done.stderr)
+        self.assertIn("ORD-01 is awaiting a decision — Q1: which carrier?", parked[0])
+
+    def test_and_a_decision_in_the_stream_s_log_answers_it(self) -> None:
+        self.further()
+        self.stray(logs.entry("question", fairway="ORD", slice="ORD-01", id="Q1", what="which carrier?"))
+        self.deck("ORD", logs.entry("decision", fairway="ORD", id="Q1", what="D4: the cheap one"))
+        self.captain("ORD", self.sail("import sys\nsys.exit(0)\n"))
+        parked = [str(e.fields["why"]) for e in self.read("ORD") if e.kind == "parked"]
+        self.assertNotIn("awaiting a decision", parked[0])
+
+    def test_a_word_to_the_stream_goes_to_its_one_log(self) -> None:
+        self.stray(logs.entry("mark-set", fairway="ORD", slice="ORD-01", mark="Placed"))
+        self.deck("ORD", logs.entry("claimed", fairway="ORD", slice="ORD-01"))
+        done = subprocess.run([sys.executable, "scripts/agents/fleet.py", "tell", "ORD", "carry", "on"],
+                              cwd=self.root, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual([e.kind for e in self.read("ORD")], ["claimed", "told"])
 
 
 if __name__ == "__main__":

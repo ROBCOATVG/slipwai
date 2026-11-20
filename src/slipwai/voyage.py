@@ -187,7 +187,7 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
         owner = next((one for one in found if slice_id in one.claimed or slice_id in one.merged), None)
         if owner is not None:
             # Where the slice's own files are, which is not the chart's feature for a further feature's slice.
-            home = row["feature"] = slice_home(root, feature, str(slice_id))
+            home = row["feature"] = slice_home(root, feature, str(slice_id), str(entry.get("feature") or ""))
             row["fairway"] = owner.name
             row.update(spans(owner.entries, str(slice_id)))
             if slice_id in owner.merged:

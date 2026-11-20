@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .logs import Entry, Unreadable, deck_logs, deck_path, entry, fold, harbour_logs, read, run_dir
+from .logs import Entry, Unreadable, deck_path, entry, fold, harbour_logs, read, run_dir, stream_lines
+from .logs import streams as stream_files
 from .session_log import said_plainly
 
 #: How many lines one stream shows by default. Enough to cover a slice; short enough to read.
@@ -98,8 +99,9 @@ def stopped_said(at: dict) -> str:
 
 
 def streams(root: Path) -> list[tuple[str, str]]:
-    """Every stream with a log, as (feature, fairway), in name order."""
-    return [(path.parent.name, path.stem) for path in deck_logs(root)]
+    """Every stream with a log, as (feature, fairway), in name order: the feature its one log is under, which
+    is the chart's wherever a file under it exists, so what the board writes goes where the captain reads."""
+    return [(paths[0].parent.name, name) for name, paths in stream_files(root).items()]
 
 
 def feature_of(root: Path, fairway: str) -> str:
@@ -188,14 +190,14 @@ def entries(root: Path, fairway: str, feature: str = "") -> tuple[list[Entry], s
     89 lines somebody still wants, and the whole point of looking at one stream is that something has
     gone wrong with it.
     """
-    found = feature or feature_of(root, fairway)
-    if not found:
+    # Every file that holds the stream's lines: a session once wrote some under a further feature's name.
+    paths = stream_files(root).get(fairway) or ([deck_path(root, feature, fairway)] if feature else [])
+    if not paths:
         return [], f"{fairway} has no log here"
-    path = deck_path(root, found, fairway)
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        lines = stream_lines(paths)
     except (OSError, UnicodeDecodeError) as fault:
-        return [], f"{path} cannot be read ({type(fault).__name__})"
+        return [], f"{paths[0]} cannot be read ({type(fault).__name__})"
     kept: list[Entry] = []
     for number, line in enumerate(lines, start=1):
         if not line.strip():

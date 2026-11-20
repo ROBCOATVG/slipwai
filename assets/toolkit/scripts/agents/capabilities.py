@@ -73,11 +73,14 @@ def chart() -> tuple[dict, str]:
 
 
 def lines(feature: str) -> list[dict]:
-    """Every deck log's lines, and the harbour log's, in no particular order across files."""
+    """Every deck log's lines, in no particular order across streams. A stream's are read from every file
+    that holds them: one of its name under a further feature has lines a session wrote there, as its own."""
     paths = [*(LOGS / feature).glob("*.jsonl")] if (LOGS / feature).is_dir() else []
     found: list[dict] = []
+    held = logs.streams(ROOT)
     for path in sorted(paths):
-        for number, text in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        beside = [one for one in held.get(path.stem, []) if one.parent != path.parent]
+        for number, text in enumerate(logs.stream_lines([path, *beside]), start=1):
             if not text.strip():
                 continue
             try:

@@ -174,10 +174,17 @@ def lines(feature: str) -> list[dict]:
     dozen kinds and will grow, and a reader that refused the unfamiliar would break every time one was
     added. A line in a *newer format* is a different matter and stops the read, because guessing which
     fields moved is how a reader reports a run that did not happen.
+
+    **A stream's lines are read from every file that holds them.** A session working a further feature's
+    slice once wrote its marks and questions to a file of the stream's name under that feature, which this
+    never read: the marks stayed unset and every slice steering by them stayed blocked.
     """
     found: list[dict] = []
+    held = logs.streams(ROOT)
     for path in log_paths(feature):
-        for number, text in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        beside = [one for one in held.get(path.stem, []) if one.parent != path.parent] \
+            if path.parent == LOGS / feature else []
+        for number, text in enumerate(logs.stream_lines([path, *beside]), start=1):
             if not text.strip():
                 continue
             try:
@@ -1263,8 +1270,10 @@ def main(argv: list[str]) -> int:
         # `feature` is the one asked about; `chart` says whose chart answered, where that is another's.
         print(json.dumps({"v": QUERY_VERSION, "feature": requested if only is not None else feature,
                           **({"chart": feature} if only is not None else {}), "ready": ready, "fairways": order,
+                          # Each row's `feature` is where the slice's own files are, for a board that has no chart.
                           "states": {slice_id: {"state": state, "why": why, "band": BANDS.get(state),
-                                                "fairway": of_fairway.get(slice_id, "")}
+                                                "fairway": of_fairway.get(slice_id, ""),
+                                                "feature": feature_of_slice(slice_id, charted, feature)}
                                      for slice_id, (state, why) in states.items()},
                           "slots": slots, "numbers": numbers, "held": held,
                           "claims": "unreadable" if claims is None else sorted(claims),

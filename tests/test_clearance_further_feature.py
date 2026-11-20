@@ -100,6 +100,15 @@ class FurtherFeatureTest(unittest.TestCase):
         done = self.asked("--baseline-marks")
         self.assertIn("S2 sets Further — recorded", done.stdout, done.stderr)
 
+    def test_a_mark_a_session_set_in_a_file_under_its_own_feature_is_set(self) -> None:
+        logs = self.root / ".slipwai/logs"
+        for feature, kind, more in (("001-first", "claimed", {}), ("002-further", "mark-set", {"mark": "Made"})):
+            (logs / feature).mkdir(parents=True)
+            (logs / feature / "f.jsonl").write_text(json.dumps(
+                {"v": 1, "t": "2026-11-20T09:00:00Z", "kind": kind, "fairway": "f", "slice": "S1", **more}) + "\n",
+                encoding="utf-8")
+        self.assertEqual(self.answer("002-further")["states"]["S3"]["state"], "implementation-ready")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

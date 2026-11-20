@@ -92,6 +92,8 @@ SLOW += test_further_feature_captain
 SLOW += test_further_feature_merge
 # The project's clearance script, run per case, asked about a feature whose slices are on another's chart.
 SLOW += test_clearance_further_feature
+# Two clones and a forge, a harbourmaster pass and `try_it.py` loaded from a project: a stream's second file.
+SLOW += test_stream_strays
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

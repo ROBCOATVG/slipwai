@@ -82,13 +82,16 @@ def git(root: Path, *argv: str) -> str:
 HOMES: dict[tuple[str, str], str] = {}
 
 
-def slice_home(root: Path, feature: str, slice_id: str) -> str:
-    """The feature whose directory holds this slice's files: `feature` where it does, else the one that does.
+def slice_home(root: Path, feature: str, slice_id: str, charted: str = "") -> str:
+    """The feature whose directory holds this slice's files: `charted`, the one its chart row names, where the
+    project's clearance said; else `feature` where it does, else the one that does.
 
     There is one chart per project, written under the first feature, and a further feature's slices are on
     it. Their example maps, plans, tasks and stage records are under their own feature's `slices/`, so a card
     that read the chart's feature found none of them and sat on its first rung through a slice's whole build.
     """
+    if charted:
+        return charted
     key = (str(root.resolve()), slice_id)
     if key in HOMES:
         return HOMES[key]

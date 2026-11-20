@@ -89,6 +89,13 @@ class DeckLineTest(unittest.TestCase):
         self.assertEqual([e.fields["fairway"] for e in self.deck("clubs")], ["clubs"])
         self.assertEqual(self.deck("tables"), [])
 
+    def test_named_a_further_feature_the_line_goes_to_the_one_chart_s_log(self) -> None:
+        """A further feature has no chart of its own: naming it was refused as "no feature has a chart"."""
+        done = self.run_line("mark-set", "--slice", "TB1", "--mark", "ClubWeekSet", "--feature", "002-further")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual([e.kind for e in self.deck()], ["mark-set"])
+        self.assertFalse(logs.deck_path(self.tree, "002-further", "tables").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

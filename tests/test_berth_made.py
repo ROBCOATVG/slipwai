@@ -59,6 +59,23 @@ class BerthMadeTest(unittest.TestCase):
         self.assertEqual(made.returncode, 0, made.stderr)
         self.assertTrue((self.home / "project-S1" / "a.txt").is_file())
 
+    def test_a_berth_left_in_the_middle_of_a_rebase_is_put_back_on_its_branch(self) -> None:
+        """manda's S95: the fleet was stopped while its session rebased, and it parked for a person on a
+        folder that was "not a worktree on slice/S95"."""
+        berth, _ = self.module.berth(self.root, "S1", "slice/S1", "main")
+        (berth / "a.txt").write_text("the slice's\n", encoding="utf-8")
+        git(berth, "commit", "-qam", "S1 changes a")
+        (self.root / "a.txt").write_text("trunk's\n", encoding="utf-8")
+        git(self.root, "commit", "-qam", "trunk changes a")
+        stopped = subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "rebase", "main"], cwd=berth,
+                                 capture_output=True, text=True, check=False)
+        self.assertNotEqual(stopped.returncode, 0)
+        self.assertIsNone(self.module.checked_out(self.root, "slice/S1"))
+        found, why = self.module.berth(self.root, "S1", "slice/S1", "main")
+        assert found is not None
+        self.assertEqual((found.resolve(), why), (berth.resolve(), ""))
+        self.assertEqual((berth / "a.txt").read_text(encoding="utf-8"), "the slice's\n")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -87,9 +87,8 @@ class TwoMachinesTest(TravelFixture):
         made = self.checked_git("rev-parse", "HEAD")
         self.checked_git("checkout", "--quiet", "main")
         old = (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        held = subprocess.run([sys.executable, "scripts/agents/claims.py", "--take", "ORD"],
-                              cwd=self.root, capture_output=True, text=True, timeout=30,
-                              env={**os.environ, "SLIPWAI_MACHINE": ONE, "GIT_AUTHOR_DATE": old})
+        held = bounded.run([sys.executable, "scripts/agents/claims.py", "--take", "ORD"], timeout=30,
+                                 cwd=self.root, env={**os.environ, "SLIPWAI_MACHINE": ONE, "GIT_AUTHOR_DATE": old})
         self.assertEqual(held.returncode, 0, held.stdout + held.stderr)
         self.deck("ordering", "ORD", replace(
             logs.entry("claimed", fairway="ORD", slice="ORD-01"), t=old))
@@ -102,9 +101,8 @@ class TwoMachinesTest(TravelFixture):
         self.stopped_mid_slice()
         self.deck("ordering", "ORD", logs.entry(
             "parked", fairway="ORD", why="a final stop after the previous publication"))
-        released = subprocess.run([sys.executable, "scripts/agents/claims.py", "--release", "ORD"],
-                                  cwd=self.root, capture_output=True, text=True, timeout=30,
-                                  env={**os.environ, "SLIPWAI_MACHINE": ONE})
+        released = bounded.run([sys.executable, "scripts/agents/claims.py", "--release", "ORD"], timeout=30,
+                                 cwd=self.root, env={**os.environ, "SLIPWAI_MACHINE": ONE})
         self.assertEqual(released.returncode, 0, released.stdout + released.stderr)
         self.assertNotIn("a final stop", self.carried("refs/slipwai/logs/ORD"))
         later = self.run_as(ONE)
@@ -141,9 +139,8 @@ class TwoMachinesTest(TravelFixture):
         self.assertEqual(self.checked_git("show", "-s", "--format=%s", "refs/slipwai/claims/ORD",
                                           where=self.forge), "held")
         # A new machine cannot acquire the released claim: publication has not happened yet.
-        other = subprocess.run([sys.executable, "scripts/agents/claims.py", "--take", "ORD"],
-                               cwd=self.two, capture_output=True, text=True, timeout=30,
-                               env={**os.environ, "SLIPWAI_MACHINE": TWO})
+        other = bounded.run([sys.executable, "scripts/agents/claims.py", "--take", "ORD"], timeout=30,
+                                 cwd=self.two, env={**os.environ, "SLIPWAI_MACHINE": TWO})
         self.assertNotEqual(other.returncode, 0, other.stdout + other.stderr)
         self.assertEqual(self.run_as(ONE).returncode, 0)
         resumed = captain()

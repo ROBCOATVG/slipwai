@@ -95,6 +95,7 @@
 # why: 2026-11-21 3d134a09efd30ac2 A merge request is stamped when made so an old answer is never taken for it, and a park about a granted slice clears itself; same behaviour on macOS and Linux
 # why: 2026-11-21 47b082849aaad5e7 A berth takes a later migration too; same behaviour on macOS and Linux
 # why: 2026-11-21 a51634e7766acf0a A berth left mid-rebase is put back on its branch; same behaviour on macOS and Linux
+# why: 2026-11-21 af5e469d1089971e A freed slot is taken and a cleared slice carried on mid-turn; same behaviour on macOS and Linux
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -387,6 +388,10 @@ c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  event-modellin
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  event-modelling-postgres-toy-serve  scripts/agents/captain_events.py
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  standard-memory-none  scripts/agents/captain_events.py
 c976042d880cabca9ba32459e53b18a338825a521fdeb607cf8c09fa49c2cbaa  standard-postgres-toy-serve  scripts/agents/captain_events.py
+c9cb60b48869cf4e2e88fe5c749a1b08c7ffcd9c35e47e6d596a78c54a2de34d  event-modelling-memory-none  scripts/agents/captain.py
+c9cb60b48869cf4e2e88fe5c749a1b08c7ffcd9c35e47e6d596a78c54a2de34d  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+c9cb60b48869cf4e2e88fe5c749a1b08c7ffcd9c35e47e6d596a78c54a2de34d  standard-memory-none  scripts/agents/captain.py
+c9cb60b48869cf4e2e88fe5c749a1b08c7ffcd9c35e47e6d596a78c54a2de34d  standard-postgres-toy-serve  scripts/agents/captain.py
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-memory-none  scripts/extensions/available-guards.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-memory-none  scripts/extensions/available-tools.json
 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356  event-modelling-memory-none  scripts/extensions/available-writes.json
@@ -467,10 +472,6 @@ f0a03bbf670a0bff9996ce80b288b480c1d2a86140c424e0adc942e7f1264270  event-modellin
 f0a03bbf670a0bff9996ce80b288b480c1d2a86140c424e0adc942e7f1264270  event-modelling-postgres-toy-serve  scripts/agents/tool_event.py
 f0a03bbf670a0bff9996ce80b288b480c1d2a86140c424e0adc942e7f1264270  standard-memory-none  scripts/agents/tool_event.py
 f0a03bbf670a0bff9996ce80b288b480c1d2a86140c424e0adc942e7f1264270  standard-postgres-toy-serve  scripts/agents/tool_event.py
-f0a3f608b5eafdf0c34b41bc70431ab741c590aae6b40c8e7dbb3a30295ae967  event-modelling-memory-none  scripts/agents/captain.py
-f0a3f608b5eafdf0c34b41bc70431ab741c590aae6b40c8e7dbb3a30295ae967  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-f0a3f608b5eafdf0c34b41bc70431ab741c590aae6b40c8e7dbb3a30295ae967  standard-memory-none  scripts/agents/captain.py
-f0a3f608b5eafdf0c34b41bc70431ab741c590aae6b40c8e7dbb3a30295ae967  standard-postgres-toy-serve  scripts/agents/captain.py
 f0e51de83e43eb620bd2ec1d5035d04405bf85d575b26a3dbab583ebb878cbda  event-modelling-memory-none  scripts/agents/conflicts.py
 f0e51de83e43eb620bd2ec1d5035d04405bf85d575b26a3dbab583ebb878cbda  event-modelling-postgres-toy-serve  scripts/agents/conflicts.py
 f0e51de83e43eb620bd2ec1d5035d04405bf85d575b26a3dbab583ebb878cbda  standard-memory-none  scripts/agents/conflicts.py

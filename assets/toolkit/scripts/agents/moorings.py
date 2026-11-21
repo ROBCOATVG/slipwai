@@ -197,6 +197,10 @@ def generator(where: Path, ref: str) -> str:
         return ""
 
 
+#: How the commit that takes a migration into a berth begins, which is how a later take knows it.
+TAKEN = "Take the project's migration"
+
+
 def migration_files(berth: Path, trunk: str) -> list[str]:
     """Every file a migration changed on trunk since this berth left it: what `slipwai migrate` brought.
 
@@ -239,7 +243,11 @@ def caught_up(root: Path, berth: Path, trunk: str) -> str:
         return ""
     files = migration_files(berth, trunk)
     base = git(berth, "merge-base", "HEAD", trunk).stdout.strip()
-    own = set(git(berth, "diff", "--name-only", base, "HEAD", "--", *files).stdout.splitlines()) if files else set()
+    # What the slice changed itself, and not what an earlier migration's take put there: read from every
+    # commit but those. manda was migrated three times in a day, and a slice in flight took the first and
+    # none after — the files it had been given once were its own from then on.
+    own = set(git(berth, "log", "--format=", "--name-only", "--invert-grep", f"--grep=^{TAKEN}",
+                  f"{base}..HEAD", "--", *files).stdout.split("\n")) - {""} if files else set()
     own |= {line[3:] for line in git(berth, "status", "--porcelain", "--", *files).stdout.splitlines()} if files else set()
     taken = [path for path in files if path not in own]
     if not taken:
@@ -255,7 +263,7 @@ def caught_up(root: Path, berth: Path, trunk: str) -> str:
             return (f"{berth.name} was cut before the project's last migration and could not take it from "
                     f"{trunk} ({said[-1] if said else 'git refused'}); it runs on the version it was cut "
                     f"with until it merges")
-    committed = git(berth, "commit", "-q", "-m", f"Take the project's migration from {trunk}: its files only",
+    committed = git(berth, "commit", "-q", "-m", f"{TAKEN} from {trunk}: its files only",
                     "--", *taken)
     if committed.returncode != 0:
         said = (committed.stderr or committed.stdout).strip().splitlines()

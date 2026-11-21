@@ -99,6 +99,7 @@ try:  # the capability hold reads the chart through it; a harbour without it hol
 except ImportError:  # pragma: no cover - a toolkit older than the capability hold
     capabilities = None  # type: ignore[assignment]
 import claims  # noqa: E402
+import conflicts  # noqa: E402 — a conflict is settled where the rebase stopped, where it can be
 import inbox  # noqa: E402
 import lockfiles  # noqa: E402 — a lock two slices both wrote is written again, not resolved by hand
 import logs  # noqa: E402
@@ -599,27 +600,22 @@ def furnish(where: Path) -> None:
                 shutil.copy2(installed, target)
 
 
-#: The files every slice appends to and none rewrites: a feature's decisions and its adversary log. Two
-#: slices that each added an entry have not disagreed about anything.
-APPENDED = re.compile(r"^specs/[^/]+/(decisions|adversary-log)\.md$")
-#: How many stops one rebase may make on such files before it is left to a person: one per commit at most.
+#: How many stops one rebase may make on files it can settle itself before it is left: one per commit at most.
 APPEND_STOPS = 500
 
 
-def appended_only(path: str) -> bool:
-    """Resolve one conflicted append-only file in the scratch worktree, where the commit being replayed
-    only added to the end of it: trunk's file, then what the commit added. False where it did anything else.
-
-    Held to exactly that — the commit's version begins with the version it was made on — so an entry that
-    was edited rather than added is still a conflict, and still somebody's to read.
-    """
-    before, onto, commit = (git("show", f":{stage}:{path}", where=SCRATCH) for stage in (1, 2, 3))
-    if any(one.returncode != 0 for one in (before, onto, commit)) or not commit.stdout.startswith(before.stdout):
+def record_woven(path: str) -> bool:
+    """Resolve one conflicted record file in the scratch worktree — a feature's decisions, adversary log or
+    benchmark overview — with trunk's changes and the replayed commit's both (`conflicts.woven`). False
+    where it is not such a file, or the two changed the same lines."""
+    if not conflicts.RECORDS.match(path):
         return False
-    added = commit.stdout[len(before.stdout):]
-    held = onto.stdout
-    if added.strip() and added.strip() not in held:
-        held = held + ("" if held.endswith("\n") or not held else "\n") + added
+    before, onto, commit = (git("show", f":{stage}:{path}", where=SCRATCH) for stage in (1, 2, 3))
+    if any(one.returncode != 0 for one in (before, onto, commit)):
+        return False
+    held = conflicts.woven(before.stdout, onto.stdout, commit.stdout)
+    if held is None:
+        return False
     try:
         (SCRATCH / path).write_text(held, encoding="utf-8", newline="")
     except OSError:
@@ -661,7 +657,8 @@ def locks_regenerated() -> str:
 
 
 def appends_resolved(rebased: subprocess.CompletedProcess[str]) -> subprocess.CompletedProcess[str]:
-    """A rebase that stopped only on append-only files, carried on to its end; any other stop, as it was.
+    """A rebase carried on past every stop made only of record files and locks; any other stop, as it was,
+    with whichever of its files this could settle already settled.
 
     Three of game-club-manager's merges were refused for `decisions.md` alone: two fairways had each added
     their decisions to the end of one file, the rebase stopped, and the slice was sent back to its berth to
@@ -672,14 +669,43 @@ def appends_resolved(rebased: subprocess.CompletedProcess[str]) -> subprocess.Co
         if rebased.returncode == 0:
             return rebased
         paths = conflicting()
-        if not paths or not all(APPENDED.match(path) or lockfiles.is_lock(path) for path in paths) or not all(
-                appended_only(path) if APPENDED.match(path) else lock_taken(path) for path in paths):
+        if not paths or [path for path in paths if not (record_woven(path) or lock_taken(path))]:
             return rebased
-        # A commit that only touched the lock is empty once trunk's copy is taken: skipped, not continued.
-        emptied = git("diff", "--cached", "--quiet", where=SCRATCH).returncode == 0
-        rebased = git("rebase", "--skip", where=SCRATCH) if emptied else \
-            git("-c", "core.editor=true", "rebase", "--continue", where=SCRATCH)
+        rebased = carried_on()
     return rebased
+
+
+def carried_on() -> subprocess.CompletedProcess[str]:
+    """The rebase in the scratch worktree, on from a stop whose files are all staged. A commit left with
+    nothing in it — trunk's copy of a lock taken, an entry trunk already held — is skipped, not continued."""
+    emptied = git("diff", "--cached", "--quiet", where=SCRATCH).returncode == 0
+    return git("rebase", "--skip", where=SCRATCH) if emptied else \
+        git("-c", "core.editor=true", "rebase", "--continue", where=SCRATCH)
+
+
+def mender_settled(rebased: subprocess.CompletedProcess[str], branch: str,
+                   onto: str) -> tuple[subprocess.CompletedProcess[str], str]:
+    """A rebase stopped on a conflict nothing mechanical answers, given to the mender where it stopped
+    (`conflicts.settle`) and carried on. The rebase as it now stands, and why the mender did not settle it.
+
+    Each session is a `mend` line and its outcome, job `conflict`, written as it happens: a merge is long
+    and a harbourmaster killed in the middle of one should have said what it had started.
+    """
+    why = ""
+    for stop in range(conflicts.STOPS):
+        paths = conflicting() if rebased.returncode != 0 else []
+        if not paths or not conflicts.wanted(branch):
+            break
+        named = {"job": conflicts.CONFLICT, "commit": "", "attempt": stop + 1, "branch": branch}
+        append([logs.entry("mend", harbour=True, paths=paths, **named)])
+        why = conflicts.settle(SCRATCH, paths, branch, onto,
+                               beat=lambda: claims.renew(ROOT, claims.MERGE, logs.machine()), every=renew_every())
+        append([logs.entry("mend-failed", harbour=True, why=why, **named) if why
+                else logs.entry("mended", harbour=True, red="", **named)])
+        if why:
+            break
+        rebased = appends_resolved(carried_on())
+    return rebased, why
 
 
 def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
@@ -700,7 +726,7 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
     furnish(SCRATCH)
     try:
         LOCKS_OWED.clear()
-        rebased = appends_resolved(git("rebase", onto, where=SCRATCH))
+        rebased, unsettled = mender_settled(appends_resolved(git("rebase", onto, where=SCRATCH)), branch, onto)
         if rebased.returncode == 0 and (fault := locks_regenerated()):
             return "", (f"{branch} and {onto} each changed a lock, and {fault}. Nothing is half-done; rebase in "
                         f"your own berth, write the lock again there, and ask again"), True, "", False
@@ -710,7 +736,8 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
             # Where git names no file it did not stop on a conflict, and its own last line is the reason.
             said = [line for line in (rebased.stderr or rebased.stdout or "").splitlines() if line.strip()]
             unnamed = f"files git did not name ({said[-1].strip()})" if said else "files git did not name"
-            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or unnamed}. "
+            tried = f" The mender was sent first and did not settle it: {unsettled}." if unsettled else ""
+            return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or unnamed}.{tried} "
                         f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
                         f"ask again"), True, "", False
         started = time.monotonic()

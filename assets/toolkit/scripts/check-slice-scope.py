@@ -14,6 +14,9 @@ What a slice's change may contain — everything since the branch left `main`, c
   every slice amends and the host merges in split order. `decisions.md` is among them because `/cruise` writes
   a decision where the ladder took it, which during a slice's stages is the slice's branch, and `check-decisions`
   wants every `Written to` path in the tree, which for a slice's artifacts is only true there;
+- **its capability's record**, `specs/<feature>/capabilities/<capability>/**` — `gates.md` and the demo log —
+  for the capability the chart puts the slice in, under the feature that capability's slices are under. The
+  harbourmaster holds a capability's last merge until `gates.md` says `Cleared:` on that slice's branch;
 - **its own block of `docs/event-model/model.yaml`**: every other slice's block reads exactly as on `main`.
   Events, commands and read models are frames inside a slice's block, so the contract another slice builds
   against cannot move underneath it; `docs/event-model/mockups/` is per screen and open;
@@ -308,6 +311,8 @@ class Scope:
             )
         if rest[0] in FEATURE_SHARED or rest[0] in FEATURE_SHARED_DIRECTORIES:
             return None
+        if rest[0] == "capabilities":
+            return self.capability_violation(path, feature, rest[1] if len(rest) > 2 else "")
         if rest == ["chart.yaml"] and self.model is not None:
             # On the event profile `make chart` renders it from the model and `check-chart` holds it there, as
             # `check-drawio` holds the canvas: a slice that changed its own block has to re-render it to pass
@@ -316,8 +321,27 @@ class Scope:
             return None
         return (
             f"{path}: not a slice's to write. A slice amends `spec.md`, `story-split.md`, `contracts/`, "
-            f"`checklists/`, `people/`, `adversary-log.md`, `decisions.md` and its own `slices/{self.slice_id}/`."
+            f"`checklists/`, `people/`, `adversary-log.md`, `decisions.md`, its capability's record under "
+            f"`capabilities/` and its own `slices/{self.slice_id}/`."
         )
+
+    def capability_violation(self, path: str, feature: str, capability: str) -> str | None:
+        """A capability's record — `gates.md`, the demo log — is its own slices' to write, where it is read.
+
+        The harbourmaster refuses the merge that makes a capability whole until `gates.md` says `Cleared:` on
+        that slice's branch, and this refused the file to every slice: manda's S63, S50, S49, S92, S95 and
+        four more each cleared their gates, could not commit the record, handed it back, and were refused
+        until the mender had landed it on trunk — sixteen refusals, and S92 parked on its fourth.
+        """
+        held_feature, own = capability_of(self.slice_id)
+        if own and capability == own and feature == held_feature:
+            return None
+        if own and capability == own:
+            return (f"{path}: `{own}`'s record is read at `specs/{held_feature}/capabilities/{own}/`, the "
+                    f"feature its slices are under. Write it there.")
+        return (f"{path}: the record of a capability slice `{self.slice_id}` is not part of"
+                f"{f' — its own is `{own}`' if own else ''}. A capability's `gates.md` and demo log are written "
+                f"by that capability's slices.")
 
     def model_violations(self) -> list[str]:
         """Every other slice's block must read as it does on the base."""
@@ -569,6 +593,22 @@ def chart_fairways(slice_id: str) -> tuple[str | None, dict[str, list[str]]]:
             owns[str(name)] = [str(pattern) for pattern in paths] if isinstance(paths, list) else []
         return (str(entry.get("fairway")) if entry.get("fairway") else None), owns
     return None, {}
+
+
+def capability_of(slice_id: str) -> tuple[str, str]:
+    """The feature this slice's capability keeps its record under, and the capability, from the first chart
+    that names the slice; `("", "")` where none does or it cannot be read. The feature is the capability's
+    first slice's — a row's own `feature:`, else the chart's — which is where `capabilities.py` reads it."""
+    for chart_path in sorted((ROOT / SPECS).glob("*/chart.yaml")) if (ROOT / SPECS).is_dir() else []:
+        chart = load_chart(chart_path.read_text(encoding="utf-8"))
+        slices = chart.get("slices") if isinstance(chart, dict) else None
+        entry = slices.get(slice_id) if isinstance(slices, dict) else None
+        if not isinstance(entry, dict) or not entry.get("capability"):
+            continue
+        first = next(body for body in slices.values()
+                     if isinstance(body, dict) and body.get("capability") == entry["capability"])
+        return str(first.get("feature") or chart.get("feature") or chart_path.parent.name), str(entry["capability"])
+    return "", ""
 
 
 def product_mode() -> str:

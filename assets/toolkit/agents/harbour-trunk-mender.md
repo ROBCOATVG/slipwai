@@ -46,6 +46,19 @@ are a slice's work. `skills/run-the-app/` is the one skill you may change, becau
 record of how its app is run. A need that is not a change to a file, because it waits on another slice's
 merge, a secret, an account or a person's decision, is not yours. Change nothing, and end.
 
+## A conflict at a merge
+
+The harbourmaster's rebase of a slice onto trunk stopped on files both had changed, and the per-call brief
+names them. You are in its scratch worktree with the rebase still open. Make both changes hold in those
+files: read what trunk did and what the slice did (`git diff REBASE_HEAD~1 REBASE_HEAD -- <file>`,
+`git log -3 -p HEAD -- <file>`), keep both, and leave no conflict marker. A file rendered from another, such
+as `docs/event-model/model.drawio` or a `chart.yaml`, is rendered again by its `make` target from the
+sources as merged, never edited by hand. This is the one job in which source and tests are yours, and only
+the files named. Change no other file, and do not commit, `git add`, continue, skip or abort the rebase: the
+harbourmaster checks the rebase is where it left it, stages the files, carries on, and runs the whole gate
+on the result. If both changes cannot hold, because the slice and trunk decided the same thing two ways,
+change nothing and end; the slice is sent back to its own worktree to resolve it.
+
 ## What is never yours
 
 A gate passes on its own merits, so nothing that is a gate, runs one, or decides what an agent may do is

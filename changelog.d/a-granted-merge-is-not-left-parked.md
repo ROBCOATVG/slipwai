@@ -10,5 +10,9 @@ now stamped when it is made. And the
 receipt that clears a park about a merged slice reads the harbourmaster's `granted` as well as the captain's
 `merged`, so a slice that is on trunk never waits for a person to say so.
 
-**Catch-up:** `slipwai migrate` carries `scripts/agents/captain.py` and `harbourmaster.py`. Nothing to change
+**A slice in flight takes every migration, not only the first.** The files an earlier take had put in a
+slice's worktree counted as the slice's own changes from then on, so a second migration left them as they
+were: a slice in flight through two migrations ran on the first one's scripts until it merged.
+
+**Catch-up:** `slipwai migrate` carries `scripts/agents/captain.py`, `harbourmaster.py` and `moorings.py`. Nothing to change
 in a project.

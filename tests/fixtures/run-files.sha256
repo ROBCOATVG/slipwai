@@ -93,6 +93,7 @@
 # why: 2026-11-21 6ee895d6b4b3b1ec The merge rebase ignores rerere, a failed gate refusal carries the check words, and a worktree is made with --no-track and retried; same behaviour on macOS and Linux
 # why: 2026-11-21 362448a952e2847b Merge attempts counted per cause, a terminal clear counts as a person word, a merged slice park clears itself, and a code list follows a moved file; same behaviour on macOS and Linux
 # why: 2026-11-21 3d134a09efd30ac2 A merge request is stamped when made so an old answer is never taken for it, and a park about a granted slice clears itself; same behaviour on macOS and Linux
+# why: 2026-11-21 47b082849aaad5e7 A berth takes a later migration too; same behaviour on macOS and Linux
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -411,10 +412,6 @@ d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  event-modellin
 d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  event-modelling-postgres-toy-serve  scripts/verify
 d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  standard-memory-none  scripts/verify
 d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  standard-postgres-toy-serve  scripts/verify
-d2de2ff779b359af6b57e1f954e6e8654e741b349bb2fe0305bec8891460c1b5  event-modelling-memory-none  scripts/agents/moorings.py
-d2de2ff779b359af6b57e1f954e6e8654e741b349bb2fe0305bec8891460c1b5  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
-d2de2ff779b359af6b57e1f954e6e8654e741b349bb2fe0305bec8891460c1b5  standard-memory-none  scripts/agents/moorings.py
-d2de2ff779b359af6b57e1f954e6e8654e741b349bb2fe0305bec8891460c1b5  standard-postgres-toy-serve  scripts/agents/moorings.py
 d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  event-modelling-memory-none  scripts/agents/assess.py
 d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  event-modelling-postgres-toy-serve  scripts/agents/assess.py
 d8f81b47983976d91dc7e7b6ca8dfb1526d0adee0f8f7f1690fa07f223eefbf4  standard-memory-none  scripts/agents/assess.py
@@ -443,6 +440,10 @@ e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  event-modellin
 e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  event-modelling-postgres-toy-serve  scripts/agents/session.py
 e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  standard-memory-none  scripts/agents/session.py
 e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  standard-postgres-toy-serve  scripts/agents/session.py
+e6bf7e942a661450d451fc01b9f5fc7203d73bf49a8cad16ea125666d8776687  event-modelling-memory-none  scripts/agents/moorings.py
+e6bf7e942a661450d451fc01b9f5fc7203d73bf49a8cad16ea125666d8776687  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
+e6bf7e942a661450d451fc01b9f5fc7203d73bf49a8cad16ea125666d8776687  standard-memory-none  scripts/agents/moorings.py
+e6bf7e942a661450d451fc01b9f5fc7203d73bf49a8cad16ea125666d8776687  standard-postgres-toy-serve  scripts/agents/moorings.py
 e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  event-modelling-memory-none  scripts/agents/spend.py
 e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  event-modelling-postgres-toy-serve  scripts/agents/spend.py
 e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  standard-memory-none  scripts/agents/spend.py

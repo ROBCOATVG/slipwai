@@ -126,6 +126,35 @@ class ConflictAtTheMergeTest(MergeFixture):
         self.assertEqual([(line["job"], line["paths"]) for line in self.lines("mend")], [("conflict", ["service.txt"])])
         self.assertEqual(len(self.lines("mended")), 1)
 
+    def test_a_resolution_git_recorded_once_does_not_hide_the_conflict(self) -> None:
+        """manda's checkout had `rerere` on with `autoupdate`: git staged the file from an old resolution
+        and still stopped, no path was left unmerged, and the refusal was for "files git did not name"."""
+        for name in ("rerere.enabled", "rerere.autoupdate"):
+            self.git("config", name, "true")
+        self.diverge()
+        self.git("checkout", "--quiet", "main")
+        self.assertNotEqual(self.git("merge", "slice/ORD-01").returncode, 0)
+        (self.root / "service.txt").write_text("one\nsomebody's answer once\n", encoding="utf-8")
+        self.commit("resolved by hand, which rerere records")
+        self.git("reset", "--quiet", "--hard", "HEAD~1")
+        self.git("checkout", "--quiet", "parked-elsewhere")
+        self.run_once()
+        answer = self.answer()
+        self.assertEqual(answer.kind, "refused")
+        self.assertIn("service.txt", str(answer.fields["why"]))
+
+    def test_a_failed_gate_s_refusal_carries_what_the_check_said(self) -> None:
+        """S91 was told `make[1]: *** [check-decisions] Error 1`, and the check had named the decision."""
+        gate = ("verify:\n\t@$(MAKE) check-decisions\ncheck-decisions:\n"
+                "\t@echo 'decisions.md:2213: D444 names no Read against'; exit 1\n")
+        self.slice_branch("ORD-01", "Makefile", gate)
+        self.ask("ORD-01")
+        self.run_once()
+        why = str(self.answer().fields["why"])
+        self.assertIn("the full gate failed", why)
+        self.assertIn("check-decisions", why)
+        self.assertIn("D444 names no Read against", why)
+
     def test_with_no_mender_to_send_the_slice_resolves_it_as_before(self) -> None:
         self.diverge()
         self.run_once()

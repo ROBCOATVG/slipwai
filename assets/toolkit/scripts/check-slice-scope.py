@@ -17,7 +17,8 @@ What a slice's change may contain — everything since the branch left `main`, c
 - **its capability's record**, `specs/<feature>/capabilities/<capability>/**` — `gates.md` and the demo log —
   for the capability the chart puts the slice in, under the feature that capability's slices are under. The
   harbourmaster holds a capability's last merge until `gates.md` says `Cleared:` on that slice's branch;
-- **its own block of `docs/event-model/model.yaml`**: every other slice's block reads exactly as on `main`.
+- **its own block of `docs/event-model/model.yaml`**: every other slice's block reads exactly as on `main`,
+  but for its `code` list where this branch moved or deleted a file it names — the list follows the file.
   Events, commands and read models are frames inside a slice's block, so the contract another slice builds
   against cannot move underneath it; `docs/event-model/mockups/` is per screen and open;
 - **the committed canvas, `docs/event-model/model.drawio`**, because it is rendered from the model the slice
@@ -360,7 +361,7 @@ class Scope:
                     f"{MODEL}: slice `{slice_id}` is gone. A slice branch edits its own block of the model and "
                     f"removes nothing; removing a slice is the host's, on `main`."
                 )
-            elif head_slices[slice_id] != block:
+            elif head_slices[slice_id] != block and not code_moved(block, head_slices[slice_id]):
                 violations.append(
                     f"{MODEL}: slice `{slice_id}`'s block changed on `{self.slice_id}`'s branch. The contract "
                     f"another slice builds against does not move under it: hand the change back to the host."
@@ -593,6 +594,23 @@ def chart_fairways(slice_id: str) -> tuple[str | None, dict[str, list[str]]]:
             owns[str(name)] = [str(pattern) for pattern in paths] if isinstance(paths, list) else []
         return (str(entry.get("fairway")) if entry.get("fairway") else None), owns
     return None, {}
+
+
+def code_moved(was: dict, now: dict) -> bool:
+    """Whether another slice's block changed only by its `code` list following files this branch moved:
+    every path gone from the list is gone from the tree, and every path added to it is there.
+
+    `check-model` wants every path a block's `code` names to exist. A slice that renames or deletes a file
+    an earlier slice lists made trunk's model wrong the moment it merged, and could not correct the list: it
+    is another slice's block. Nor could the fleet land the correction first, because the new file is not on
+    trunk until the slice is. manda's S49 was finished and refused on exactly that until a person stepped in.
+    """
+    if {**was, "code": None} != {**now, "code": None}:
+        return False
+    before, after = (held.get("code") if isinstance(held.get("code"), list) else [] for held in (was, now))
+    gone, came = [path for path in before if path not in after], [path for path in after if path not in before]
+    return bool(gone) and not any((ROOT / str(path)).exists() for path in gone) \
+        and all((ROOT / str(path)).is_file() for path in came)
 
 
 def capability_of(slice_id: str) -> tuple[str, str]:

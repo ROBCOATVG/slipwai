@@ -75,6 +75,7 @@ import fnmatch
 import json
 import os
 import queue
+import re
 import shlex
 import signal
 import subprocess
@@ -1292,6 +1293,16 @@ def counted_runs(feature: str, fairway: str, slice_id: str) -> int:
                   or (not e.fields.get("slice") and any(park.t < e.t for park in parks)))]
     since += [str(one.get("t", "")) for one in talk.thread(conversation(fairway, slice_id))
               if one.get("kind") == "resumed" and one.get("by") == talk.PERSON]
+    # A park about it answered from the harbourmaster's `--clear` is a person's word too: it is how a person
+    # answers one from a terminal, and manda's S92 was cleared that way and parked on its next run as spent.
+    answered = {park.t for park in parks}
+    since += [e.t for e in harbour_entries() if e.kind == "cleared" and e.fields.get("by") == talk.PERSON
+              and str(e.fields.get("parked", "")) in answered]
+    # A park about it answered from the harbourmaster's `--clear` is a person's word too: it is how a person
+    # answers one from a terminal, and manda's S92 was cleared that way and parked on its next run as spent.
+    answered = {park.t for park in parks}
+    since += [e.t for e in harbour_entries() if e.kind == "cleared" and e.fields.get("by") == talk.PERSON
+              and str(e.fields.get("parked", "")) in answered]
     last = max(since, default="")
     return sum(1 for e in found if e.kind == "dispatched" and str(e.fields.get("slice", "")) == slice_id
                and e.t >= last and not e.fields.get("free"))
@@ -2176,6 +2187,21 @@ def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict:
             f"a green run")
 
 
+#: How many times one turn asks for a slice's merge whatever the refusals were; `ceiling` holds the runs.
+MERGE_ASKS = 12
+
+
+def refusal_cause(why: str) -> str:
+    """What a merge was refused for, as far as telling one refusal from the next needs: a conflict, the
+    capability's gates, or the gate's target that failed."""
+    if "conflicts with" in why:
+        return "conflict"
+    if "gates have not cleared" in why:
+        return "capability gates"
+    target = re.search(r"\*\*\* \[([^\]]+)\]", why)
+    return f"gate {target.group(1)}" if target else why[:80]
+
+
 def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool, str]:
     """Ask for the merge until it lands or until asking again cannot change the answer.
 
@@ -2184,15 +2210,21 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
     afresh, because trunk may have moved again in the meantime. A refusal nothing here can act on stops at
     once rather than driving a slice four more times to be told the same thing.
     """
-    for asked in range(bound + 1):
+    cause, same = "", 0
+    for asked in range(MERGE_ASKS):
         hold_talk(fairway, slice_id, "held: this slice is at its merge")
         landed, why, resolvable = ask_to_merge(slice_id, feature, fairway, asked)
         if landed:
             return True, ""
         if not resolvable:
             return False, why
-        if asked == bound:
-            return False, f"{why}. That is {asked + 1} attempt(s), which is what `attempts` allows"
+        # Counted per cause, not per ask: a slice refused for its capability gates, then for a conflict, then
+        # for a check, has answered each and is not going round. manda's S91 was refused three times for its
+        # gates, once for `check-decisions`, and parked for a person on its first sight of that.
+        same = same + 1 if refusal_cause(why) == cause else 1
+        cause = refusal_cause(why)
+        if same > bound:
+            return False, f"{why}. That is {same} attempt(s) at the same refusal, which is what `attempts` allows"
         # Back into its berth to resolve, which is work on code and no longer a wait on the queue.
         FLIGHT.setdefault(slice_id, {})["merging"] = False
         try:
@@ -2223,7 +2255,7 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
                 return False, ("a message's turn committed to the slice while it was resolving its merge, and "
                                "its gate was not closed again on that head — "
                                + gate_missed(slice_id, promised, missing, verdict, unseeded(fresh, slice_id, feature)))
-    return False, "unreachable"
+    return False, f"{slice_id} asked for its merge {MERGE_ASKS} times and each was refused for something new"
 
 
 def working(fairway: str, slice_id: str) -> Path:

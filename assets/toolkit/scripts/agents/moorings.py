@@ -325,9 +325,14 @@ def add_worktree(root: Path, found: Path, branch: str, base: str) -> subprocess.
     """
     for attempt in range(4):
         exists = git(root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
+        # `--no-track`: cut from `origin/main`, git otherwise writes the branch an upstream in `.git/config`,
+        # and captains abreast each writing that file was a berth refused with the branch made and nothing
+        # else — manda's S72, S78, S83 and S97 each parked for a person on a command that works when run again.
         made = (git(root, "worktree", "add", "--quiet", str(found), branch) if exists
-                else git(root, "worktree", "add", "--quiet", "-b", branch, str(found), base or "HEAD"))
-        if made.returncode == 0 or "worktrees/" not in (made.stderr or "") or found.exists():
+                else git(root, "worktree", "add", "--quiet", "--no-track", "-b", branch, str(found), base or "HEAD"))
+        # Tried again where a sibling's was half-made, and where this attempt made the branch and no berth.
+        half = not exists and git(root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
+        if made.returncode == 0 or found.exists() or not ("worktrees/" in (made.stderr or "") or half):
             return made
         time.sleep(0.25 * (attempt + 1))
     return made

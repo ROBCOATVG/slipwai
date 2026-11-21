@@ -53,5 +53,21 @@ class CapabilityRecordTest(unittest.TestCase):
         self.assertIn("specs/002-more/capabilities/place-an-order/", wrong)
 
 
+class CodeMovedTest(CapabilityRecordTest):
+    """Another slice's `code` list follows a file this branch moved; nothing else of its block may change."""
+
+    def test_only_a_code_list_that_follows_the_tree(self) -> None:
+        moved = self.module.code_moved
+        (self.tree / "new.ts").write_text("", encoding="utf-8")
+        (self.tree / "kept.ts").write_text("", encoding="utf-8")
+        was = {"id": "S1", "status": "implemented", "code": ["kept.ts", "old.ts"]}
+        self.assertTrue(moved(was, {**was, "code": ["kept.ts", "new.ts"]}))
+        self.assertTrue(moved(was, {**was, "code": ["kept.ts"]}), "deleted, and so only removed")
+        self.assertFalse(moved(was, {**was, "code": ["old.ts", "new.ts"]}), "kept.ts is still in the tree")
+        self.assertFalse(moved(was, {**was, "code": ["kept.ts", "nowhere.ts"]}), "what it adds must be there")
+        self.assertFalse(moved(was, {**was, "status": "modelled", "code": ["kept.ts", "new.ts"]}))
+        self.assertFalse(moved(was, {**was, "code": ["old.ts", "kept.ts"]}), "a reordering moved nothing")
+
+
 if __name__ == "__main__":
     unittest.main()

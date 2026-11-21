@@ -31,6 +31,18 @@ class PausedTest(Fixture):
         self.assertEqual(receipts, [{"fairway": "ORD", "parked": "2026-10-21T16:40:00Z",
                                      "what": "its time came: 2026-10-21T20:40:00Z"}])
 
+    def test_a_park_about_a_slice_that_has_merged_since_is_cleared(self) -> None:
+        """manda's S50 was granted its merge two minutes after it parked, and the park stood for six hours."""
+        self.deck("ordering", "ORD",
+                  logs.entry("parked", fairway="ORD", why="ORD-01: it has had 7 runs", t="2026-10-21T16:40:00Z"),
+                  logs.entry("merged", fairway="ORD", slice="ORD-01", commit="abc1234", t="2026-10-21T16:42:00Z"),
+                  logs.entry("parked", fairway="ORD", why="ORD-02: refused", t="2026-10-21T16:43:00Z"))
+        for _ in range(2):
+            self.run_once()
+        receipts = [entry.fields for entry in self.harbour() if entry.kind == "cleared"]
+        self.assertEqual(receipts, [{"fairway": "ORD", "parked": "2026-10-21T16:40:00Z",
+                                     "what": "ORD-01 has merged since, so nothing is owed"}])
+
     def test_a_pause_whose_time_is_ahead_stands(self) -> None:
         self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", slice="ORD-01", why="refused",
                                                 cause="limit", until="2999-01-01T00:00:00Z",

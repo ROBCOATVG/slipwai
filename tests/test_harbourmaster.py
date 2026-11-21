@@ -27,7 +27,8 @@ class ClearParkTest(Fixture):
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         receipts = [entry for entry in self.harbour() if entry.kind == "cleared"]
         self.assertEqual(len(receipts), 1)
-        self.assertEqual(receipts[0].fields, {"fairway": "ORD", "parked": at, "what": "keep the existing store"})
+        self.assertEqual(receipts[0].fields, {"fairway": "ORD", "parked": at, "what": "keep the existing store",
+                                              "by": "person"})
         command[command.index(at)] = "2026-10-12T08:00:00Z"
         wrong = subprocess.run(command, cwd=self.root, capture_output=True, text=True, timeout=30)
         self.assertNotEqual(wrong.returncode, 0)

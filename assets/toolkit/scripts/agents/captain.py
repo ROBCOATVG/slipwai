@@ -71,6 +71,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import dataclasses
 import fnmatch
 import json
 import os
@@ -2421,9 +2422,13 @@ def ask_to_merge(slice_id: str, feature: str, fairway: str,
     # asking's. A first asking takes any answer, as it always has.
     again = any(e.kind == "request" and str(e.fields.get("id", "")) == request
                 for e in entries(feature, fairway))
-    asking = logs.entry(
+    # Stamped here, not at the write: an entry has no time until its line is made, so `asking.t` below was
+    # always empty and every answer ever given under this id was newer than it. manda's S91 asked as
+    # `merge-S91-1` at 16:18, was handed 13:07's refusal in the same second, and parked as spent two minutes
+    # before the harbourmaster granted the merge it had just asked for.
+    asking = dataclasses.replace(logs.entry(
         "request", fairway=fairway, id=request, what="merge", slice=slice_id,
-        detail=f"merge slice/{slice_id} into trunk after the full gate")
+        detail=f"merge slice/{slice_id} into trunk after the full gate"), t=logs.now())
     write(feature, fairway, asking)
     try:
         found = await_answer(request, wait_bound(), asking.t if again else "")

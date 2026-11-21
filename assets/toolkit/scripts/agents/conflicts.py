@@ -38,8 +38,10 @@ RECORDS = re.compile(r"^specs/[^/]+/(decisions|adversary-log|benchmark)\.md$")
 CONFLICT = "conflict"
 #: Used where `harbour.json` does not say `conflict_minutes`. 0 there turns the session off.
 DEFAULT_MINUTES = 15
-#: How many times one merge may stop for a session: one per replayed commit that conflicts, and no more.
-STOPS = 4
+#: How many times one merge may stop for a session: one per replayed commit that conflicts. A slice a
+#: thousand commits behind trunk stopped on one file seven times; at four the merge was refused with the
+#: file half-way settled and nothing saying the mender had been at it.
+STOPS = 12
 MARKS = re.compile(r"^(<{7}|>{7})( |$)", re.MULTILINE)
 
 Hunk = tuple[int, int, list[str]]

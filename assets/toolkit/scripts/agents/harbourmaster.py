@@ -734,6 +734,9 @@ def mender_settled(rebased: subprocess.CompletedProcess[str], branch: str,
         if why:
             break
         rebased = appends_resolved(carried_on())
+    else:
+        if rebased.returncode != 0:
+            why = f"it settled {conflicts.STOPS} stops and the rebase stopped again, which is all one merge is given"
     return rebased, why
 
 

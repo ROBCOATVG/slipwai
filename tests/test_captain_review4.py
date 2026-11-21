@@ -212,6 +212,23 @@ class RulesTest(HelmBase):
             with mock.patch.object(module, "harbour_entries", return_value=[cleared]):
                 self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), counted, by or "nobody's")
 
+    def test_an_answer_already_there_is_never_this_asking_s(self) -> None:
+        """manda's S91: handed 13:07's refusal of `merge-S91-1` in the second it asked again at 16:18."""
+        module = self.captain()
+        old = replace(logs.entry("refused", harbour=True, fairway="ORD", request="merge-ORD-01", what="merge",
+                                 why="gates", resolve=True), t="2026-11-16T09:00:00Z")
+        waited: list[str] = []
+
+        def answer(_request: str, _bound: float, since: str = "") -> None:
+            waited.append(since)
+
+        self.deck(logs.entry("request", fairway="ORD", id="merge-ORD-01", what="merge", slice="ORD-01",
+                             detail="asked before", t="2026-11-16T08:59:00Z"))
+        with mock.patch.object(module, "harbour_entries", return_value=[old]), \
+                mock.patch.object(module, "await_answer", answer), mock.patch.object(module, "wait_bound", lambda: 1):
+            module.ask_to_merge("ORD-01", "ordering", "ORD", 0)
+        self.assertTrue(waited and waited[0] > old.t, waited)
+
     def test_refusals_are_told_apart_by_what_they_were_for(self) -> None:
         """manda's S91: three refusals for its capability gates, one for a check, and parked as out of attempts."""
         cause = self.captain().refusal_cause

@@ -43,6 +43,19 @@ class PausedTest(Fixture):
         self.assertEqual(receipts, [{"fairway": "ORD", "parked": "2026-10-21T16:40:00Z",
                                      "what": "ORD-01 has merged since, so nothing is owed"}])
 
+    def test_a_park_about_a_slice_the_harbour_has_since_granted_is_cleared(self) -> None:
+        """The captain parked while its merge was being gated, so no `merged` line was ever written."""
+        self.deck("ordering", "ORD",
+                  logs.entry("parked", fairway="ORD", why="ORD-01: it has had 7 runs", t="2026-10-21T16:40:00Z"))
+        path = logs.harbour_path(self.root, logs.machine())
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as out:
+            out.write(logs.entry("granted", harbour=True, fairway="ORD", request="merge-ORD-01", what="merge",
+                                 slice="ORD-01", commit="abc1234", t="2026-10-21T16:42:00Z").line())
+        self.run_once()
+        self.assertEqual([entry.fields["what"] for entry in self.harbour() if entry.kind == "cleared"],
+                         ["ORD-01 has merged since, so nothing is owed"])
+
     def test_a_pause_whose_time_is_ahead_stands(self) -> None:
         self.deck("ordering", "ORD", logs.entry("parked", fairway="ORD", slice="ORD-01", why="refused",
                                                 cause="limit", until="2999-01-01T00:00:00Z",

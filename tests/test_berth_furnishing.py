@@ -98,6 +98,16 @@ class BerthTest(unittest.TestCase):
         status = subprocess.run(["git", "status", "--porcelain"], cwd=berth, capture_output=True, text=True)
         self.assertEqual(status.stdout.strip(), "?? half.txt", "committed, and the slice's own work untouched")
 
+    def test_a_berth_takes_the_next_migration_too(self) -> None:
+        """manda, migrated three times in a day: what the first take gave a berth was its own from then on."""
+        self.migrated("1")
+        berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")
+        with mock.patch.dict("os.environ", self.IDENTITY):
+            for version in ("2", "3"):
+                self.migrated(version)
+                self.assertIn("has taken", self.module.caught_up(self.root, berth, "main"))
+        self.assertEqual((berth / "scripts/agents/benchmark.py").read_text(encoding="utf-8"), "WALKS = '3'\n")
+
     def test_a_sibling_s_merge_is_not_a_migration_and_is_left_for_the_slice_s_own_merge(self) -> None:
         self.migrated("1")
         berth, _ = self.module.berth(self.root, "L01", "slice/L01", "main")

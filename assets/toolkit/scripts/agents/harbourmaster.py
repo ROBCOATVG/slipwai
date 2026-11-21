@@ -1634,6 +1634,7 @@ def cleared_by_merge(already: list[logs.Entry]) -> list[logs.Entry]:
 
     A park is about work somebody still owes, and a merged slice owes none. manda's S50 was granted its
     merge two minutes after it parked as spent, and the park stood on the board for a person for six hours.
+    The captain is lit again by the receipt and writes the `merged` line it never got to (`resuming`).
     """
     harbour = harbour_entries()
     done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
@@ -1646,6 +1647,10 @@ def cleared_by_merge(already: list[logs.Entry]) -> list[logs.Entry]:
         except (logs.Unreadable, OSError, UnicodeDecodeError):
             continue
         landed = {str(e.fields.get("slice", "")): e.t for e in deck if e.kind == "merged"}
+        # The harbour's own `granted` as well: a captain that parked while its merge was being gated wrote no
+        # `merged`, and the slice was on trunk with its stream waiting for a person.
+        landed.update({str(e.fields.get("slice", "")): e.t for e in harbour if e.kind == "granted"
+                       and e.fields.get("commit") and str(e.fields.get("fairway", "")) == fairway})
         for park in logs.open_parks(deck, harbour, fairway):
             named = str(park.fields.get("slice") or "") or str(park.fields.get("why", "")).partition(":")[0].strip()
             if named and landed.get(named, "") >= park.t and (fairway, park.t) not in done:

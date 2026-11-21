@@ -14,6 +14,7 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 
+import bounded
 import checkout_packages  # noqa: F401
 
 from slipwai import logs
@@ -84,9 +85,10 @@ class TravelFixture(Fixture):
 
     def run_as(self, machine: str, *extra: str) -> subprocess.CompletedProcess:
         """One pass, as a named machine, reaching the forge — which is what `--no-fetch` turns off."""
-        return subprocess.run([sys.executable, str(self.script), "--once", *extra],
-                              capture_output=True, text=True, cwd=self.root,
-                              env={**os.environ, "SLIPWAI_MACHINE": machine})
+        # Bounded with everything it starts (`bounded.py`): this call sat for 22 minutes on a macOS runner
+        # with nothing to say which pass it was, and the job's own half-hour limit was what ended it.
+        return bounded.run([sys.executable, str(self.script), "--once", *extra], timeout=300,
+                           cwd=self.root, env={**os.environ, "SLIPWAI_MACHINE": machine})
 
     def refs(self, namespace: str) -> list[str]:
         found = self.git("for-each-ref", "--format=%(refname)", namespace, where=self.forge)

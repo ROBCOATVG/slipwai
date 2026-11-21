@@ -91,6 +91,7 @@
 # why: 2026-11-20 f79a0cff7015432f a slice's files, story, capability gates, decisions and split are read under the feature its chart row names, and a stream has one log under the chart's feature that a session is told (SLIPWAI_DECK) and every reader folds a second file's lines into; a second file travels on its own ref. A project with one feature reads and writes every path it did
 # why: 2026-11-21 fad47f250af63ee6 A conflict at a merge is settled where the rebase stopped (conflicts.py, harbourmaster.py, mender.py) and a slice may write its own capability record (check-slice-scope.py); behaviour is the same on macOS and Linux, and Windows is untouched
 # why: 2026-11-21 6ee895d6b4b3b1ec The merge rebase ignores rerere, a failed gate refusal carries the check words, and a worktree is made with --no-track and retried; same behaviour on macOS and Linux
+# why: 2026-11-21 362448a952e2847b Merge attempts counted per cause, a terminal clear counts as a person word, a merged slice park clears itself, and a code list follows a moved file; same behaviour on macOS and Linux
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -128,10 +129,6 @@
 2318e7ab3d0b11990dc4248f2b51a56a420e2f6d0f3d609a55431cdb91af1185  event-modelling-postgres-toy-serve  scripts/extensions/guard_offer.py
 2318e7ab3d0b11990dc4248f2b51a56a420e2f6d0f3d609a55431cdb91af1185  standard-memory-none  scripts/extensions/guard_offer.py
 2318e7ab3d0b11990dc4248f2b51a56a420e2f6d0f3d609a55431cdb91af1185  standard-postgres-toy-serve  scripts/extensions/guard_offer.py
-25b552ad1e838bab2908d9dfdcb43cf7bafea7fea2a7cd174a91e604710762cc  event-modelling-memory-none  scripts/agents/harbourmaster.py
-25b552ad1e838bab2908d9dfdcb43cf7bafea7fea2a7cd174a91e604710762cc  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
-25b552ad1e838bab2908d9dfdcb43cf7bafea7fea2a7cd174a91e604710762cc  standard-memory-none  scripts/agents/harbourmaster.py
-25b552ad1e838bab2908d9dfdcb43cf7bafea7fea2a7cd174a91e604710762cc  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 27b254a9a4d438848771249e9cd02bd569e92eb42812ac7d1b94faa4b983dfbb  event-modelling-memory-none  scripts/check-surfaces.py
 27b254a9a4d438848771249e9cd02bd569e92eb42812ac7d1b94faa4b983dfbb  event-modelling-postgres-toy-serve  scripts/check-surfaces.py
 27b254a9a4d438848771249e9cd02bd569e92eb42812ac7d1b94faa4b983dfbb  standard-memory-none  scripts/check-surfaces.py
@@ -176,10 +173,6 @@
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  event-modelling-postgres-toy-serve  scripts/check-chart.py
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  standard-memory-none  scripts/check-chart.py
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  standard-postgres-toy-serve  scripts/check-chart.py
-434c62612a70babf6b824b4a3033574d19dde0595a56b58fa9c1240141820a5a  event-modelling-memory-none  scripts/check-slice-scope.py
-434c62612a70babf6b824b4a3033574d19dde0595a56b58fa9c1240141820a5a  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
-434c62612a70babf6b824b4a3033574d19dde0595a56b58fa9c1240141820a5a  standard-memory-none  scripts/check-slice-scope.py
-434c62612a70babf6b824b4a3033574d19dde0595a56b58fa9c1240141820a5a  standard-postgres-toy-serve  scripts/check-slice-scope.py
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-memory-none  scripts/event-model/drawio.test.ts
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-postgres-toy-serve  scripts/event-model/drawio.test.ts
 445d3c93f8740dd4b846e627db405eacfe68e21a2f728823d741b0d19131c668  event-modelling-memory-none  scripts/agents/no_surface.py
@@ -228,6 +221,10 @@
 5410936fd80d264cc98263475060f16aaf5cf86bcb010ce31534c39d592b61c4  event-modelling-postgres-toy-serve  scripts/agents/clearance.py
 5410936fd80d264cc98263475060f16aaf5cf86bcb010ce31534c39d592b61c4  standard-memory-none  scripts/agents/clearance.py
 5410936fd80d264cc98263475060f16aaf5cf86bcb010ce31534c39d592b61c4  standard-postgres-toy-serve  scripts/agents/clearance.py
+574773d588a08a639f4826dde7a76387b200b58b724183e6032e375857465edd  event-modelling-memory-none  scripts/agents/harbourmaster.py
+574773d588a08a639f4826dde7a76387b200b58b724183e6032e375857465edd  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
+574773d588a08a639f4826dde7a76387b200b58b724183e6032e375857465edd  standard-memory-none  scripts/agents/harbourmaster.py
+574773d588a08a639f4826dde7a76387b200b58b724183e6032e375857465edd  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-memory-none  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  event-modelling-postgres-toy-serve  scripts/agents/command_text.py
 58942d41fb145b2f344c804eac8d5105ec5feb6a09c03e94c8354ea8ca85b705  standard-memory-none  scripts/agents/command_text.py
@@ -240,6 +237,10 @@
 62a025de938053f3a1080a92c61287380b6000793574cfc92cebf06760c87acf  standard-postgres-toy-serve  scripts/agents/feature_stages.py
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-memory-none  scripts/event-model/board-plan.ts
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.ts
+66e8772df27dfe6976c26b8581971a32333aa498a07a714455beec682e2b68bb  event-modelling-memory-none  scripts/agents/captain.py
+66e8772df27dfe6976c26b8581971a32333aa498a07a714455beec682e2b68bb  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+66e8772df27dfe6976c26b8581971a32333aa498a07a714455beec682e2b68bb  standard-memory-none  scripts/agents/captain.py
+66e8772df27dfe6976c26b8581971a32333aa498a07a714455beec682e2b68bb  standard-postgres-toy-serve  scripts/agents/captain.py
 683c4fb61f9787e4154a406f90b3b58e5a15140204d6d7f1c4f1b83459c688b4  event-modelling-memory-none  scripts/agents/captain_agent.py
 683c4fb61f9787e4154a406f90b3b58e5a15140204d6d7f1c4f1b83459c688b4  event-modelling-postgres-toy-serve  scripts/agents/captain_agent.py
 683c4fb61f9787e4154a406f90b3b58e5a15140204d6d7f1c4f1b83459c688b4  standard-memory-none  scripts/agents/captain_agent.py
@@ -310,6 +311,10 @@
 9b1b06d938a25e8ff6218840129ea97778ba581e6b568105e5b5234577728c94  standard-postgres-toy-serve  init
 9d5c95d5409f61f22732e3086cf190c3056d150d2fb4e087bc6bd955674e3578  event-modelling-memory-none  scripts/event-model/chart.py
 9d5c95d5409f61f22732e3086cf190c3056d150d2fb4e087bc6bd955674e3578  event-modelling-postgres-toy-serve  scripts/event-model/chart.py
+9d63c434eb488b87fa51e3ce7cde527738f35b14765d7f891d417911d51b04ed  event-modelling-memory-none  scripts/check-slice-scope.py
+9d63c434eb488b87fa51e3ce7cde527738f35b14765d7f891d417911d51b04ed  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
+9d63c434eb488b87fa51e3ce7cde527738f35b14765d7f891d417911d51b04ed  standard-memory-none  scripts/check-slice-scope.py
+9d63c434eb488b87fa51e3ce7cde527738f35b14765d7f891d417911d51b04ed  standard-postgres-toy-serve  scripts/check-slice-scope.py
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-memory-none  scripts/event-model/readme.ts
 a01e2ac24815d5477dc044b32cc9e48b6fb6e3e44cfa1e1e07ec785040b9f1a0  event-modelling-postgres-toy-serve  scripts/event-model/readme.ts
 a24dfcee08cb8af8330669a66e82a1353b7490bcf79fa605b5f5777439d78339  event-modelling-memory-none  scripts/agents/feedback.py
@@ -447,10 +452,6 @@ e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  standard-memor
 e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  standard-postgres-toy-serve  scripts/agents/spend.py
 e9230f685030c27ff248f567a38df7341a28986c6d25c484bf614e2ce72ab9c7  event-modelling-memory-none  scripts/event-model/board-plan.test.ts
 e9230f685030c27ff248f567a38df7341a28986c6d25c484bf614e2ce72ab9c7  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.test.ts
-ea99d6d851de709477fdf8be7c5011ade441e7f5a1a1869fc4b5453602892e46  event-modelling-memory-none  scripts/agents/captain.py
-ea99d6d851de709477fdf8be7c5011ade441e7f5a1a1869fc4b5453602892e46  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-ea99d6d851de709477fdf8be7c5011ade441e7f5a1a1869fc4b5453602892e46  standard-memory-none  scripts/agents/captain.py
-ea99d6d851de709477fdf8be7c5011ade441e7f5a1a1869fc4b5453602892e46  standard-postgres-toy-serve  scripts/agents/captain.py
 ee624cef478aa29ec1a5d85220a070ba170fe57b5e8098451cdc409d96e9d4d5  event-modelling-memory-none  scripts/agents/capabilities.py
 ee624cef478aa29ec1a5d85220a070ba170fe57b5e8098451cdc409d96e9d4d5  event-modelling-postgres-toy-serve  scripts/agents/capabilities.py
 ee624cef478aa29ec1a5d85220a070ba170fe57b5e8098451cdc409d96e9d4d5  standard-memory-none  scripts/agents/capabilities.py

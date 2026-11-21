@@ -1372,6 +1372,7 @@ def once() -> int:
     written += cleared_by_decisions(written)
     written += cleared_for_green(trunk_state, written)
     written += cleared_by_time(written)
+    written += cleared_by_merge(written)
     written += needs_met(written)
     if mending():
         # Last, so a need this pass ticked is not offered, and after the trunk lines so a red this pass found
@@ -1625,6 +1626,31 @@ def cleared_by_time(already: list[logs.Entry]) -> list[logs.Entry]:
                 continue
             found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                     what=f"its time came: {until}"))
+    return found
+
+
+def cleared_by_merge(already: list[logs.Entry]) -> list[logs.Entry]:
+    """A `cleared` receipt for every open park about a slice that has merged since.
+
+    A park is about work somebody still owes, and a merged slice owes none. manda's S50 was granted its
+    merge two minutes after it parked as spent, and the park stood on the board for a person for six hours.
+    """
+    harbour = harbour_entries()
+    done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
+            for e in already if e.kind == "cleared"}
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        fairway = path.stem
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        landed = {str(e.fields.get("slice", "")): e.t for e in deck if e.kind == "merged"}
+        for park in logs.open_parks(deck, harbour, fairway):
+            named = str(park.fields.get("slice") or "") or str(park.fields.get("why", "")).partition(":")[0].strip()
+            if named and landed.get(named, "") >= park.t and (fairway, park.t) not in done:
+                found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
+                                        what=f"{named} has merged since, so nothing is owed"))
     return found
 
 
@@ -1924,7 +1950,9 @@ def clear_park(fairway: str, parked: str, what: str) -> tuple[bool, str]:
                        "the original park's timestamp")
     if not any(entry.t == parked for entry in logs.open_parks(history, harbour_entries(), fairway)):
         return True, f"{fairway}'s park at {parked} is already cleared"
-    append([logs.entry("cleared", harbour=True, fairway=fairway, parked=parked, what=what.strip())])
+    # `by: person`: this is the one clearance a person writes, and it gives the slice its runs back as a
+    # person's `told` does (`captain.counted_runs`).
+    append([logs.entry("cleared", harbour=True, fairway=fairway, parked=parked, what=what.strip(), by="person")])
     return True, f"cleared {fairway}'s park at {parked}: {what.strip()}"
 
 

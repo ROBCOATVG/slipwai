@@ -22,7 +22,9 @@ import shlex
 import subprocess
 import sys
 import time
+from dataclasses import replace
 from typing import Any
+from unittest import mock
 
 import checkout_packages  # noqa: F401
 from test_captain_abreast import Abreast
@@ -196,6 +198,29 @@ class RulesTest(HelmBase):
         self.deck(logs.entry("told", fairway="ORD", message="carry on", by="person", slice="ORD-01",
                              t="2026-11-16T09:06:00Z"))
         self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), 0, "a person's word, however it came")
+
+    def test_a_park_a_person_cleared_from_the_terminal_gives_the_slice_its_runs_back(self) -> None:
+        """manda's S92: cleared with `harbourmaster.py --clear`, and parked on its next run as spent."""
+        module = self.captain()
+        parked = "2026-11-16T09:01:00Z"
+        self.deck(logs.entry("dispatched", fairway="ORD", slice="ORD-01", t="2026-11-16T09:00:00Z"),
+                  logs.entry("parked", fairway="ORD", why="ORD-01: the merge was refused", t=parked))
+        for by, counted in (("", 1), ("person", 0)):
+            said = {"by": by} if by else {}
+            cleared = replace(logs.entry("cleared", harbour=True, fairway="ORD", parked=parked, what="go", **said),
+                              t="2026-11-16T09:02:00Z")
+            with mock.patch.object(module, "harbour_entries", return_value=[cleared]):
+                self.assertEqual(module.counted_runs("ordering", "ORD", "ORD-01"), counted, by or "nobody's")
+
+    def test_refusals_are_told_apart_by_what_they_were_for(self) -> None:
+        """manda's S91: three refusals for its capability gates, one for a check, and parked as out of attempts."""
+        cause = self.captain().refusal_cause
+        gate = "the full gate failed on slice/S1 rebased onto origin/main: make[1]: *** [check-decisions] Error 1"
+        self.assertEqual(cause(gate + " — it said: D444 names no Read against"), cause(gate))
+        self.assertNotEqual(cause(gate), cause(gate.replace("check-decisions", "check-model")))
+        self.assertEqual(cause("slice/S1 conflicts with origin/main in a.ts"),
+                         cause("slice/S1 conflicts with origin/main in b.ts"))
+        self.assertNotEqual(cause("S1 is the last slice of X, whose gates have not cleared on its branch"), cause(gate))
 
     def test_a_project_that_says_nothing_has_a_captain_that_answers_nothing(self) -> None:
         agent = loaded(self.root, "captain_agent")

@@ -2518,10 +2518,15 @@ def cleared_back(feature: str, fairway: str, found: list[logs.Entry], beside: li
     """
     _, held = state(found, fairway)
     last: dict[str, str] = {}
+    mine = resuming(found)
     for e in found:
-        if e.kind in ("claimed", "parked", "stopped") and e.fields.get("slice"):
-            last[str(e.fields["slice"])] = e.kind
-    back = [one for one in resuming(found) if last.get(one) in ("parked", "stopped") and one not in held
+        # A park may name its slice only at the head of its why, as the captain's own parks of one do: read
+        # as `about` reads it, or such a slice, once cleared, was never carried on until the turn ended.
+        named = str(e.fields.get("slice") or "") or next((one for one in mine if e.kind == "parked"
+                                                          and about(e, one)), "")
+        if e.kind in ("claimed", "parked", "stopped") and named:
+            last[named] = e.kind
+    back = [one for one in mine if last.get(one) in ("parked", "stopped") and one not in held
             and one not in beside and worked_here(fairway, one) is None]
     return furthest_first(feature, back, found) if back else []
 
@@ -2600,7 +2605,13 @@ def allowed(fairway: str, flying: int, found: list[logs.Entry]) -> int:
     if given is None:
         return 1
     ended = max((e.t for e in found if e.kind in ("merged", "stopped", "parked")), default="")
-    if given.t < ended:
+    # Older than the last end, and counting more running than are: the number from before that slice ended.
+    # One that already counts it out is the harbourmaster's word since, whichever line was written first —
+    # manda's modelling stream was told `slots 2, running 1` twenty seconds before its captain wrote the
+    # `merged` that freed the slot, took the line for a stale one, and left a cleared slice unstarted beside
+    # a free slot until the fleet was stopped.
+    running = given.fields.get("running")
+    if given.t < ended and not (isinstance(running, int) and running <= flying):
         return flying
     count = given.fields.get("slots")
     return min(count if isinstance(count, int) else 1, abreast.width(harbour()))

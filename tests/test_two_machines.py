@@ -186,8 +186,7 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                             break
                         self.assertIn("is through its gate and merged", done.stdout, diagnostic)
                 finally:
-                    keeper.terminate()
-                    keeper.wait(timeout=30)
+                    bounded.end(keeper)
             entries = logs.fold((logs.deck_path(clone, "ordering", fairway)).read_text(
                 encoding="utf-8").splitlines())
             expected = [f"{fairway}-01", f"{fairway}-02"]
@@ -231,14 +230,12 @@ subprocess.run(["git", "commit", "--quiet", "-m", "implement " + sys.argv[1]], c
                 cwd=self.two, env={**os.environ, "SLIPWAI_MACHINE": TWO},
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as keeper:
             try:
-                done = subprocess.run(
-                    [sys.executable, "scripts/agents/captain.py", "ORD", "--once"],
-                    cwd=self.two, capture_output=True, text=True, timeout=90,
+                done = bounded.run(
+                    [sys.executable, "scripts/agents/captain.py", "ORD", "--once"], timeout=90, cwd=self.two,
                     env={**os.environ, "SLIPWAI_MACHINE": TWO,
                          "SLIPWAI_SAIL": f"{sys.executable} {self.two / 'resume.py'}"})
             finally:
-                keeper.terminate()
-                keeper.wait(timeout=30)
+                bounded.end(keeper)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         path = logs.deck_path(self.two, "ordering", "ORD")
         found = logs.fold(path.read_text(encoding="utf-8").splitlines())

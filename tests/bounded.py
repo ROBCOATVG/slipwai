@@ -41,3 +41,18 @@ def run(argv: list[str], timeout: float, cwd: Path | None = None,
             raise AssertionError(f"{' '.join(argv[:4])} was still running after {timeout:g}s and was ended, with "
                                  f"everything it started.\n{out}\n{err}") from None
     return subprocess.CompletedProcess(argv, child.returncode, out, err)
+
+
+def end(child: subprocess.Popen) -> None:
+    """End a child a test started and wait for it, killing it where asking was not enough.
+
+    `terminate()` then `wait(timeout=30)` raises at the limit, and the `with subprocess.Popen(...)` it is in
+    then waits for the child with no limit at all: a harbourmaster that did not go on SIGTERM held the
+    `gate (macos-latest, 3)` job for its whole half hour, three times.
+    """
+    child.terminate()
+    try:
+        child.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        child.kill()
+        child.wait(timeout=30)

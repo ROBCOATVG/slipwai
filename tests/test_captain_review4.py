@@ -229,6 +229,31 @@ class RulesTest(HelmBase):
             module.ask_to_merge("ORD-01", "ordering", "ORD", 0)
         self.assertTrue(waited and waited[0] > old.t, waited)
 
+    def test_a_slots_line_that_already_counts_the_ended_slice_out_is_not_a_stale_one(self) -> None:
+        """manda: `slots 2, running 1` was written twenty seconds before the captain's `merged`, read as the
+        number from before it, and a cleared slice sat beside a free slot until the fleet was stopped."""
+        module = self.captain()
+        self.deck(logs.entry("merged", fairway="ORD", slice="ORD-02", commit="abc1234", t="2026-11-16T09:05:00Z"))
+        found = module.entries("ordering", "ORD")
+        for running, allowed in ((1, 2), (2, 1)):
+            line = replace(logs.entry("slots", harbour=True, fairway="ORD", slots=2, running=running),
+                           t="2026-11-16T09:04:40Z")
+            with mock.patch.object(module, "harbour_entries", return_value=[line]), \
+                    mock.patch.object(module.abreast, "width", return_value=3):
+                self.assertEqual(module.allowed("ORD", 1, found), allowed, f"the line said {running} running")
+
+    def test_a_cleared_park_that_names_its_slice_only_in_its_why_is_carried_on(self) -> None:
+        """manda's S49: parked by its captain as `S49: …` with no `slice`, cleared, and never started again."""
+        module = self.captain()
+        parked = "2026-11-16T09:01:00Z"
+        self.deck(logs.entry("claimed", fairway="ORD", slice="ORD-01", t="2026-11-16T09:00:00Z"),
+                  logs.entry("parked", fairway="ORD", why="ORD-01: nothing it waits on has changed", t=parked))
+        cleared = replace(logs.entry("cleared", harbour=True, fairway="ORD", parked=parked, what="go"),
+                          t="2026-11-16T09:02:00Z")
+        with mock.patch.object(module, "harbour_entries", return_value=[cleared]):
+            found = module.entries("ordering", "ORD")
+            self.assertEqual(module.cleared_back("ordering", "ORD", found, []), ["ORD-01"])
+
     def test_refusals_are_told_apart_by_what_they_were_for(self) -> None:
         """manda's S91: three refusals for its capability gates, one for a check, and parked as out of attempts."""
         cause = self.captain().refusal_cause

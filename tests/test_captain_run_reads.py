@@ -86,6 +86,8 @@ ALLOWED = {
     "moorings.py:generator": "`project.json` as a commit holds it, printed by `git show`: a tracked file of "
                              "the project, and not read from disk at all",
     "moorings.py:linked_at": "git's own exclude file in the checkout",
+    "moorings.py:mid_rebase": "git's own `head-name` under a worktree's open rebase, which no program of the "
+                              "run writes",
     "stuck.py:tail_lines": "the board's reader of an activity log, opened as `talk.read_bytes` opens; the captain "
                            "reads through `talk` and hands the bytes to `stuck.parsed`",
     "stuck.py:parsed": "parses bytes it is handed, never raising: not a read",

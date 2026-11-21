@@ -88,6 +88,30 @@ def checked_out(root: Path, branch: str) -> Path | None:
     return None
 
 
+def mid_rebase(root: Path, branch: str) -> Path | None:
+    """The worktree a rebase of this branch was left open in, put back on the branch; None where none was.
+
+    A session rebasing its slice when the fleet is stopped leaves its worktree on a detached HEAD with the
+    rebase open. Nothing then has the branch checked out, the folder is in the way of a new worktree, and the
+    slice parked for a person to "move it, or check the branch out in it" (manda's S95). The rebase is aborted,
+    which is the branch as the session last committed it: the harbourmaster rebases at the merge anyway.
+    """
+    listed = git(root, "worktree", "list", "--porcelain")
+    for line in listed.stdout.splitlines():
+        if not line.startswith("worktree "):
+            continue
+        where = Path(line[len("worktree "):])
+        for kind in ("rebase-merge", "rebase-apply"):
+            named = git(where, "rev-parse", "--git-path", f"{kind}/head-name").stdout.strip()
+            try:
+                held = (where / named).read_text(encoding="utf-8").strip() if named else ""
+            except OSError:
+                continue
+            if held == f"refs/heads/{branch}" and git(where, "rebase", "--abort").returncode == 0:
+                return where
+    return None
+
+
 def points_at(link: Path, target: Path) -> bool:
     """Whether `link` is a link that reaches `target`. A link to a folder since moved reaches nothing."""
     try:
@@ -305,7 +329,7 @@ def berth(root: Path, slice_id: str, branch: str, base: str) -> tuple[Path | Non
     """
     if git(root, "rev-parse", "--verify", "--quiet", "HEAD").returncode != 0:
         return None, "this checkout has no commit yet, so there is nothing to make a worktree from"
-    found = checked_out(root, branch)
+    found = checked_out(root, branch) or mid_rebase(root, branch)
     if found is None:
         found = root.parent / f"{root.name}-{slice_id}"
         if found.exists():

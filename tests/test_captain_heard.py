@@ -38,7 +38,7 @@ class HeardTest(Abreast):
         super().setUp()
         (self.root / "specs/ordering/chart.yaml").write_text(CHART, encoding="utf-8")
         self.settings()
-        for name in ("harbourmaster.py", "lockfiles.py", "telegraph.py", "mender.py"):
+        for name in ("harbourmaster.py", "lockfiles.py", "conflicts.py", "telegraph.py", "mender.py"):
             shutil.copy(AGENTS / name, self.root / "scripts/agents" / name)
         self.run_dir = logs.run_dir(self.root)
         self.addCleanup(self.end_captains)

@@ -254,6 +254,14 @@ def prompt(job: str, worktree: Path, branch: str, told: dict) -> str:
     head = (f"You are the trunk mender: read `{BRIEF}` first, and work only as it says. You are in a worktree "
             f"made from trunk at {worktree}, on branch {branch}. Commit on that branch and end. Never push and "
             f"never merge: the harbourmaster gates your branch and lands it.")
+    if job == "conflict":
+        return (f"You are the trunk mender: read `{BRIEF}` first; its *A conflict at a merge* is this job. You "
+                f"are in the harbourmaster's scratch worktree at {worktree}, in the middle of its rebase of "
+                f"{told['slice']} onto {told['onto']}. The rebase stopped replaying `{told.get('replaying', '')}` "
+                f"on: {', '.join(told['paths'])}. Resolve those files so that both changes hold — trunk's and "
+                f"the slice's — leave no conflict marker in them, and end. Change no other file. Do not commit, "
+                f"`git add`, continue, skip or abort the rebase: the harbourmaster does that, and runs the whole "
+                f"gate on what you leave. If the two changes cannot both hold, change nothing and end.")
     if job == TRUNK:
         said = (f"\n\nTrunk is red at {told['commit']}: the `{told.get('job', '?')}` workflow failed"
                 f"{' (' + told['url'] + ')' if told.get('url') else ''}. This is attempt {told['attempt']}.")

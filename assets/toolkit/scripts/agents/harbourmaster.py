@@ -693,13 +693,19 @@ def gate_said(output: str) -> str:
     said = [line.strip() for line in output.splitlines() if line.strip()]
     if not said:
         return "no output"
-    own = [line for line in said if not re.match(r"make(\[\d+\])?: ", line)][-GATE_LINES:]
+    own = [line for line in said if not re.match(r"make(\[\d+\])?: ", line) and not GATE_NOISE.search(line)]
+    own = own[-GATE_LINES:]
     words = " | ".join(own)[-GATE_WORDS:]
     # The first of make's own lines names the target that failed; the last names whichever called it.
     failed = next((line for line in said if re.match(r"make(\[\d+\])?: \*\*\* ", line)), said[-1])
     return failed if not own else words if failed in own else f"{failed} — it said: {words}"
 
 
+#: What a gate prints around a failure that says nothing of it: a package manager's account of its own exit,
+#: a rule of dashes, a test runner's tally of the checks that passed, a warning. manda's refusals for a
+#: failed `test` were eight lines of `npm error` and none of the test.
+GATE_NOISE = re.compile(r"^(npm (error|ERR!)|[\W_]{6,}(\[\d+/\d+\][\W_]*)?$|Ran \d+ tests? in |OK$|\.+$|ELIFECYCLE)"
+                        r"|\bwarning: ", re.IGNORECASE)
 #: How much of a failed check's own output a refusal carries.
 GATE_LINES, GATE_WORDS = 8, 1500
 

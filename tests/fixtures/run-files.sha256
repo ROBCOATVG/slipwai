@@ -97,6 +97,7 @@
 # why: 2026-11-21 a51634e7766acf0a A berth left mid-rebase is put back on its branch; same behaviour on macOS and Linux
 # why: 2026-11-21 af5e469d1089971e A freed slot is taken and a cleared slice carried on mid-turn; same behaviour on macOS and Linux
 # why: 2026-11-21 e3dad77878752c9a The mender settles up to twelve stops of one rebase; same behaviour on macOS and Linux
+# why: 2026-11-21 0fa04abeccab661a A gate refusal leaves out the noise printed round a failure; same behaviour on macOS and Linux
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -326,10 +327,6 @@ a24dfcee08cb8af8330669a66e82a1353b7490bcf79fa605b5f5777439d78339  event-modellin
 a24dfcee08cb8af8330669a66e82a1353b7490bcf79fa605b5f5777439d78339  event-modelling-postgres-toy-serve  scripts/agents/feedback.py
 a24dfcee08cb8af8330669a66e82a1353b7490bcf79fa605b5f5777439d78339  standard-memory-none  scripts/agents/feedback.py
 a24dfcee08cb8af8330669a66e82a1353b7490bcf79fa605b5f5777439d78339  standard-postgres-toy-serve  scripts/agents/feedback.py
-a3df2246974f4f392a5b73131668e1ab7af3ea8d4fbdf666d4c4aa828d6a89bf  event-modelling-memory-none  scripts/agents/harbourmaster.py
-a3df2246974f4f392a5b73131668e1ab7af3ea8d4fbdf666d4c4aa828d6a89bf  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
-a3df2246974f4f392a5b73131668e1ab7af3ea8d4fbdf666d4c4aa828d6a89bf  standard-memory-none  scripts/agents/harbourmaster.py
-a3df2246974f4f392a5b73131668e1ab7af3ea8d4fbdf666d4c4aa828d6a89bf  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  event-modelling-memory-none  scripts/agents/release_state.py
 a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  event-modelling-postgres-toy-serve  scripts/agents/release_state.py
 a4aef3e5c423a951026e7fc5cdf4586d1fcbd7bbd4f6064205b4e755f35bc2d3  standard-memory-none  scripts/agents/release_state.py
@@ -423,6 +420,10 @@ d02363c6e32a8b8d30ec884f90170d44e622f7e0c79f27d5657fd1cf2a665871  event-modellin
 d02363c6e32a8b8d30ec884f90170d44e622f7e0c79f27d5657fd1cf2a665871  event-modelling-postgres-toy-serve  scripts/agents/surfaces.py
 d02363c6e32a8b8d30ec884f90170d44e622f7e0c79f27d5657fd1cf2a665871  standard-memory-none  scripts/agents/surfaces.py
 d02363c6e32a8b8d30ec884f90170d44e622f7e0c79f27d5657fd1cf2a665871  standard-postgres-toy-serve  scripts/agents/surfaces.py
+d0549ba9d4974e456d2217bac645208a3a541dd8286bd973c253d1dce4767b25  event-modelling-memory-none  scripts/agents/harbourmaster.py
+d0549ba9d4974e456d2217bac645208a3a541dd8286bd973c253d1dce4767b25  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
+d0549ba9d4974e456d2217bac645208a3a541dd8286bd973c253d1dce4767b25  standard-memory-none  scripts/agents/harbourmaster.py
+d0549ba9d4974e456d2217bac645208a3a541dd8286bd973c253d1dce4767b25  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  event-modelling-memory-none  scripts/verify
 d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  event-modelling-postgres-toy-serve  scripts/verify
 d1ae00cf6dfbf191842fd833ef5b42abc6b6328c86faa6d2c64afd70e7c981a2  standard-memory-none  scripts/verify

@@ -155,6 +155,19 @@ class ConflictAtTheMergeTest(MergeFixture):
         self.assertIn("check-decisions", why)
         self.assertIn("D444 names no Read against", why)
 
+    def test_a_refusal_carries_the_failure_and_not_what_was_printed_round_it(self) -> None:
+        """manda: a failed `test` was refused with eight lines of `npm error` and none of the test."""
+        gate = ("verify:\n\t@echo 'check-benchmark: warning: S96 was never closed'\n"
+                "\t@echo ' FAIL  tests/share.test.tsx > shows the sender'\n\t@echo '⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯'\n"
+                "\t@echo 'npm error Lifecycle script `test` failed with error:'\n\t@echo 'npm error code 1'; exit 1\n")
+        self.slice_branch("ORD-01", "Makefile", gate)
+        self.ask("ORD-01")
+        self.run_once()
+        why = str(self.answer().fields["why"])
+        self.assertIn("shows the sender", why)
+        for noise in ("npm error", "⎯⎯", "warning"):
+            self.assertNotIn(noise, why)
+
     def test_with_no_mender_to_send_the_slice_resolves_it_as_before(self) -> None:
         self.diverge()
         self.run_once()

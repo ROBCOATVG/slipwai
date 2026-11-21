@@ -675,12 +675,41 @@ def appends_resolved(rebased: subprocess.CompletedProcess[str]) -> subprocess.Co
     return rebased
 
 
+#: A project's checkout may have `rerere` on, and with `rerere.autoupdate` git stages a conflicted file from
+#: a resolution somebody recorded once and still stops: no path is left unmerged, so nothing here could
+#: name the conflict or settle it. manda's merges were refused for "files git did not name" that way, and
+#: an old resolution of `decisions.md` was replayed where the file should have been woven.
+NO_RERERE = ("-c", "rerere.enabled=false", "-c", "rerere.autoupdate=false")
+
+
+def gate_said(output: str) -> str:
+    """What a failed gate said, for the refusal: make's own last line, which names the target, and the
+    lines the failing check wrote before it.
+
+    The refusal carried make's line alone — `make[1]: *** [check-decisions] Error 1` — and a slice told
+    that knows which check failed and nothing of why. manda's S91 and S95 each spent their attempts and
+    parked on a check that had named the decision and the missing field.
+    """
+    said = [line.strip() for line in output.splitlines() if line.strip()]
+    if not said:
+        return "no output"
+    own = [line for line in said if not re.match(r"make(\[\d+\])?: ", line)][-GATE_LINES:]
+    words = " | ".join(own)[-GATE_WORDS:]
+    # The first of make's own lines names the target that failed; the last names whichever called it.
+    failed = next((line for line in said if re.match(r"make(\[\d+\])?: \*\*\* ", line)), said[-1])
+    return failed if not own else words if failed in own else f"{failed} — it said: {words}"
+
+
+#: How much of a failed check's own output a refusal carries.
+GATE_LINES, GATE_WORDS = 8, 1500
+
+
 def carried_on() -> subprocess.CompletedProcess[str]:
     """The rebase in the scratch worktree, on from a stop whose files are all staged. A commit left with
     nothing in it — trunk's copy of a lock taken, an entry trunk already held — is skipped, not continued."""
     emptied = git("diff", "--cached", "--quiet", where=SCRATCH).returncode == 0
-    return git("rebase", "--skip", where=SCRATCH) if emptied else \
-        git("-c", "core.editor=true", "rebase", "--continue", where=SCRATCH)
+    return git(*NO_RERERE, "rebase", "--skip", where=SCRATCH) if emptied else \
+        git(*NO_RERERE, "-c", "core.editor=true", "rebase", "--continue", where=SCRATCH)
 
 
 def mender_settled(rebased: subprocess.CompletedProcess[str], branch: str,
@@ -726,7 +755,7 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
     furnish(SCRATCH)
     try:
         LOCKS_OWED.clear()
-        rebased, unsettled = mender_settled(appends_resolved(git("rebase", onto, where=SCRATCH)), branch, onto)
+        rebased, unsettled = mender_settled(appends_resolved(git(*NO_RERERE, "rebase", onto, where=SCRATCH)), branch, onto)
         if rebased.returncode == 0 and (fault := locks_regenerated()):
             return "", (f"{branch} and {onto} each changed a lock, and {fault}. Nothing is half-done; rebase in "
                         f"your own berth, write the lock again there, and ask again"), True, "", False
@@ -744,9 +773,8 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
         done = gated(SCRATCH)
         spent["gate_s"] = spent.get("gate_s", 0) + round(time.monotonic() - started)
         if done.returncode != 0:
-            said = [line for line in (done.stdout + done.stderr).splitlines() if line.strip()]
             return "", (f"the full gate failed on {branch} rebased onto {onto}: "
-                        f"{said[-1] if said else 'no output'}"), True, "", False
+                        f"{gate_said(done.stdout + done.stderr)}"), True, "", False
         skipped = [line.strip() for line in (done.stdout + done.stderr).splitlines() if SKIPPED in line]
         if skipped:
             # `resolve` true: what the gate could not find is installed on this machine, by the berth or a

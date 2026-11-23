@@ -29,8 +29,9 @@ from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
 # budget: 429 — the headline over every state a fleet can be in, a build merged whole and one merged but
-# ungated or built on a stand-in among them, and a group already answered showing what was said and where it stands, and what
-# to do about each group, with every park's held answer, and apart from them the probably-done and obsolete
+# ungated or built on a stand-in among them, and a group already answered showing what was said and where
+# it stands, and what to do about each group, with every park's held answer, and apart from them the
+# probably-done and obsolete
 
 #: The word on a group for its cause, in the words a person uses rather than the record's.
 CAUSES = {"limit": "paused", "host": "on main", "question": "a question", "demo": "demo sent back",

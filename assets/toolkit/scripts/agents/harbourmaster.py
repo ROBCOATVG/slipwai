@@ -774,11 +774,21 @@ def handbacks_applied(branch: str, onto: str) -> str:
         if why:
             HANDED_BACK["withheld"].append(f"{name}: {why}")
             continue
-        if git("apply", "--check", "--reverse", str(patch), where=SCRATCH).returncode == 0:
+        # The patch as committed, against the index — never either one as checked out. A Windows checkout with
+        # `core.autocrlf` writes both the patch and the files it changes with CRLF, while what git holds, and
+        # what `git diff` wrote, is LF; applying the working-tree copies would refuse every hand-back there.
+        blob = subprocess.run(["git", "show", f"HEAD:{name}"], cwd=SCRATCH, capture_output=True, check=False).stdout
+
+        def apply(*flags: str, blob: bytes = blob) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.run(["git", "apply", "--cached", *flags, "-"], cwd=SCRATCH, input=blob,
+                                  capture_output=True, check=False)
+
+        if apply("--check", "--reverse").returncode == 0:
             continue  # already there: trunk or the slice holds this change
-        applied = git("apply", "--index", "--whitespace=nowarn", str(patch), where=SCRATCH)
+        applied = apply("--whitespace=nowarn")
         if applied.returncode != 0:
-            said = (applied.stderr or applied.stdout).strip().splitlines()
+            git("reset", "--quiet", "--hard", "HEAD", where=SCRATCH)  # drop what an earlier patch staged
+            said = (applied.stderr or applied.stdout).decode("utf-8", "replace").strip().splitlines()
             return (f"{branch}'s hand-back {name} does not apply on it rebased onto {onto} "
                     f"({said[-1] if said else 'git apply refused it'}). Nothing is half-done; write the patch "
                     f"again against the rebased slice in your berth (`git diff > {name}` after making the "
@@ -792,7 +802,10 @@ def handbacks_applied(branch: str, onto: str) -> str:
                f"Applied on the slice rebased onto trunk and gated with it, because each needs the slice's own "
                f"code.\n\n" + "\n".join(reasons), where=SCRATCH)
     if made.returncode != 0:
+        git("reset", "--quiet", "--hard", "HEAD", where=SCRATCH)
         return f"{branch}'s hand-backs applied and could not be committed ({(made.stderr or made.stdout).strip()})"
+    # The patches went into the index alone; the gate runs on the working tree, so bring it to the commit.
+    git("reset", "--quiet", "--hard", "HEAD", where=SCRATCH)
     return ""
 
 

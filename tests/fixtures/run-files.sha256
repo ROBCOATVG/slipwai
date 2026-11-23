@@ -101,6 +101,7 @@
 # why: 2026-11-23 19db485d51c93b3c slipwai#154: capabilities.py reads stand-ins and unreached screens as release blockers; try_it.py holds a given's seal to its data and the model
 # why: 2026-11-23 75a375250777d9e9 slipwai#154 integration: the stand-in, dispatch, tidy, captain-session, hand-back, block-action, careen, gates-first, bar and decision-record fixes together; the same behaviour on macOS and Linux as each branch recorded alone
 # why: 2026-11-23 bead4adfe1c008b2 slipwai#154: moorings.mid_rebase steps past a listed worktree whose folder is gone; same behaviour on macOS and Linux
+# why: 2026-11-23 89ded76eaf32367c slipwai#154: the harbourmaster applies a hand-back as committed, against the index, so a Windows checkout with core.autocrlf lands it; same behaviour on macOS and Linux
 
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-memory-none  scripts/agents/ids.py
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-postgres-toy-serve  scripts/agents/ids.py
@@ -174,6 +175,10 @@
 35002fa6156bfcf59ef2636b4385bfd882fd360ef09d7bcec95689e9bc3a075a  event-modelling-postgres-toy-serve  scripts/agents/harness.py
 35002fa6156bfcf59ef2636b4385bfd882fd360ef09d7bcec95689e9bc3a075a  standard-memory-none  scripts/agents/harness.py
 35002fa6156bfcf59ef2636b4385bfd882fd360ef09d7bcec95689e9bc3a075a  standard-postgres-toy-serve  scripts/agents/harness.py
+36ce93e617eb4074f4f30b82c54902d2ebd120348b702d2736a5017adf9116c2  event-modelling-memory-none  scripts/agents/harbourmaster.py
+36ce93e617eb4074f4f30b82c54902d2ebd120348b702d2736a5017adf9116c2  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
+36ce93e617eb4074f4f30b82c54902d2ebd120348b702d2736a5017adf9116c2  standard-memory-none  scripts/agents/harbourmaster.py
+36ce93e617eb4074f4f30b82c54902d2ebd120348b702d2736a5017adf9116c2  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 36e96abbf19a927b3f8ffa3decc03f7c7ce7367f518336cf61618d2ce5cad8c0  event-modelling-memory-none  scripts/agents/lockfiles.py
 36e96abbf19a927b3f8ffa3decc03f7c7ce7367f518336cf61618d2ce5cad8c0  event-modelling-postgres-toy-serve  scripts/agents/lockfiles.py
 36e96abbf19a927b3f8ffa3decc03f7c7ce7367f518336cf61618d2ce5cad8c0  standard-memory-none  scripts/agents/lockfiles.py
@@ -262,10 +267,6 @@
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-postgres-toy-serve  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-memory-none  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-postgres-toy-serve  scripts/test_benchmark.py
-6d24523a2a2b734863227084f1ddfbb939ede0555a125f59c616f37040fe488b  event-modelling-memory-none  scripts/agents/harbourmaster.py
-6d24523a2a2b734863227084f1ddfbb939ede0555a125f59c616f37040fe488b  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
-6d24523a2a2b734863227084f1ddfbb939ede0555a125f59c616f37040fe488b  standard-memory-none  scripts/agents/harbourmaster.py
-6d24523a2a2b734863227084f1ddfbb939ede0555a125f59c616f37040fe488b  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 70165bbbf431cd353290a1df76b450d0ec8964867b2f0ab9b8aab5c80c4946b3  event-modelling-memory-none  scripts/check-dispatch.py
 70165bbbf431cd353290a1df76b450d0ec8964867b2f0ab9b8aab5c80c4946b3  event-modelling-postgres-toy-serve  scripts/check-dispatch.py
 70165bbbf431cd353290a1df76b450d0ec8964867b2f0ab9b8aab5c80c4946b3  standard-memory-none  scripts/check-dispatch.py

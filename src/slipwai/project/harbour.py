@@ -11,22 +11,24 @@ prompt is a number nobody can find afterwards and a number in somebody's head is
 
 **What happens at a budget is stowing, not stopping.** A stage that runs out writes what is left into its
 capability's `stowed.md`, which the harbourmaster carries into the fairway's careen at the merge, and goes
-on, and the slice merges. The exceptions are the two that would be dishonest: work
-above the severity bar parks for a person instead, and nothing CRITICAL is ever stowed. That ordering is the
+on, and the slice merges. The exceptions are the ones that would be dishonest: work
+above the severity bar parks for a person instead, and nothing CRITICAL — nor any finding of a never-stowed
+kind (`careen.NEVER_STOWED_KINDS`) — is ever stowed. That ordering is the
 whole point — the first attempt's alternative was carrying gaps into the next slice, where a slice that
 inherits one pays for it without having chosen to.
 
 **These are defaults, and defaults are the thing most likely to be wrong.** They are written where a person
 can change them for exactly that reason. Slice 7.3 adds the telegraph on top: named positions that set
 several of these at once, so a person rings `half-ahead` rather than editing six numbers. The numbers stay
-individually settable underneath it, which is the point of them being a file.
+individually settable underneath it, which is the point of them being a file. The severity bar is not one
+of the telegraph's: it is written here as its own setting, MEDIUM, and only `--set bar=…` moves it.
 """
 from __future__ import annotations
 
 import json
 
-from ..telegraph import settings
-from .careen import ROW_HEADER, careen_path, stowed_path
+from ..telegraph import BAR, settings
+from .careen import NEVER_STOWED_KINDS, ROW_HEADER, RULE, careen_path, never_stowed_list, stowed_path
 
 CONFIG = "harbour.json"
 #: Where a fresh harbour's telegraph starts. Not `full-ahead`: a first run is the one nobody has watched yet,
@@ -61,9 +63,12 @@ COMMENT = (
     "What this run is held to. `stages` is minutes and thousands of work tokens per stage — uncached input "
     "plus output, the tokens the work cost rather than the context re-read on every turn — `default` for "
     "any not named; `scripts/agents/benchmark.py` prints what is left at every `start` and says over budget "
-    "at every `end` that passed one. `bar` is the severity at or above which an adversary finding must close before the "
+    "at every `end` that passed one. `bar` is the severity at or above which a finding must close before the "
     "merge; below it a finding is stowed into the fairway's careen and the slice merges, and nothing "
-    "CRITICAL is ever stowed. `decision_ceiling` is how many decisions may stand unread before a fairway "
+    "CRITICAL is ever stowed, nor whatever its severity a finding of the kinds "
+    + ", ".join(f"`{tag}`" for tag in NEVER_STOWED_KINDS) + " — " + RULE.lower() + ". The bar is its own "
+    "setting and no telegraph position moves it: `slipwai telegraph --set bar=HIGH` changes it. "
+    "`decision_ceiling` is how many decisions may stand unread before a fairway "
     "parks. `wait_bound` is how long a wait may go with nothing written to the harbour log before it is a "
     "parked line with a reason — a bound on silence, so a harbourmaster that is writing is waited for. "
     "`attempts` is how many times a captain may re-dispatch `/sail` for one slice — a demo sent back is a "
@@ -102,9 +107,12 @@ def harbour_config() -> str:
         # A new project's stream captains are agents over the program (`scripts/agents/captain_agent.py`), where
         # their sessions can be held over the protocol; an existing project is never switched by migrating.
         "captain": {"agent": True, "bound": 60, "answers": False},
-        # Last, so the file matches the position it declares exactly. `bar`, `decision_ceiling` and
-        # `wait_bound` are the telegraph's rows now, and `START`'s are the three constants above — written
-        # once here rather than twice, because two sources for one number is how a board starts lying.
+        # The bar is its own setting and not a position's number, so it is written by name — the
+        # telegraph's default, which no ring moves.
+        "bar": BAR,
+        # Last, so the file matches the position it declares exactly. `decision_ceiling` and `wait_bound`
+        # are the telegraph's rows now, and `START`'s are the constants above — written once here rather
+        # than twice, because two sources for one number is how a board starts lying.
         **settings(START),
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
@@ -136,12 +144,18 @@ has gone silent for its minutes; under `/sail` those two lines are the control, 
 3. **Go on.** The slice continues to its next rung and may merge. Stowed work is the careen's, and the
    careen is the fairway's last slice, which its captain starts once every planned slice is merged.
 
-Two exceptions, and they are the ones where stowing would be dishonest:
+Three exceptions, and they are the ones where stowing would be dishonest:
 
 - **Anything at or above the severity bar parks for a person** instead of being stowed. The bar is
-  `{CONFIG}`'s `bar`, and the point of a bar is that what is above it does not get deferred by a clock.
+  `{CONFIG}`'s `bar` — `{BAR}` where it names none — and the point of a bar is that what is above it does
+  not get deferred by a clock. It is its own setting: ringing the telegraph faster never raises it.
 - **Nothing CRITICAL is ever stowed**, whatever the budget said. Data of one actor reaching another, or an
   actor gaining a role, is the next slice.
+- **{RULE}.** A finding of one of these kinds is never stowed, whatever its severity, whatever the bar and
+  whatever the budget said; it parks or is fixed exactly like a finding above the bar, and its finding
+  carries `kind: <tag>` so the careen can see why it is not on the list:
+
+{never_stowed_list("  ")}
 
 **Say the number, not just that it was reached.** The `stowed` line and the careen rows record what the
 budget was and what was spent, because a budget that is hit every time is a budget that is wrong, and

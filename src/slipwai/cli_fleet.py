@@ -92,7 +92,7 @@ def lines(root: Path) -> list[str]:
     spent = bunker["spent"]
     said += ["", f"telegraph: {pressure['position']}  boilers {pressure['boilers']}  "
                  f"fanout {pressure['fanout']}  bunker {spent if spent is not None else NOTHING}"
-                 f"/{bunker['allowed']}k today"]
+                 f"/{bunker['allowed']}k today  bar {pressure.get('bar', NOTHING)}"]
     if pressure["banked"]:
         said.append(f"  {pressure['banked']}")
 

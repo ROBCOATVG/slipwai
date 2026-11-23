@@ -20,6 +20,7 @@ from types import ModuleType
 import checkout_packages  # noqa: F401
 from test_ladder_parts import every_rung
 
+from slipwai import telegraph
 from slipwai.assets import TOOLKIT_ROOT
 from slipwai.project import adversary, capability_gates, careen, harbour, mutation
 from slipwai.selection import Selection
@@ -57,10 +58,55 @@ class BarTest(unittest.TestCase):
         self.assertTrue(careen.stowable("MEDIUM", bar="HIGH"))
         self.assertFalse(careen.stowable("LOW", bar="LOW"))
 
+    def test_the_careen_s_default_is_the_telegraph_s(self) -> None:
+        """One default for one number; no position moves it (slipwai#154)."""
+        self.assertEqual(careen.DEFAULT_BAR, telegraph.BAR)
+        self.assertEqual(careen.SEVERITIES, telegraph.SEVERITIES)
+
     def test_an_unknown_severity_is_treated_as_above_the_bar(self) -> None:
         """Silently stowing what nobody could classify is the failure this module exists to stop."""
         self.assertTrue(careen.above_bar("probably-fine"))
         self.assertFalse(careen.stowable("probably-fine"))
+
+
+class NeverStowedTest(unittest.TestCase):
+    """The owner's rule (slipwai#154): a finding that leaves a feature unusable or untrustworthy for its actor is
+    never deferred. Each kind here was a MEDIUM stowed on a real run at a raised bar."""
+
+    KINDS = ("validation-bypass", "document-forgery", "erasure-leak", "money-arithmetic")
+
+    def test_the_four_kinds_are_named(self) -> None:
+        self.assertEqual(tuple(careen.NEVER_STOWED_KINDS), self.KINDS)
+
+    def test_a_never_stowed_kind_is_not_stowed_whatever_the_severity_or_the_bar(self) -> None:
+        for kind in self.KINDS:
+            for severity in careen.SEVERITIES:
+                for bar in careen.SEVERITIES:
+                    with self.subTest(kind=kind, severity=severity, bar=bar):
+                        self.assertTrue(careen.above_bar(severity, bar, kind=kind))
+                        self.assertFalse(careen.stowable(severity, bar, kind=kind))
+
+    def test_the_same_medium_with_no_kind_is_stowed_below_a_high_bar(self) -> None:
+        """The kind is what changes the answer, not the severity."""
+        self.assertTrue(careen.stowable("MEDIUM", bar="HIGH"))
+        self.assertFalse(careen.stowable("MEDIUM", bar="HIGH", kind="money-arithmetic"))
+
+    def test_a_kind_nobody_recognises_is_treated_as_never_stowed(self) -> None:
+        """A finding somebody tagged meant it was not to be deferred; a typo is no reason to defer it."""
+        self.assertFalse(careen.stowable("LOW", bar="HIGH", kind="money-arithmetc"))
+        self.assertTrue(careen.stowable("LOW", bar="HIGH", kind=""))
+
+    def test_every_page_that_states_the_rule_names_every_kind(self) -> None:
+        pages = {
+            "careen.md": careen.careen_page("ordering"),
+            "the budget section": harbour.budget_section(),
+            "commands/adversary.md": (TOOLKIT_ROOT / "commands/adversary.md").read_text(encoding="utf-8"),
+        }
+        for name, page in pages.items():
+            with self.subTest(page=name):
+                self.assertIn(careen.RULE, flat(page))
+                for kind in self.KINDS:
+                    self.assertIn(f"`{kind}`", page)
 
 
 class CareenPageTest(unittest.TestCase):

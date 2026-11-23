@@ -23,13 +23,13 @@ number.
 The table shows the fastest position first. Banking the fires steps down through the positions in the same
 order.
 
-| Position | `boilers` | `fanout` | `bunker_per_slice` | `bunker_per_day` | `stage_scale` | `bar` | `decision_ceiling` | `wait_bound` | `attempts` | `browsers` |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `full-ahead` | 5 | 3 | 1500 | 20000 | 1.0 | HIGH | 12 | 90 | 3 | 2 |
-| `half-ahead` | 3 | 2 | 1000 | 10000 | 1.0 | MEDIUM | 10 | 60 | 2 | 1 |
-| `slow-ahead` | 2 | 1 | 700 | 5000 | 0.75 | MEDIUM | 5 | 30 | 2 | 1 |
-| `dead-slow` | 1 | 1 | 400 | 2000 | 0.5 | LOW | 3 | 20 | 1 | 1 |
-| `stop` | 0 | 0 | 0 | 0 | 0.0 | LOW | 0 | 0 | 0 | 0 |
+| Position | `boilers` | `fanout` | `bunker_per_slice` | `bunker_per_day` | `stage_scale` | `decision_ceiling` | `wait_bound` | `attempts` | `browsers` |
+|---|---|---|---|---|---|---|---|---|---|
+| `full-ahead` | 5 | 3 | 1500 | 20000 | 1.0 | 12 | 90 | 3 | 2 |
+| `half-ahead` | 3 | 2 | 1000 | 10000 | 1.0 | 10 | 60 | 2 | 1 |
+| `slow-ahead` | 2 | 1 | 700 | 5000 | 0.75 | 5 | 30 | 2 | 1 |
+| `dead-slow` | 1 | 1 | 400 | 2000 | 0.5 | 3 | 20 | 1 | 1 |
+| `stop` | 0 | 0 | 0 | 0 | 0.0 | 0 | 0 | 0 | 0 |
 
 | Number | What it is |
 |---|---|
@@ -38,7 +38,6 @@ order.
 | `bunker_per_slice` | Thousands of input tokens one slice may spend |
 | `bunker_per_day` | Thousands of input tokens the harbour may spend in a day |
 | `stage_scale` | What every stage budget in `stages` is multiplied by |
-| `bar` | The severity at or above which an adversary finding must close before a merge |
 | `decision_ceiling` | Decisions that may stand unread before a fairway parks |
 | `wait_bound` | Minutes a wait may go with the harbour log silent before it is a `parked` line |
 | `attempts` | Times one slice may be re-dispatched before the fairway parks |
@@ -49,7 +48,7 @@ the slice graph lets run together, so a number that counted captains would let t
 slices on a machine somebody set to three. One budget, shared by the harbourmaster — see
 [how the boilers are shared](fairways-and-captains.md#how-the-boilers-are-shared).
 
-**`abreast` is the one number no position rings.** It is how many of one fairway's slices may run at once,
+**`abreast` is a number no position rings.** It is how many of one fairway's slices may run at once,
 `3` where `harbour.json` does not say, and never more than `boilers`:
 
 ```
@@ -61,14 +60,36 @@ It is a shape and not a pace. `boilers` is the pace and already bounds it, so ri
 every fairway without a second lever, and a `harbour.json` written before the number existed does not read
 as `adjusted`. Zero is refused: a fairway that may run nothing is `stop`, said in the wrong place.
 
+**`bar` is not on the lever either.** It is the severity at or above which a finding must close before a
+merge rather than be stowed into the careen, and it is `MEDIUM` until a person changes it:
+
+```
+slipwai telegraph --set bar=HIGH       # what may merge unfixed: a person's decision, never a position's
+```
+
+What may merge unfixed is a quality decision, and the positions are a throughput decision. While the bar was
+one of the positions' numbers, ringing `full-ahead` for throughput quietly raised it to `HIGH`, and a real
+run then stowed forty-six MEDIUM findings — a coerced request body that countersigned an agreement, a
+control character that forged a line in a signed PDF, a rounding that fed a valuation. So no ring and no
+banking of the fires moves it, `slipwai telegraph` and the board show it beside the position, and a
+`harbour.json` with no `bar` reads as `MEDIUM`.
+
+Whatever the bar says, some findings are never stowed. **A finding that leaves a feature unusable or
+untrustworthy for its actor is never deferred**: a CRITICAL, and a finding of any of these kinds, whatever its
+severity. Each parks or is fixed like a finding above the bar, and carries `kind: <tag>`:
+
+- `validation-bypass` — input coercion or a validation bypass on a state-changing route
+- `document-forgery` — forgery or injection into a generated document — a PDF, an email
+- `erasure-leak` — personal data that survives, or leaks, after deletion or erasure
+- `money-arithmetic` — wrong arithmetic in a money or financial figure
+
 **A new harbour starts at `half-ahead`.** It does not start at `full-ahead`. Nobody has watched a first run
 yet, so the position that spends the most is a strange place to start. The `half-ahead` row is exactly the
 defaults of the generated `harbour.json`. So a new project reads `half-ahead`, not `half-ahead, adjusted`,
 on the day it is made.
 
-The rows are not a formula. `bar` and `decision_ceiling` get stricter as the run slows. A slower run is a run
-that somebody is already unhappy about. That is a judgement, not arithmetic. A *lower* `bar` is stricter, so
-slowing down lowers it. When somebody slows a run down, less work is deferred, not more.
+The rows are not a formula. `decision_ceiling` gets stricter as the run slows. A slower run is a run that
+somebody is already unhappy about. That is a judgement, not arithmetic.
 
 ---
 

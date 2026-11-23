@@ -17,7 +17,7 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 697 — each park's held answer, its action line, needs trunk already has and an obsolete park,
+# budget: 699 — each park's held answer, its action line, needs trunk already has and an obsolete park,
 # the clearance answers one read of the board
 # shares, a `read` tied to its `told` by inbox id,
 # and today's tokens; every column of the
@@ -30,7 +30,7 @@ and where the log is silent the board is silent too.
 # rather than for the person, and whether unread decisions hold anything up
 # and which slices in flight a session is on now, and which are claimed and waiting for a slot, and the
 # lines of its own slice each park opens onto
-# and one row a stream where two files hold its lines
+# and one row a stream where two files hold its lines, and the severity bar beside the position
 from __future__ import annotations
 
 import ast
@@ -83,6 +83,7 @@ from .logs import (
 from .need_check import trunk_commit
 from .shell_environment import login_environment, project_python
 from .talk_placed import placed
+from .telegraph import bar_of
 from .timeline import spans
 
 
@@ -401,6 +402,7 @@ def pressure(config: dict, harbour: list[Entry]) -> dict[str, object]:
         "fanout": config.get("fanout", NOTHING),
         "browsers": config.get("browsers", NOTHING),
         "bunker_per_day": config.get("bunker_per_day", NOTHING),
+        "bar": bar_of(config),
         "banked": str(banked.fields.get("why", "")) if banked else "",
     }
 

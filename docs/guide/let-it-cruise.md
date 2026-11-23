@@ -288,8 +288,11 @@ storyboard and the event model. The `upstream` setting makes them advance on the
 These two words name where unfinished work goes. Work is never dropped.
 
 - **Stow** is what a stage does with open work when it runs out of budget. It moves the work into the
-  careen. A finding below the fairway's severity bar is also stowed, and the slice merges. A CRITICAL
-  finding is never stowed.
+  careen. A finding below the fairway's severity bar is also stowed, and the slice merges. The bar is
+  `MEDIUM` unless a person sets it with `slipwai telegraph --set bar=…`; ringing a speed never moves it. A
+  finding that leaves a feature unusable or untrustworthy for its actor is never stowed, whatever the bar:
+  a CRITICAL, a validation bypass on a state-changing route, a forgery in a generated document, personal
+  data that survives an erasure, or wrong arithmetic in a money figure.
 - **The careen** is one hardening slice for each fairway. It holds the stowed work. It runs when the
   fairway's planned slices are done, and before the fairway's flag is hoisted. It runs the ladder like any
   other slice. Its demo is: the findings are closed. `/careen`, in the agent, runs it.

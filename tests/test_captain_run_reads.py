@@ -47,7 +47,7 @@ ALLOWED = {
     "capabilities.py:chart": PROJECT,
     "capabilities.py:cleared": "a capability's gates record, a tracked file of the project",
     "capabilities.py:demos_setting": PROJECT,
-    "capabilities.py:empty_story": "a slice's try-it.json, a tracked file of the project, read for whether it seeds anything (#154)",
+    "capabilities.py:empty_story": "a slice's try-it.json, read for whether it seeds anything (#154)",
     "capabilities.py:lines": LOGS,
     "capabilities.py:recorded_by_hand": "a feature's demo register, a tracked file of the project",
     "captain_events.py:Helm.decided": "`Helm.open`, which puts an event: not a file read",

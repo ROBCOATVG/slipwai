@@ -23,9 +23,10 @@ from slipwai import board_settings, stage_session
 from slipwai.board_settings import Launch
 from slipwai.feature_stages import approved_for, claims, home, in_hand, modelled_for, name_in_hand, split_for
 from slipwai.init_run import CRUISE
-from slipwai.passage import drawn_in_hand, modelled_in_hand, stages
+from slipwai.passage import current, drawn_in_hand, modelled_in_hand, stages
 from slipwai.stage_steps import launch_steps
 from slipwai.upstream import drawing_of
+from slipwai.voyage_page import now_said
 
 ROOT = Path(__file__).resolve().parent.parent
 AGENT = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
@@ -117,6 +118,27 @@ class FurtherFeatureTest(unittest.TestCase):
         self.assertFalse(drawn_in_hand(self.root))
         self.assertTrue(approved_for(self.root, FIRST))
         self.assertFalse(approved_for(self.root, FURTHER), "the model waits on this feature's verdict")
+
+    def test_a_drawn_further_feature_waits_on_its_own_verdict_and_not_an_earlier_one_s(self) -> None:
+        """manda: the second feature's 44 states were all approved, the third was drawn and waiting, and the
+        strip read "44 of 44 states approved", ticked the storyboard and sent the person to cast off."""
+        earlier = self.root / "specs" / FIRST / "mockups"
+        earlier.mkdir()
+        (earlier / "mock-states.md").write_text("## Surface: Home\n- empty \u2014 approved\n"
+                                                 "- populated \u2014 approved\n", encoding="utf-8")
+        (earlier / "home.html").write_text("<html></html>", encoding="utf-8")
+        drawing = self.root / "specs" / FURTHER / "mockups"
+        drawing.mkdir()
+        (drawing / "nda.html").write_text("<html></html>", encoding="utf-8")
+        found = {stage.key: stage for stage in stages(self.root, slices={"done": 1})}
+        self.assertEqual(found["storyboard"].state, "waiting")
+        self.assertNotIn("2 of 2", found["storyboard"].detail, "the earlier feature's verdicts are not this one's")
+        self.assertEqual(current(list(found.values())).key, "storyboard",  # type: ignore[union-attr]
+                         "the verdict is what moves the project, not the fleet")
+        self.assertIn("Approve storyboard", now_said(list(found.values())))
+        (drawing / "mock-states.md").write_text("## Surface: NDA\n- ready \u2014 approved\n", encoding="utf-8")
+        found = {stage.key: stage for stage in stages(self.root, slices={"done": 1})}
+        self.assertEqual((found["storyboard"].state, found["storyboard"].detail), ("done", "1 of 1 states approved"))
 
     def test_the_strip_says_the_further_feature_is_not_modelled_or_split(self) -> None:
         found = {stage.key: stage for stage in stages(self.root, slices={"done": 1})}

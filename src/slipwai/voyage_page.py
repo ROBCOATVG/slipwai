@@ -501,7 +501,11 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # drawn from the model, so there is nothing to launch until somebody has modelled.
     # A fleet that is not running after the split is the one silence the tree cannot explain — a launch
     # whose captains never lit, a machine restarted — so the button to cast off again is here, and said.
-    button = ('<span class="chip">Model it next: the event-modeling skill, in the agent, with a person</span>'
+    # The storyboard's verdict is on the Screens tab, three bands down a long page: the step said "on this
+    # page" and a person who looked at this card found nothing to press. `#mockups` opens that tab.
+    verdict_due = any(one.key == "storyboard" and one.state == "waiting" for one in found)
+    button = ('<a class="go" href="#mockups">Review the storyboard</a>' if verdict_due else '')
+    button += ('<span class="chip">Model it next: the event-modeling skill, in the agent, with a person</span>'
               if model_next else
               f'<button class="go" id="launch"{"" if launchable else " hidden"}>Continue the build</button>'
               f'<button class="go" id="cast-off"{"" if castable else " hidden"}>Cast off the fleet</button>')
@@ -698,8 +702,14 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     # project has would name a stage it is not on: the adoption's card stands where the strip does.
     sub = ("adopting" if adopting else f"now: {now.title.lower()}" if now else "complete") \
         + (f" · {fleet_sub(fleet)}" if fleet else "")
-    model_next = any(one.key == "model" and one.state == "todo" for one in found)
-    landed = fitting_card(made, "Adopted" if adopting else "Made") if made else ""
+    # The storyboard's verdict comes before the model, so while it waits the chip saying to model next is the
+    # wrong instruction: it stood beside a storyboard nobody had approved and was the only next step shown.
+    verdict_due = any(one.key == "storyboard" and one.state == "waiting" for one in found)
+    model_next = not verdict_due and any(one.key == "model" and one.state == "todo" for one in found)
+    # A drawing that ended well has not finished what it is for while its storyboard waits: the card said
+    # `done`, and a person read the stage as over and the board as stuck.
+    waits = verdict_due and made is not None and made.get("step") == "surfaces"
+    landed = fitting_card(made, "Adopted" if adopting else "Made", waits) if made else ""
     # Past it, the strategy's checkpoint stands above the strip, never in its place.
     where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
                                      feature, drawable, shape, modelable, draftable)

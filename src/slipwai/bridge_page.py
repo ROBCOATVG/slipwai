@@ -100,7 +100,7 @@ if (fitting) {
       // An adoption's step ended: the checklist above it has moved, and its next control is drawn fresh.
       if (running && document.getElementById('step-running')) { location.reload(); return; }
       running = false;
-      chip.dataset.state = said.code ? 'stopped' : 'done';
+      chip.dataset.state = said.code ? 'stopped' : (chip.dataset.ended || 'done');
       chip.className = said.code ? 'chip stalled' : 'chip';
     }
     // The card's own button and, on the Voyage, the strip's: two elements, so two ids.
@@ -391,7 +391,7 @@ def clock(seconds: float) -> str:
     return f"{whole // 60}:{whole % 60:02d}"
 
 
-def fitting_card(made: dict, verb: str = "Made") -> str:
+def fitting_card(made: dict, verb: str = "Made", waits: bool = False) -> str:
     """What the board made and what `./init` is saying in it — the receipt the board lands with.
 
     It is on the board rather than left on the interview page because the board is where landing *is*: the
@@ -400,12 +400,17 @@ def fitting_card(made: dict, verb: str = "Made") -> str:
     page never shows a line twice.
     """
     said = "\n".join(made["lines"])
-    state = "running" if not made["done"] else ("stopped" if made.get("code") else "done")
+    # `waits`: the step ended well and stopped where only a person moves it — a drawn storyboard — so the
+    # chip says that, and links to it, rather than `done`.
+    ended = "waiting on you" if waits else "done"
+    state = "running" if not made["done"] else ("stopped" if made.get("code") else ended)
     seconds = float(made.get("seconds") or 0)
     # The chip carries the state and the clock, and the script keeps both moving between polls: a card that
     # said "running" and nothing else, for the two minutes Spec Kit takes, is a card a person reloads.
-    chip = (f'<span class="chip {esc(state)}" data-state="{esc(state)}" data-seconds="{esc(seconds)}">'
-            f'{esc(state)} · {esc(clock(seconds))}</span>')
+    chip = (f'<span class="chip {esc(state)}" data-state="{esc(state)}" data-ended="{esc(ended)}" '
+            f'data-seconds="{esc(seconds)}">{esc(state)} · {esc(clock(seconds))}</span>')
+    if waits:
+        chip += ' <a href="#mockups">Review the storyboard and press Approve or Disapprove</a>'
     # The button is on the card whether or not it can be pressed yet, hidden until the poll says the draft
     # has ended well; a specification a person has read is what pressing it means.
     launch = (f'<button class="go" id="launch-made"{"" if made.get("launchable") else " hidden"}>'

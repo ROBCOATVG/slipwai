@@ -24,7 +24,7 @@ from captain_fixture import AGENTS, Fixture
 from slipwai import logs
 from slipwai.process_alive import alive
 
-# budget: 365 — a slice held in flight by a file the case lets go of, rather than by a sleep it had to beat
+# budget: 375 — slices held in flight by files the case lets go of, rather than by a sleep it had to beat
 CHART = ("feature: ordering\nslices:\n  L01: {fairway: LVR, sets: [Opened], steers_by: []}\n"
          + "".join(f"  L0{n}: {{fairway: LVR, sets: [], steers_by: []}}\n" for n in (2, 3, 4)))
 SPLIT = ("## Slice graph\n\n| Slice | depends_on | parallel_ok_with | Notes |\n|---|---|---|---|\n"
@@ -41,8 +41,9 @@ def note(**fields):
     mine.write_text(json.dumps({"slice": slice_id, "pid": os.getpid(), **fields}), encoding="utf-8")
 note(event="start", at=time.time(), cwd=str(pathlib.Path.cwd().resolve()))
 hold, ceiling = os.environ.get("ABREAST_HOLD"), time.monotonic() + 300
-while hold and not pathlib.Path(hold).exists() and time.monotonic() < ceiling:
-    time.sleep(0.1)  # in flight until the test lets go, so what it asserts happened beside this is not a race
+while hold and not any(pathlib.Path(one).exists() for one in (hold, hold + "." + slice_id)) \\
+        and time.monotonic() < ceiling:
+    time.sleep(0.1)  # in flight until the test lets go — of all, or of this one — so nothing it asserts is a race
 time.sleep(float(os.environ.get("ABREAST_SLEEP", "2")))
 if slice_id in os.environ.get("ABREAST_FAIL", "").split(","):
     note(event="end", at=time.time())
@@ -227,9 +228,16 @@ class ParkTest(Abreast):
             self.harbour(logs.entry("cleared", harbour=True, fairway="LVR", parked=at, what="go"))
         ran = self.started("L02", "L02 waited for L04 to end: L04 is still held, and L02 has not started")
         self.assertEqual(ran["L04"][1], float("inf"), "L04 ended while it was held")
+        # L04 alone let go, so the slot its merge frees is taken by L03 while L02 is still held, every run. With
+        # both let go at once, whether L03 started before the turn drained was the scheduler's: parity ran this
+        # case twice and read two decks, one with L03's run and one without (slipwai#154).
+        (self.root / "record.hold.L04").touch()
+        ran = self.started("L03", "L03 waited for L02 to end: L04's merge freed a slot, and L03 has not started")
+        self.assertEqual(ran["L02"][1], float("inf"), "L02 ended while it was held")
+        self.assertLessEqual(ran["L04"][1], ran["L03"][0], "L03 started before L04's slot was free")
         hold.touch()
         said, _ = captain.communicate(timeout=240)
-        for slice_id in ("L02", "L04"):
+        for slice_id in ("L02", "L03", "L04"):
             self.assertIn(f"{slice_id} is through its gate and merged", said)
 
     def started(self, slice_id: str, otherwise: str) -> dict[str, tuple[float, float, str]]:

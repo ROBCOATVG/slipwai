@@ -8,12 +8,19 @@ staged for the commit `migrate.refresh` makes after the merge.
 
 The readers of every moved record still accept the old path, so a checkout that has not migrated yet, or a
 branch cut before the move, is never red because of where a file sits.
+
+`split_logs` is the other kind of move: a feature's `decisions.md` and `adversary-log.md`, which every slice
+appended to and whose merges dropped lines, split into one file per entry beside them by the project's own
+`render-fairways.py --split`, which then renders the two logs from those files.
 """
 from __future__ import annotations
 
 import re
 import subprocess
 from pathlib import Path
+
+from .layout import AT_ROOT, Layout
+from .shell_environment import python3
 
 #: (where a record was, as a pattern over its tracked path; where it lives now, filled from the pattern's groups).
 MOVES: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -54,3 +61,33 @@ def relocate(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
                 left.append(f"{path} (git mv refused: {done.stderr.strip() or 'no reason given'})")
             break
     return tuple(moved), tuple(left)
+
+
+#: The renderer that splits the two logs, where the merge has just put it, and the flag older copies lack.
+RENDERER, SPLIT = "scripts/render-fairways.py", "--split"
+#: What it prints for a log it split: the log, how many entries, and the folder they went to.
+SPLIT_SAID = re.compile(r"^render-fairways: (\S+): (\d+) entr(?:y|ies) moved into (\S+), one file each$", re.M)
+
+
+def split_logs(root: Path, layout: Layout = AT_ROOT) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split each feature's decisions and adversary log into one file per entry, staged and not committed.
+    Returns `log -> folder (n entries)` for each log split, and every path it staged. Nothing where the
+    project's renderer predates the split or has nothing to split; the renderer refuses to drop an entry."""
+    script = root / layout.place(RENDERER)
+    if not script.is_file() or SPLIT not in script.read_text(encoding="utf-8", errors="replace"):
+        return (), ()
+    before = set(git(root, "diff", "--cached", "--name-only", "--", "specs").stdout.split())
+    done = subprocess.run([python3(), "-B", str(script), SPLIT], cwd=root, text=True, capture_output=True,
+                          check=False, encoding="utf-8", errors="replace")
+    if done.returncode != 0:
+        return (), ()
+    git(root, "add", "-A", "--", "specs")
+    staged = [path for path in git(root, "diff", "--cached", "--name-only", "--", "specs").stdout.split()
+              if path not in before]
+    said = SPLIT_SAID.findall(done.stdout)
+    moves = [f"{log} -> {folder} ({count} entries)" for log, count, folder in said]
+    split = {log for log, _, _ in said}
+    # A log already folded from a fairway's copies is only rendered again, under the banner that names its records.
+    moves += [f"{path} -> rendered from its records" for path in staged if path.endswith(".md")
+              and path.count("/") == 2 and path not in split]
+    return tuple(moves), tuple(staged)

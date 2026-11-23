@@ -81,7 +81,7 @@ cited rather than probed again, unless a later slice changed it.
 The trigger table is what `/sail` must see in the log before any `sail-adversary-privateer` spawn. Name each seam
 the diff widened against that table and the attack catalogue. Spawn one adversary per widened seam, not one
 per catalogue category. A seam whose brief has no explicit file manifest is not spawned: record it as
-omitted, with why. Record every seam not spawned in `specs/<feature>/adversary-log.md` with the prior rows
+omitted, with why. Record every seam not spawned in the slice's row (*Record it*, below) with the prior rows
 or diff evidence that show why it was not widened. For `--full`, select every applicable catalogue seam, not
 every seam in the catalogue file.
 
@@ -125,8 +125,11 @@ stage default to `fast`: a per-seam choice is evidence for later slices, not a n
 
 ## Record it
 
-Append to `specs/<feature>/adversary-log.md` either way. Copy this shape; an unwritten row is a pass that
-has to be run again. A slice's trigger record is the heading and the table; a capability's pass, or the
+Write it either way, as the slice's own file — `specs/<feature>/adversary-log/<slice-id>.md`, or
+`adversary-log/<capability>.md` for a capability's pass, adding to the file where it already has a row — and
+run `make decisions`, which renders `specs/<feature>/adversary-log.md` from those files. Never append to the
+log itself: slices abreast appending to one file merged as unions that dropped the lines two rows share. Copy
+this shape; an unwritten row is a pass that has to be run again. A slice's trigger record is the heading and the table; a capability's pass, or the
 per-slice exception's, adds the lines below it:
 
 ```markdown

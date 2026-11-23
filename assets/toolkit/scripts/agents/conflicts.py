@@ -27,6 +27,7 @@ import difflib
 import os
 import re
 import subprocess
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -35,6 +36,13 @@ import mender
 
 #: The files every slice of a feature adds to: its decisions, its adversary log, its benchmark overview.
 RECORDS = re.compile(r"^specs/[^/]+/(decisions|adversary-log|benchmark)\.md$")
+#: The two of them `make decisions` renders from one file per entry, `specs/<feature>/<name>/*.md`, once a
+#: feature has those records: never woven, because weaving is what lost lines (below), but rendered again.
+RENDERED = re.compile(r"^specs/(?P<feature>[^/]+)/(?P<name>decisions|adversary-log)\.md$")
+#: Where the renderer is in a checkout, as it is in this one: `<delivery>/scripts/render-fairways.py`.
+RENDERER = Path(__file__).resolve().parent.parent / "render-fairways.py"
+#: One `## ` entry of a log, to its next one.
+ENTRY = re.compile(r"^## .*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
 CONFLICT = "conflict"
 #: Used where `harbour.json` does not say `conflict_minutes`. 0 there turns the session off.
 DEFAULT_MINUTES = 15
@@ -104,6 +112,49 @@ def woven(before: str, onto: str, commit: str) -> str | None:
         put(start, lines, end)
     put(len(base), [], len(base))
     return "".join(out)
+
+
+def kept(onto: str, commit: str) -> str:
+    """Trunk's log with every entry of the commit's that trunk has not got after it, matched by heading. Never
+    the file's answer — the render that follows is — but what that render adopts from: an entry a page older
+    than the records appended to the log rather than writing a record of its own is in neither side's records,
+    and would otherwise be lost with the side not taken."""
+    heads = {found.group(0).split("\n", 1)[0] for found in ENTRY.finditer(onto)}
+    extra = [found.group(0).rstrip() + "\n" for found in ENTRY.finditer(commit)
+             if found.group(0).split("\n", 1)[0] not in heads]
+    return onto.rstrip("\n") + "\n\n" + "\n".join(extra) if extra else onto
+
+
+def rendered(where: Path, path: str, onto: str, commit: str) -> bool:
+    """A conflicted log `make decisions` renders, rendered again in the checkout at `where` from the records as
+    the rebase has them — both sides', since a record is a file of its own and two slices never write one.
+    False where it is not such a log, the feature keeps no records yet (it is woven, as it was), or the
+    renderer could not run.
+
+    Weaving was the wrong answer for these. Two slices each appending a decision ending `- **Status:**
+    standing` is two additions whose last line is the same, and a weave that keeps an addition only when
+    trunk has not already got it dropped the slice's: manda restored a dropped Status line by hand six times,
+    after `check-decisions` refused the next merge each time.
+    """
+    found = RENDERED.match(path)
+    if found is None or not (where / "specs" / found.group("feature") / found.group("name")).is_dir():
+        return False
+    try:
+        renderer = where / RENDERER.relative_to(mender.ROOT.resolve())
+    except ValueError:
+        return False
+    if not renderer.is_file() or "--split" not in renderer.read_text(encoding="utf-8", errors="replace"):
+        return False  # a renderer older than the records would drop what the slice appended, and fold the split
+    (where / path).write_text(kept(onto, commit), encoding="utf-8", newline="")
+    try:
+        ran = subprocess.run([sys.executable, "-B", str(renderer), "--split"], cwd=where, capture_output=True,
+                             text=True, timeout=120, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if ran.returncode != 0:
+        return False
+    folder = f"specs/{found.group('feature')}/{found.group('name')}"
+    return mender.git("add", "-A", "--", path, folder, where=where).returncode == 0
 
 
 def bound() -> float:

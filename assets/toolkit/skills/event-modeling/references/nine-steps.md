@@ -354,7 +354,8 @@ two does not mean adding a deployable (`docs/architecture.md`, *Bounded contexts
 is a decision to take with the user: the model shows the seams, the people who own the words confirm them,
 and the decision entry carries all three tests in its *Why* and its *Would reverse if*.
 
-**It is always recorded, one context included**, as the next entry of `specs/<feature>/decisions.md`,
+**It is always recorded, one context included**, as an entry of `specs/<feature>/decisions.md` (its own file,
+`specs/<feature>/decisions/D<n>.md`, which `make decisions` renders the log from),
 headed `## D<n> — Which bounded contexts does <feature> touch?`, with the table above under its `Options`
 line. Where one context would hold more than twelve slices, the entry adds a `- **Why not split:**` line
 citing, by FR, the invariant that spans its groups and keeps them together. Twelve is not a limit and

@@ -2,7 +2,9 @@
 """Hold `/cruise`'s record to its shape: every decision the run took, and every demo it ran, readable and true.
 
 A run with nobody at the wheel is trusted through what it wrote down. `specs/<feature>/decisions.md` is the one
-place every product decision the machine took can be read and overturned, and `specs/<feature>/slices/<id>/
+place every product decision the machine took can be read — rendered by `make decisions` from one file per
+decision, `specs/<feature>/decisions/<id>.md`, which is where each is written and overturned, and which this
+holds: one decision per record, named for its id — and `specs/<feature>/slices/<id>/
 demo-log.md` is what a person reads to trust an acceptance the machine gave. Both are append-only entries in a
 fixed shape — `commands/cruise.md` shows it, and `.specify/product-owner.md` repeats it — and this is the
 gate on that shape: an entry with a field missing is a decision nobody can audit, a `Written to` path that is
@@ -37,8 +39,8 @@ an unwritten row is a pass that has to be run again, and until now nothing notic
   `accepted`, `behaviour`, `implementation`, followed by **Started with**, **Driven through**, **Examples**,
   **Evidence**, **Feedback**; every **Evidence** path exists, beside the log or from the root, or is `none`;
 - every slice the ladder calls done — a row in `specs/<feature>/slices/README.md`, or `status: implemented` in
-  `docs/event-model/model.yaml` — has a `## <slice-id> · …` row in `specs/<feature>/adversary-log.md`: the attack,
-  the recorded skip, or its trigger record (`… · trigger record`), that `/adversary` writes for every slice. A
+  `docs/event-model/model.yaml` — has a `## <slice-id> · …` row in `specs/<feature>/adversary-log.md`, or in
+  the records that log is rendered from (`adversary-log/<slice>.md`): the attack, the recorded skip, or its trigger record (`… · trigger record`), that `/adversary` writes for every slice. A
   capability's own row — its pass, or `… · skipped: no slice widened a trigger` — is accepted as written. The model is the whole project's, so a
   slice in it counts for the feature its `spec` or `gwt` path is under, or, naming none, the one holding
   `slices/<id>/`; an implemented slice no feature holds is noted, not charged to every feature.
@@ -71,6 +73,11 @@ SPECS = ROOT / "specs"
 DECISIONS = "decisions.md"
 DEMO_LOG = "demo-log.md"
 ADVERSARY_LOG = "adversary-log.md"
+#: Where each decision and each slice's adversary rows are written, one file apiece, and what `make decisions`
+#: renders `decisions.md` and `adversary-log.md` from. Seven slices abreast appending to one file merged as a
+#: union, and the union dropped the lines two entries share — a `- **Status:** standing` — six times on manda.
+RECORD_FOLDER = "decisions"
+ADVERSARY_FOLDER = "adversary-log"
 # The fields of one decision entry, in order, as the bold label each line opens with.
 DECISION_FIELDS = ("Stage", "Question", "Options", "Decision", "Why", "Decided by", "Confidence", "Written to",
                    "Status")
@@ -234,12 +241,72 @@ def sentence_findings(where: str, number: int, fields: dict[str, str], rule: Rul
     return []
 
 
-def check_decisions(path: Path, since: Rule | None = None) -> list[str]:
+Located = tuple[str, "re.Match[str] | None", dict[str, str]]
+
+
+def located(path: Path) -> list[Located]:
+    """A file's entries, each with where it is as `<path>:<line>`."""
     relative = path.relative_to(ROOT).as_posix()
+    return [(f"{relative}:{line}", heading, fields)
+            for line, heading, fields in entries(path.read_text(encoding="utf-8"), DECISION_HEADING)]
+
+
+def ident(heading: "re.Match[str]") -> str:
+    """A decision's id as its heading writes it — `D470`, `D-ORD-07` — which is its record's file name."""
+    return heading.group(0)[3:].split(" — ", 1)[0]
+
+
+def records(feature: Path, folder: str) -> list[Path]:
+    """A feature's one-file-per-entry records under `folder`, which `make decisions` renders the log from."""
+    held = feature / folder
+    return sorted(held.glob("*.md")) if held.is_dir() else []
+
+
+def record_findings(path: Path) -> list[str]:
+    """A decision's record holds that one decision, under the file name its id is."""
+    found = located(path)
+    relative = path.relative_to(ROOT).as_posix()
+    if len(found) != 1:
+        return [f"{relative}: holds {len(found)} entries; a record is one decision, in a file named for its id"]
+    heading = found[0][1]
+    if heading is not None and ident(heading) != path.stem:
+        return [f"{relative}: holds {ident(heading)}; a record is named for the decision it holds — "
+                f"move it to {path.parent.relative_to(ROOT).as_posix()}/{ident(heading)}.md"]
+    return []
+
+
+def feature_listing(feature: Path) -> tuple[list[Located], list[str]]:
+    """Every decision of one feature where it is written — each record under `decisions/`, then every entry of
+    `decisions.md` no record holds: a fairway's copy folded in, or a file from before the records — and what is
+    wrong with the records as files."""
+    listing: list[Located] = []
     findings: list[str] = []
-    seen: dict[tuple[str, int], int] = {}
-    for line, heading, fields in entries(path.read_text(encoding="utf-8"), DECISION_HEADING):
-        where = f"{relative}:{line}"
+    for path in records(feature, RECORD_FOLDER):
+        findings += record_findings(path)
+        listing += located(path)
+    known = {ident(heading) for _, heading, _ in listing if heading is not None}
+    log = feature / DECISIONS
+    if log.is_file():
+        listing += [one for one in located(log) if one[1] is None or ident(one[1]) not in known]
+    return listing, findings
+
+
+def feature_decisions(feature: Path, since: Rule | None = None) -> list[str]:
+    """One feature's decisions held to the shape, with one numbering across records and the older file, so a
+    record and an entry written the old way cannot share a number."""
+    listing, findings = feature_listing(feature)
+    return findings + check_listing(listing, since)
+
+
+def check_decisions(path: Path, since: Rule | None = None) -> list[str]:
+    """One file of decisions, held to the shape."""
+    return check_listing(located(path), since)
+
+
+def check_listing(listing: list[Located], since: Rule | None = None) -> list[str]:
+    findings: list[str] = []
+    seen: dict[tuple[str, int], str] = {}
+    for where, heading, fields in listing:
         if heading is None:
             findings.append(f"{where}: a heading that is not `## D<n> — <question>`")
             continue
@@ -250,10 +317,10 @@ def check_decisions(path: Path, since: Rule | None = None) -> list[str]:
         # renumbering one of them after its citations were written. `ids.py reserve` hands each its own.
         key = (fairway or "", number)
         if key in seen:
-            findings.append(f"{where}: D{number} is already the entry at line {seen[key]} — every decision has "
+            findings.append(f"{where}: D{number} is already the entry at {seen[key]} — every decision has "
                             f"a number of its own; take one from `python3 scripts/agents/ids.py reserve "
                             f"decision`")
-        seen.setdefault(key, line)
+        seen.setdefault(key, where)
         missing = [field for field in DECISION_FIELDS if field not in fields]
         if missing:
             findings.append(f"{where}: D{number} is missing {', '.join(f'**{field}:**' for field in missing)}")
@@ -349,7 +416,9 @@ def check_adversary_rows() -> list[str]:
         if not done:
             continue
         log = feature / ADVERSARY_LOG
-        rows = set(re.findall(r"^## (\S+) · ", log.read_text(encoding="utf-8"), re.M)) if log.is_file() else set()
+        rows: set[str] = set()
+        for path in [*([log] if log.is_file() else []), *records(feature, ADVERSARY_FOLDER)]:
+            rows |= set(re.findall(r"^## (\S+) · ", path.read_text(encoding="utf-8"), re.M))
         for ident in sorted(done - rows):
             findings.append(f"{log.relative_to(ROOT).as_posix()}: no row for {ident}, which is done — `/adversary` runs "
                             "for every slice and records its trigger table, which is what decides its capability's "
@@ -360,12 +429,18 @@ def check_adversary_rows() -> list[str]:
 PREDATES = "predates the adversary gate"
 
 
+def baseline_row(ident: str, today: str) -> str:
+    return (f"## {ident} · {PREDATES} · {today}\n\nFinished before `check-decisions` held every done slice to a row "
+            "here. Never attacked by `/adversary`, so no slice may cite this row as coverage.\n")
+
+
 def baseline() -> int:
     """Write, once, a row for every done slice the adversary log lacks, saying it was finished before this gate held
     finished slices to the log — which is true, and which no later slice may cite as an attack. For a project that
     migrated across the gate, whose history cannot be attacked honestly after the fact; refused where any log
     already carries a baseline row, so it is the done set at one moment and not a way past the gate afterwards."""
-    logs = sorted(SPECS.glob(f"*/{ADVERSARY_LOG}")) if SPECS.is_dir() else []
+    logs = sorted([*SPECS.glob(f"*/{ADVERSARY_LOG}"), *SPECS.glob(f"*/{ADVERSARY_FOLDER}/*.md")]) \
+        if SPECS.is_dir() else []
     taken = [log for log in logs if f"· {PREDATES}" in log.read_text(encoding="utf-8")]
     if taken:
         print(f"check-decisions: a baseline was already taken ({taken[0].relative_to(ROOT).as_posix()}); a slice "
@@ -378,15 +453,21 @@ def baseline() -> int:
             continue
         log = feature / ADVERSARY_LOG
         text = log.read_text(encoding="utf-8") if log.is_file() else f"# Adversary log — {feature.name}\n"
-        missing = sorted(done_slices(feature) - set(re.findall(r"^## (\S+) · ", text, re.M)))
+        held = "".join(path.read_text(encoding="utf-8") for path in records(feature, ADVERSARY_FOLDER))
+        missing = sorted(done_slices(feature) - set(re.findall(r"^## (\S+) · ", text + held, re.M)))
         if not missing:
             continue
-        rows = "".join(f"\n## {ident} · {PREDATES} · {today}\n\nFinished before `check-decisions` held every done "
-                       "slice to a row here. Never attacked by `/adversary`, so no slice may cite this row as "
-                       "coverage.\n" for ident in missing)
-        log.write_text(text.rstrip("\n") + "\n" + rows, encoding="utf-8")
+        if (feature / ADVERSARY_FOLDER).is_dir():
+            # The log is rendered from the records, so the rows are records too, and `make decisions` folds them.
+            for ident in missing:
+                (feature / ADVERSARY_FOLDER / f"{ident}.md").write_text(baseline_row(ident, today), encoding="utf-8")
+            where = f"{(feature / ADVERSARY_FOLDER).relative_to(ROOT).as_posix()}/ (run `make decisions`)"
+        else:
+            rows = "".join(f"\n{baseline_row(ident, today)}" for ident in missing)
+            log.write_text(text.rstrip("\n") + "\n" + rows, encoding="utf-8")
+            where = log.relative_to(ROOT).as_posix()
         written += len(missing)
-        print(f"check-decisions: {log.relative_to(ROOT).as_posix()}: {len(missing)} baseline row(s)")
+        print(f"check-decisions: {where}: {len(missing)} baseline row(s)")
     print(f"check-decisions: baselined {written} done slice(s)" if written
           else "check-decisions: every done slice already has a row — nothing to baseline")
     return 0
@@ -398,15 +479,16 @@ def main() -> int:
     for ident in unowned():
         print(f"check-decisions: note: {ident} is implemented in docs/event-model/model.yaml but names no feature "
               "and has no specs/*/slices/ folder, so no adversary log is asked for it")
-    decisions = sorted(SPECS.glob(f"*/{DECISIONS}")) if SPECS.is_dir() else []
+    features = sorted(feature for feature in SPECS.iterdir()
+                      if (feature / DECISIONS).is_file() or records(feature, RECORD_FOLDER)) if SPECS.is_dir() else []
     logs = sorted(SPECS.glob(f"*/slices/*/{DEMO_LOG}")) if SPECS.is_dir() else []
     findings: list[str] = check_adversary_rows()
-    if not decisions and not logs and not findings:
+    if not features and not logs and not findings:
         print("check-decisions: no decisions.md or demo-log.md under specs/ — nothing recorded yet")
         return 0
     since = sentence_from()
-    for path in decisions:
-        findings += check_decisions(path, since)
+    for feature in features:
+        findings += feature_decisions(feature, since)
     for path in logs:
         findings += check_demo_log(path)
     if findings:
@@ -415,9 +497,10 @@ def main() -> int:
             print(f"  {finding}", file=sys.stderr)
         print(file=sys.stderr)
         return 1
-    counted = sum(len(entries(p.read_text(encoding="utf-8"), DECISION_HEADING)) for p in decisions)
+    counted = sum(len(feature_listing(feature)[0]) for feature in features)
     demos = sum(len(entries(p.read_text(encoding="utf-8"), DEMO_HEADING)) for p in logs)
-    print(f"check-decisions: {counted} decision(s) in {len(decisions)} file(s), {demos} demo(s) in {len(logs)} log(s), "
+    print(f"check-decisions: {counted} decision(s) in {len(features)} feature(s), {demos} demo(s) in "
+          f"{len(logs)} log(s), "
           "every field present and every path in the tree, every done slice in the adversary log")
     return 0
 

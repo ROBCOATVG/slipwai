@@ -95,7 +95,8 @@ put it to the person.
 
 ## Record the context answer, every time
 
-**Pass one always writes its context answer as the next entry of `specs/<feature>/decisions.md`**, whether
+**Pass one always writes its context answer as an entry of `specs/<feature>/decisions.md`** — its own file,
+`specs/<feature>/decisions/D<n>.md`, with the log rendered by `make decisions` — whether
 it found several contexts or one — the shape `commands/cruise.md` shows and `make check-decisions` holds
 (Question, Options, Decision, In short, Why with Read against, Decided by, Confidence with Would reverse if,
 Written to, Status). Head it `## D<n> — Which bounded contexts does <feature> touch?`, and put the seam table

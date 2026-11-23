@@ -234,7 +234,8 @@ cannot say so.
 ### After the examples are proven, and after the slice is done
 
 With the examples proven and the review closed, run `/adversary` for the slice's trigger record: its
-trigger table, written into `specs/<feature>/adversary-log.md`, attacking nothing — `make check-decisions`
+trigger table, written as `specs/<feature>/adversary-log/<slice-id>.md` and rendered into
+`specs/<feature>/adversary-log.md` by `{{make}} decisions`, attacking nothing — `make check-decisions`
 holds every done slice to that row. Only where `harbour.json` says `"readings": "slice"` is a record with the authorisation, identity
 or money trigger `widened` attacked here as well: close that adversary benchmark entry after its findings
 are triaged, and implement confirmed defects through failing tests, each in an `implement` entry. Then run
@@ -441,9 +442,11 @@ own first stage.
 
 **The shared-surface rule**, which the delegates cannot infer and `{{make}} check-slice-scope` holds on
 every `slice/<id>` branch: a slice's commits touch its own `specs/<feature>/slices/<id>/`, the feature's
-cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`,
+cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, its own adversary rows as
+`adversary-log/<slice-id>.md`,
 `people/` — one JSON file per person a story signs in as — and
-`decisions.md`, where `/cruise` records a decision taken during the slice), its own block of `model.yaml`
+each decision `/cruise` records during the slice as its own `decisions/D<n>.md`, with the two logs
+`{{make}} decisions` renders from them), its own block of `model.yaml`
 with the committed canvas `model.drawio` regenerated from it (`{{make}} model-drawio` — `check-drawio`
 holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it) and, on the
 event-modelling profile, the chart `specs/<feature>/chart.yaml` re-rendered the same way (`{{make}} chart`,
@@ -551,7 +554,10 @@ passes its gate, one at a time through the harbourmaster's queue, which rebases 
 one left and gates it there — so the predictability split order bought is bought instead by the queue, and
 a sibling waiting for a slower one's merge would be a sibling parked for nothing. The
 composition root and the cumulative artifacts are where two merges meet and the second takes both sides; the
-events module grows additively for exactly that reason, because the merge of two additions is a union. A
+events module grows additively for exactly that reason, because the merge of two additions is a union. The
+decisions and adversary logs are not merged at all: each entry is its own file, so two slices never write one,
+and a conflict in the rendered `decisions.md` or `adversary-log.md` is answered by taking either side and running
+`{{make}} decisions` — never by keeping both by hand, which drops the lines the two endings share. A
 real conflict in a mark is a contract change: stop both fairways for the host, never resolve it in a branch.
 A fairway's release flag is its own, and `check-slice-scope` refuses a branch that touches a path another
 fairway owns, so the boundary is held rather than remembered. The board's lines are grouped by fairway where

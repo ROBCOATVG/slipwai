@@ -185,7 +185,7 @@ def frozen(flight: Flight, feature: Path) -> None:
             original = source.read_bytes()
             flight.files[f"fairways/main/{feature.name}/{name}"] = original
             parts = renderer["ordered"](renderer["entries"](original.decode("utf-8")))
-            text = renderer["BANNER"].format(name=name) + "\n" + "\n".join(parts)
+            text = renderer["BANNER"].format(name=name, records=renderer["RECORDS"][name]) + "\n" + "\n".join(parts)
             flight.files[f"specs/{feature.name}/{name}"] = text.encode("utf-8")
 
 

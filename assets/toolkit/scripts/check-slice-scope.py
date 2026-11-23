@@ -10,9 +10,10 @@ script says so and exits 0 — which is why `make verify` runs it everywhere.
 What a slice's change may contain — everything since the branch left `main`, committed or not:
 
 - **its own record**, `specs/<feature>/slices/<id>/**`, and the feature's cumulative artifacts — `spec.md`,
-  `story-split.md`, `contracts/`, `checklists/`, `people/`, `adversary-log.md`, `decisions.md`, `slices/README.md` — which
-  every slice amends and the host merges in split order. `decisions.md` is among them because `/cruise` writes
-  a decision where the ladder took it, which during a slice's stages is the slice's branch, and `check-decisions`
+  `story-split.md`, `contracts/`, `checklists/`, `people/`, `slices/README.md` — which every slice amends and
+  the host merges in split order. The decision and adversary records are among them, one file each under
+  `decisions/` and `adversary-log/`, with the two logs `make decisions` renders from them: `/cruise` writes a
+  decision where the ladder took it, which during a slice's stages is the slice's branch, and `check-decisions`
   wants every `Written to` path in the tree, which for a slice's artifacts is only true there;
 - **its capability's record**, `specs/<feature>/capabilities/<capability>/**` — `gates.md` and the demo log —
   for the capability the chart puts the slice in, under the feature that capability's slices are under. The
@@ -108,7 +109,9 @@ CANONICAL_SLOTS = ("plan.md", "research.md", "data-model.md", "quickstart.md", "
 FEATURE_SHARED = ("spec.md", "story-split.md", "adversary-log.md", "decisions.md")
 #: `people/` is the story's: `commands/sail.md` rung 12 has a slice write the person its story signs in as there,
 #: and game-club-manager's PE-01 was refused here for doing what the command said.
-FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists", "people")
+#: `decisions/` and `adversary-log/` are one file per decision and per slice's rows, which `make decisions` renders
+#: the two logs from: a slice writes its own, and seven slices abreast never write one file.
+FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists", "people", "decisions", "adversary-log")
 MIGRATION_DIRECTORIES = ("migrations", "migration")
 MIGRATION_NAME = re.compile(r"^(?:\d+_|V\d+__)")
 MIGRATION_SUFFIXES = {".sql", ".js", ".ts", ".py"}
@@ -322,7 +325,8 @@ class Scope:
             return None
         return (
             f"{path}: not a slice's to write. A slice amends `spec.md`, `story-split.md`, `contracts/`, "
-            f"`checklists/`, `people/`, `adversary-log.md`, `decisions.md`, its capability's record under "
+            f"`checklists/`, `people/`, its records under `decisions/` and `adversary-log/` with the two logs "
+            f"`make decisions` renders from them, its capability's record under "
             f"`capabilities/` and its own `slices/{self.slice_id}/`."
         )
 

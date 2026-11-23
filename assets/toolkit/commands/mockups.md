@@ -34,6 +34,23 @@ mock-ups and the storyboard, say what you drew and which surfaces the specificat
 questions from section 1 in the inbox as usual. The person runs `/mockups <feature>` afterwards, in a
 session they are in, and that run picks up at section 2's stop with the drawings already there.
 
+**In that dispatched session, end every turn that stops for the verdict with this block, as the last
+thing you say**, after anything else — an offer, a finding you could fix — so the one thing a person must
+do is never in the middle of a paragraph:
+
+```
+Waiting on you: the storyboard's verdict.
+Where: the board's Voyage page → the Screens tab → Storyboard.
+Do: press Approve storyboard, or write why in the box and press Disapprove.
+Then: approving starts the model; disapproving draws it again from your reason.
+```
+
+There the verdict is **one** button for the whole storyboard: Approve marks every `changed` and `new` state
+approved at once, and `built` surfaces are shown for the flow and never asked about. Never tell a person to
+mark states one by one, or `approved`, `parked` or `n/a` each — the board has no such control, and a person
+sent to look for one finds nothing to press. If they type "approve" to you, do not record it; say that
+typing never approves, and give the block again.
+
 **Where the specification implies no surface at all, say so and stop — that is a clean end, not a failure.**
 A migration, a scheduled job, a change behind an interface nobody new meets: the researcher finds no place a
 person or another system meets this feature. Then draw nothing, and write one line in `research.md`, as
@@ -98,8 +115,9 @@ a finding in the review is settled — is written down in the same turn: an entr
 `specs/<feature>/decisions.md`, as its own file `specs/<feature>/decisions/D<n>.md` with the log rendered by
 `make decisions`, in the shape `commands/cruise.md` shows, with `Decided by: human`, and the
 question or the finding marked `— answered (D<n>)` where it was written, and the two counts below rewritten.
-Saying it is not recording it. A verdict is still not yours: `approved`, `parked` and `n/a` are given on the
-board.
+Saying it is not recording it. A verdict is still not yours: it is given on the board, with Approve
+storyboard or Disapprove under Storyboard on the Voyage page's Screens tab, and every such turn ends with the
+*Waiting on you* block above.
 
 **What is left to discuss, declared.** Begin `research.md` with these two lines, as plain text — no bold, no
 list marker:

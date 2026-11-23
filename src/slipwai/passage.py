@@ -163,15 +163,16 @@ def drawing_clock(root: Path, now: float | None = None) -> str:
     return f"{taken} of about {allowed / 60:g} min"
 
 
-def surfaces(root: Path) -> tuple[int, int, int]:
-    """Across every feature that has run the stage: states seen, states approved, and states parked.
+def surfaces(root: Path, only: list[Path] | None = None) -> tuple[int, int, int]:
+    """Across every feature that has run the stage — or across `only`, those features' `mock-states.md` —
+    states seen, states approved, and states parked.
 
     A feature that wrote `surfaces: none` has run the stage and has nothing to show anybody, which is an
     answer: it adds no states, rather than reading as a feature nobody has looked at. A parked state is
     the one thing here that waits on a person, and it is what the strip goes amber for.
     """
     seen = approved = parked = 0
-    for path in storyboards(root):
+    for path in storyboards(root) if only is None else only:
         try:
             said = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -289,25 +290,35 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
     written = storyboards(root)
     seen, approved, parked = surfaces(root)
     sketched = drawn(root)
-    if behind and not drawn_for(root, feature):  # an earlier feature's storyboard is not this one's
-        written, sketched, seen, approved, parked = [], False, 0, 0, 0
+    if behind:
+        # An earlier feature's storyboard is not this one's — whether or not this one has been drawn yet. The
+        # reading used to fall back to every feature once the feature in hand had any drawing, so manda's third
+        # feature, drawn and waiting on its verdict, read "44 of 44 states approved" off the second one's
+        # verdicts, the strip ticked it done, and the board told the person to cast off instead of to approve.
+        written = [path for path in written if path.parent.parent.name == feature]
+        seen, approved, parked = surfaces(root, written)
+        place = root / "specs" / feature / "mockups"
+        sketched = place.is_dir() and bool(surface_pages(place))
     drawing = step_state(receipt, "surfaces")
     found.append(Stage("storyboard", "Storyboard",
                        drawing or ("waiting" if (written and parked) or (sketched and not written)
                                    else "done" if written else "todo"),
                        written[0].relative_to(root).as_posix() if written
                        else "specs/<feature>/mockups/mock-states.md",
-                       "approve or disapprove the storyboard on this page",
+                       "on the Screens tab, under Storyboard, press Approve storyboard — or Disapprove, "
+                       "with the reason",
                        # While it draws, how long it has had against how long it may have, because the
                        # question at the ten-minute mark is whether ten minutes is normal.
                        f"drawing: {drawing_clock(root)}" if drawing == "working" and drawing_clock(root)
                        else (f"{approved} of {seen} states approved" + (f", {parked} parked" if parked else ""))
                        if seen else "no surfaces on this feature" if written
-                       else "drawn: nobody has approved a state yet" if sketched
+                       else "drawn: waiting on your verdict" if sketched
                        else "nobody has seen a surface yet",
-                       expect="The surfaces are researched, drawn and storyboarded, then shown to you one "
-                              "state at a time. **It stops for you at every surface** \u2014 that is the "
-                              "stage, not a fault. The drawing has a ceiling \u2014 an hour, half an hour for a "
+                       expect="The surfaces are researched, drawn and storyboarded. **Then it stops for "
+                              "your one verdict on the whole storyboard** \u2014 Approve storyboard or "
+                              "Disapprove, on the Screens tab \u2014 and that is the stage, not a fault. "
+                              "Talking to the drawing's session changes pages; it never approves them. The "
+                              "drawing has a ceiling \u2014 an hour, half an hour for a "
                               "redraw, scaled by the telegraph \u2014 and is ended at it with what it drew kept; "
                               "approving takes as long as you take."))
 

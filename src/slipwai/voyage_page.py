@@ -53,21 +53,19 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 
-# budget: 780 — (the storyboard, its verdict and its conversation went to `storyboard_card.py`)
-# the one poll that keeps every band current, and the bands of one window, and who decided
-# each state the storyboard's note counts: where the project stands, what to expect of the stage it is on,
-# who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
-# would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
-# are: it repaints the strip, and reloads the window when the signature says the page is built out of
-# different files than the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
-# and a red card that opens on what its slice waits for, with a box that answers that slice and no other
-# and the strip's amber attention beside its red stop
-# and a slice card that is its number, its title and its stage until it is opened
-# and the Try it card, placed here and drawn by `try_card.py`
-# and the Now strip and a slice's live caption, drawn by `live_page.py`
-# and the tabs the bands below the strip sit in, and the Feedback card in one of them (`feedback_card.py`)
-# and the decision log's tab, drawn by `decision_cards.py`
-# and the Next features tab, placed here and drawn by `intake_card.py`
+# budget: 786 — the verdict due is a button and holds Model it next back (the storyboard, its verdict and its
+# conversation went to `storyboard_card.py`) the one poll that keeps every band current, and the bands of one
+# window, and who decided each state the storyboard's note counts: where the project stands, what to expect of
+# the stage it is on, who answers at each stop of the run, the model, the screens built so far, and the work.
+# A module per band would be copies of the poll that repaints them all — and the poll is now the reason as
+# much as the bands are: it repaints the strip, and reloads the window when the signature says the page is
+# built out of different files than the ones it was drawn from. Both halves have to agree on what a band is,
+# so both are here. and a red card that opens on what its slice waits for, with a box that answers that slice
+# and no other and the strip's amber attention beside its red stop and a slice card that is its number, its
+# title and its stage until it is opened and the Try it card, placed here and drawn by `try_card.py` and the
+# Now strip and a slice's live caption, drawn by `live_page.py` and the tabs the bands below the strip sit in,
+# and the Feedback card in one of them (`feedback_card.py`) and the decision log's tab, drawn by
+# `decision_cards.py` and the Next features tab, placed here and drawn by `intake_card.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.
@@ -501,7 +499,11 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     # drawn from the model, so there is nothing to launch until somebody has modelled.
     # A fleet that is not running after the split is the one silence the tree cannot explain — a launch
     # whose captains never lit, a machine restarted — so the button to cast off again is here, and said.
-    button = ('<span class="chip">Model it next: the event-modeling skill, in the agent, with a person</span>'
+    # The storyboard's verdict is on the Screens tab, three bands down a long page: the step said "on this
+    # page" and a person who looked at this card found nothing to press. `#mockups` opens that tab.
+    verdict_due = any(one.key == "storyboard" and one.state == "waiting" for one in found)
+    button = ('<a class="go" href="#mockups">Review the storyboard</a>' if verdict_due else '')
+    button += ('<span class="chip">Model it next: the event-modeling skill, in the agent, with a person</span>'
               if model_next else
               f'<button class="go" id="launch"{"" if launchable else " hidden"}>Continue the build</button>'
               f'<button class="go" id="cast-off"{"" if castable else " hidden"}>Cast off the fleet</button>')
@@ -698,8 +700,14 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     # project has would name a stage it is not on: the adoption's card stands where the strip does.
     sub = ("adopting" if adopting else f"now: {now.title.lower()}" if now else "complete") \
         + (f" · {fleet_sub(fleet)}" if fleet else "")
-    model_next = any(one.key == "model" and one.state == "todo" for one in found)
-    landed = fitting_card(made, "Adopted" if adopting else "Made") if made else ""
+    # The storyboard's verdict comes before the model, so while it waits the chip saying to model next is the
+    # wrong instruction: it stood beside a storyboard nobody had approved and was the only next step shown.
+    verdict_due = any(one.key == "storyboard" and one.state == "waiting" for one in found)
+    model_next = not verdict_due and any(one.key == "model" and one.state == "todo" for one in found)
+    # A drawing that ended well has not finished what it is for while its storyboard waits: the card said
+    # `done`, and a person read the stage as over and the board as stuck.
+    waits = verdict_due and made is not None and made.get("step") == "surfaces"
+    landed = fitting_card(made, "Adopted" if adopting else "Made", waits) if made else ""
     # Past it, the strategy's checkpoint stands above the strip, never in its place.
     where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
                                      feature, drawable, shape, modelable, draftable)

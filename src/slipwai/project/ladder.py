@@ -276,7 +276,7 @@ def sail_ladder(
    both. **The review is scoped to what the slice added or changed**: the reviewer is handed the slice's diff
    against its merge base (`git diff <merge-base>...HEAD`) and only as much surrounding code as it takes to
    read it, and every finding points at an added or changed line. A finding about code the slice did not
-   touch is not this slice's: it is noted for the capability gates or stowed to the careen, and never fixed
+   touch is not this slice's: it is noted for the capability gates or stowed in the capability's `stowed.md`, and never fixed
    here — that is how a slice stays small. The reviewer never edits: a reviewer that can write is one that
    edits, and then nobody has read the diff with fresh eyes. This slice's own delegate closes the findings and
    then reshapes — the diff as a whole, not one cycle's code, and only code the slice added or changed, never

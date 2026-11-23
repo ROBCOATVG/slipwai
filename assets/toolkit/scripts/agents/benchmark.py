@@ -527,8 +527,9 @@ def walk_refused(record: dict[str, Any], stage: str, critical: str) -> str | Non
     if held < allowed:
         return None
     return (f"this has been walked {held} time(s), which is what `walks` in harbour.json allows ({allowed}). Do not "
-            "walk it again: fix what the last walk found where a test can prove the fix, write the rest into the "
-            "fairway's careen as tasks, and record the verdict as `accepted` with `--stowed <how many>` "
+            "walk it again: fix what the last walk found where a test can prove the fix, stow the rest as rows in the "
+            "capability's stowed.md, which the harbourmaster carries into the careen at the merge (never "
+            "fairways/), and record the verdict as `accepted` with `--stowed <how many>` "
             "(scripts/agents/deck_line.py demo). Only a critical finding earns another walk — an example that "
             "fails, something that stops the actor finishing, data lost or shown to the wrong person — and then "
             f"it is said here: `benchmark.py start <dir> {stage} critical=\"<what is critical>\"`")
@@ -606,8 +607,8 @@ def end(directory: Path, stage: str, arguments: list[str], clock: Callable[[], s
         left = allowed - held
         print(f"benchmark: walk {held} of {allowed}: " + (
             f"{left} more may follow once what it found is put right" if left > 0 else
-            "no further walk unless a finding is critical — fix what a test can prove, stow the rest to the "
-            "careen, and record `accepted` with `--stowed <how many>`"), file=sys.stderr)
+            "no further walk unless a finding is critical — fix what a test can prove, stow the rest in the "
+            "capability's stowed.md, and record `accepted` with `--stowed <how many>`"), file=sys.stderr)
 
 
 def summary_line(entry: dict[str, Any]) -> str:

@@ -586,8 +586,10 @@ loop. Re-derive the entry stage from artifacts instead of assuming the loop resu
 
 **A capability — and a slice, where `harbour.json` says `"readings": "slice"` — is walked twice at most** — `walks` in `harbour.json`, two where it names none:
 the walk, and one more to see that what it sent back was put right. After the last one allowed, nothing is
-walked again for a finding that is not critical: fix what a test can prove fixed, write the rest into the
-fairway's careen as tasks, one row each with the screenshot or example that shows it, and record the verdict
+walked again for a finding that is not critical: fix what a test can prove fixed, stow the rest in the
+capability's `specs/<feature>/capabilities/<capability>/stowed.md` — one row each in the careen's shape, *From*
+`demo`, with the screenshot or example that shows it; never in `fairways/`, which the harbourmaster writes from
+that record when the slice merges — and record the verdict
 with `python3 scripts/agents/deck_line.py demo --slice <id> --verdict accepted --stowed <how many>`. A finding
 is critical where an example fails, where something stops the actor finishing what they came to do, or
 where data is lost or shown to the wrong person — and then the next walk is opened saying so, `python3

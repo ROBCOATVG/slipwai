@@ -100,12 +100,13 @@ slice-hardening  2c800d800f031e4e  1  docs/guide/runsheet-generate.md
 slice-hardening  2c800d800f031e4e  3  src/slipwai/project/capability_gates.py
 slice-hardening  2c800d800f031e4e  3  src/slipwai/project/ladder.py
 slice-hardening  2c800d800f031e4e  1  src/slipwai/project/mutation.py
-walk-bound  584539f6cb83c2c0  2  assets/toolkit/agents/sail-demo-hand.md
-walk-bound  584539f6cb83c2c0  2  assets/toolkit/commands/sail.md
-walk-bound  584539f6cb83c2c0  5  assets/toolkit/scripts/agents/benchmark.py
-walk-bound  584539f6cb83c2c0  1  assets/toolkit/scripts/agents/deck_line.py
-walk-bound  584539f6cb83c2c0  3  assets/toolkit/scripts/agents/try_it.py
-walk-bound  584539f6cb83c2c0  1  src/slipwai/project/harbour.py
+walk-bound  35b302f6bd8a4a7a  2  assets/toolkit/agents/sail-demo-hand.md
+walk-bound  35b302f6bd8a4a7a  2  assets/toolkit/commands/sail.md
+walk-bound  35b302f6bd8a4a7a  5  assets/toolkit/scripts/agents/benchmark.py
+walk-bound  35b302f6bd8a4a7a  1  assets/toolkit/scripts/agents/deck_line.py
+walk-bound  35b302f6bd8a4a7a  3  assets/toolkit/scripts/agents/try_it.py
+walk-bound  35b302f6bd8a4a7a  1  src/slipwai/project/harbour.py
 # reread: 2026-11-19 readings, gates-when, push-when, release-modes, slice-hardening, walk-bound: the first record, taken after the copies of gates-when, push-when, release-modes and slice-hardening were read and corrected against their owners (issue 103); readings was read for pull request 111
 # reread: 2026-11-19 readings: the converge hook's description now names the readings setting where it said 'under open'; one more mention in extensions.yml, read
 # reread: 2026-11-19 release-modes: the keystone bullet now names specs/<feature>/keystones.yaml, which is what check-slice-scope reads, where it said the chart's entry: key; chart.md and the scope gate already said keystones.yaml, and no other copy names the file
+# reread: 2026-11-23 walk-bound: issue 154: the walk bound is unchanged; what is left after the last walk is stowed in the capability's stowed.md, which the harbourmaster carries into the careen

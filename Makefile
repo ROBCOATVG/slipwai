@@ -60,6 +60,8 @@ SLOW += test_harbourmaster_stop
 # Approve and Reject on a card, through the real captain and harbourmaster, and a board served.
 SLOW += test_park_verdict test_board_settles
 SLOW += test_example_map_source
+# A merge in a real repository, the scope gate on a real branch and the captain run per case: the careen's feed.
+SLOW += test_careen_carried
 # The captain as an agent: a captain run per case, and the six captain suites run twice over.
 SLOW += test_captain_agent test_captain_agent_parity test_captain_heard
 # A captain run with the stand-in agent, sat out to a stage's silence bound.

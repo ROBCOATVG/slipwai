@@ -152,7 +152,7 @@ def capability_gates_stage(web: bool) -> str:
 
    Findings and open convergence tasks at or above the fairway's severity bar are fixed **before the
    capability is accepted**, in a follow-up slice in the same fairway named for the capability, through failing tests like any
-   other work; those below it are stowed to the careen; an open `CRITICAL` is the next slice, whatever else is ready. When all six have
+   other work; those below it are stowed, as rows in the capability's own `stowed.md` beside this record, which the harbourmaster carries into the fairway's careen at the merge — never written into `fairways/` here; an open `CRITICAL` is the next slice, whatever else is ready. When all six have
    run and nothing above the bar is open, the record's last line is `Cleared: <date> · <commit>`, and the
    demo stop is due. Nothing is carried: a gap left here is a gap the next capability inherits.
 

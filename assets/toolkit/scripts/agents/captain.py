@@ -92,6 +92,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import abreast  # noqa: E402
+import careen  # noqa: E402 — the fairway's last slice, and the list it closes
 import captain_agent  # noqa: E402
 import captain_events  # noqa: E402
 import captain_orders  # noqa: E402
@@ -122,6 +123,8 @@ HOOKS = ROOT / "scripts/extensions/hooks.py"
 #: The ladder itself. A harness whose print mode resolves this project's slash commands is asked `/sail`;
 #: every other is asked to read this file and follow it.
 DRIVE_COMMAND = ROOT / "commands/sail.md"
+#: What the careen slice runs instead: the fairway's hardening slice has its own command (`careen.py`).
+CAREEN_COMMAND = ROOT / "commands/careen.md"
 #: Whether this run is under `/cruise`, and who answers its product questions — `commands/cruise.md`.
 CRUISE = ROOT / ".specify/cruise.json"
 #: The `decide` values under which a product question is decided here rather than parked for a person.
@@ -523,13 +526,50 @@ def next_slices(fairway: str, beside: list[str]) -> tuple[list[str], str]:
     found = abreast.ready(charted, folded_logs, done, fairway, beside)
     if found:
         return found, ""
+    # An `observed` slice is what the code already does: nobody builds it, so it is never left to start.
+    observed = clearance.observed(charted)
     left = [one for one in mine if one not in folded_logs.merged and one not in folded_logs.claimed
-            and one not in beside]
+            and one not in beside and one not in observed]
     if not left:
+        last = careen_due(fairway, charted, folded_logs, beside)
+        if last:
+            return [last], ""
         return [], f"every slice of {fairway} is claimed or merged"
     state, why = clearance.position(charted, folded_logs, left[0], done)
     return [], (f"{left[0]} may run, and not beside {', '.join(beside)}, which the slice graph's "
                 f"parallel_ok_with leaves out" if state in abreast.READY else f"{left[0]} waits on {why}")
+
+
+def careen_due(fairway: str, charted: dict, folded_logs: clearance.Folded, beside: list[str]) -> str:
+    """The careen slice of this fairway, where it is the one thing left to start; `""` where it is not.
+
+    Its moment is every planned slice of the fairway merged — not claimed, merged, and nothing beside it in
+    flight — with a row of `fairways/<fairway>/careen.md` on trunk still open. Whatever the release state:
+    the careen was said to run "before the flag is hoisted", which on a pre-launch product never comes, and
+    the stream reported every slice claimed or merged and went idle on a list nobody worked (issue 154). A
+    careen already claimed is resumed like any claimed slice, and one already merged is not offered again.
+    """
+    last = careen.careen_slice(fairway)
+    if beside or last in folded_logs.merged or last in folded_logs.claimed:
+        return ""
+    observed = clearance.observed(charted)  # what the code already does is nobody's to build, so never merged
+    planned = [str(slice_id) for slice_id, body in (charted.get("slices") or {}).items()
+               if str((body or {}).get("fairway", "")) == fairway and str(slice_id) not in observed]
+    if not planned or any(one not in folded_logs.merged for one in planned):
+        return ""
+    return last if careen.open_rows(careen_on_trunk(fairway)) else ""
+
+
+def careen_on_trunk(fairway: str) -> str:
+    """This fairway's careen as trunk holds it, which is where the harbourmaster wrote it; the checkout's
+    copy where there is no trunk to read, and nothing where neither has one."""
+    path = careen.careen_path(fairway)
+    held = clearance.trunk()
+    shown = clearance.git("show", f"{held}:{path}") if held else ""
+    if shown:
+        return shown
+    got = talk.read_bytes(ROOT / path)
+    return got[0].decode("utf-8", errors="replace") if got is not None else ""
 
 
 def fire(point: str, **given: str) -> None:
@@ -624,7 +664,10 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
     berth it is already in, the cruise's rule, and why the run before did not close the gate."""
     # `sail`, the command's name: it was `drive` until the rename and the word stayed here, so a harness
     # that takes slash commands was sent `/drive`, which no project has had since.
-    prompt = harness.prompt_for(chosen, "sail", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
+    closes = careen.fairway_of(slice_id)
+    # The careen is the fairway's last slice and has a command of its own: `/careen <fairway>`, run in its berth.
+    prompt = harness.prompt_for(chosen, "careen", CAREEN_COMMAND, closes) if closes == fairway else \
+        harness.prompt_for(chosen, "sail", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
     if berth is not None:
         prompt += (f"\n\nYou are already in this slice's berth: the worktree at {berth}, on branch "
                    f"{BRANCH.format(slice=slice_id)}. Work there, and make no other worktree for it; its "

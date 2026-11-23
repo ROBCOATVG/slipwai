@@ -37,7 +37,7 @@ class Fixture(unittest.TestCase):
         place.mkdir(parents=True)
         for name in ("harbourmaster.py", "need_check.py", "lockfiles.py", "conflicts.py",
                      "logs.py", "berths.py", "spend.py", "telegraph.py", "claims.py",
-                     "travel.py", "inbox.py", "capabilities.py", "clearance.py", "mender.py"):
+                     "travel.py", "inbox.py", "capabilities.py", "clearance.py", "mender.py", "careen.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")
         self.script = place / "harbourmaster.py"
 

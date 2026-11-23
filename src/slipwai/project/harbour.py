@@ -9,8 +9,9 @@ severe a finding has to be before it stops a merge, how many decisions may go un
 wait may last. They are in the project, versioned with it and visible in a diff, because a number in a
 prompt is a number nobody can find afterwards and a number in somebody's head is not a number.
 
-**What happens at a budget is stowing, not stopping.** A stage that runs out writes what is left into the
-fairway's careen and goes on, and the slice merges. The exceptions are the two that would be dishonest: work
+**What happens at a budget is stowing, not stopping.** A stage that runs out writes what is left into its
+capability's `stowed.md`, which the harbourmaster carries into the fairway's careen at the merge, and goes
+on, and the slice merges. The exceptions are the two that would be dishonest: work
 above the severity bar parks for a person instead, and nothing CRITICAL is ever stowed. That ordering is the
 whole point — the first attempt's alternative was carrying gaps into the next slice, where a slice that
 inherits one pays for it without having chosen to.
@@ -25,6 +26,7 @@ from __future__ import annotations
 import json
 
 from ..telegraph import settings
+from .careen import ROW_HEADER, careen_path, stowed_path
 
 CONFIG = "harbour.json"
 #: Where a fresh harbour's telegraph starts. Not `full-ahead`: a first run is the one nobody has watched yet,
@@ -124,11 +126,15 @@ passed either number, and writes it on the entry. Under `/cruise` the captain al
 has gone silent for its minutes; under `/sail` those two lines are the control, and a session that reads
 *over budget* stows before the next rung's `start` rather than after it.
 
-1. **Write what is left into the fairway's careen** — `fairways/<name>/careen.md`, one row per item, each
-   saying what is wrong and what closing it would take, with `budget` as the row's *From*.
+1. **Write what is left into the capability's record** — `{stowed_path()}`, the capability the
+   chart puts the slice in, one row per item in the careen's shape (`{ROW_HEADER}`), each saying what is
+   wrong and what closing it would take, with `budget` as the row's *From* and `open` as its *State*.
+   Never into `fairways/`: the careen is shared by every slice of the stream, so a slice may not write it
+   (`check-slice-scope`), and the harbourmaster carries the record's rows into
+   `{careen_path('<name>')}` when the slice merges.
 2. **Append a `stowed` line** to the deck log naming the stage, the slice and how many items.
 3. **Go on.** The slice continues to its next rung and may merge. Stowed work is the careen's, and the
-   careen is a slice that fairway runs before its flag is hoisted.
+   careen is the fairway's last slice, which its captain starts once every planned slice is merged.
 
 Two exceptions, and they are the ones where stowing would be dishonest:
 

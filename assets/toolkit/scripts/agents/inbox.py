@@ -205,7 +205,7 @@ def owed(fairway: str, now: datetime | None = None) -> dict:
         "parks": parks,
         "overdue_parks": overdue_parks,
         "ceiling": ceiling,
-        "over_ceiling": len(backlog) > ceiling,
+        "over_ceiling": bool(logs.over_ceiling(len(backlog), ceiling)),
         # A boundary is forced by a message nobody answered in time, or by a backlog of judgement nobody
         # has looked at. Either way the next thing to happen is a person, not another stage.
         # A park of one slice holds that slice alone — its siblings were never waiting on it — so only a

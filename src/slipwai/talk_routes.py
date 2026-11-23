@@ -16,7 +16,9 @@ from . import talk
 from .captain_window import page as captain_page
 from .captain_window import window_payload as captain_payload
 from .captains_strip import heard as captain_heard
+from .park_verdict import give
 from .seats import parameter
+from .storyboard_card import verdict_refused
 from .talk_fold import heard as thread_heard
 from .talk_fold import see
 from .talk_page import SHOWN, dumps, payload
@@ -87,6 +89,13 @@ def route_post(board: Any, where: str, held: dict[str, Any]) -> bool:
                          via=str(was.get("via", "") or ""), quote=str(was.get("quote", "") or ""),
                          quote_from=str(was.get("quote_from", "") or ""))
         said = receipt_line(root, fairway, slice_id, sent)
+    elif where == "/park/verdict":
+        # Approve or Reject on a card whose park waits on a mock-up verdict: the storyboard's record, then the
+        # person's answer to the park through this same inbox (`park_verdict`). Never on pages about to change.
+        if refused := verdict_refused(board):
+            raise ValueError(refused)
+        said = give(root, fairway, slice_id, str(held.get("of", "")), str(held.get("feature", "")),
+                    str(held.get("verdict", "")), str(held.get("reason", "")))
     elif where == "/talk/seen":
         try:
             count = int(held.get("heard", 0))

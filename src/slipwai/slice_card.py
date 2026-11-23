@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .activity import caption, minutes, newest, now_stamp
+from .block_card import action_html
 from .example_map_page import card_html
 from .feedback_card import opener
 from .page_shell import esc
@@ -311,7 +312,14 @@ def answer_html(row: dict[str, str]) -> str:
     park = row.get("park") or row.get("why", "")
     box = f'answer-{row["slice"]}'
     given = (held(row).get("answer") or None) if row.get("talk") else None
-    return (f'<p class="park">{esc(park)}</p>{questions}{placed_html(given, box)}'
+    try:
+        act = json.loads(row.get("action") or "{}")
+    except ValueError:
+        act = {}
+    # What to do about it, whole: the park above is the captain's words, this is the way out of it.
+    shown = action_html(act if isinstance(act, dict) else {}, True, row["fairway"], row["slice"],
+                        row.get("park_of", ""))
+    return (f'<p class="park">{esc(park)}</p>{questions}{shown}{placed_html(given, box)}'
             f'<div class="ask"{" hidden" if given else ""}><textarea id="{esc(box)}" rows="4" placeholder="Your '
             f'answer, or what {esc(row["slice"])} needs to know"></textarea>'
             f'<button type="button" class="go" data-answer="{esc(row["fairway"])}" data-slice="{esc(row["slice"])}" '

@@ -120,13 +120,15 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             held["fairways"].append(row["fairway"])
         held["parks"].append({"fairway": row["fairway"], "t": row["t"], "slice": str(row.get("slice") or ""),
                               "aim": str(row.get("aim") or row.get("slice") or ""), "key": str(row.get("key") or ""),
-                              **({"answer": row["answer"]} if row.get("answer") else {})})
+                              **({"answer": row["answer"]} if row.get("answer") else {}),
+                              "held": str((row.get("action") or {}).get("held") or "")})
         held["t"] = min(held["t"], row["t"])
         held["times"] = max(int(held.get("times", 1)), int(row.get("times") or 1))
         held["until"] = max(held["until"], str(row.get("until") or ""))
         if row["t"] >= max(park["t"] for park in held["parks"]):
             held["then"], held["what"] = str(row.get("then") or ""), str(row.get("what") or "")
             held["lines"] = row.get("lines") or []
+            held["action"] = row.get("action")  # what to do about it: the newest park's, as its words are
         for mine, theirs in zip(held["needs"], row.get("needs") or [], strict=False):
             if theirs.get("met") == "yes":
                 mine["met"] = "yes"

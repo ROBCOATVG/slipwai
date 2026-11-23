@@ -129,7 +129,7 @@ CARRIED = {"mark-set": "mark-set", "parked": "park"}
 #: Who wrote a `told`, where it says. Only a person's answers a park: the board and `/cruise-tell` write it.
 PERSON = "person"
 #: What a captain's park at the decision ceiling waits on. Cleared by reading, never by a message.
-REVIEW = "decision-review"
+REVIEW = logs.REVIEW
 #: What a request may ask for at all. A closed set: an action nobody wrote down is one nobody reviewed.
 ACTIONS = ("push", "merge", "deploy", "flag", "publish")
 #: What is never done, whoever asks and whatever the reason. Matched against the request's own text, because
@@ -1500,28 +1500,24 @@ def told_after_parks() -> list[logs.Entry]:
             continue
         told = [e for e in deck if e.kind == "told" and str(e.fields.get("fairway", "")) == fairway
                 and e.fields.get("by") == PERSON]
-        parks = [park for park in logs.open_parks(deck, harbour, fairway) if park.fields.get("waiting") != REVIEW]
-        if not told or not parks or over_ceiling(fairway) is not False:
+        parks = logs.open_parks(deck, harbour, fairway)
+        if not told or not parks:
             continue
+        over = over_ceiling(fairway)
         for park in parks:
+            # The one rule the board's *HELD* line reads too (`logs.answer_held`): a park at the ceiling, or
+            # any park while the ceiling is passed or cannot be counted, is not cleared by a message.
+            if logs.answer_held(park, over):
+                continue
             # A message aimed at one slice — the box on its red card — answers that slice's park and no
             # other: three slices parked on three different questions are three answers, not one.
             # A park of the whole stream written about one slice — its why opens `L03: …` — is answered by a
             # person's word to that slice as well as to the stream; one about the stream, only by the stream's.
-            after = [e for e in told if e.t > park.t and aimed(e, park)]
+            after = [e for e in told if logs.answers(e, park)]
             if after:
                 found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                         what=str(after[-1].fields.get("message", "")).strip() or "told"))
     return found
-
-
-def aimed(told: logs.Entry, park: logs.Entry) -> bool:
-    """Whether a person's `told` answers this park: the stream's word answers any; a word to a slice answers the
-    park about that slice — naming it, or a park of the whole stream whose why opens with it — and no other."""
-    named = str(told.fields.get("slice", ""))
-    if not named:
-        return True
-    return logs.about(park, named)
 
 
 def cleared_for_review() -> list[logs.Entry]:

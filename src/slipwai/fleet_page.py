@@ -17,6 +17,9 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
+from .block_card import SCRIPT as ACTION_SCRIPT
+from .block_card import STYLE as ACTION_STYLE
+from .block_card import action_html
 from .fleet import instant
 from .fleet_record import NOTHING, clock_of
 from .page_shell import esc
@@ -24,8 +27,9 @@ from .talk_marks import SCRIPT as MARKS_SCRIPT
 from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
-# budget: 391 — the headline over every state a fleet can be in, a build merged whole and one merged but
-# ungated or built on a stand-in among them, and a group already answered showing what was said and where it stands
+# budget: 400 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# ungated or built on a stand-in among them, and a group already answered showing what was said and where it stands, and what
+# to do about each group, with every park's held answer
 
 #: The word on a group for its cause, in the words a person uses rather than the record's.
 CAUSES = {"limit": "paused", "host": "on main", "question": "a question", "demo": "demo sent back",
@@ -70,7 +74,7 @@ STYLE = """
 .quiet-button:hover{border-color:var(--teal);color:var(--ink)}
 @media (max-width:720px){.headline{grid-template-columns:1fr}.needs li{grid-template-columns:20px 1fr}
   .needs .how{grid-column:2;text-align:left;white-space:normal}.tl-names{width:90px}}
-""" + MARKS_STYLE
+""" + MARKS_STYLE + ACTION_STYLE
 
 #: What the page's script does with the two controls this tab adds. One message per park in a group, aimed at
 #: the park's slice and carrying the park it answers, then one reload: a group is several parks.
@@ -97,7 +101,7 @@ document.addEventListener('click', event => {
   }
 });
 
-""" + MARKS_SCRIPT
+""" + MARKS_SCRIPT + ACTION_SCRIPT
 
 
 def when(stamp: str, now: datetime | None = None) -> str:
@@ -357,9 +361,16 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
              f'in full</summary><ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
              f'</ol><p class="empty" style="white-space:pre-wrap">{esc(group.get("what") or "")}</p></details>')
     chip = "a slice needs this on trunk" if group.get("source") == "told" else CAUSES.get(cause, cause)
+    newest = max(group.get("parks") or [{}], key=lambda park: str(park.get("t", "")))
+    # Every park's held answer, the newest's steps: several parks on one cause are one thing to do.
+    held = "".join(f'<p class="held">{esc(park["held"])}</p>' for park in group.get("parks") or []
+                   if park.get("held") and park is not newest)
+    act = held + action_html(group.get("action"), controls, str(newest.get("fairway", "")),
+                             str(newest.get("aim") or newest.get("slice") or ""), str(newest.get("key") or ""))
     return (f'<div class="group"><div class="head"><div><h3><span class="chip" data-state="waiting on you">'
             f'{esc(chip)}</span> {esc(title)}</h3><div class="meta">'
-            f'{esc(" · ".join(bit for bit in meta if bit))}</div></div>{buttons}</div>{bar}{listed}{then}{whole}</div>')
+            f'{esc(" · ".join(bit for bit in meta if bit))}</div></div>{buttons}</div>{act}{bar}{listed}{then}'
+            f'{whole}</div>')
 
 
 def waiting_card(found: dict, controls: bool, rows_html: str, now: datetime | None = None) -> str:

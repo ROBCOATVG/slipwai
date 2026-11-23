@@ -27,6 +27,7 @@ from .activity import live
 from .fleet import ASKED, board, harbour_log
 from .harbour import config
 from .logs import Entry
+from .park_verdict import mark
 from .shell_environment import ANSWERED, KEEP_LOGIN
 from .trunk_story import story
 from .voyage import feedback_points, fleet_running, folded
@@ -75,7 +76,8 @@ def fold(root: Path) -> Read:
     try:
         rows, fault = folded(root)
         held = config(root)
-        fleet = {**board(root, held), "running": fleet_running(root)}
+        # Whether each mock-up verdict's card may offer Approve and Reject: a reading of the drawings, so here.
+        fleet = mark(root, {**board(root, held), "running": fleet_running(root)})
         unreadable = fleet.get("unreadable")
         if fault or (isinstance(unreadable, dict) and unreadable.get("clearance")):
             ANSWERED.clear()  # the shell's answer may be why: the next read asks it again

@@ -1087,36 +1087,11 @@ def unseeded(fairway: str, slice_id: str) -> str:
 def ungated(slice_id: str) -> str:
     """Why this slice may not merge yet because it is its capability's last and the gates have not cleared, or "".
 
-    The gates run once a capability is whole and before anyone is shown it, and `/sail` used to put them
-    *after* the last merge under every release mode but `keystone`. Nothing owned "after": the captain dispatches
-    slices, finds none left, and exits — recap merged all 34 of its slices, the board said *Built*, and none of
-    its eight capabilities was ever gated until a person ran `/sail` by hand, which found 34 findings in one of
-    them. So the last merge is where it holds, as `keystone` already did: the gates run on that slice's branch,
-    and its `gates.md` says `Cleared:` there before it lands.
+    `capabilities.ungated` is the predicate, and the captain asks the same one before it requests the merge.
     """
     if capabilities is None:
         return ""
-    charted, feature = capabilities.chart()
-    if not charted:
-        return ""
-    capability = next((name for name, members in capabilities.slices_by_capability(charted).items()
-                       if slice_id in members), "")
-    if not capability:
-        return ""
-    members = capabilities.slices_by_capability(charted)[capability]
-    try:
-        merged = {str(line.get("slice")) for line in capabilities.lines(feature) if line.get("kind") == "merged"}
-    except SystemExit:
-        return ""
-    if any(member not in merged for member in members if member != slice_id):
-        return ""
-    record = f"specs/{capabilities.feature_of(charted, feature, capability)}/capabilities/{capability}/gates.md"
-    shown = git("show", f"{BRANCH.format(slice=slice_id)}:{record}")
-    if shown.returncode == 0 and capabilities.CLEARED.search(shown.stdout):
-        return ""
-    return (f"{slice_id} is the last slice of {capability}, whose gates have not cleared on its branch: {record} "
-            f"has no `Cleared:` line. Run the capability gates in this berth — converge, gaps, design review, "
-            f"adversary, mutation and the walk, `/sail`'s *Capability gates* — record them there, and ask again")
+    return capabilities.ungated(slice_id)
 
 
 def attempts(fairway: str, slice_id: str) -> int:

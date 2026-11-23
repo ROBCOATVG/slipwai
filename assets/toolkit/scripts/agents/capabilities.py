@@ -49,6 +49,9 @@ import clearance  # noqa: E402 — which feature holds a slice's own files
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
 LOGS = logs.logs_dir(ROOT)
 V = 1
+#: A slice's branch, where its capability's record is read before the merge that would make it whole.
+#: The same name `travel.BRANCH` gives it, written here so this reader needs nothing a small copy of it lacks.
+BRANCH = "slice/{slice}"
 #: What a gate record's last word says once every gate has run with nothing above the bar left open.
 CLEARED = re.compile(r"^Cleared:\s*\S", re.MULTILINE)
 #: `.specify/cruise.json`'s `demos`, and who an `accepted` line names when the hand's verdict wrote it.
@@ -121,6 +124,42 @@ def cleared(feature: str, capabilities: list[str], charted: dict | None = None) 
             found.add(capability)
     return found
 
+
+def ungated(slice_id: str) -> str:
+    """Why this slice may not merge yet because it is its capability's last and the gates have not cleared, or "".
+
+    The gates run once a capability is whole and before anyone is shown it, and `/sail` used to put them
+    *after* the last merge under every release mode but `keystone`. Nothing owned "after": the captain dispatches
+    slices, finds none left, and exits — recap merged all 34 of its slices, the board said *Built*, and none of
+    its eight capabilities was ever gated until a person ran `/sail` by hand, which found 34 findings in one of
+    them. So the last merge is where it holds, as `keystone` already did: the gates run on that slice's branch,
+    and its `gates.md` says `Cleared:` there before it lands.
+
+    **One predicate, asked by both sides.** The harbourmaster refuses the merge on it, and the captain asks it
+    before it ever requests that merge, so the gates are dispatched first rather than after a refusal that was
+    certain: manda's captains were refused this way 23 times, each an ask that could only come back no.
+    """
+    charted, feature = chart()
+    if not charted:
+        return ""
+    grouped = slices_by_capability(charted)
+    capability = next((name for name, members in grouped.items() if slice_id in members), "")
+    if not capability:
+        return ""
+    try:
+        merged = {str(line.get("slice")) for line in lines(feature) if line.get("kind") == "merged"}
+    except SystemExit:
+        return ""
+    if any(member not in merged for member in grouped[capability] if member != slice_id):
+        return ""
+    record = f"specs/{feature_of(charted, feature, capability)}/capabilities/{capability}/gates.md"
+    shown = subprocess.run(["git", "show", f"{BRANCH.format(slice=slice_id)}:{record}"], cwd=ROOT,
+                           capture_output=True, text=True, check=False)
+    if shown.returncode == 0 and CLEARED.search(shown.stdout):
+        return ""
+    return (f"{slice_id} is the last slice of {capability}, whose gates have not cleared on its branch: {record} "
+            f"has no `Cleared:` line. Run the capability gates in this berth — converge, gaps, design review, "
+            f"adversary, mutation and the walk, `/sail`'s *Capability gates* — record them there, and ask again")
 
 
 def demos_setting() -> str:

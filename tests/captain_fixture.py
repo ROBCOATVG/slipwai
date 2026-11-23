@@ -41,7 +41,9 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "berths.py", "sp
            # the helm that checks its orders, its session, the door it gives them through, and the fold of a
            # slice's activity that says when one is stuck.
            "captain_rules.py", "captain_events.py", "captain_orders.py", "captain_agent.py",
-           "orders.py", "stuck.py")
+           "orders.py", "stuck.py",
+           # The predicate for a capability's last slice, asked before a merge is requested.
+           "capabilities.py")
 #: Where a run of these suites leaves each case's deck lines, for `test_captain_agent_parity` to compare a run
 #: with the stand-in captain agent against one without: set in the environment, read once.
 RECORD = os.environ.get("SLIPWAI_TEST_RECORD", "")

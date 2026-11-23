@@ -42,6 +42,12 @@ ALLOWED = {
     "captain.py:decide_parked.one": WRITES,
     "captain.py:ledgered": "the dispatch ledger in the slice's berth, a tracked file of the project",
     "captain.py:release_after_publication": LOGS,
+    # The captain asks the harbourmaster's own predicate for a capability's last slice before it asks to merge.
+    "capabilities.py:chart": PROJECT,
+    "capabilities.py:cleared": "a capability's gates record, a tracked file of the project",
+    "capabilities.py:demos_setting": PROJECT,
+    "capabilities.py:lines": LOGS,
+    "capabilities.py:recorded_by_hand": "a feature's demo register, a tracked file of the project",
     "captain_events.py:Helm.decided": "`Helm.open`, which puts an event: not a file read",
     "claims.py:take": PROJECT,
     "clearance.py:chart": PROJECT,

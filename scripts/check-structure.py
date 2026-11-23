@@ -103,6 +103,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("answers", ("captain_decisions",
                  "selection", "origin", "layout", "services", "tooling", "capabilities", "berths", "fleet",
                  "fleet_record", "inbox_rows", "timeline", "deck",
+                 # What a person does about each block on the board: why, the steps, and an answer held.
+                 "block_actions",
                  # What the board says to the fleet, placed in an inbox; a conversation read the way a person
                  # reads it, with what they have seen; and what a captain decided, off its orders and events.
                  "talk_said", "talk_fold", "captain_files",
@@ -243,6 +245,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "talk_page", "talk_waits", "talk_card", "captain_window", "captains_strip", "talk_routes",
               # An answer shown on the row it was sent from, and the one check that a POST is the board's own.
               "talk_marks", "post_guard",
+              # A block's action line drawn on its card, and Approve and Reject where it waits on a mock-up.
+              "park_verdict", "block_card",
               # What a handed-over document stands on, carried in with it.
               "design_docs",
               # The same folder read before it is handed over, and the verb that prints the reading.

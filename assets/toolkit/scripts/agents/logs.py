@@ -25,13 +25,14 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 616 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# budget: 646 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
 # and a park written when a need was a sentence, read as the record it now is. And a need
 # the fleet was to tick with no check, read as a person's
-# and a stream's lines read from every file that holds them, the chart feature's first
+# and a stream's lines read from every file that holds them, the chart feature's first, and the one
+# rule for whether a person's answer can clear a park, which the harbourmaster and the board both ask
 from __future__ import annotations
 
 import json
@@ -558,6 +559,35 @@ def about(park: Entry, slice_id: str) -> bool:
     if park.fields.get("slice"):
         return str(park.fields["slice"]) == slice_id
     return bool(slice_id) and re.match(rf"{re.escape(slice_id)}(?![\w-])", str(park.fields.get("why", ""))) is not None
+
+
+#: What a captain's park at the decision ceiling waits on, in its `waiting`: lifted by reading, never by a message.
+REVIEW = "decision-review"
+
+
+def answers(told: Entry, park: Entry) -> bool:
+    """Whether a `told` is a person's answer to this park: a person wrote it (`by: person`, which the board and
+    `/cruise-tell` write and a session never does), after the park, and aimed at it — the stream's word answers
+    any park; a word to a slice, only the park `about` that slice."""
+    if told.kind != "told" or told.fields.get("by") != "person" or told.t <= park.t:
+        return False
+    named = str(told.fields.get("slice", ""))
+    return not named or about(park, named)
+
+
+def over_ceiling(unread: int, ceiling: int | None) -> bool | None:
+    """Whether more decisions stand unread than the ceiling allows; None where no ceiling can be read."""
+    return None if ceiling is None else unread > ceiling
+
+
+def answer_held(park: Entry, over: bool | None) -> str:
+    """Why a person's answer cannot clear this park now, as one word, or `""` where it would. The harbourmaster's
+    rule (`told_after_parks`) and the board's *HELD* line both ask this, so the two cannot disagree: `review`, a
+    park the captain wrote at the decision ceiling, which only the reading lifts; `ceiling`, more decisions
+    unread than the ceiling allows, when *go* is not a reading; `uncounted`, the count could not be read."""
+    if park.fields.get("waiting") == REVIEW:
+        return "review"
+    return "uncounted" if over is None else "ceiling" if over else ""
 
 
 def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[Entry]:

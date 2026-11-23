@@ -14,7 +14,8 @@ which is offline from the second time on and says so plainly on a machine that h
 
 The screens are the design review's photographs, labelled by the same fold as the columns.
 """
-# budget: 577 — a paused slice as queued with the time it lifts, and the park its card answers, beside the fold,
+# budget: 599 — the action line a waiting slice's card carries, a paused slice as queued with the time it
+# lifts, and the park its card answers, beside the fold,
 # the model, the mock-ups and the screenshots one voyage is read from, and the
 # design files under `docs/design/` a storyboard links, served at the path they have in the project
 # and what a slice waiting on a person is held on: its park, its open questions, and where an answer goes
@@ -34,13 +35,17 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 
 from .assets import SLIPWAI
+from .block_actions import action
 from .drawn import app_look
 from .example_map_source import card_line
-from .fleet import Fairway, clearance_query, fairways, harbour_log
+from .fleet import Fairway, ceiling_of, clearance_query, fairways, harbour_log, park_row
 from .fleet_record import clock_of
-from .logs import held_slices, paused, run_dir
+from .harbour import config
+from .logs import about, fairway_parks, held_slices, paused, run_dir
+from .park_verdict import pending
 from .process_alive import alive
 from .slice_rungs import rung, slice_home, spans
+from .talk_placed import placed
 
 #: Where the board shows a slice: the four columns, in the order a person reads them.
 COLUMNS = ("todo", "queued", "working", "waiting", "done")
@@ -142,6 +147,21 @@ def held_on(owner: Fairway, slice_id: str) -> dict[str, str]:
             "park_of": park_of(owner, slice_id)}
 
 
+def acting(root: Path, owner: Fairway, slice_id: str, ceiling: int | None) -> dict[str, str]:
+    """What the card of a waiting slice says to do: the action line of the park holding it, as the board's own
+    row for that park has it (`block_actions`), with whether Approve and Reject may be offered — as JSON, a
+    card's fields being strings. Nothing where no open park holds the slice."""
+    mine = [e for e in owner.parks if about(e, slice_id)] or fairway_parks(owner.parks)
+    if not mine:
+        return {}
+    row = placed(root, [park_row(owner, mine[-1], False, ceiling=ceiling)])[0]
+    found = action(row)
+    if "verdict" in found:
+        found["pages"] = pending(root, str(found["verdict"])) if found["verdict"] else []
+        found["ready"] = bool(found["pages"])
+    return {"action": json.dumps(found)}
+
+
 def park_of(owner: Fairway, slice_id: str) -> str:
     """What an answer from this slice's card carries in its `of` — `park:<instant>` of the park it answers,
     as the same park's row under "From the streams" carries (`talk_placed.key_of`) — so the card's answer and
@@ -179,6 +199,7 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
     harbour = harbour_log(root)
     found, _ = fairways(root, harbour)
     named = titles(root, feature)
+    ceiling = ceiling_of(config(root))
     rows: list[dict[str, str]] = []
     for slice_id, entry in states.items():
         state = CLEARANCE.get(str(entry.get("state", "")), "todo")
@@ -206,6 +227,7 @@ def folded(root: Path, feature: str = "", now: datetime | None = None) -> tuple[
                                    f"carries it on when the time comes")
                 else:
                     row.update(held_on(owner, str(slice_id)))
+                    row.update(acting(root, owner, str(slice_id), ceiling))
             if row["state"] in ("working", "queued", "waiting"):
                 row.update(rung(root, home, str(slice_id), owner.entries, harbour))
         rows.append(row)

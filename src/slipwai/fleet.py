@@ -17,7 +17,8 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 664 — the clearance answers one read of the board shares, a `read` tied to its `told` by inbox id,
+# budget: 679 — each park's held answer and its action line, the clearance answers one read of the board
+# shares, a `read` tied to its `told` by inbox id,
 # and today's tokens; every column of the
 # board folded from the logs, an instant read in either shape it is written, including what waits on a person: a park,
 # a deck log nobody can read, a last-seen age said in the unit a person reads it in,
@@ -42,6 +43,7 @@ from pathlib import Path
 from typing import Any
 
 from . import spend
+from .block_actions import acted
 from .deck import recent, said
 from .demos import on_board
 from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name through this module
@@ -60,12 +62,15 @@ from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name
 from .logs import (
     Entry,
     Unreadable,
+    answer_held,
+    answers,
     cause_of,
     fairway_parks,
     fold,
     harbour_logs,
     held_slices,
     open_parks,
+    over_ceiling,
     paused,
     stream_lines,
     streams,
@@ -465,35 +470,45 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
         if one.unreviewed:
             # One row per stream, not one per decision: twenty decisions are one thing a person sits down
             # to read, and twenty rows would bury the park that is waiting behind them.
-            over = ceiling is not None and len(one.unreviewed) > ceiling
+            over = bool(over_ceiling(len(one.unreviewed), ceiling))
             waiting.append({"fairway": one.name, "kind": "decisions", "t": one.unreviewed[0].t,
                             "what": f"{len(one.unreviewed)} decision(s) nobody has read yet"
                                     + (f", over the ceiling of {ceiling}" if over else ""),
-                            "blocking": "yes" if over else "no",
+                            "blocking": "yes" if over else "no", "ceiling": ceiling,
                             "decisions": [{"t": e.t, "id": str(e.fields.get("id", "")),
                                            "what": str(e.fields.get("what", ""))} for e in one.unreviewed]})
         lifting = paused(one.parks)
-        for park in one.parks:
-            waited = minutes_since(park.t, now)
-            named = str(park.fields.get("slice") or "")
-            # The drawer under a park is that slice's own story. The fairway's tail with three slices
-            # running was every other slice's heartbeats, which drew a parked L04 as if it were going.
-            own = [e for e in one.entries if e.kind != "heartbeat"
-                   and (not named or str(e.fields.get("slice") or "") == named)]
-            # Waiting on you: the harbourmaster only writes the receipt once a person has answered — or,
-            # for a park that lifts by itself, once its time comes, which is `paused` and not a wait on you.
-            resting = park in lifting
-            waiting.append({"fairway": one.name, "kind": "parked", "what": str(park.fields["why"]),
-                            "t": park.t, "waited": f"{max(0.0, waited):.0f}m" if waited is not None else NOTHING,
-                            "slice": named, "lines": [(e.t, said(e)) for e in own[-DRAWER:]],
-                            "waiting_on": "the harness" if resting else "you",
-                            "overdue": "yes" if waited is not None and waited > bound and not resting else "no",
-                            # The record, where the park carries one: see `logs.OPTIONAL`.
-                            "cause": cause_of(park), "until": str(park.fields.get("until") or ""),
-                            "then": str(park.fields.get("then") or ""),
-                            "needs": need_rows(park, one.needs_met(park)),
-                            "paused": "yes" if resting else "no"})
+        waiting += [park_row(one, park, park in lifting, bound, now, ceiling) for park in one.parks]
     return sorted(waiting, key=lambda row: row["t"])
+
+
+def park_row(one: Fairway, park: Entry, resting: bool, bound: float = STALL_MINUTES, now: datetime | None = None,
+             ceiling: int | None = None) -> dict[str, Any]:
+    """One park as the board lists it, with whether a person's answer to it is held and the newest such answer.
+
+    *Held* is `logs.answer_held`, the rule the harbourmaster clears a park by, asked of this stream's unread
+    count against the ceiling the harbour runs to, so the board says HELD exactly where the answer would wait.
+    """
+    waited = minutes_since(park.t, now)
+    named = str(park.fields.get("slice") or "")
+    # The drawer under a park is that slice's own story. The fairway's tail with three slices
+    # running was every other slice's heartbeats, which drew a parked L04 as if it were going.
+    own = [e for e in one.entries if e.kind != "heartbeat" and (not named or str(e.fields.get("slice") or "") == named)]
+    answered = [e for e in one.entries if answers(e, park)]
+    unread = len(one.unreviewed)
+    # Waiting on you: the harbourmaster only writes the receipt once a person has answered — or,
+    # for a park that lifts by itself, once its time comes, which is `paused` and not a wait on you.
+    return {"fairway": one.name, "feature": one.feature, "kind": "parked", "what": str(park.fields["why"]),
+            "t": park.t, "waited": f"{max(0.0, waited):.0f}m" if waited is not None else NOTHING,
+            "slice": named, "lines": [(e.t, said(e)) for e in own[-DRAWER:]],
+            "waiting_on": "the harness" if resting else "you",
+            "overdue": "yes" if waited is not None and waited > bound and not resting else "no",
+            # The record, where the park carries one: see `logs.OPTIONAL`.
+            "cause": cause_of(park), "until": str(park.fields.get("until") or ""),
+            "then": str(park.fields.get("then") or ""), "waiting": str(park.fields.get("waiting") or ""),
+            "needs": need_rows(park, one.needs_met(park)), "paused": "yes" if resting else "no",
+            "held": answer_held(park, over_ceiling(unread, ceiling)), "unread": unread, "ceiling": ceiling,
+            "answered": {"text": str(answered[-1].fields.get("message", "")), "t": answered[-1].t} if answered else {}}
 
 
 def unreadable_rows(faults: dict[str, str]) -> list[dict[str, Any]]:
@@ -633,7 +648,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
     demos, accepted, due_in = on_board(root, [(one.name, one.entries) for one in found])
     # Each park and question with the slice it is about and any answer a person has placed: `talk_placed`.
-    waiting = placed(root, inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults))
+    waiting = acted(placed(root, inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)))
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same

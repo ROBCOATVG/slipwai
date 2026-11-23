@@ -60,6 +60,12 @@ why in the `refused` line: a conflict with its paths, a failed gate with what fa
 merge that would make a capability whole while its `gates.md` does not say `Cleared:`. Never discard the
 captain's work. A granted merge names the actual trunk commit, not a promise to merge later.
 
+**You are the careen's one writer.** A slice stows into its capability's `stowed.md` and never into
+`fairways/`. When a merge brings a `stowed.md` in, `harbourmaster.py` appends that record's new rows to
+`fairways/<fairway>/careen.md` under the capability's heading, in the scratch worktree and before the gate,
+so trunk moves once with both. It is a file operation, never a session, and a row already there is not
+added again.
+
 ## What you may not do
 
 **You do not choose what is merged.** A slice lands because its captain asked and the gate passed, in the

@@ -63,7 +63,7 @@ class CapabilityGatesTest(unittest.TestCase):
     def test_findings_above_the_bar_close_before_the_capability_is_accepted(self) -> None:
         rung = self.rungs()["Capability gates"]
         self.assertIn("fixed **before the capability is accepted**, in a follow-up slice in the same fairway", rung)
-        self.assertIn("stowed to the careen", rung)
+        self.assertIn("those below it are stowed, as rows in the capability's own `stowed.md`", rung)
         self.assertIn("an open `CRITICAL` is the next slice", rung)
 
     def test_every_mode_gates_the_last_slice_before_the_merge_that_makes_it_whole(self) -> None:
@@ -159,7 +159,8 @@ class ScopeTest(unittest.TestCase):
         self.assertIn("**The review is scoped to what the slice added or changed**", rung)
         self.assertIn("`git diff <merge-base>...HEAD`", rung)
         self.assertIn("every finding points at an added or changed line", rung)
-        self.assertIn("noted for the capability gates or stowed to the careen, and never fixed here", rung)
+        self.assertIn("noted for the capability gates or stowed in the capability's `stowed.md`, and never fixed here",
+                      rung)
         self.assertIn("only code the slice added or changed, never a neighbour", rung)
 
     def test_the_screen_design_rung_is_scoped_to_the_slice_s_screens(self) -> None:

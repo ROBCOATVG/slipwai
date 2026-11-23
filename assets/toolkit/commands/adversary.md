@@ -156,16 +156,19 @@ implementation under a new `implement` entry. This boundary is what lets the ben
 itself cost.
 
 Each finding carries a severity — `CRITICAL` (data of one actor reaches another, or an actor gains a role),
-`HIGH`, `MEDIUM`, `LOW` — and a state: `open`, `fixed` with the commit, `stowed` into the fairway's careen,
+`HIGH`, `MEDIUM`, `LOW` — and a state: `open`, `fixed` with the commit, `stowed` for the fairway's careen,
 or `deferred` with the person's name and their reason, in their words.
 
 **One round, and a bar.** The pass runs once per capability — and per slice only for the per-slice exception —
 not until it converges: in the experiment it ran 21 rounds and produced 129 findings, 64 of them LOW and most of those about wording, and slice S20 still ended
 with five open. A finding at or above the fairway's severity bar closes before the capability is accepted, in a follow-up slice in
 the same fairway — or, for the per-slice exception, before the slice's push. One below it is **stowed** — a row
-in `fairways/<name>/careen.md` naming the capability or the slice — and the work goes on. The careen is a
-hardening slice the fairway runs when its planned slices are done, and its demo is that the findings are
-closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is the
+in the capability's own record, `specs/<feature>/capabilities/<capability>/stowed.md`, in the careen's shape
+(`| Stowed | By slice | From | Severity | What it is | State |`, *From* `adversary`, *State* `open`), naming
+the capability or the slice — and the work goes on. Never a row in `fairways/`: the careen is every slice's
+of the stream, so no slice may write it, and the harbourmaster carries the record's rows into
+`fairways/<name>/careen.md` when the slice merges. The careen is a hardening slice the captain starts as the
+fairway's last once its planned slices are merged, and its demo is that the findings are closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is the
 harbour's to set and defaults to `MEDIUM`, because the experiment's LOWs were genuinely wording and its
 MEDIUMs genuinely were not.
 

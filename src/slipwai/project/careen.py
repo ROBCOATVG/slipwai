@@ -10,15 +10,20 @@ collect the debt — and a slice that inherits a gap pays for it without having 
 still ending on five open ones. Neither is a decision about whether the work matters.
 
 So version 2 gives it a named destination and a bar. A finding below the fairway's severity bar is
-**stowed**: written here with the slice that found it, and the slice merges. The careen is a slice of its
-own, in the same fairway, that each fairway runs when its planned slices are done, and its demo is that the
-findings are closed. Work is never dropped; it is moved somewhere a person can see the size of it.
+**stowed**: written into the capability's own record, `stowed.md`, with the slice that found it, and the
+slice merges. The harbourmaster carries those rows into the fairway's careen as the merge lands — one writer
+for the shared file, because every slice of a stream writing it was a conflict on every merge (issue 154).
+The careen is a slice of its own, in the same fairway, that the captain starts as the fairway's last once
+its planned slices are merged, and its demo is that the findings are closed. Work is never dropped; it is
+moved somewhere a person can see the size of it.
 
 **A CRITICAL is never stowed, and that is the whole of the exception.** Data of one actor reaching another,
 or an actor gaining a role, is not a thing to look at later. It is the next slice.
 
-The careen is not the demo and not the flag. It runs before the fairway's flag is hoisted, which is a
-release-readiness ordering, and it has nothing to do with the capability demos a person attends.
+The careen is not the demo and not the flag. It runs once the fairway's planned slices are merged, whatever
+the release state — a pre-launch product hoists no flag, so a careen that waited for one never ran — and so
+before any flag is hoisted, which is a release-readiness ordering. It has nothing to do with the capability
+demos a person attends.
 """
 from __future__ import annotations
 
@@ -57,20 +62,30 @@ def careen_path(fairway: str) -> str:
     return f"fairways/{fairway}/careen.md"
 
 
+#: The columns of a stowed row, the same in a capability's `stowed.md` as in the careen it is carried to.
+ROW_HEADER = "| Stowed | By slice | From | Severity | What it is | State |"
+
+
+def stowed_path(feature: str = "<feature>", capability: str = "<capability>") -> str:
+    """Where a slice stows: its capability's own record, which `check-slice-scope` already lets it write."""
+    return f"specs/{feature}/capabilities/{capability}/stowed.md"
+
+
 def careen_page(fairway: str) -> str:
-    """The file a fairway's stowed work is written into, as the first stage to stow creates it."""
+    """The file a fairway's stowed work is carried into, as the harbourmaster first writes it.
+
+    `scripts/agents/careen.py` writes it in a project, which has no slipwai to import, so the toolkit holds
+    the same text and the suite holds the two to one page."""
     return f"""# Careen — {fairway}
 
-What this fairway stowed, and what the careen slice closes before the flag is hoisted. One row per item,
-appended by the stage that stowed it, never rewritten by hand. A row leaves this file by being done.
-
-| Stowed | By slice | From | Severity | What it is | State |
-|---|---|---|---|---|---|
-| <date> | <slice-id> | adversary \\| mutation \\| gaps \\| review \\| budget | LOW | one line | open \\| done |
+What this fairway stowed, and what its careen slice closes. The harbourmaster writes this file: on every
+merge that brings a capability's `stowed.md` in, it appends that record's new rows under the capability's
+own heading. A slice never writes here; it stows into its capability's record, and the careen slice is the
+one that moves a row's state to `done`.
 
 **Nothing CRITICAL is ever on this list.** Data of one actor reaching another, or an actor gaining a role,
 is the next slice rather than something to look at later, and the stage that found it says so instead of
-writing a row here.
+writing a row.
 
 **A row is a decision, not a note.** *What it is* says what is wrong and what closing it would take, in one
 line a reader who was not there can act on. A row that only names a file is a row the careen slice has to
@@ -79,29 +94,38 @@ rediscover, which is the cost the stowing was supposed to avoid.
 
 
 def careen_command(layout: Layout = AT_ROOT) -> str:
-    """`/careen`: the hardening slice each fairway runs when its planned slices are done."""
+    """`/careen`: the hardening slice each fairway runs as its last, once its planned slices are merged."""
     return f"""---
-description: Run a fairway's careen — close everything its slices stowed, before the flag is hoisted
+description: Run a fairway's careen — close everything its slices stowed, as the fairway's last slice
 argument-hint: [fairway]
 ---
 
 # Careen
 
-One hardening slice per fairway, run when that fairway's planned slices are done and before its flag is
-hoisted. A careen, on a ship, is heeling it over on a beach to work on the hull — the part nobody can reach
-while it is sailing.
+One hardening slice per fairway, run as that fairway's last: once every planned slice of it is merged and
+its careen has a row still open, its captain starts it — whatever the release state, because a pre-launch
+product hoists no flag and a careen that waited for one would never run. Any flag is hoisted after it. A
+person can also start it by hand with `/careen <fairway>`. A careen, on a ship, is heeling it over on a
+beach to work on the hull — the part nobody can reach while it is sailing.
 
-Read `{careen_path('<fairway>')}`. Every row with state `open` is this slice's work.
+Read `{careen_path('<fairway>')}`. Every row with state `open` is this slice's work. The harbourmaster
+wrote those rows there, one section per capability, from each capability's `{stowed_path()}` as its
+slices merged; nothing else writes them.
 
 ## It is a slice, and it runs the ladder like one
 
-Claim it as `slice/<fairway>-careen`, map its examples from the rows, implement each through
-RED-GREEN-REFACTOR like any other work, and take it through review, adversary and the mutation gate. A
-hardening slice that skips the ladder is how hardening becomes a second quality standard.
+Claim it as `slice/<fairway>-careen` — under `/cruise` the captain has, and the session starts in that
+berth — map its examples from the rows, implement each through RED-GREEN-REFACTOR like any other work, and
+take it through review, adversary and the mutation gate. A hardening slice that skips the ladder is how
+hardening becomes a second quality standard.
 
-**Its demo is: the findings are closed.** Not "most of them", and not "the ones that still matter". A row
-somebody decides no longer matters is closed by saying that in the row, with the reason and who said it —
-which is a decision a reader can disagree with later, where a quietly dropped row is not.
+**Its demo is: the findings are closed.** Not "most of them", and not "the ones that still matter". Close a
+row by moving its state to `done` in `{careen_path('<fairway>')}` — the one file outside its own record this
+slice may write, and only its state cells. A row somebody decides no longer matters is closed by saying that
+in the row, with the reason and who said it — which is a decision a reader can disagree with later, where a
+quietly dropped row is not. When every row reads `done`, record the demo as
+`python3 scripts/agents/deck_line.py demo --slice <fairway>-careen --verdict accepted`, which is the gate the
+captain asks for the merge on.
 
 ## What it may not do
 

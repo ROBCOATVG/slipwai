@@ -61,8 +61,8 @@ and the slice that made it has already been accepted.
 
 So nothing is carried. A survivor is one of three things, said out loud and in this order: a behavioural
 gap, which is a test written now; an equivalent mutant, which is recorded as one with its reason; or a
-decision that this code does not warrant the test, which goes to the fairway's careen as a stowed row with
-the slice that stowed it. What is not available is a fourth answer where the number is noted and the slice
+decision that this code does not warrant the test, which is stowed as a row with the slice that stowed it in
+the capability's `stowed.md` — never in `fairways/`, which the harbourmaster carries it into at the merge. What is not available is a fourth answer where the number is noted and the slice
 merges anyway.
 
 A run that cannot happen at all — no tooling configured — is the setup decision above, reported as a stop

@@ -53,6 +53,10 @@ What a slice's change may contain — everything since the branch left `main`, c
   either way, and every stamp sorts after every number;
 - **the composition root** — one line per use case, the one code file every slice touches, resolved in
   split order at merge and allowed here for that reason;
+- **under a fairway's careen slice, `slice/<fairway>-careen`, that fairway's `fairways/<fairway>/careen.md`**,
+  whose rows it closes. Nothing else under `fairways/`, and no other slice anything there: a finding a stage
+  stows is a row in the capability's `stowed.md`, and the harbourmaster carries it into the careen at the
+  merge, because a file every slice of a stream wrote was a conflict on every merge (issue 154);
 - **its own dispatch ledger file**, `.slipwai/dispatch/<feature>/<id>.jsonl`, which `dispatch.py` writes into
   the slice's worktree so the evidence of the slice's start rides in the pull request that lands it. Its own
   only: another slice's file, and the run's `.slipwai/dispatch/<feature>.jsonl`, are the host's.
@@ -126,6 +130,9 @@ RUN_STATE = re.compile(r"^\.slipwai/run/.*$")
 #: Where the release flags are declared (`check-flags.py`), and the one shape a slice may add there: a key
 #: seeded `off`, with or without its comment. Blank lines and comments ride with it.
 FLAGS = "infra/service/flags.auto.tfvars"
+#: Every fairway's own files, which no slice writes, and what a fairway's careen slice is called: it alone
+#: may change `fairways/<fairway>/careen.md`, to close the rows the harbourmaster carried there.
+FAIRWAYS, CAREEN = "fairways/", "-careen"
 FLAG_SEEDED_OFF = re.compile(r'^\s*[A-Za-z_][A-Za-z0-9_-]*\s*=\s*"off"\s*(#.*)?$')
 
 
@@ -448,7 +455,22 @@ class Scope:
             )
         return None
 
+    def careen_violation(self, path: str) -> str | None:
+        """`fairways/` is every slice of a stream's, so no slice writes it — but a fairway's careen slice
+        closes the careen's rows, and the careen is the one file of it that slice may change."""
+        closes = self.slice_id[:-len(CAREEN)] if self.slice_id.endswith(CAREEN) else ""
+        if closes and path == f"{FAIRWAYS}{closes}/careen.md":
+            return None
+        return (
+            f"{path}: `fairways/` is shared by every slice of a stream, so it is the host's. A finding a stage "
+            f"stows is a row in the capability's own record, `specs/<feature>/capabilities/<capability>/"
+            f"stowed.md`, which the harbourmaster carries into `fairways/<fairway>/careen.md` when this slice "
+            f"merges."
+        )
+
     def violation(self, path: str, status: str) -> str | None:
+        if path.startswith(FAIRWAYS):
+            return self.careen_violation(path)
         if path == FLAGS:
             return self.flags_violation(path, status)
         if path.startswith(".slipwai/dispatch/"):

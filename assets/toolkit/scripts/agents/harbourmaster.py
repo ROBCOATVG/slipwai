@@ -98,6 +98,10 @@ try:  # the capability hold reads the chart through it; a harbour without it hol
     import capabilities  # noqa: E402
 except ImportError:  # pragma: no cover - a toolkit older than the capability hold
     capabilities = None  # type: ignore[assignment]
+try:  # the careen's one writer reads and writes its page through it; a toolkit without it carries nothing
+    import careen  # noqa: E402
+except ImportError:  # pragma: no cover - a toolkit older than the harbourmaster writing the careen
+    careen = None  # type: ignore[assignment]
 import claims  # noqa: E402
 import conflicts  # noqa: E402 — a conflict is settled where the rebase stopped, where it can be
 import inbox  # noqa: E402
@@ -746,7 +750,54 @@ def mender_settled(rebased: subprocess.CompletedProcess[str], branch: str,
     return rebased, why
 
 
-def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
+def careen_carried(where: Path, onto: str, fairway: str, branch: str) -> str:
+    """Carry the rows of every capability `stowed.md` this merge brings in into the fairway's careen, and commit
+    them on the rebased branch before the gate. Why that could not be done, or "" — also where there was
+    nothing to carry, which is most merges.
+
+    The careen is shared by every slice of a stream, so no slice may write it (`check-slice-scope`): each
+    stows into its capability's own record, and this is the one writer that carries the rows across — a
+    file operation, never a session, one merge at a time under the merge ref. On the rebased branch, so the
+    gate runs on what trunk will hold and trunk moves once. A row already in the careen is not added again,
+    so a record every slice of a capability carries adds only what is new, and a merge asked again after a
+    refusal adds nothing twice. The careen file is made where the fairway had none.
+    """
+    if careen is None or not fairway:
+        return ""
+    changed = git("diff", "--name-only", onto, "HEAD", where=where)
+    records = sorted(path for path in changed.stdout.splitlines() if careen.STOWED.match(path.strip()))
+    if not records:
+        return ""
+    target = where / careen.careen_path(fairway)
+    try:
+        text = target.read_text(encoding="utf-8") if target.is_file() else ""
+        added = 0
+        for path in records:
+            record = where / path
+            if not record.is_file():  # the merge deleted it: nothing to carry
+                continue
+            capability = careen.STOWED.match(path).group("capability")  # type: ignore[union-attr]
+            text, more = careen.appended(text, fairway, capability, careen.rows(record.read_text(encoding="utf-8")))
+            added += more
+        if not added:
+            return ""
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8", newline="")
+    except (OSError, UnicodeDecodeError) as fault:
+        return f"{careen.careen_path(fairway)} could not be written ({fault})"
+    if git("add", "--", careen.careen_path(fairway), where=where).returncode != 0:
+        return f"{careen.careen_path(fairway)} could not be staged"
+    made = git("commit", "--quiet", "--no-verify", "-m",
+               f"Carry {branch}'s stowed rows into the {fairway} careen\n\n"
+               f"{added} row(s) from {', '.join(records)}, appended by the harbourmaster, the careen's one writer.",
+               where=where)
+    if made.returncode != 0:
+        return f"the careen could not be committed ({(made.stderr or made.stdout).strip()})"
+    print(f"harbourmaster: {added} stowed row(s) carried into {careen.careen_path(fairway)}", flush=True)
+    return ""
+
+
+def land(branch: str, spent: dict[str, int], fairway: str = "") -> tuple[str, str, bool, str, bool]:
     """One fetch, rebase, gate and advance of this branch. `merge`'s answer, plus whether trunk moved.
 
     The last says the push lost a race to trunk and nothing else went wrong, which is the one outcome
@@ -768,6 +819,9 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
         if rebased.returncode == 0 and (fault := locks_regenerated()):
             return "", (f"{branch} and {onto} each changed a lock, and {fault}. Nothing is half-done; rebase in "
                         f"your own berth, write the lock again there, and ask again"), True, "", False
+        if rebased.returncode == 0 and (fault := careen_carried(SCRATCH, onto, fairway, branch)):
+            return "", (f"{branch} stowed rows the careen could not be given: {fault}. Nothing is half-done and "
+                        f"trunk was not moved; a person looks at the careen"), False, "", False
         if rebased.returncode != 0:
             paths = conflicting()
             git("rebase", "--abort", where=SCRATCH)
@@ -805,7 +859,7 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
         git("worktree", "remove", "--force", str(SCRATCH))
 
 
-def merge(slice_id: str, spent: dict[str, int] | None = None) -> tuple[str, str, bool, str]:
+def merge(slice_id: str, spent: dict[str, int] | None = None, fairway: str = "") -> tuple[str, str, bool, str]:
     """Rebase this slice onto trunk, gate it there, and advance trunk.
 
     `(commit, "", False, note)` where it landed — the note saying what was done to the person's checkout to
@@ -827,11 +881,13 @@ def merge(slice_id: str, spent: dict[str, int] | None = None) -> tuple[str, str,
     `refs/slipwai/merge` and `gate_s` running the gate. They are what says whether integration is slow
     because the harbour queues or because the gate is long, which nothing could answer from the logs before.
     """
-    return merge_branch(BRANCH.format(slice=slice_id), spent)
+    return merge_branch(BRANCH.format(slice=slice_id), spent, fairway)
 
 
-def merge_branch(branch: str, spent: dict[str, int] | None = None) -> tuple[str, str, bool, str]:
-    """`merge`, for any branch: a slice's, or the trunk mender's."""
+def merge_branch(branch: str, spent: dict[str, int] | None = None,
+                 fairway: str = "") -> tuple[str, str, bool, str]:
+    """`merge`, for any branch: a slice's, or the trunk mender's. `fairway` is whose careen what the branch
+    stowed is carried into; the mender's names none, and stows nothing."""
     spent = {} if spent is None else spent
     if git("rev-parse", "--verify", "--quiet", branch).returncode != 0:
         return "", f"there is no branch {branch} to merge", False, ""
@@ -850,7 +906,7 @@ def merge_branch(branch: str, spent: dict[str, int] | None = None) -> tuple[str,
         return "", why, False, ""
     try:
         for race in range(PUSH_RACES + 1):
-            commit, fault, resolvable, note, raced = land(branch, spent)
+            commit, fault, resolvable, note, raced = land(branch, spent, fairway)
             if not raced:
                 return commit, fault, resolvable, note
             print(f"harbourmaster: trunk moved on the forge while {branch} was gated "
@@ -1208,7 +1264,7 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
         # `resolve` true: the gates are the berth's to run, on this branch, before the merge that makes it whole.
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request, why=owed,
                            resolve=True, slice=slice_id, **spent)]
-    commit, fault, resolvable, note = merge(slice_id, spent)
+    commit, fault, resolvable, note = merge(slice_id, spent, fairway)
     if fault:
         # `resolve` says whether going back into the berth could change the answer. A captain reads it to
         # decide between another turn and a park, which is the difference between a conflict it can fix and

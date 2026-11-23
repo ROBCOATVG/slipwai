@@ -58,6 +58,8 @@ SLOW += test_scaffold_starts_green
 SLOW += test_run_folder test_migration_manifest test_extension_projection
 SLOW += test_harbourmaster_stop
 SLOW += test_example_map_source
+# A merge in a real repository, the scope gate on a real branch and the captain run per case: the careen's feed.
+SLOW += test_careen_carried
 # The captain as an agent: a captain run per case, and the six captain suites run twice over.
 SLOW += test_captain_agent test_captain_agent_parity test_captain_heard
 # A captain run with the stand-in agent, sat out to a stage's silence bound.

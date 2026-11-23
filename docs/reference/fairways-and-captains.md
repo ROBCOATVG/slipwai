@@ -160,8 +160,11 @@ the deck log's `question` path, to the skipper or a person as the project's *Who
 `decision` by `captain:<fairway>`, counted toward the decision ceiling.
 
 **Settings.** `harbour.json`'s `captain`: `agent` (true in a new project; absent or false is the program
-alone, and migrating never sets it), `bound` (60 seconds), `answers` (false) and `per_hour` (30, the most
-times the agent is woken in an hour). `SLIPWAI_CAPTAIN` in the environment says first: `off`, `1` for the
+alone, and migrating never sets it), `bound` (60 seconds), `answers` (false), `per_hour` (30, the most
+times the agent is woken in an hour), `context_ceiling` (150000, the tokens of context past which the captain's
+session is closed at the next event and a fresh one started) and `wake_ceiling` (100, the wake-ups one session
+answers where the agent never reports its context). A captain program never loads the session a run before it
+saved: each wake-up hands the agent the stream's state, so its history is worth nothing. `SLIPWAI_CAPTAIN` in the environment says first: `off`, `1` for the
 project's own harness, or a command that starts an agent speaking the protocol.
 
 **Where the checks stop.** Every check here is against the captain agent and the slices' sessions acting

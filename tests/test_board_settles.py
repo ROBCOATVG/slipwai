@@ -19,6 +19,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai import fleet, logs
 from slipwai.deck import dismiss, tick_need
+from slipwai.fleet_page import headline
 from slipwai.on_you import parked, settling
 from slipwai.project.harbour import harbour_config
 
@@ -85,6 +86,7 @@ class SettleTest(unittest.TestCase):
         [row] = [row for row in found["inbox"] if row["kind"] == "told"]
         self.assertEqual((row["probably"], row["action"]["kind"]), ("yes", "probably"))
         self.assertEqual(parked(found, []), [], "not something only a person can move the work on by")
+        self.assertEqual(headline(found)[2], "Nothing is waiting on you.", "the headline counts what the list does")
         self.assertEqual(settling(found), [{"n": 1, "href": "#probably",
                                             "text": "1 hand-back of merged slices probably done: confirm"}])
         tick_need(self.root, "intake", "2026-11-20T09:00:00Z", 0)

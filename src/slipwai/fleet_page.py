@@ -22,12 +22,13 @@ from .block_card import STYLE as ACTION_STYLE
 from .block_card import action_html
 from .fleet import instant
 from .fleet_record import NOTHING, clock_of
+from .inbox_rows import holds_up
 from .page_shell import esc
 from .talk_marks import SCRIPT as MARKS_SCRIPT
 from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
-# budget: 420 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# budget: 423 — the headline over every state a fleet can be in, a build merged whole and one merged but
 # ungated among them, and a group already answered showing what was said and where it stands, and what
 # to do about each group, with every park's held answer, and apart from them the probably-done and obsolete
 
@@ -174,10 +175,11 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
     inbox = found.get("inbox") or []
     berths = found.get("berths") or []
     running, paused = int(counts.get("running") or 0), int(counts.get("paused") or 0)
-    on_you = [g for g in groups if g.get("paused") != "yes"]
+    # A merged slice's hand-back to confirm and an obsolete park are listed, not counted: one count, one meaning.
+    on_you = [g for g in groups if g.get("paused") != "yes" and not g.get("probably") and not g.get("obsolete")]
     # A note a slice left holds nothing up and is not a wait: it is listed to be read, and not counted here.
-    on_you += [row for row in inbox if row.get("kind") in LISTED and row.get("grouped") != "yes"
-               and row.get("kind") != "told"]
+    # The rows the terminal's *waiting on you* holds (`inbox_rows.holds_up`) that no group stands for.
+    on_you += [row for row in inbox if row.get("kind") in ("question", "unreadable", "decisions") and holds_up(row)]
     limit = next((g for g in groups if g.get("cause") == "limit"), None)
     slots = counts.get("slots")
     stalled = [row["fairway"] for row in berths if row.get("state") == "stalled"]
@@ -217,7 +219,7 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
                 f"{plural(len(on_you), 'thing')} left for you below; none of them holds a slice." if on_you
                 else "Nothing is waiting on you.")
     if on_you:
-        held = sum(len(g.get("slices") or []) for g in groups if g.get("paused") != "yes")
+        held = sum(len(g.get("slices") or []) for g in on_you if g.get("kind") == "group")
         said = (f"Stopped. {plural(held, 'slice')} wait on you for {plural(len(on_you), 'thing')}." if held
                 else f"Stopped. {plural(len(on_you), 'thing')} waiting on you.")
         under = (f"{plural(paused, 'slice')} more are paused until {lifts}." if paused and lifts else

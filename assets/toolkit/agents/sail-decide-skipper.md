@@ -48,7 +48,8 @@ be told apart from it.
 You write nothing. Return the whole entry, in the shape `{{decisions}}` shows, under the number the brief gave
 it — `D<n>` is allocated by the session that delegated you, before dispatch, so that several of you deciding
 at once cannot come back with the same one — with `Decided by:` naming this type and the model you ran on.
-That session appends it to `{{decisions}}` in number order, writes the decision into the artifact the stage
+That session writes it as its own file, `specs/<feature>/decisions/D<n>.md`, which `{{decisions}}` is rendered
+from, writes the decision into the artifact the stage
 owns — the plan, the map, the model, the flag file — and re-derives the entry stage from it. Number nothing
 else: a requirement, a criterion or an example your decision adds is that session's to number after you
 return, in dispatch order, because you cannot see what your siblings are adding.

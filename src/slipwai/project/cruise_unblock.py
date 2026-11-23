@@ -43,7 +43,8 @@ with what was tried in its brief. Its standing brief carries the moves, in order
 port the missing thing sits behind, recorded as a deliberate stub in `plan.md` so the board shows it under
 *Not working yet*; narrow the reading so every MUST holds and defer the rest behind the flag, with the
 amendment a person may want as an ADR at `Proposed`; repair the run. Every move is an entry in
-`{DECISIONS}` with `Decided by: {BOSUN}`, its *Would reverse if* naming what a person must eventually
+`{DECISIONS}`, written as its own `decisions/D<n>.md` beside it,
+with `Decided by: {BOSUN}`, its *Would reverse if* naming what a person must eventually
 supply, and a task in the next slice to remove the stub when they do — so nothing done to get moving is done
 silently, and a person reading the log sees every workaround in one place. `unblock: park` turns this off
 and parks at once.

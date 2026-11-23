@@ -81,20 +81,24 @@ def checkouts(root: Path) -> list[Path]:
 
 
 def written(root: Path) -> dict[tuple[str, str], dict[str, str]]:
-    """Every `decisions.md` entry in any checkout, by its feature and its number. Trunk's copy wins where both
-    have one; a berth adds the ones its slice has taken since it branched.
+    """Every decision in any checkout — its record under `specs/<feature>/decisions/`, or its `decisions.md`
+    entry — by its feature and its number. Trunk's copy wins where both have one; a berth adds the ones its
+    slice has taken since it branched.
 
     By feature as well as number: two features that each counted from one have a D3 each, and keyed by the
     number alone the first feature's hid the second's — it was on no card, and nobody could read it."""
     found: dict[tuple[str, str], dict[str, str]] = {}
     for place in checkouts(root):
-        for path in sorted(place.glob("specs/*/decisions.md")):
+        # Each decision's own record first, then the log rendered from them: a record written or overturned
+        # since the last `make decisions` is the newer of the two, and a log from before the records has none.
+        for path, feature in [*((one, one.parent.parent.name) for one in sorted(place.glob("specs/*/decisions/*.md"))),
+                              *((one, one.parent.name) for one in sorted(place.glob("specs/*/decisions.md")))]:
             try:
                 text = path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
                 continue
             for number, parts in parse(text).items():
-                found.setdefault((path.parent.name, number), {**parts, FROM: path.parent.name})
+                found.setdefault((feature, number), {**parts, FROM: feature})
     return found
 
 

@@ -70,8 +70,9 @@ row on the board waiting for somebody; `{CONFIG}` says what a run may decide for
 
 ## What the record looks like
 
-Every decision a run takes is appended to `{DECISIONS}`, one entry in this shape, and the artifact the stage
-owns is written in the same step. The session running `/cruise` allocates the number before a delegate
+Every decision a run takes is an entry of `{DECISIONS}` in this shape, written as its own file beside it —
+`decisions/D<n>.md`, which `make decisions` renders the log from — and the artifact the stage owns is written
+in the same step. The session running `/cruise` allocates the number before a delegate
 decides, so two decided at once never share one:
 
 ```markdown
@@ -87,8 +88,9 @@ evidence beside it:
 
 `make check-decisions` holds both files to those shapes — and every finished slice to a row in
 `adversary-log.md` — and refuses an entry whose `Written to` or
-`Evidence` path is not in the tree. Overrule a decision by changing its `Status` and writing the answer you
-want into the artifact it names; the next iteration re-enters the ladder from that artifact. A decision that
+`Evidence` path is not in the tree. Overrule a decision by changing its `Status` — in the decision's own
+file, since the log is rendered from it — and writing the answer you want into the artifact it names; the next
+iteration re-enters the ladder from that artifact. A decision that
 would cost a migration to reverse is also written as an ADR at `Proposed` under `docs/adr/`, named in the
 entry's `Written to`; accepting it is yours, and the run never does it.
 """

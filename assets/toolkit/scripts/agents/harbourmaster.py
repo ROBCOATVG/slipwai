@@ -605,13 +605,16 @@ APPEND_STOPS = 500
 
 def record_woven(path: str) -> bool:
     """Resolve one conflicted record file in the scratch worktree — a feature's decisions, adversary log or
-    benchmark overview — with trunk's changes and the replayed commit's both (`conflicts.woven`). False
-    where it is not such a file, or the two changed the same lines."""
+    benchmark overview — with trunk's changes and the replayed commit's both: rendered again from the
+    feature's one-file-per-entry records where it keeps them (`conflicts.rendered`), else woven
+    (`conflicts.woven`). False where it is not such a file, or the two changed the same lines."""
     if not conflicts.RECORDS.match(path):
         return False
     before, onto, commit = (git("show", f":{stage}:{path}", where=SCRATCH) for stage in (1, 2, 3))
     if any(one.returncode != 0 for one in (before, onto, commit)):
         return False
+    if conflicts.rendered(SCRATCH, path, onto.stdout, commit.stdout):
+        return True
     held = conflicts.woven(before.stdout, onto.stdout, commit.stdout)
     if held is None:
         return False

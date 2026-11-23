@@ -104,6 +104,13 @@ class OwnedPathsTest(unittest.TestCase):
         """`commands/sail.md` rung 12 has a slice write it, and the gate refused PE-01 for doing so."""
         self.assertIsNone(self.scope("ORD-01").violation("specs/ordering/people/priya.json", "A"))
 
+    def test_a_slice_s_decision_and_adversary_records_and_the_logs_rendered_from_them_are_its_to_write(self) -> None:
+        """One file per decision and per slice's rows is what keeps seven slices abreast off one file."""
+        scope = self.scope("ORD-01")
+        for path in ("specs/ordering/decisions/D470.md", "specs/ordering/adversary-log/ORD-01.md",
+                     "specs/ordering/decisions.md", "specs/ordering/adversary-log.md"):
+            self.assertIsNone(scope.violation(path, "A"), path)
+
     def test_the_chart_is_a_slice_s_to_re_render_where_the_model_renders_it(self) -> None:
         """`check-chart` holds it to the model on the event profile, as `check-drawio` holds the canvas, so
         DS-03 was refused by one gate or the other whatever it did."""

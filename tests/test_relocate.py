@@ -13,6 +13,7 @@ from pathlib import Path
 
 import checkout_packages  # noqa: F401
 
+from slipwai.assets import TOOLKIT_ROOT
 from slipwai.migrate import commit_says, refresh
 from slipwai.relocate import relocate
 
@@ -75,6 +76,30 @@ class RelocateTest(unittest.TestCase):
         self.assertIn("Move warbook's records", self.git("log", "-1", "--format=%s"))
         self.assertEqual(self.git("status", "--porcelain"), "")
         self.assertIn("moved specs/001-path/dispatch-ledger.jsonl", commit_says(done, merge=True))
+
+    def test_migrates_refresh_splits_a_decisions_log_into_one_file_per_entry(self) -> None:
+        """Every slice appended to the one file and its merges dropped lines; the project's own renderer, as the
+        merge brought it, splits the log into records and renders it again, in the same commit as any move."""
+        self.write("scripts/render-fairways.py",
+                   (TOOLKIT_ROOT / "scripts/render-fairways.py").read_text(encoding="utf-8"))
+        self.write("project.json", "{}\n")
+        self.write("specs/001-path/slices/README.md", "| Slice |\n")
+        entries = "".join(f"## D{n} — question {n}\n- **When:** 2026-11-2{n}T00:00:00Z\n- **Status:** standing\n\n"
+                          for n in (1, 2))
+        self.write("specs/001-path/decisions.md", "# Decisions\n\n" + entries)
+        self.commit()
+        self.git("config", "user.name", "t")
+        self.git("config", "user.email", "t@local")
+        done = refresh(self.root, "warbook")
+        self.assertIsNone(done.refused)
+        self.assertEqual(done.relocated,
+                         ("specs/001-path/decisions.md -> specs/001-path/decisions/ (2 entries)",))
+        self.assertEqual([path for path in done.changed if path.startswith("specs/")], [],
+                         "a split is not a projection")
+        self.assertEqual(self.git("status", "--porcelain"), "")
+        self.assertEqual(self.git("show", "HEAD:specs/001-path/decisions/D2.md"),
+                         "## D2 — question 2\n- **When:** 2026-11-22T00:00:00Z\n- **Status:** standing\n")
+        self.assertEqual(self.git("show", "HEAD:specs/001-path/decisions.md").count("- **Status:** standing"), 2)
 
     def test_an_untracked_or_unmatched_file_is_left_alone(self) -> None:
         self.write("specs/001-path/notes/dispatch-ledger.jsonl", "{}\n")

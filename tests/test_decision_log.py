@@ -121,6 +121,18 @@ class LogTest(unittest.TestCase):
         book.write_text(BOOK + "\n## D9 — New in the berth?\n- **Decision:** yes.\n", encoding="utf-8")
         self.assertIn("D9", {one.number for one in decisions(self.root)})
 
+    def test_a_decision_s_own_record_is_read_before_the_log_is_rendered_from_it(self) -> None:
+        """A slice writes each decision as its own file and renders the log at its gate; the board reads the
+        record meanwhile, and a record overturned since the last render is the newer of the two."""
+        records = self.root / "specs/ordering/decisions"
+        records.mkdir()
+        (records / "D9.md").write_text("## D9 — Only a record so far?\n- **Decision:** yes.\n", encoding="utf-8")
+        (records / "D7.md").write_text("## D7 — Does a settlement keep its answer?\n- **Decision:** (b) now.\n",
+                                       encoding="utf-8")
+        found = {one.number: one for one in decisions(self.root)}
+        self.assertEqual(found["D9"].title, "Only a record so far?")
+        self.assertEqual(found["D7"].decision, "(b) now.")
+
     def test_the_card_offers_each_unread_decision_its_receipt(self) -> None:
         html, _ = tab(self.root, lambda name, drawn: drawn)
         self.assertEqual(html.count("data-decision-read="), 2)

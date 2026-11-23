@@ -28,7 +28,8 @@ a backing service, and `skills/finding-seams` is where one goes when the code ha
 and a gate that loops is diagnosed by `skills/debugging`, or `skills/ci-debugging` where it is the workflow
 that fails, before anything is changed.
 
-Every move is an entry in `{{decisions}}` with `Decided by: {{bosun}}`, its *Would reverse if* naming what a
+Every move is an entry in `{{decisions}}` — its own file, `specs/<feature>/decisions/D<n>.md`, with the log
+rendered by `make decisions` — with `Decided by: {{bosun}}`, its *Would reverse if* naming what a
 person must eventually supply, and a task in the next slice to remove the stub when they do. Commit on the
 slice branch as increments, green, and say in the message that it is a workaround.
 

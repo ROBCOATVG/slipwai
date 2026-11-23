@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import unittest
 
@@ -76,6 +77,20 @@ class WovenTest(unittest.TestCase):
         self.assertEqual(self.woven("a", "a\nT", "a\nS\n"), "a\nT\nS\n")
 
 
+def decision(number: int, when: str) -> str:
+    """One decision as the record's shape ends it: every entry's last line is the same `Status`."""
+    return (f"## D{number} — question {number}\n- **Stage:** plan · **Slice:** S{number} · **When:** {when}\n"
+            f"- **Decision:** answer {number}\n- **Status:** standing\n")
+
+
+class KeptTest(unittest.TestCase):
+    def test_trunk_s_entries_then_the_commit_s_it_has_not_got(self) -> None:
+        kept = conflicts().kept
+        onto, commit = decision(1, "a") + "\n" + decision(2, "b"), decision(1, "a") + "\n" + decision(3, "c")
+        self.assertEqual(kept(onto, commit), onto + "\n" + decision(3, "c"))
+        self.assertEqual(kept(onto, onto), onto)
+
+
 @unittest.skipIf(os.name == "nt", "the scenario is the same on every platform, and the fake is started by path")
 class ConflictAtTheMergeTest(MergeFixture):
     def diverge(self, path: str = "service.txt") -> None:
@@ -116,6 +131,57 @@ class ConflictAtTheMergeTest(MergeFixture):
         self.assertEqual(self.git("show", f"main:{path}").stdout,
                          "# Log\n\n## S1\nstatus: closed\n\n## S2\ntrunk's\n\n## S3\nmine\n")
         self.assertEqual(self.lines("mend"), [], "nothing was the mender's")
+
+    def records(self, *numbers: int, appended: tuple[int, ...] = ()) -> None:
+        """Each decision as its own record, the log rendered from them, and any `appended` written straight
+        onto the end of the log, as a page older than the records did."""
+        for number in numbers:
+            (self.root / f"specs/ordering/decisions/D{number}.md").write_text(
+                decision(number, f"2026-11-2{number}T00:00:00Z"), encoding="utf-8")
+        done = subprocess.run([sys.executable, "-B", str(self.root / "scripts/render-fairways.py"), "--split"],
+                              cwd=self.root, capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        log = self.root / "specs/ordering/decisions.md"
+        for number in appended:
+            log.write_text(log.read_text(encoding="utf-8") + "\n" + decision(number, f"2026-11-2{number}T00:00:00Z"),
+                           encoding="utf-8")
+
+    def rendered_log_diverged(self, appended: tuple[int, ...] = ()) -> None:
+        """Trunk and a slice each decided once more since the slice left trunk, both ending `standing`."""
+        (self.root / "scripts/render-fairways.py").write_text(
+            (AGENTS.parent / "render-fairways.py").read_text(encoding="utf-8"), encoding="utf-8")
+        (self.root / "specs/ordering/slices").mkdir(parents=True)
+        (self.root / "specs/ordering/decisions").mkdir()
+        self.git("checkout", "--quiet", "main")
+        self.records(1)
+        self.commit("D1")
+        self.git("checkout", "--quiet", "-b", "slice/ORD-01", "main")
+        self.records(*(() if appended else (3,)), appended=appended)
+        self.commit("ORD-01 decides D3")
+        self.git("checkout", "--quiet", "main")
+        self.records(2)
+        self.commit("trunk decided D2 meanwhile")
+        self.git("checkout", "--quiet", "-b", "parked-elsewhere", "slice/ORD-01")
+        self.ask("ORD-01")
+
+    def test_a_rendered_log_two_slices_decided_in_is_rendered_again_with_every_status_line(self) -> None:
+        """manda restored a dropped `- **Status:** standing` by hand six times after a union of two endings."""
+        self.rendered_log_diverged()
+        done = self.run_once()
+        self.assertEqual(self.answer().kind, "granted", done.stderr)
+        log = self.git("show", "main:specs/ordering/decisions.md").stdout
+        for number in (1, 2, 3):
+            self.assertIn(decision(number, f"2026-11-2{number}T00:00:00Z"), log)
+        self.assertEqual(log.count("- **Status:** standing"), 3)
+        self.assertEqual(self.lines("mend"), [], "nothing was the mender's")
+
+    def test_an_entry_an_older_page_appended_to_the_log_is_kept_as_a_record(self) -> None:
+        self.rendered_log_diverged(appended=(3,))
+        done = self.run_once()
+        self.assertEqual(self.answer().kind, "granted", done.stderr)
+        self.assertEqual(self.git("show", "main:specs/ordering/decisions/D3.md").stdout,
+                         decision(3, "2026-11-23T00:00:00Z"))
+        self.assertIn("## D3 —", self.git("show", "main:specs/ordering/decisions.md").stdout)
 
     def test_a_conflict_in_code_is_the_mender_s_first_and_the_gate_runs_on_what_it_left(self) -> None:
         self.mender("both")

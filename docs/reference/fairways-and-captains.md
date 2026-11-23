@@ -278,14 +278,17 @@ the order of the asking.
 Every id carries its fairway, for example `D-ORD-07` and `A-BIL-03`. So two fairways cannot mint the same
 id, and nothing is ever renumbered.
 
-Every append-only artefact is kept for each fairway separately: `fairways/<name>/decisions.md`, the
-adversary log, the benchmark records, the register, and the deck log. The harbourmaster renders the
-feature-level files from them on `main`. Nobody edits the feature-level files by hand:
+Every append-only artefact is kept for each fairway separately: the benchmark records, the register, and the
+deck log. A decision and a slice's adversary rows go further, one file per entry —
+`specs/<feature>/decisions/D-ORD-07.md` and `specs/<feature>/adversary-log/<slice>.md` — so the slices one
+fairway runs abreast never write one file either. `decisions.md` and `adversary-log.md` are rendered from those files, together with any
+`fairways/<name>/decisions.md` an older project still has. Nobody edits the rendered files by hand, and a
+conflict in one is answered by rendering it again — which the harbourmaster does itself at a merge:
 
 ```
 python3 scripts/agents/ids.py decision ORD     # the next decision id in that fairway: D-ORD-01, D-ORD-02, …
-make decisions                                 # fold every fairway's files into the feature-level ones
-make check-rendered                            # fail when a folded file is not what it renders from
+make decisions                                 # render the two logs from their records
+make check-rendered                            # fail when a rendered log is not what its records render to
 ```
 
 Ids use two digits. So a fairway's ids sort correctly as text while the fairway has fewer than a hundred.

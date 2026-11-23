@@ -133,6 +133,17 @@ class ReserveTest(unittest.TestCase):
     def test_a_number_on_a_sibling_s_branch_is_never_handed_out_again(self) -> None:
         self.assertEqual(self.ids.reserve(2, "L06"), ["D31", "D32"])
 
+    def test_a_number_in_a_sibling_s_decision_record_is_never_handed_out_again(self) -> None:
+        """A decision is its own file now, and a sibling's branch may hold its record and no log entry yet."""
+        git = ["git", "-c", "user.email=t@t", "-c", "user.name=t"]
+        subprocess.run(["git", "checkout", "-qb", "slice/L04", "main"], cwd=self.tree, check=True)
+        (self.tree / "specs/001-x/decisions").mkdir()
+        (self.tree / "specs/001-x/decisions/D40.md").write_text("## D40 — f\n", encoding="utf-8")
+        subprocess.run([*git, "add", "-A"], cwd=self.tree, check=True)
+        subprocess.run([*git, "commit", "-qm", "L04 decides"], cwd=self.tree, check=True)
+        subprocess.run(["git", "checkout", "-q", "main"], cwd=self.tree, check=True)
+        self.assertEqual(self.ids.reserve(1, "L06"), ["D41"])
+
     def test_two_reservations_never_share_a_number(self) -> None:
         first, second = self.ids.reserve(3, "L06"), self.ids.reserve(1, "L03")
         self.assertEqual(first + second, ["D31", "D32", "D33", "D34"])

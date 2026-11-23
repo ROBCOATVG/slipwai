@@ -69,8 +69,10 @@ where the table is silent, the ladder's own rule stands.
 ## Deciding: the skipper protocol
 
 A product question is decided, never deferred, and every decision is written twice — into the artifact the
-stage owns, and as the next entry of `{{decisions}}`, which is the only place a person can read every decision
-this run took. Read the standing entries before any decision, so a hundred answers stay consistent with each
+stage owns, and as an entry of `{{decisions}}`, which is the only place a person can read every decision
+this run took. The entry is its own file, `specs/<feature>/decisions/D<n>.md`, and `{{make}} decisions` renders
+`{{decisions}}` from those files: never append to the log itself, because seven slices abreast appending to one
+file merged as unions that dropped the lines two entries share, a `Status` line first. Read the standing entries before any decision, so a hundred answers stay consistent with each
 other — and read **what this project already does**, which is an authority the other three are not: a
 generated project ten slices in, and an adopted repository on its first day, both hold conventions no
 document of this method names. How this codebase already publishes, already links one handler to the next,
@@ -87,7 +89,8 @@ allocated here, before dispatch, by `python3 scripts/agents/ids.py reserve decis
 delegate, in dispatch order where several go out at once — and never by reading the last entry in
 `{{decisions}}`: a sibling slice worked abreast is reading the same last entry, and two slices that both took
 the next one came back with the same numbers. A reserved number left unused is a gap, which the gate allows. The delegate returns the whole entry under that number and writes
-nothing; this session appends it, in number order, and writes the decision into the artifact the stage owns.
+nothing; this session writes it as `decisions/D<n>.md`, runs `{{make}} decisions`, and writes the decision into
+the artifact the stage owns.
 Under `decide: skipper-always`, every question goes to the delegate. Several open questions in one turn are
 several concurrent delegates, each with its own number; a slice delegate that handed one back does not wait
 on the others. Every other identifier a decision adds to a shared artifact — a requirement, a criterion, an
@@ -109,7 +112,7 @@ reading the rest:
 A decision that would break a constitution MUST is not available; the skipper says so and the question parks.
 A fact nobody here has — a credential, a third party's behaviour, an approval — is `unavailable`, and the
 skipper's brief says which those are: it is never decided, whatever `decide` says. A person overrides a
-decision by editing its `Status` and writing the answer they want into the artifact; the next dispatch
+decision by editing its `Status` in its own file and writing the answer they want into the artifact; the next dispatch
 re-derives the entry stage from that artifact, the way demo feedback re-enters the ladder.
 
 {{adr-rule}}

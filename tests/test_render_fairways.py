@@ -123,6 +123,89 @@ class CheckTest(Fixture):
         self.assertEqual(self.module.main(["--check"]), 0)
 
 
+class RecordsTest(Fixture):
+    """One file per entry, which is what stops seven slices of one fairway meeting on one file.
+
+    A fairway's own copy kept two fairways apart and did nothing for the slices one fairway runs abreast:
+    manda's merges of `decisions.md` were unions of two endings, and a union drops the lines two endings
+    share — a record's `- **Status:** standing`, six times, each refused by `check-decisions` at the next merge.
+    """
+
+    def record(self, id_: str, when: str, question: str = "q") -> Path:
+        path = self.tree / f"specs/ordering/decisions/{id_}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(entry(id_, when, question), encoding="utf-8")
+        return path
+
+    def test_each_record_is_an_entry_of_the_rendered_log_in_the_order_of_its_instant(self) -> None:
+        self.record("D2", "2026-10-07T11:00:00Z", "second")
+        self.record("D1", "2026-10-07T09:00:00Z", "first")
+        folded = self.folded()
+        self.assertLess(folded.index("## D1 —"), folded.index("## D2 —"))
+        self.assertEqual(self.module.main(["--check"]), 0)
+
+    def test_records_of_one_instant_read_in_their_numbers_order(self) -> None:
+        """A plain sort of names puts D10 before D9."""
+        for number in (10, 9, 100):
+            self.record(f"D{number}", "2026-10-07T00:00:00Z")
+        folded = self.folded()
+        self.assertLess(folded.index("## D9 —"), folded.index("## D10 —"))
+        self.assertLess(folded.index("## D10 —"), folded.index("## D100 —"))
+
+    def test_a_fairway_copy_and_the_records_fold_into_one_log(self) -> None:
+        self.write("ordering", entry("D-ORD-01", "2026-10-07T09:00:00Z", "from the copy"))
+        self.record("D-ORD-02", "2026-10-07T10:00:00Z", "from a record")
+        folded = self.folded()
+        self.assertLess(folded.index("D-ORD-01"), folded.index("D-ORD-02"))
+
+    def test_a_log_written_before_the_records_is_split_into_them_and_loses_nothing(self) -> None:
+        """What `slipwai migrate` does to an existing project, through `--split`."""
+        log = self.tree / "specs/ordering/decisions.md"
+        written = ("# Decisions\n\n" + entry("D1", "2026-10-07T09:00:00Z", "first") + "- **Status:** standing\n\n"
+                   + entry("D2", "2026-10-07T10:00:00Z", "second") + "- **Status:** standing\n")
+        log.write_text(written, encoding="utf-8")
+        self.assertEqual(self.module.main(["--split"]), 0)
+        self.assertEqual(sorted(path.name for path in (self.tree / "specs/ordering/decisions").iterdir()),
+                         ["D1.md", "D2.md"])
+        self.assertEqual((self.tree / "specs/ordering/decisions/D2.md").read_text(encoding="utf-8"),
+                         entry("D2", "2026-10-07T10:00:00Z", "second") + "- **Status:** standing\n")
+        self.assertEqual(log.read_text(encoding="utf-8").count("- **Status:** standing"), 2)
+        self.assertEqual(self.module.main(["--check"]), 0)
+
+    def test_an_entry_appended_to_the_rendered_log_is_named_by_the_check_and_kept_by_the_fold(self) -> None:
+        """A page older than the records appends to the log; nothing it wrote is lost."""
+        self.record("D1", "2026-10-07T09:00:00Z")
+        log = self.tree / "specs/ordering/decisions.md"
+        log.write_text(self.folded() + "\n" + entry("D2", "2026-10-07T10:00:00Z", "appended"), encoding="utf-8")
+        said = io.StringIO()
+        with contextlib.redirect_stderr(said):
+            self.assertEqual(self.module.main(["--check"]), 1)
+        self.assertIn("D2 in no record", said.getvalue())
+        self.folded()
+        self.assertTrue((self.tree / "specs/ordering/decisions/D2.md").is_file())
+        self.assertEqual(self.module.main(["--check"]), 0)
+
+    def test_an_entry_edited_in_the_rendered_log_gives_way_to_its_record_and_says_so(self) -> None:
+        self.record("D1", "2026-10-07T09:00:00Z", "the record's")
+        log = self.tree / "specs/ordering/decisions.md"
+        log.write_text(self.folded().replace("the record's", "edited here"), encoding="utf-8")
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            self.assertIn("the record's", self.folded())
+        self.assertIn("D1 in specs/ordering/decisions.md differed from specs/ordering/decisions/D1.md", said.getvalue())
+
+    def test_an_adversary_log_s_rows_go_to_the_slice_or_capability_they_head(self) -> None:
+        log = self.tree / "specs/ordering/adversary-log.md"
+        log.write_text("# Adversary log\n\n## S1 · abc · 2026-10-07 · trigger record\n\n| a | b |\n\n"
+                       "## Orders are taken · def · 2026-10-08 · capability pass\n\nFindings: none\n\n"
+                       "## S1 · fed · 2026-10-09 · skipped\n\nSpawned:\n", encoding="utf-8")
+        self.assertEqual(self.module.main(["--split"]), 0)
+        folder = self.tree / "specs/ordering/adversary-log"
+        self.assertEqual(sorted(path.name for path in folder.iterdir()), ["Orders-are-taken.md", "S1.md"])
+        self.assertEqual((folder / "S1.md").read_text(encoding="utf-8").count("## S1 · "), 2)
+        self.assertEqual(self.module.main(["--check"]), 0)
+
+
 SPLIT = """# The split
 
 ## Fairways
@@ -241,6 +324,13 @@ class HeldByTest(unittest.TestCase):
             self.assertEqual(self.module.main([]), 0)
         self.assertEqual(self.rows()["ordering"], "—")
         self.assertIn("local to this machine", done.getvalue())
+
+    def test_split_folds_the_logs_and_leaves_held_by_alone(self) -> None:
+        """`slipwai migrate` runs `--split`; the claim refs are a running fleet's, not a migration's."""
+        self.forge()
+        self.hold("ordering", "harbour_one")
+        self.assertEqual(self.module.main(["--split"]), 0)
+        self.assertEqual(self.rows()["billing"], "whoever typed this")
 
     def test_a_project_with_no_split_is_not_a_failure(self) -> None:
         self.split.unlink()

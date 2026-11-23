@@ -34,8 +34,8 @@ class TabCountTest(BoardTest):
         book(self.root, ENTRY.format(n=1, sure="high", status="standing"),
              ENTRY.format(n=2, sure="high", status="awaiting human confirmation"))
         self.assertEqual(json.loads(self.get("/live.json")[1])["decisions"], 2, "two unread, one of them awaiting")
-        self.assertIn('<span class="count" data-decisions-unread>2 unread</span>', self.get("/voyage")[1])
-        self.assertIn("count('[data-decisions-unread]', found.decisions, 'unread');", PAGE_SCRIPT)
+        self.assertIn('<span class="count" data-decisions-unread>2 to review</span>', self.get("/voyage")[1])
+        self.assertIn("count('[data-decisions-unread]', found.decisions, 'to review');", PAGE_SCRIPT)
 
 
 class LeastSureFirstTest(unittest.TestCase):

@@ -104,6 +104,7 @@ import inbox  # noqa: E402
 import lockfiles  # noqa: E402 — a lock two slices both wrote is written again, not resolved by hand
 import logs  # noqa: E402
 import mender  # noqa: E402
+import need_check  # noqa: E402 — whether trunk holds what a need asks for, the board's reading too
 import telegraph  # noqa: E402
 import travel  # noqa: E402
 
@@ -328,12 +329,7 @@ def git(*argv: str, where: Path | None = None) -> subprocess.CompletedProcess[st
 
 def trunk() -> str:
     """The branch a merge lands on: what `harbour.json` says, else what the remote calls its head, else main."""
-    named = config().get("trunk")
-    if isinstance(named, str) and named:
-        return named
-    found = git("symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
-    head = found.stdout.strip().removeprefix("origin/") if found.returncode == 0 else ""
-    return head or DEFAULT_TRUNK
+    return need_check.trunk_name(ROOT, config().get("trunk"))
 
 
 def gate() -> list[str]:
@@ -365,8 +361,7 @@ def has_origin() -> bool:
 
 def base() -> str:
     """What to rebase onto: the remote's trunk where there is one, else the local branch."""
-    name = trunk()
-    return f"origin/{name}" if git("rev-parse", "--verify", "--quiet", f"origin/{name}").returncode == 0 else name
+    return need_check.base(ROOT, trunk())
 
 
 def conflicting() -> list[str]:
@@ -1743,8 +1738,7 @@ def trunk_commit() -> str:
 def text_check(check: dict, commit: str) -> bool:
     """Whether the file at `path` on trunk holds `has`. Read with `git show`, never from a checkout, so a
     berth's uncommitted edit of the same file never ticks a need on trunk's behalf."""
-    shown = git("show", f"{commit}:{check.get('path', '')}")
-    return shown.returncode == 0 and str(check.get("has", "")) in shown.stdout
+    return need_check.text_check(ROOT, check, commit)
 
 
 def make_check(check: dict, commit: str) -> bool:

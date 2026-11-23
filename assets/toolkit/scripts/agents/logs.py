@@ -25,7 +25,7 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 670 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# budget: 672 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
@@ -619,10 +619,12 @@ def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[En
     """
     receipts = {(str(e.fields["fairway"]), str(e.fields["parked"]))
                 for e in harbour if e.kind == "cleared"}
+    # A park an earlier slipwai wrote, carried across a migration (`crossed`), that a person dismissed as obsolete.
+    dismissed = {str(e.fields.get("told", "")) for e in deck if e.kind == "read" and not e.fields.get("inbox")}
     last_claim = {str(e.fields["slice"]): index for index, e in enumerate(deck)
                   if e.kind == "claimed" and e.fields.get("slice")}
     return [e for index, e in enumerate(deck) if e.kind == "parked" and str(e.fields["fairway"]) == fairway
-            and (fairway, e.t) not in receipts
+            and (fairway, e.t) not in receipts and not (e.fields.get("crossed") and e.t in dismissed)
             and last_claim.get(str(e.fields.get("slice") or ""), -1) < index]
 
 

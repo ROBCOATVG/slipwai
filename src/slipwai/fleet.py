@@ -17,7 +17,8 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 680 — each park's held answer and its action line, the clearance answers one read of the board
+# budget: 697 — each park's held answer, its action line, needs trunk already has and an obsolete park,
+# the clearance answers one read of the board
 # shares, a `read` tied to its `told` by inbox id,
 # and today's tokens; every column of the
 # board folded from the logs, an instant read in either shape it is written, including what waits on a person: a park,
@@ -54,10 +55,13 @@ from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name
     STALL_MINUTES,
     clock_of,
     counts,
+    crossing,
     groups,
     need_rows,
+    on_trunk,
     processes,
     said_again,
+    stale,
 )
 from .logs import (
     Entry,
@@ -76,6 +80,7 @@ from .logs import (
     streams,
     unmerged,
 )
+from .need_check import trunk_commit
 from .shell_environment import login_environment, project_python
 from .talk_placed import placed
 from .timeline import spans
@@ -443,7 +448,7 @@ DRAWER = 20
 
 
 def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | None = None,
-          ceiling: int | None = None) -> list[dict[str, Any]]:
+          ceiling: int | None = None, root: Path | None = None, commit: str = "") -> list[dict[str, Any]]:
     """Every open message, question and park: the things waiting on a person, which is what a board is for.
 
     Unread decisions are listed for reading, and say whether they hold anything up: `blocking` is `yes` only
@@ -456,8 +461,14 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
                                    "t": e.t, "slice": str(e.fields.get("slice") or "")}
             if e.fields.get("needs"):
                 # A hand-back with needs is a park's shape without the park: the board draws its checklist,
-                # groups it with the parks under *Waiting on you*, and offers Done only once trunk has it.
-                row.update(needs=need_rows(e, one.needs_met(e)), cause="host", grouped="yes", by="told")
+                # groups it with the parks under *Waiting on you*, and offers Done only once trunk has it —
+                # gone once trunk has it all, and asked to be confirmed where its slice merged unchecked.
+                met = one.needs_met(e) | on_trunk(root, commit, e)
+                said = stale(e, met, one.merged)
+                if said == "met":
+                    continue
+                row.update(needs=need_rows(e, met), cause="host", grouped="yes", by="told",
+                           **({"probably": "yes"} if said else {}))
             said_times = said_again(one.entries)[one.entries.index(e)][1]
             if said_times > 1:
                 row["times"] = str(said_times)
@@ -478,12 +489,17 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
                             "decisions": [{"t": e.t, "id": str(e.fields.get("id", "")),
                                            "what": str(e.fields.get("what", ""))} for e in one.unreviewed]})
         lifting = paused(one.parks)
-        waiting += [park_row(one, park, park in lifting, bound, now, ceiling) for park in one.parks]
+        crossed = crossing(root)
+        for park in one.parks:
+            row = park_row(one, park, park in lifting, bound, now, ceiling, on_trunk(root, commit, park))
+            if row["needs"] and all(need["met"] == "yes" for need in row["needs"]):
+                continue  # trunk has every need: the harbourmaster clears it on its next pass
+            waiting.append({**row, "obsolete": crossed or "an earlier slipwai"} if park.fields.get("crossed") else row)
     return sorted(waiting, key=lambda row: row["t"])
 
 
 def park_row(one: Fairway, park: Entry, resting: bool, bound: float = STALL_MINUTES, now: datetime | None = None,
-             ceiling: int | None = None) -> dict[str, Any]:
+             ceiling: int | None = None, landed: set[int] | None = None) -> dict[str, Any]:
     """One park as the board lists it, with whether a person's answer to it is held and the newest such answer.
 
     *Held* is `logs.answer_held`, the rule the harbourmaster clears a park by, asked of this stream's unread
@@ -506,7 +522,7 @@ def park_row(one: Fairway, park: Entry, resting: bool, bound: float = STALL_MINU
             # The record, where the park carries one: see `logs.OPTIONAL`.
             "cause": cause_of(park), "until": str(park.fields.get("until") or ""),
             "then": str(park.fields.get("then") or ""), "waiting": str(park.fields.get("waiting") or ""),
-            "needs": need_rows(park, one.needs_met(park)), "paused": "yes" if resting else "no",
+            "needs": need_rows(park, one.needs_met(park) | (landed or set())), "paused": "yes" if resting else "no",
             "held": answer_held(park, over_ceiling(unread, ceiling)), "unread": unread, "ceiling": ceiling,
             "answered": {"text": str(answered[-1].fields.get("message", "")), "t": answered[-1].t} if answered else {}}
 
@@ -648,7 +664,8 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
     demos, accepted, due_in = on_board(root, [(one.name, one.entries) for one in found])
     # Each park and question with the slice it is about and any answer a person has placed: `talk_placed`.
-    waiting = acted(placed(root, inbox(found, bound, now, ceiling_of(held)) + unreadable_rows(faults)))
+    listed = inbox(found, bound, now, ceiling_of(held), root, trunk_commit(root, held.get("trunk")))
+    waiting = acted(placed(root, listed + unreadable_rows(faults)))
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same

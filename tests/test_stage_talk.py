@@ -278,8 +278,9 @@ class StageTalkTest(Talking):
         self.assertIn("write it down in this turn where the command says such things are kept", TALKING)
         page = " ".join((Path(__file__).resolve().parents[1] / "assets/toolkit/commands/mockups.md")
                         .read_text(encoding="utf-8").split())
-        self.assertIn("the next entry of `specs/<feature>/decisions.md`, in the shape `commands/cruise.md` shows, "
-                      "with `Decided by: human`", page)
+        self.assertIn("an entry of `specs/<feature>/decisions.md`, as its own file "
+                      "`specs/<feature>/decisions/D<n>.md` with the log rendered by `make decisions`, in the shape "
+                      "`commands/cruise.md` shows, with `Decided by: human`", page)
         self.assertIn("A verdict is still not yours", page)
 
     def test_a_verdict_lets_go_of_the_hold_a_word_put_on_the_board(self) -> None:

@@ -25,13 +25,15 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 616 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# budget: 672 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
 # and a park written when a need was a sentence, read as the record it now is. And a need
 # the fleet was to tick with no check, read as a person's
-# and a stream's lines read from every file that holds them, the chart feature's first
+# and a stream's lines read from every file that holds them, the chart feature's first, and the one
+# rule for whether a person's answer can clear a park, which the harbourmaster and the board both ask;
+# and which needs are a product or model decision, never the mender's (#154)
 from __future__ import annotations
 
 import json
@@ -188,6 +190,25 @@ CAUSES = ("limit", "host", "question", "demo", "gate", "silence", "exit", "ceili
 CHECKS = ("text", "make")
 #: Who ticks a need: a `person`, or the `fleet` through its `check`.
 TICKERS = ("person", "fleet")
+#: Where a need is a product or model decision rather than a change to land: the chart and the event
+#: model, which say what slices there are and what they record. manda's mender was sent six follow-up
+#: slices to add — each needing an event's name, a capability or a place in the split nobody had decided —
+#: and refused every one, correctly and at a session's cost each, leaving them for a person.
+DECIDED_IN = re.compile(r"^(?:specs/[^/]+/(?:chart\.yaml|story-split\.md)|(?:.*/)?docs/event-model/model\.yaml)$")
+
+
+def asks_a_decision(need: object) -> bool:
+    """Whether a need is a product or model decision — a new slice, an event's name, a change to the split —
+    which goes to whoever decides (the skipper under `/cruise`, the person under `/sail`) and never to the
+    mender: written so (`decide`, by `fleet.py tell --check decide`), or checked in the chart or the model."""
+    if not isinstance(need, dict):
+        return False
+    if need.get("decide"):
+        return True
+    check = need.get("check")
+    return isinstance(check, dict) and bool(DECIDED_IN.match(str(check.get("path", ""))))
+
+
 #: The fields a kind may carry beyond what it must. Named so a reader knows the shape to hold them to:
 #: `slice` and `waiting` were written and read for months before anything said they existed. A `parked`
 #: line is a record, not a paragraph: `cause` from `CAUSES`; `until`, an instant after which the park
@@ -560,6 +581,35 @@ def about(park: Entry, slice_id: str) -> bool:
     return bool(slice_id) and re.match(rf"{re.escape(slice_id)}(?![\w-])", str(park.fields.get("why", ""))) is not None
 
 
+#: What a captain's park at the decision ceiling waits on, in its `waiting`: lifted by reading, never by a message.
+REVIEW = "decision-review"
+
+
+def answers(told: Entry, park: Entry) -> bool:
+    """Whether a `told` is a person's answer to this park: a person wrote it (`by: person`, which the board and
+    `/cruise-tell` write and a session never does), after the park, and aimed at it — the stream's word answers
+    any park; a word to a slice, only the park `about` that slice."""
+    if told.kind != "told" or told.fields.get("by") != "person" or told.t <= park.t:
+        return False
+    named = str(told.fields.get("slice", ""))
+    return not named or about(park, named)
+
+
+def over_ceiling(unread: int, ceiling: int | None) -> bool | None:
+    """Whether more decisions stand unread than the ceiling allows; None where no ceiling can be read."""
+    return None if ceiling is None else unread > ceiling
+
+
+def answer_held(park: Entry, over: bool | None) -> str:
+    """Why a person's answer cannot clear this park now, as one word, or `""` where it would. The harbourmaster's
+    rule (`told_after_parks`) and the board's *HELD* line both ask this, so the two cannot disagree: `review`, a
+    park the captain wrote at the decision ceiling, which only the reading lifts; `ceiling`, more decisions
+    unread than the ceiling allows, when *go* is not a reading; `uncounted`, the count could not be read."""
+    if park.fields.get("waiting") == REVIEW:
+        return "review"
+    return "uncounted" if over is None else "ceiling" if over else ""
+
+
 def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[Entry]:
     """The parks that still owe an answer: receipt identity is fairway plus original timestamp.
 
@@ -569,10 +619,12 @@ def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[En
     """
     receipts = {(str(e.fields["fairway"]), str(e.fields["parked"]))
                 for e in harbour if e.kind == "cleared"}
+    # A park an earlier slipwai wrote, carried across a migration (`crossed`), that a person dismissed as obsolete.
+    dismissed = {str(e.fields.get("told", "")) for e in deck if e.kind == "read" and not e.fields.get("inbox")}
     last_claim = {str(e.fields["slice"]): index for index, e in enumerate(deck)
                   if e.kind == "claimed" and e.fields.get("slice")}
     return [e for index, e in enumerate(deck) if e.kind == "parked" and str(e.fields["fairway"]) == fairway
-            and (fairway, e.t) not in receipts
+            and (fairway, e.t) not in receipts and not (e.fields.get("crossed") and e.t in dismissed)
             and last_claim.get(str(e.fields.get("slice") or ""), -1) < index]
 
 

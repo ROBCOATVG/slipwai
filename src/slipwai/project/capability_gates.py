@@ -47,6 +47,31 @@ TRIGGER_ROW = "## <slice-id> · <commit> · <date> · trigger record"
 #: What the capability's row is headed when no slice widened anything and nothing was attacked.
 SKIP_ROW = "## <capability> · <commit> · <date> · skipped: no slice widened a trigger"
 
+#: The rule a stand-in is held to, said where the gates are and read by `capabilities.py`'s `blockers`.
+STAND_IN = """**A stand-in is a release blocker, not a pass.** Where the capability's actor-facing path runs
+   through a stand-in adapter — a no-transport or drop-directory mailer, an empty source, a fake, anything
+   behind a port that does not yet do for the actor what the specification says — the record carries one
+   `Stand-in: <port> · <adapter> · <the missing piece>` line for each, the missing piece named whole (the real
+   adapter, the grant, the domain), and that piece is handed back as a need in the same turn. Where the walk
+   cannot reach a screen from seeded state, the record carries `Unreached: <screen> · <why>`, and a slice of the
+   capability whose `try-it.json` is empty is read the same way: a screen proven by tests alone has not been
+   walked. Either keeps the capability **out of done** whatever `Cleared:` says — `python3
+   scripts/agents/capabilities.py --blocked` lists it, it is owed no demo and cannot be accepted, and the board
+   shows it as built on a stand-in above *Built* — until the stand-in is replaced and the line removed, or a
+   person adds `· Accepted-by: <who> <date>` to the line to record that the stand-in is the intended behaviour.
+   No session writes `Accepted-by:`, and one naming an agent is not read. A finding or a stand-in that leaves
+   the feature unusable for its actor is never stowed: the BD whose alerts went to a drop directory was never
+   told, in any environment, by a capability that had cleared its gates."""
+
+#: The plan rung's paragraph on the cloud a slice needs and the project has not got.
+CLOUD_PREREQUISITES = """ **A cloud resource the slice needs and the project has not got** — a sending domain,
+   an IAM grant, a queue, a bucket — is found here, not at the gate: say it once, early, as **one** question to a
+   person that bundles everything the capability needs from the cloud (the real adapter's resources, the IAM
+   in `infra/bootstrap/`, the domain or account to verify), handed back as a need the moment the plan finds it,
+   and never as one need per slice. Then the slice builds the **real** adapter behind the port, passing the
+   port's contract suite against a local double of the service, so that the grant is the only missing piece;
+   a no-transport or empty stand-in in its place is a release blocker (*Capability gates*), not a design."""
+
 OPEN_MODE = """**Nothing is read per slice unless the project asks for it.** The six gates above run once, over the
    whole capability, in every release mode — `open` among them. A pre-launch product merges visible and to
    nobody: no one uses it yet, trunk is the team's own demo, and a capability is read whole before anybody is
@@ -119,14 +144,20 @@ def capability_gates_stage(web: bool) -> str:
       never a score. A score at or above the project's threshold is the gate; under it, the survivors are
       closed. Per slice it took hours apiece and was taken out of one loop by hand.
    6. **The hand's walk** — `sail-demo-hand` walks every example of every slice in the capability, in split
-      order, against the running app, and records its verdict in the capability's `demo-log.md`. Its verdict
+      order, against the running app seeded from the slices' stories, and records its verdict in the
+      capability's `demo-log.md`; every screen the capability adds is reached that way, from seeded state, or
+      the record says `Unreached:` for it. Its verdict
       is the capability's acceptance under `demos: hand`, the default, and the reading a person accepts on
       under `person`, so it is the one worth a browser.
 
    Findings and open convergence tasks at or above the fairway's severity bar are fixed **before the
    capability is accepted**, in a follow-up slice in the same fairway named for the capability, through failing tests like any
-   other work; those below it are stowed to the careen; an open `CRITICAL` is the next slice, whatever else is ready. When all six have
+   other work; those below it are stowed, as rows in the capability's own `stowed.md` beside this record, which the harbourmaster carries into the fairway's careen at the merge — never written into `fairways/` here — except a finding of a kind `/adversary` names as never
+   stowed — one that leaves the feature unusable or untrustworthy for its actor — which is fixed here like one
+   above the bar whatever its severity; an open `CRITICAL` is the next slice, whatever else is ready. When all six have
    run and nothing above the bar is open, the record's last line is `Cleared: <date> · <commit>`, and the
    demo stop is due. Nothing is carried: a gap left here is a gap the next capability inherits.
+
+   {STAND_IN}
 
    {OPEN_MODE}"""

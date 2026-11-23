@@ -95,7 +95,8 @@ put it to the person.
 
 ## Record the context answer, every time
 
-**Pass one always writes its context answer as the next entry of `specs/<feature>/decisions.md`**, whether
+**Pass one always writes its context answer as an entry of `specs/<feature>/decisions.md`** — its own file,
+`specs/<feature>/decisions/D<n>.md`, with the log rendered by `make decisions` — whether
 it found several contexts or one — the shape `commands/cruise.md` shows and `make check-decisions` holds
 (Question, Options, Decision, In short, Why with Read against, Decided by, Confidence with Would reverse if,
 Written to, Status). Head it `## D<n> — Which bounded contexts does <feature> touch?`, and put the seam table
@@ -141,6 +142,13 @@ mark at the repository root would be a contract only the host could ever change.
 
 Write the file as well as the entry. A mark naming a file nobody wrote is a promise that gets discovered at
 the far end, by the fairway that believed it, and `check-chart` refuses it here instead.
+
+**A port whose real adapter needs cloud the project has not got** — a sending domain, an IAM grant, a queue —
+is said here, once, as one question to the person for the whole bundle: the adapter's resources, the IAM in
+`infra/bootstrap/` and the domain or account to verify. The slices then build the real adapter behind the port,
+contract-tested, so the grant is the only thing missing. A capability that ships on a no-transport or empty
+stand-in instead is a release blocker and is not done (`/sail`'s *Capability gates*): the mail that was never
+sent cleared its gates on the safe half, because nobody asked for the cloud half until the gate.
 
 **A mark is set once and never moved.** That is why this stage is a stop and not a form: every one of these
 is a commitment another fairway builds against, and withdrawing one later is taken out of whoever steered

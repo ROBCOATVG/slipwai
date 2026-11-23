@@ -182,9 +182,12 @@ def open_parks(written: list[dict], fairway: str) -> list[dict]:
     last_claim = {str(line["slice"]): index for index, line in enumerate(written)
                   if line.get("kind") == "claimed" and line.get("slice")
                   and str(line.get("fairway", fairway)) == fairway}
+    # A park an earlier slipwai wrote and a person dismissed as obsolete, as `logs.open_parks` reads it.
+    dismissed = {str(line.get("told")) for line in written if line.get("kind") == "read" and not line.get("inbox")}
     return [line for index, line in enumerate(written) if line.get("kind") == "parked"
             and str(line.get("fairway")) == fairway
             and (fairway, str(line.get("t"))) not in receipts
+            and not (line.get("crossed") and str(line.get("t")) in dismissed)
             and last_claim.get(str(line.get("slice") or ""), -1) < index]
 
 
@@ -205,7 +208,7 @@ def owed(fairway: str, now: datetime | None = None) -> dict:
         "parks": parks,
         "overdue_parks": overdue_parks,
         "ceiling": ceiling,
-        "over_ceiling": len(backlog) > ceiling,
+        "over_ceiling": bool(logs.over_ceiling(len(backlog), ceiling)),
         # A boundary is forced by a message nobody answered in time, or by a backlog of judgement nobody
         # has looked at. Either way the next thing to happen is a person, not another stage.
         # A park of one slice holds that slice alone — its siblings were never waiting on it — so only a

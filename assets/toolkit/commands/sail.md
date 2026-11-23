@@ -234,7 +234,8 @@ cannot say so.
 ### After the examples are proven, and after the slice is done
 
 With the examples proven and the review closed, run `/adversary` for the slice's trigger record: its
-trigger table, written into `specs/<feature>/adversary-log.md`, attacking nothing — `make check-decisions`
+trigger table, written as `specs/<feature>/adversary-log/<slice-id>.md` and rendered into
+`specs/<feature>/adversary-log.md` by `{{make}} decisions`, attacking nothing — `make check-decisions`
 holds every done slice to that row. Only where `harbour.json` says `"readings": "slice"` is a record with the authorisation, identity
 or money trigger `widened` attacked here as well: close that adversary benchmark entry after its findings
 are triaged, and implement confirmed defects through failing tests, each in an `implement` entry. Then run
@@ -441,9 +442,11 @@ own first stage.
 
 **The shared-surface rule**, which the delegates cannot infer and `{{make}} check-slice-scope` holds on
 every `slice/<id>` branch: a slice's commits touch its own `specs/<feature>/slices/<id>/`, the feature's
-cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, `adversary-log.md`,
+cumulative artifacts (`spec.md`, `story-split.md`, `contracts/`, `checklists/`, its own adversary rows as
+`adversary-log/<slice-id>.md`,
 `people/` — one JSON file per person a story signs in as — and
-`decisions.md`, where `/cruise` records a decision taken during the slice), its own block of `model.yaml`
+each decision `/cruise` records during the slice as its own `decisions/D<n>.md`, with the two logs
+`{{make}} decisions` renders from them), its own block of `model.yaml`
 with the committed canvas `model.drawio` regenerated from it (`{{make}} model-drawio` — `check-drawio`
 holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it) and, on the
 event-modelling profile, the chart `specs/<feature>/chart.yaml` re-rendered the same way (`{{make}} chart`,
@@ -476,6 +479,27 @@ merges a slice with a story only on a `seeded` line or on that hand-back — nev
 **A slice that reaches the wall it handed back does not park for a person**: where it must wait, its park names
 the same need with the same `check` and `by: fleet`, so the harbourmaster clears it the moment trunk has it. The canonical slot at the feature
 root is a link, never committed.
+
+**A hand-back that needs the slice's own code is a patch, and it lands with the slice.** A need goes to the
+mender, which lands it on trunk on its own and usually before the slice merges — so a change that names
+the slice's code, or reads what only its branch holds, fails there, and one that lands first can fail the
+full gate without the slice. Write it instead as a patch in the slice's own record,
+`specs/<feature>/slices/<id>/handback/<name>.patch`: make the change in the berth, `git diff -- <paths> >`
+that file, put the reason in a line or two of prose above the first `diff --git`, put the change itself
+back (`git checkout -- <paths>`), and commit the patch. At the slice's merge the harbourmaster applies
+each one on the slice rebased onto trunk and runs the one full gate over both: both land, or neither does,
+and a patch that no longer applies is refused with the slice, to write again against the rebased branch.
+A patch that touches a gate (anything the mender may never change) or the cloud under `infra/` (but for its
+own flag's declaration) is not applied — the `granted` line names it as `withheld` — so those stay a need
+for a person, raised as above. A prose need stays right for what cannot be a patch: a secret, a grant,
+another slice's merge, or a change the slice does not depend on.
+
+**A product or model decision is a question, not a need.** A follow-up slice, an event's name, a change
+to the chart, the model or the split is not a change for the mender to land: it needs somebody to decide
+it. Hand it back with `--check decide` (with `--slice <id>`), or as a need checked in the chart or the
+model, which is read the same way: `fleet.py tell` also writes it as a `question` against the slice, so the
+skipper decides it under `/cruise` and the person under `/sail`, and the `decision` that answers it ticks
+the need. The mender never takes one.
 
 **Prove on the slice branch, then verify, then push.** As delegates report their examples proven, check each slice's
 `## Examples proven` from its unpushed worktree in split order — never from `main`, never by pushing increment
@@ -551,7 +575,10 @@ passes its gate, one at a time through the harbourmaster's queue, which rebases 
 one left and gates it there — so the predictability split order bought is bought instead by the queue, and
 a sibling waiting for a slower one's merge would be a sibling parked for nothing. The
 composition root and the cumulative artifacts are where two merges meet and the second takes both sides; the
-events module grows additively for exactly that reason, because the merge of two additions is a union. A
+events module grows additively for exactly that reason, because the merge of two additions is a union. The
+decisions and adversary logs are not merged at all: each entry is its own file, so two slices never write one,
+and a conflict in the rendered `decisions.md` or `adversary-log.md` is answered by taking either side and running
+`{{make}} decisions` — never by keeping both by hand, which drops the lines the two endings share. A
 real conflict in a mark is a contract change: stop both fairways for the host, never resolve it in a branch.
 A fairway's release flag is its own, and `check-slice-scope` refuses a branch that touches a path another
 fairway owns, so the boundary is held rather than remembered. The board's lines are grouped by fairway where
@@ -565,8 +592,10 @@ loop. Re-derive the entry stage from artifacts instead of assuming the loop resu
 
 **A capability — and a slice, where `harbour.json` says `"readings": "slice"` — is walked twice at most** — `walks` in `harbour.json`, two where it names none:
 the walk, and one more to see that what it sent back was put right. After the last one allowed, nothing is
-walked again for a finding that is not critical: fix what a test can prove fixed, write the rest into the
-fairway's careen as tasks, one row each with the screenshot or example that shows it, and record the verdict
+walked again for a finding that is not critical: fix what a test can prove fixed, stow the rest in the
+capability's `specs/<feature>/capabilities/<capability>/stowed.md` — one row each in the careen's shape, *From*
+`demo`, with the screenshot or example that shows it; never in `fairways/`, which the harbourmaster writes from
+that record when the slice merges — and record the verdict
 with `python3 scripts/agents/deck_line.py demo --slice <id> --verdict accepted --stowed <how many>`. A finding
 is critical where an example fails, where something stops the actor finishing what they came to do, or
 where data is lost or shown to the wrong person — and then the next walk is opened saying so, `python3

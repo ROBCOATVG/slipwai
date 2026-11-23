@@ -91,6 +91,12 @@ class SettingTest(unittest.TestCase):
     def test_the_bar_is_a_word_and_is_taken_as_one(self) -> None:
         self.assertEqual(telegraph.parse_setting("bar=high"), ("bar", "HIGH"))
 
+    def test_a_bar_that_is_not_a_severity_is_refused_with_the_ones_there_are(self) -> None:
+        """A typo here would be read back as the default, which is a setting that quietly did nothing."""
+        with self.assertRaises(telegraph.Refused) as refused:
+            telegraph.parse_setting("bar=severe")
+        self.assertIn("LOW, MEDIUM, HIGH, CRITICAL", str(refused.exception))
+
 
 class FairwayOrderSettingTest(unittest.TestCase):
     """Slice 18.2. Which stream goes first is a priority a person has while a run is going, so it is set
@@ -230,7 +236,7 @@ class BankingTest(unittest.TestCase):
         (self.root / "project.json").write_text("{}", encoding="utf-8")
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
-        for name in ("harbourmaster.py", "lockfiles.py", "conflicts.py",
+        for name in ("harbourmaster.py", "need_check.py", "lockfiles.py", "conflicts.py",
                      "logs.py", "berths.py", "spend.py", "telegraph.py", "claims.py", "travel.py",
                      "inbox.py", "mender.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")

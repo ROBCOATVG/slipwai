@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from .assets import this_command
+from .block_actions import said_lines
 from .cli_start import start_main
 from .deck import RECENT, recent, streams
 from .errors import GenerationError, refuse
@@ -56,6 +57,8 @@ def lines(root: Path) -> list[str]:
     for row in on_you:
         detail = inbox_detail(row)
         said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail[:width - 24]}")
+        # The row is cut to the terminal; what to do about it is not, because it is the reason for the board.
+        said += said_lines(row)
     if resting:
         said.append(f"paused, nothing for you to do: {len(resting)}")
         for row in resting:
@@ -89,7 +92,7 @@ def lines(root: Path) -> list[str]:
     spent = bunker["spent"]
     said += ["", f"telegraph: {pressure['position']}  boilers {pressure['boilers']}  "
                  f"fanout {pressure['fanout']}  bunker {spent if spent is not None else NOTHING}"
-                 f"/{bunker['allowed']}k today"]
+                 f"/{bunker['allowed']}k today  bar {pressure.get('bar', NOTHING)}"]
     if pressure["banked"]:
         said.append(f"  {pressure['banked']}")
 

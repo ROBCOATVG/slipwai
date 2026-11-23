@@ -81,7 +81,7 @@ cited rather than probed again, unless a later slice changed it.
 The trigger table is what `/sail` must see in the log before any `sail-adversary-privateer` spawn. Name each seam
 the diff widened against that table and the attack catalogue. Spawn one adversary per widened seam, not one
 per catalogue category. A seam whose brief has no explicit file manifest is not spawned: record it as
-omitted, with why. Record every seam not spawned in `specs/<feature>/adversary-log.md` with the prior rows
+omitted, with why. Record every seam not spawned in the slice's row (*Record it*, below) with the prior rows
 or diff evidence that show why it was not widened. For `--full`, select every applicable catalogue seam, not
 every seam in the catalogue file.
 
@@ -125,8 +125,11 @@ stage default to `fast`: a per-seam choice is evidence for later slices, not a n
 
 ## Record it
 
-Append to `specs/<feature>/adversary-log.md` either way. Copy this shape; an unwritten row is a pass that
-has to be run again. A slice's trigger record is the heading and the table; a capability's pass, or the
+Write it either way, as the slice's own file — `specs/<feature>/adversary-log/<slice-id>.md`, or
+`adversary-log/<capability>.md` for a capability's pass, adding to the file where it already has a row — and
+run `make decisions`, which renders `specs/<feature>/adversary-log.md` from those files. Never append to the
+log itself: slices abreast appending to one file merged as unions that dropped the lines two rows share. Copy
+this shape; an unwritten row is a pass that has to be run again. A slice's trigger record is the heading and the table; a capability's pass, or the
 per-slice exception's, adds the lines below it:
 
 ```markdown
@@ -156,18 +159,35 @@ implementation under a new `implement` entry. This boundary is what lets the ben
 itself cost.
 
 Each finding carries a severity — `CRITICAL` (data of one actor reaches another, or an actor gains a role),
-`HIGH`, `MEDIUM`, `LOW` — and a state: `open`, `fixed` with the commit, `stowed` into the fairway's careen,
+`HIGH`, `MEDIUM`, `LOW` — and a state: `open`, `fixed` with the commit, `stowed` for the fairway's careen,
 or `deferred` with the person's name and their reason, in their words.
 
 **One round, and a bar.** The pass runs once per capability — and per slice only for the per-slice exception —
 not until it converges: in the experiment it ran 21 rounds and produced 129 findings, 64 of them LOW and most of those about wording, and slice S20 still ended
 with five open. A finding at or above the fairway's severity bar closes before the capability is accepted, in a follow-up slice in
 the same fairway — or, for the per-slice exception, before the slice's push. One below it is **stowed** — a row
-in `fairways/<name>/careen.md` naming the capability or the slice — and the work goes on. The careen is a
-hardening slice the fairway runs when its planned slices are done, and its demo is that the findings are
-closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is the
-harbour's to set and defaults to `MEDIUM`, because the experiment's LOWs were genuinely wording and its
-MEDIUMs genuinely were not.
+in the capability's own record, `specs/<feature>/capabilities/<capability>/stowed.md`, in the careen's shape
+(`| Stowed | By slice | From | Severity | What it is | State |`, *From* `adversary`, *State* `open`), naming
+the capability or the slice — and the work goes on. Never a row in `fairways/`: the careen is every slice's
+of the stream, so no slice may write it, and the harbourmaster carries the record's rows into
+`fairways/<name>/careen.md` when the slice merges. The careen is a hardening slice the captain starts as the
+fairway's last once its planned slices are merged, and its demo is that the findings are closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is
+`harbour.json`'s `bar`, set only by a person with `slipwai telegraph --set bar=…`, and defaults to `MEDIUM`,
+because the experiment's LOWs were genuinely wording and its MEDIUMs genuinely were not. No telegraph
+position moves it: ringing for speed is not deciding to defer more.
+
+**A finding that leaves a feature unusable or untrustworthy for its actor is never deferred.** Whatever its
+severity and whatever the bar, a finding of one of these kinds is never stowed: it closes, or parks, exactly
+like a finding at or above the bar, and its row carries `kind: <tag>` so the next reader sees why.
+
+- `validation-bypass` — input coercion or a validation bypass on a state-changing route
+- `document-forgery` — forgery or injection into a generated document — a PDF, an email
+- `erasure-leak` — personal data that survives, or leaks, after deletion or erasure
+- `money-arithmetic` — wrong arithmetic in a money or financial figure
+
+Each was a MEDIUM stowed on a real run at a raised bar — a coerced request body that countersigned an
+agreement, a control character that forged a line in a signed PDF, a removed person still mailed, a rounding
+that fed a valuation — and each left its feature unusable or untrustworthy for the actor it was built for.
 
 **An open `CRITICAL` is the next slice**, placed ahead of every product and
 method slice in the split until it is fixed or a person defers it in that row; the ready set

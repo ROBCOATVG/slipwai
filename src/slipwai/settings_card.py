@@ -22,7 +22,7 @@ from .dials import MODELS, PANELS, Dial, Panel, held
 from .dials import dials as dials_of
 from .fleet import NOTHING
 from .page_shell import PLAIN, esc
-from .telegraph import MEANS, POSITIONS, SETTINGS
+from .telegraph import BAR, MEANS, POSITIONS, SETTINGS, STANDING, bar_of
 from .wheel import MORE, STOPS, asks, known, orders
 
 #: The dial's positions as a person reads them, and the plain names of the numbers under them. `PLAIN` is
@@ -202,13 +202,14 @@ def dial(position: str, controls: bool) -> str:
 HEADLINE = ("boilers", "fanout", "bunker_per_day")
 
 #: Why the dial is one control and not nine, said once. The second sentence is the one people get wrong:
-#: a slower run is also a stricter one, which is a judgement the telegraph's own table makes and not an
-#: arithmetic that could be guessed from the position's name.
-SPEED = ("The dial moves everything together: ringing a position sets every number under Fine tune as a "
-         "group. Slower is not only cheaper \u2014 a slowed run also stops a merge at a lower severity and "
-         "parks sooner on unread decisions, because a run somebody has slowed down is one where less gets "
-         "deferred. A captain reads a new position at its next boundary, never mid-stage, so ringing it "
-         "changes what happens next rather than what is happening now.")
+#: a slower run parks sooner on unread decisions, which is a judgement the telegraph's own table makes. The
+#: third is the one a run got wrong (slipwai#154): the severity bar is not on the dial, so ringing for
+#: throughput never changes what may merge unfixed.
+SPEED = ("The dial moves the pace together: ringing a position sets every number under Fine tune as a "
+         "group, except the severity bar. Slower is not only cheaper \u2014 a slowed run also parks sooner on "
+         "unread decisions. What may merge unfixed is a quality decision and not a speed, so the bar is "
+         "its own setting and no position moves it. A captain reads a new position at its next boundary, "
+         "never mid-stage, so ringing it changes what happens next rather than what is happening now.")
 
 
 def positions(now: str) -> str:
@@ -230,8 +231,8 @@ def positions(now: str) -> str:
 def tune(config: dict, controls: bool) -> str:
     """The fine-tune panel, in plain words. Writes `harbour.json` through the same code the verb uses."""
     rows = []
-    for name in MEANS:
-        value = config.get(name, NOTHING)
+    for name in {**MEANS, **STANDING}:
+        value = bar_of(config) if name in STANDING else config.get(name, NOTHING)
         cell = (f'<input data-number="{esc(name)}" value="{esc(value)}">' if controls else esc(value))
         rows.append(f"<dt>{esc(PLAIN.get(name, name))}</dt><dd>{cell}</dd>")
     apply = '<div class="ask"><button class="go" id="apply">Apply</button></div>' if controls else ""
@@ -248,7 +249,15 @@ def speed(pressure: dict, controls: bool) -> str:
     that moves everything else."""
     banked = f'<p class="empty">{esc(pressure["banked"])}</p>' if pressure["banked"] else ""
     return panel("speed", "", SPEED, f'{dial(str(pressure["position"]), controls)}{banked}'
+                 f'{standing(str(pressure.get("bar") or BAR))}'
                  f'{positions(str(pressure["position"]))}', "harbour.json")
+
+
+def standing(bar: str) -> str:
+    """The bar beside the position, because it is the one setting the dial does not move and a person
+    ringing it should see that what may merge unfixed stayed where it was."""
+    return (f'<p class="bar-held">{esc(PLAIN["bar"])}: <b>{esc(bar)}</b> \u2014 its own setting, which no '
+            f'position moves. Change it under Fine tune.</p>')
 
 
 def settings(pressure: dict, config: dict, controls: bool, more: list[tuple[str, str, str]] | None = None) -> str:

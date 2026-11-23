@@ -94,8 +94,9 @@ person types under the storyboard comes to it as one more turn, followed by a li
 started this turn*. Answer in that turn. A change they ask for is made there and then, in place and under
 the same file name, as a redraw would make it; the board withdraws any verdict on a page that changed, so
 leave `mock-states.md` alone. A decision they make — an answer to one of `research.md`'s `## Questions`, how
-a finding in the review is settled — is written down in the same turn: the next entry of
-`specs/<feature>/decisions.md`, in the shape `commands/cruise.md` shows, with `Decided by: human`, and the
+a finding in the review is settled — is written down in the same turn: an entry of
+`specs/<feature>/decisions.md`, as its own file `specs/<feature>/decisions/D<n>.md` with the log rendered by
+`make decisions`, in the shape `commands/cruise.md` shows, with `Decided by: human`, and the
 question or the finding marked `— answered (D<n>)` where it was written, and the two counts below rewritten.
 Saying it is not recording it. A verdict is still not yours: `approved`, `parked` and `n/a` are given on the
 board.

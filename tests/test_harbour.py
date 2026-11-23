@@ -94,8 +94,14 @@ class BudgetSectionTest(unittest.TestCase):
         self.assertIn("a budget that is hit every time is a budget that is wrong", section)
 
     def test_it_names_where_the_leftovers_go_and_what_records_it(self) -> None:
+        """Into the capability's record, which a slice may write — never the careen itself, which every slice
+        of a stream shares and the harbourmaster alone writes (issue 154)."""
         section = self.section()
-        self.assertIn("fairways/<name>/careen.md", section)
+        self.assertIn("Write what is left into the capability's record** — "
+                      "`specs/<feature>/capabilities/<capability>/stowed.md`", section)
+        self.assertIn("the harbourmaster carries the record's rows into `fairways/<name>/careen.md` when the "
+                      "slice merges", section)
+        self.assertNotIn("Write what is left into the fairway's careen", section)
         self.assertIn("`stowed` line", section)
 
 

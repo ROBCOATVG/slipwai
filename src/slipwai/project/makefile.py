@@ -363,11 +363,11 @@ check-chart: ## Fail when the chart's marks are untyped, double-set, withdrawn, 
 \tpython3 scripts/check-chart.py
 check-dispatch: ## Fail when a commit names work no plan knows, or a slice no dispatch ledger accounts for
 \tpython3 scripts/check-dispatch.py
-check-rendered: ## Fail when a decisions or adversary log is not what the fairways' copies render to
+check-rendered: ## Fail when a decisions or adversary log is not what its one-file-per-entry records render to
 \tpython3 scripts/render-fairways.py --check
 check-surfaces: ## Fail when a slice delivers a state nobody approved, or an approved state no slice delivers
 \tpython3 scripts/check-surfaces.py
-decisions: ## Fold every fairway's decisions and adversary log into the feature-level files
+decisions: ## Render each feature's decisions and adversary log from their records, one file per entry
 \tpython3 scripts/render-fairways.py
 check-slice-scope: ## Fail when a slice/<id> branch touches what a sibling slice may also be writing
 \tpython3 scripts/check-slice-scope.py

@@ -175,7 +175,9 @@ def dismiss(root: Path, fairway: str, told: str) -> str:
     found, fault = entries(root, fairway)
     if fault and not found:
         raise ValueError(fault)
-    if not any(e.kind == "told" and e.t == told for e in found):
+    # A park an earlier slipwai wrote and the crossing carried (`crossed`) is dismissed the same way: nothing in
+    # this harness acts on it, and its `read` is what `logs.open_parks` lets it go by.
+    if not any((e.kind == "told" or (e.kind == "parked" and e.fields.get("crossed"))) and e.t == told for e in found):
         raise ValueError(f"{fairway} has no message at {told} to dismiss")
     path = deck_path(root, feature_of(root, fairway), fairway)
     with path.open("a", encoding="utf-8") as handle:

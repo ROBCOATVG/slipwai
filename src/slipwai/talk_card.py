@@ -95,8 +95,10 @@ def card_html(row: dict[str, str]) -> str:
         return ""
     found, live = held(row), row["state"] in IN_FLIGHT
     said = found.get("last") or {}
+    given = found.get("answer") or {}
     last = ""
-    if said:
+    # A waiting card shows the person's answer above, with its receipt: the same words again here were twice.
+    if said and not (row["state"] == "waiting" and given and given.get("text") == said.get("text")):
         who = f"<b>{esc(said['who'])}:</b> " if said.get("who") else ""
         receipt = f'<small class="{esc(said.get("tone", ""))}">{esc(said["line"])}</small>' if said.get("line") else ""
         last = f'<div class="last"><span>{who}{esc(said.get("text", ""))}</span>{receipt}</div>'

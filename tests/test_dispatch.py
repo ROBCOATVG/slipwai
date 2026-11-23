@@ -87,6 +87,23 @@ class Naming(unittest.TestCase):
         self.assertEqual(gate.named("UTF-8: read the file as text"), [])
         self.assertEqual(gate.named("036 SB4-SB7 browser: bounded losses", True), ["SB4", "SB7"])
 
+    def test_a_finding_after_its_planned_slice_qualifies_it(self) -> None:
+        """The ids review, gaps, adversary and converge mint, written after the slice they belong to."""
+        plans = {"S61", "S62", "S49", "SB4"}
+        self.assertEqual(gate.qualifiers(["S61", "F1"], plans), {"F1"})
+        self.assertEqual(gate.qualifiers(["S62", "G1", "F2", "F3"], plans), {"G1", "F2", "F3"})
+        self.assertEqual(gate.qualifiers(gate.named("S62 G-1: x", True), plans), {"G-1"})
+        self.assertEqual(gate.qualifiers(gate.named("S62 MS-1: x", True), plans), {"MS-1"})
+        self.assertEqual(gate.named("S49 T017: the task", False), ["S49"])
+
+    def test_an_unknown_id_with_no_planned_slice_before_it_qualifies_nothing(self) -> None:
+        plans = {"S61", "SB4"}
+        self.assertEqual(gate.qualifiers(["UI3"], plans), set())
+        self.assertEqual(gate.qualifiers(["F1", "S61"], plans), set())
+        # A range of slices keeps its far end a slice, so an unplanned one is still judged.
+        self.assertEqual(gate.qualifiers(["SB4", "SB7"], plans), set())
+        self.assertEqual(gate.qualifiers(["S61", "S99"], plans), set())
+
 
 class Fixture(unittest.TestCase):
     """A real repository with a chart, a ledger, and commits whose subjects are the ones that shipped."""
@@ -135,6 +152,30 @@ class Fixture(unittest.TestCase):
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("UI9", done.stderr)
         self.assertIn("no plan knows", done.stderr + done.stdout)
+
+    def test_a_finding_id_after_its_dispatched_slice_passes(self) -> None:
+        """issue 154: `S61 F1: …` was refused as work no plan knows, and slices wrote `S62 G-1:` to dodge it."""
+        self.ledger(["SB1", "SB4"])
+        self.commit("SB4 F1: a workspace that keeps failing stops holding the checkpoint")
+        self.commit("SB4 G1 F2: two gaps closed")
+        self.commit("SB1 T017: the task")
+        done = self.run_gate()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_finding_id_does_not_excuse_an_undispatched_slice(self) -> None:
+        self.ledger(["SB1"])
+        self.commit("SB4 F1: a finding closed")
+        done = self.run_gate()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("SB4", done.stderr)
+        self.assertNotIn("names F1", done.stderr)
+
+    def test_an_unknown_id_alone_is_still_refused(self) -> None:
+        self.ledger(["SB1"])
+        self.commit("UI3: the game view rebuilt")
+        done = self.run_gate()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("names UI3", done.stderr)
 
     def test_it_refuses_a_planned_slice_no_dispatch_accounts_for(self) -> None:
         self.ledger(["SB1"])

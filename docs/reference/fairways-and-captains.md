@@ -160,8 +160,11 @@ the deck log's `question` path, to the skipper or a person as the project's *Who
 `decision` by `captain:<fairway>`, counted toward the decision ceiling.
 
 **Settings.** `harbour.json`'s `captain`: `agent` (true in a new project; absent or false is the program
-alone, and migrating never sets it), `bound` (60 seconds), `answers` (false) and `per_hour` (30, the most
-times the agent is woken in an hour). `SLIPWAI_CAPTAIN` in the environment says first: `off`, `1` for the
+alone, and migrating never sets it), `bound` (60 seconds), `answers` (false), `per_hour` (30, the most
+times the agent is woken in an hour), `context_ceiling` (150000, the tokens of context past which the captain's
+session is closed at the next event and a fresh one started) and `wake_ceiling` (100, the wake-ups one session
+answers where the agent never reports its context). A captain program never loads the session a run before it
+saved: each wake-up hands the agent the stream's state, so its history is worth nothing. `SLIPWAI_CAPTAIN` in the environment says first: `off`, `1` for the
 project's own harness, or a command that starts an agent speaking the protocol.
 
 **Where the checks stop.** Every check here is against the captain agent and the slices' sessions acting
@@ -275,14 +278,17 @@ the order of the asking.
 Every id carries its fairway, for example `D-ORD-07` and `A-BIL-03`. So two fairways cannot mint the same
 id, and nothing is ever renumbered.
 
-Every append-only artefact is kept for each fairway separately: `fairways/<name>/decisions.md`, the
-adversary log, the benchmark records, the register, and the deck log. The harbourmaster renders the
-feature-level files from them on `main`. Nobody edits the feature-level files by hand:
+Every append-only artefact is kept for each fairway separately: the benchmark records, the register, and the
+deck log. A decision and a slice's adversary rows go further, one file per entry —
+`specs/<feature>/decisions/D-ORD-07.md` and `specs/<feature>/adversary-log/<slice>.md` — so the slices one
+fairway runs abreast never write one file either. `decisions.md` and `adversary-log.md` are rendered from those files, together with any
+`fairways/<name>/decisions.md` an older project still has. Nobody edits the rendered files by hand, and a
+conflict in one is answered by rendering it again — which the harbourmaster does itself at a merge:
 
 ```
 python3 scripts/agents/ids.py decision ORD     # the next decision id in that fairway: D-ORD-01, D-ORD-02, …
-make decisions                                 # fold every fairway's files into the feature-level ones
-make check-rendered                            # fail when a folded file is not what it renders from
+make decisions                                 # render the two logs from their records
+make check-rendered                            # fail when a rendered log is not what its records render to
 ```
 
 Ids use two digits. So a fairway's ids sort correctly as text while the fairway has fewer than a hundred.

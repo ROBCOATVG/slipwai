@@ -10,9 +10,10 @@ script says so and exits 0 — which is why `make verify` runs it everywhere.
 What a slice's change may contain — everything since the branch left `main`, committed or not:
 
 - **its own record**, `specs/<feature>/slices/<id>/**`, and the feature's cumulative artifacts — `spec.md`,
-  `story-split.md`, `contracts/`, `checklists/`, `people/`, `adversary-log.md`, `decisions.md`, `slices/README.md` — which
-  every slice amends and the host merges in split order. `decisions.md` is among them because `/cruise` writes
-  a decision where the ladder took it, which during a slice's stages is the slice's branch, and `check-decisions`
+  `story-split.md`, `contracts/`, `checklists/`, `people/`, `slices/README.md` — which every slice amends and
+  the host merges in split order. The decision and adversary records are among them, one file each under
+  `decisions/` and `adversary-log/`, with the two logs `make decisions` renders from them: `/cruise` writes a
+  decision where the ladder took it, which during a slice's stages is the slice's branch, and `check-decisions`
   wants every `Written to` path in the tree, which for a slice's artifacts is only true there;
 - **its capability's record**, `specs/<feature>/capabilities/<capability>/**` — `gates.md` and the demo log —
   for the capability the chart puts the slice in, under the feature that capability's slices are under. The
@@ -53,6 +54,10 @@ What a slice's change may contain — everything since the branch left `main`, c
   either way, and every stamp sorts after every number;
 - **the composition root** — one line per use case, the one code file every slice touches, resolved in
   split order at merge and allowed here for that reason;
+- **under a fairway's careen slice, `slice/<fairway>-careen`, that fairway's `fairways/<fairway>/careen.md`**,
+  whose rows it closes. Nothing else under `fairways/`, and no other slice anything there: a finding a stage
+  stows is a row in the capability's `stowed.md`, and the harbourmaster carries it into the careen at the
+  merge, because a file every slice of a stream wrote was a conflict on every merge (issue 154);
 - **its own dispatch ledger file**, `.slipwai/dispatch/<feature>/<id>.jsonl`, which `dispatch.py` writes into
   the slice's worktree so the evidence of the slice's start rides in the pull request that lands it. Its own
   only: another slice's file, and the run's `.slipwai/dispatch/<feature>.jsonl`, are the host's.
@@ -108,7 +113,9 @@ CANONICAL_SLOTS = ("plan.md", "research.md", "data-model.md", "quickstart.md", "
 FEATURE_SHARED = ("spec.md", "story-split.md", "adversary-log.md", "decisions.md")
 #: `people/` is the story's: `commands/sail.md` rung 12 has a slice write the person its story signs in as there,
 #: and game-club-manager's PE-01 was refused here for doing what the command said.
-FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists", "people")
+#: `decisions/` and `adversary-log/` are one file per decision and per slice's rows, which `make decisions` renders
+#: the two logs from: a slice writes its own, and seven slices abreast never write one file.
+FEATURE_SHARED_DIRECTORIES = ("contracts", "checklists", "people", "decisions", "adversary-log")
 MIGRATION_DIRECTORIES = ("migrations", "migration")
 MIGRATION_NAME = re.compile(r"^(?:\d+_|V\d+__)")
 MIGRATION_SUFFIXES = {".sql", ".js", ".ts", ".py"}
@@ -126,6 +133,9 @@ RUN_STATE = re.compile(r"^\.slipwai/run/.*$")
 #: Where the release flags are declared (`check-flags.py`), and the one shape a slice may add there: a key
 #: seeded `off`, with or without its comment. Blank lines and comments ride with it.
 FLAGS = "infra/service/flags.auto.tfvars"
+#: Every fairway's own files, which no slice writes, and what a fairway's careen slice is called: it alone
+#: may change `fairways/<fairway>/careen.md`, to close the rows the harbourmaster carried there.
+FAIRWAYS, CAREEN = "fairways/", "-careen"
 FLAG_SEEDED_OFF = re.compile(r'^\s*[A-Za-z_][A-Za-z0-9_-]*\s*=\s*"off"\s*(#.*)?$')
 
 
@@ -322,7 +332,8 @@ class Scope:
             return None
         return (
             f"{path}: not a slice's to write. A slice amends `spec.md`, `story-split.md`, `contracts/`, "
-            f"`checklists/`, `people/`, `adversary-log.md`, `decisions.md`, its capability's record under "
+            f"`checklists/`, `people/`, its records under `decisions/` and `adversary-log/` with the two logs "
+            f"`make decisions` renders from them, its capability's record under "
             f"`capabilities/` and its own `slices/{self.slice_id}/`."
         )
 
@@ -448,7 +459,22 @@ class Scope:
             )
         return None
 
+    def careen_violation(self, path: str) -> str | None:
+        """`fairways/` is every slice of a stream's, so no slice writes it — but a fairway's careen slice
+        closes the careen's rows, and the careen is the one file of it that slice may change."""
+        closes = self.slice_id[:-len(CAREEN)] if self.slice_id.endswith(CAREEN) else ""
+        if closes and path == f"{FAIRWAYS}{closes}/careen.md":
+            return None
+        return (
+            f"{path}: `fairways/` is shared by every slice of a stream, so it is the host's. A finding a stage "
+            f"stows is a row in the capability's own record, `specs/<feature>/capabilities/<capability>/"
+            f"stowed.md`, which the harbourmaster carries into `fairways/<fairway>/careen.md` when this slice "
+            f"merges."
+        )
+
     def violation(self, path: str, status: str) -> str | None:
+        if path.startswith(FAIRWAYS):
+            return self.careen_violation(path)
         if path == FLAGS:
             return self.flags_violation(path, status)
         if path.startswith(".slipwai/dispatch/"):

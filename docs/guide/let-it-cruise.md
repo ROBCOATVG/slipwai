@@ -118,7 +118,9 @@ captain's output: *no captain agent: this harness has no proven protocol launch*
 
 **What it costs.** Each event is one turn of the project's harness. `per_hour` (30 by default) is the most
 times a stream's captain is woken in an hour; past it, the stream runs on its rules alone until the hour has
-passed.
+passed. The captain's session starts fresh at every fleet start and again whenever its context passes
+`context_ceiling` (150,000 tokens by default), so a long run does not pay for its whole history on every
+wake-up.
 
 ### Turning the captain agent on
 
@@ -286,8 +288,11 @@ storyboard and the event model. The `upstream` setting makes them advance on the
 These two words name where unfinished work goes. Work is never dropped.
 
 - **Stow** is what a stage does with open work when it runs out of budget. It moves the work into the
-  careen. A finding below the fairway's severity bar is also stowed, and the slice merges. A CRITICAL
-  finding is never stowed.
+  careen. A finding below the fairway's severity bar is also stowed, and the slice merges. The bar is
+  `MEDIUM` unless a person sets it with `slipwai telegraph --set bar=…`; ringing a speed never moves it. A
+  finding that leaves a feature unusable or untrustworthy for its actor is never stowed, whatever the bar:
+  a CRITICAL, a validation bypass on a state-changing route, a forgery in a generated document, personal
+  data that survives an erasure, or wrong arithmetic in a money figure.
 - **The careen** is one hardening slice for each fairway. It holds the stowed work. It runs when the
   fairway's planned slices are done, and before the fairway's flag is hoisted. It runs the ladder like any
   other slice. Its demo is: the findings are closed. `/careen`, in the agent, runs it.

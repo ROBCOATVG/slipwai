@@ -18,7 +18,7 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
-# budget: 411 — the ignore rewrite staged where it is made, and run state kept out of the projections;
+# budget: 412 — the ignore rewrite staged where it is made, and run state kept out of the projections;
 # and the plain-sentence rule's instant written once, on every path a migration ends by
 # commit (2.1); a clean merge also leaves the intake proposal beside the catch-up notes, moves the run's state into
 # `.slipwai/run/` (refusing while a fleet is out), and moves the records
@@ -41,7 +41,7 @@ from .manifest import read_manifest, refuse_older
 from .migration_result import Migration
 from .migration_sentence import date_sentence_rule
 from .migration_withheld import settled
-from .relocate import relocate
+from .relocate import relocate, split_logs
 from .replay import Replay, git, replay
 from .run_folder import dirt, move_in, refuse_while_out, unstage_run_state
 from .scaffold import NO_MAINTENANCE
@@ -194,7 +194,8 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
         git(root, "add", "--", ".gitignore")
     # Records the project wrote that this keel keeps elsewhere: staged by `git mv`, committed below with the rest.
     relocated, left = relocate(root)
-    left += stuck
+    split, logs = split_logs(root, layout)  # decisions and adversary logs into one file per entry
+    relocated, left = relocated + split, left + stuck
     respelled, skipped = unlabel(root, layout)
     skipped += left
     # Per-checkout config and not a file, so no merge carried it and a project predating the hook has it
@@ -244,7 +245,7 @@ def refresh(root: Path, name: str, layout: Layout = AT_ROOT, *, set_undo: bool =
     staged = tuple(git(root, "diff", "--cached", "--name-only").splitlines())
     respelled = tuple(path for path in respelled if path in staged)
     ends = {end for move in relocated for end in move.split(" -> ")}
-    changed = tuple(path for path in staged if path not in respelled and path not in ends
+    changed = tuple(path for path in staged if path not in respelled and path not in ends and path not in logs
                     and not (reignored and path == ".gitignore"))
     if not staged:
         return Refresh(written=bool(commands), skipped=skipped, hooked=hooked.set, hooks=hooked.why)

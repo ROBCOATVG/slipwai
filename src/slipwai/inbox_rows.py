@@ -13,8 +13,8 @@ def holds_up(row: dict) -> bool:
     up, and the board's page has never counted them. The terminal and the agent's inbox did: lean-coffee-club
     said *12 things waiting on you* over nine notes, two merges waiting on trunk and one question.
     """
-    if row.get("paused") == "yes":
-        return False
+    if row.get("paused") == "yes" or row.get("probably") == "yes" or row.get("obsolete"):
+        return False  # paused, a merged slice's hand-back to confirm, or a park an earlier slipwai wrote
     if row.get("kind") == "told":
         return bool(row.get("needs"))
     if row.get("kind") == "decisions":

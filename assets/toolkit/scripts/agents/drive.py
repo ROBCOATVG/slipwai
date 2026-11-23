@@ -393,6 +393,7 @@ class Drive:
         self.closed = False
         self.replaying = False
         self.calls: dict[str, dict[str, Any]] = {}
+        self.context: int | None = None  # tokens in the session's context, from the agent's last `usage_update`
         self.asks = 0
         self.kept_back: set[str] = set()
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -758,6 +759,12 @@ class Drive:
             if call.get("status") in ("completed", "failed"):
                 self.calls.pop(ident, None)
                 self.finished(ident, call)
+        elif kind == "usage_update":
+            # How many tokens the session's context holds now, where the agent says: the captain's session is
+            # closed for a fresh one once this passes its ceiling (`captain_agent.Runner`).
+            used = update.get("used")
+            if isinstance(used, int) and not isinstance(used, bool) and used >= 0:
+                self.context = used
         elif kind == "plan":
             entries = [one for one in update.get("entries") or [] if isinstance(one, dict)]
             done = sum(1 for one in entries if one.get("status") == "completed")

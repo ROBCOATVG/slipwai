@@ -15,17 +15,18 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 474 — and a reply said while the stage runs is queued, which the box says and does not wait on;
+# budget: 478 — and a reply said while the stage runs is queued, which the box says and does not wait on;
 # the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
 # each group carries its own heading, count and the rows under it, so the page is a little longer than one
 # that listed them flat. The made card carries a reply box for a stage that has ended, and the script that sends it.
-# Five more for an answer already placed, shown on its row in place of a second box.
+# Five more for an answer already placed, shown on its row in place of a second box, and each row's action line.
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from urllib.parse import quote
 
+from .block_card import action_html
 from .console_page import SCRIPT as CONSOLE_SCRIPT
 from .fleet import NOTHING, inbox_detail  # noqa: F401 - NOTHING is read by name by the pages built on this
 from .fleet_page import SCRIPT as FLEET_SCRIPT
@@ -318,7 +319,8 @@ def inbox_row(index: int, row: dict, controls: bool, streams: dict | None, group
         story = f'<details class="log"><summary>what the stream said</summary>{story}</details>'
     return (f'<details class="log"><summary><b>{esc(shown)}</b> '
             f'<span class="tag">{esc(name)}</span>{where} <span class="mono">{esc(at)}</span></summary>'
-            f'{full}{needs_list(row, controls)}{story}{box}</details>')
+            f'{full}{action_html(row.get("action"), controls, name, str(row.get("aim") or ""), row.get("key") or "")}'
+            f'{needs_list(row, controls)}{story}{box}</details>')
 
 
 def needs_list(row: dict, controls: bool) -> str:
@@ -365,7 +367,8 @@ def unread_decisions(row: dict, controls: bool) -> str:
     log = '<p><a href="#decisions">Read them in the decision log</a>, each with its question and why.</p>'
     return (f'<details class="log"><summary><b>{esc(row["what"])}</b> '
             f'<span class="tag">{esc(name)}</span> <span class="mono">{esc(row["t"])}</span></summary>'
-            f'{log if controls else ""}<ol class="lines">{"".join(items)}</ol>{all_read}</details>')
+            f'{action_html(row.get("action"), controls)}{log if controls else ""}'
+            f'<ol class="lines">{"".join(items)}</ol>{all_read}</details>')
 
 
 def answer_boxes(rows: list[dict]) -> str:

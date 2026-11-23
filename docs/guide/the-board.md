@@ -129,6 +129,14 @@ are not counted. The same number goes on the Work tab, on the tab's title, *(3) 
 installed board's badge, and the **Waiting on you** column holds exactly the slices this list names. The first
 page shows a one-line strip when a card asks you something, and when the brief is ready to hand over.
 
+Every block, on a slice's card, under *Waiting on you* and in `slipwai fleet`, says **Why:** in one whole
+sentence and **Do:** in numbered steps, each naming the command or the control that does it. Where the
+harbourmaster would hold your answer — more decisions unread than the ceiling allows, or a park only reading
+lifts — the card says *Your answer '…' (09:19) is HELD: 34 unread decisions, ceiling 12* and puts the step
+that releases it first. A block that waits on your verdict on a mock-up offers **Approve** and **Reject** (with
+one line on what to change) while a drawing waits on one; they write `mock-states.md` as the storyboard's
+verdict does and answer the park as your message would.
+
 Under the strip and the captains, the rest of the window is tabs: **Work** (with the count of what waits on
 you), **Feedback** (*Try it & feedback* once a slice has a story to try), **Screens**, **Model**, **Fleet**,
 **Decisions** (with the count nobody has read) and **Next features**. A tab with nothing in it is left out;

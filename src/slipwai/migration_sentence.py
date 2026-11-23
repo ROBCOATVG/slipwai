@@ -40,7 +40,8 @@ def places(root: Path) -> list[Path]:
 
 def has_decisions(root: Path) -> bool:
     found = [path for place in places(root)
-             for path in (*place.glob("specs/*/decisions.md"), *place.glob("fairways/**/decisions.md"))]
+             for path in (*place.glob("specs/*/decisions.md"), *place.glob("specs/*/decisions/*.md"),
+                          *place.glob("fairways/**/decisions.md"))]
     return any(_ENTRY.search(path.read_text(encoding="utf-8", errors="replace")) for path in found)
 
 

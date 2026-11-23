@@ -22,8 +22,9 @@ cost this scheme exists to avoid, and `migrate` does not do it either.
 **A project still on version 1's `D<n>` reserves its numbers.** Slices worked abreast are one fairway, so
 the per-fairway counter does not separate them, and each delegating session took *the next after the last
 entry it could see* — which in hr-test-2 was D28 to D30 for two slices at once. `reserve` takes the
-highest number anything here knows — every `specs/*/decisions.md` in this checkout, on trunk and on every
-local and remote `slice/*` branch, and every number already reserved — under a lock, writes what it hands
+highest number anything here knows — every `specs/*/decisions.md`, and every decision's own record under
+`specs/*/decisions/`, in this checkout, on trunk and on every local and remote `slice/*` branch, and every
+number already reserved — under a lock, writes what it hands
 out to `.slipwai/run/logs/decision-numbers`, and prints them. The lock and the file are under `.slipwai/run/logs`,
 which every berth links to the project's own, so the siblings on one machine take turns at one counter; a
 sibling on another machine is seen through its pushed branch. A number reserved and never used is a gap,
@@ -119,6 +120,10 @@ def git(*argv: str) -> str:
     return done.stdout if done.returncode == 0 else ""
 
 
+#: A decision's own record, `specs/<feature>/decisions/D<n>.md`, whose number is its name.
+RECORD = re.compile(r"/decisions/D(\d+)\.md$")
+
+
 def numbers_in(text: str) -> set[int]:
     return {int(found) for found in HEADING.findall(text)}
 
@@ -127,7 +132,7 @@ def known_numbers() -> set[int]:
     """Every version-1 decision number this checkout can see: its own files, trunk's, every slice branch's,
     and every one already reserved."""
     found: set[int] = set()
-    for path in sorted((ROOT / "specs").glob("*/decisions.md")):
+    for path in sorted([*(ROOT / "specs").glob("*/decisions.md"), *(ROOT / "specs").glob("*/decisions/*.md")]):
         found |= numbers_in(path.read_text(encoding="utf-8", errors="replace"))
     refs = git("for-each-ref", "--format=%(refname)", "refs/heads/slice/", "refs/remotes/origin/slice/",
                "refs/heads/main", "refs/remotes/origin/main", "refs/heads/master",
@@ -136,6 +141,8 @@ def known_numbers() -> set[int]:
         for path in git("ls-tree", "-r", "--name-only", ref, "--", "specs").splitlines():
             if path.endswith("/decisions.md"):
                 found |= numbers_in(git("show", f"{ref}:{path}"))
+            elif named := RECORD.search(path):  # a decision's own record is named for its number
+                found.add(int(named.group(1)))
     if RESERVED.is_file():
         found |= {int(line.split()[0][1:]) for line in RESERVED.read_text(encoding="utf-8").splitlines()
                   if re.match(r"^D\d+\b", line)}

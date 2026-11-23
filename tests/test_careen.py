@@ -11,11 +11,18 @@ and the slice merges. At or above it, it closes first. A CRITICAL is never stowe
 """
 from __future__ import annotations
 
+import importlib.util
+import re
+import sys
 import unittest
+from types import ModuleType
 
 import checkout_packages  # noqa: F401
+from test_ladder_parts import every_rung
 
-from slipwai.project import adversary, careen, mutation
+from slipwai import telegraph
+from slipwai.assets import TOOLKIT_ROOT
+from slipwai.project import adversary, capability_gates, careen, harbour, mutation
 from slipwai.selection import Selection
 from slipwai.services import service_app
 
@@ -51,10 +58,55 @@ class BarTest(unittest.TestCase):
         self.assertTrue(careen.stowable("MEDIUM", bar="HIGH"))
         self.assertFalse(careen.stowable("LOW", bar="LOW"))
 
+    def test_the_careen_s_default_is_the_telegraph_s(self) -> None:
+        """One default for one number; no position moves it (slipwai#154)."""
+        self.assertEqual(careen.DEFAULT_BAR, telegraph.BAR)
+        self.assertEqual(careen.SEVERITIES, telegraph.SEVERITIES)
+
     def test_an_unknown_severity_is_treated_as_above_the_bar(self) -> None:
         """Silently stowing what nobody could classify is the failure this module exists to stop."""
         self.assertTrue(careen.above_bar("probably-fine"))
         self.assertFalse(careen.stowable("probably-fine"))
+
+
+class NeverStowedTest(unittest.TestCase):
+    """The owner's rule (slipwai#154): a finding that leaves a feature unusable or untrustworthy for its actor is
+    never deferred. Each kind here was a MEDIUM stowed on a real run at a raised bar."""
+
+    KINDS = ("validation-bypass", "document-forgery", "erasure-leak", "money-arithmetic")
+
+    def test_the_four_kinds_are_named(self) -> None:
+        self.assertEqual(tuple(careen.NEVER_STOWED_KINDS), self.KINDS)
+
+    def test_a_never_stowed_kind_is_not_stowed_whatever_the_severity_or_the_bar(self) -> None:
+        for kind in self.KINDS:
+            for severity in careen.SEVERITIES:
+                for bar in careen.SEVERITIES:
+                    with self.subTest(kind=kind, severity=severity, bar=bar):
+                        self.assertTrue(careen.above_bar(severity, bar, kind=kind))
+                        self.assertFalse(careen.stowable(severity, bar, kind=kind))
+
+    def test_the_same_medium_with_no_kind_is_stowed_below_a_high_bar(self) -> None:
+        """The kind is what changes the answer, not the severity."""
+        self.assertTrue(careen.stowable("MEDIUM", bar="HIGH"))
+        self.assertFalse(careen.stowable("MEDIUM", bar="HIGH", kind="money-arithmetic"))
+
+    def test_a_kind_nobody_recognises_is_treated_as_never_stowed(self) -> None:
+        """A finding somebody tagged meant it was not to be deferred; a typo is no reason to defer it."""
+        self.assertFalse(careen.stowable("LOW", bar="HIGH", kind="money-arithmetc"))
+        self.assertTrue(careen.stowable("LOW", bar="HIGH", kind=""))
+
+    def test_every_page_that_states_the_rule_names_every_kind(self) -> None:
+        pages = {
+            "careen.md": careen.careen_page("ordering"),
+            "the budget section": harbour.budget_section(),
+            "commands/adversary.md": (TOOLKIT_ROOT / "commands/adversary.md").read_text(encoding="utf-8"),
+        }
+        for name, page in pages.items():
+            with self.subTest(page=name):
+                self.assertIn(careen.RULE, flat(page))
+                for kind in self.KINDS:
+                    self.assertIn(f"`{kind}`", page)
 
 
 class CareenPageTest(unittest.TestCase):
@@ -75,6 +127,18 @@ class CareenPageTest(unittest.TestCase):
 class CareenSliceTest(unittest.TestCase):
     def command(self) -> str:
         return flat(careen.careen_command())
+
+    def test_it_runs_once_the_planned_slices_are_merged_whatever_the_release_state(self) -> None:
+        """A pre-launch product hoists no flag, so "before its flag is hoisted" alone never came (issue 154)."""
+        command = self.command()
+        self.assertIn("run as that fairway's last: once every planned slice of it is merged", command)
+        self.assertIn("whatever the release state", command)
+        self.assertNotIn("before its flag is hoisted", command)
+
+    def test_it_closes_rows_the_harbourmaster_carried_and_says_how_its_demo_is_recorded(self) -> None:
+        command = self.command()
+        self.assertIn("The harbourmaster wrote those rows there", command)
+        self.assertIn("deck_line.py demo --slice <fairway>-careen --verdict accepted", command)
 
     def test_it_runs_the_ladder_like_any_other_slice(self) -> None:
         """A hardening slice that skips the ladder is how hardening becomes a second quality standard."""
@@ -110,13 +174,17 @@ class AdversaryTest(unittest.TestCase):
                 self.assertIn("One round, and a bar", written)
                 self.assertIn("21 rounds", written)
 
-    def test_a_finding_below_the_bar_is_stowed_into_the_fairway_s_careen(self) -> None:
+    def test_a_finding_below_the_bar_is_stowed_into_the_capability_s_record_for_the_careen(self) -> None:
+        """issue 154: the page told a slice to write `fairways/<name>/careen.md`, which `check-slice-scope`
+        refuses it, so S62 wrote, was refused, handed back and conflicted for five merge attempts."""
         written = flat(adversary.adversary_command(True, SOURCED))
-        self.assertIn("fairways/<name>/careen.md", written)
+        self.assertIn("specs/<feature>/capabilities/<capability>/stowed.md", written)
+        self.assertIn("the harbourmaster carries the record's rows into `fairways/<name>/careen.md`", written)
+        self.assertNotIn("a row in `fairways/<name>/careen.md`", written)
         self.assertIn("Work is never dropped", written)
 
     def test_stowed_is_a_state_a_finding_can_be_in(self) -> None:
-        self.assertIn("`stowed` into the fairway's careen", flat(adversary.adversary_command(True, SOURCED)))
+        self.assertIn("`stowed` for the fairway's careen", flat(adversary.adversary_command(True, SOURCED)))
 
 
 class MutationGateTest(unittest.TestCase):
@@ -139,6 +207,103 @@ class MutationGateTest(unittest.TestCase):
     def test_a_run_that_could_not_happen_is_a_stop_rather_than_a_pass(self) -> None:
         """A gate that is green because it did not run is worse than a red one."""
         self.assertIn("green because it did not run", self.command())
+
+
+def toolkit_careen() -> ModuleType:
+    """The careen's writer as a project carries it: `scripts/agents/careen.py`, which has no slipwai to import."""
+    spec = importlib.util.spec_from_file_location("toolkit_careen", TOOLKIT_ROOT / "scripts/agents/careen.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True
+    spec.loader.exec_module(module)
+    return module
+
+
+ROW_A = "| 2026-11-23 | S62 | converge | MEDIUM | CV-1: the reminder names a deleted workspace; drop it | open |"
+ROW_B = "| 2026-11-23 | S62 | adversary | LOW | A-3: the error copy says `id`; say what was missing | open |"
+STOWED = f"# Stowed — reminders\n\n{careen.ROW_HEADER}\n|---|---|---|---|---|---|\n{ROW_A}\n{ROW_B}\n"
+
+
+class CareenWriterTest(unittest.TestCase):
+    """The harbourmaster's half: rows carried from a capability's `stowed.md` into the fairway's careen."""
+
+    def setUp(self) -> None:
+        self.module = toolkit_careen()
+
+    def test_a_fairway_with_no_careen_gets_one_with_the_rows_under_the_capability(self) -> None:
+        """The modelling fairway on manda had no careen at all, so nothing it stowed was in one."""
+        text, added = self.module.appended("", "modelling", "reminders", self.module.rows(STOWED))
+        self.assertEqual(added, 2)
+        self.assertTrue(text.startswith("# Careen — modelling"))
+        after = text.split("## reminders", 1)[1]
+        self.assertIn(ROW_A, after)
+        self.assertIn(ROW_B, after)
+
+    def test_a_row_already_carried_is_not_added_twice(self) -> None:
+        once, _ = self.module.appended("", "intake", "reminders", self.module.rows(STOWED))
+        twice, added = self.module.appended(once, "intake", "reminders", self.module.rows(STOWED))
+        self.assertEqual(added, 0)
+        self.assertEqual(once, twice)
+
+    def test_a_row_the_careen_closed_is_not_reopened_by_the_record_that_stowed_it(self) -> None:
+        once, _ = self.module.appended("", "intake", "reminders", self.module.rows(STOWED))
+        closed = once.replace(ROW_A, ROW_A.replace("| open |", "| done |"))
+        again, added = self.module.appended(closed, "intake", "reminders", self.module.rows(STOWED))
+        self.assertEqual(added, 0)
+        self.assertEqual(self.module.open_rows(again), [ROW_B])
+
+    def test_a_later_slice_s_new_row_joins_its_capability_s_section(self) -> None:
+        once, _ = self.module.appended("", "intake", "reminders", [ROW_A])
+        other, _ = self.module.appended(once, "intake", "email-in", [ROW_B.replace("A-3", "C-1")])
+        later, added = self.module.appended(other, "intake", "reminders", [ROW_A, ROW_B])
+        self.assertEqual(added, 1)
+        reminders = later.split("## reminders", 1)[1].split("## email-in", 1)[0]
+        self.assertIn(ROW_B, reminders)
+
+    def test_the_header_the_rule_and_the_template_placeholder_are_not_rows(self) -> None:
+        self.assertEqual(self.module.rows(careen.careen_page("x") + careen.ROW_HEADER
+                                          + "\n| <date> | <slice-id> | review | LOW | one line | open |\n"), [])
+
+    def test_the_page_a_project_is_given_is_the_page_the_keel_describes(self) -> None:
+        self.assertEqual(self.module.page("ordering"), careen.careen_page("ordering"))
+        self.assertEqual(self.module.careen_path("ordering"), careen.careen_path("ordering"))
+        self.assertEqual(self.module.HEADER, careen.ROW_HEADER)
+
+    def test_the_careen_slice_is_named_for_its_fairway(self) -> None:
+        self.assertEqual(self.module.careen_slice("intake"), "intake-careen")
+        self.assertEqual(self.module.fairway_of("intake-careen"), "intake")
+        self.assertEqual(self.module.fairway_of("S62"), "")
+
+
+class NoSliceWritesTheCareenTest(unittest.TestCase):
+    """issue 154: every instruction that told a slice to write `fairways/<name>/careen.md` was refused by
+    `check-slice-scope`. A sentence that names `fairways/` now says whose it is, and it is never the slice's."""
+
+    def pages(self) -> dict[str, str]:
+        return {
+            "the budget section": harbour.budget_section(),
+            "commands/sail.md": (TOOLKIT_ROOT / "commands/sail.md").read_text(encoding="utf-8"),
+            "commands/adversary.md": adversary.adversary_command(True, SOURCED),
+            "commands/mutation.md": mutation.mutation_command(["toy-plain"]),
+            "the capability gates": capability_gates.capability_gates_stage(False),
+            "the ladder": every_rung(),
+            **{f"agents/{path.name}": path.read_text(encoding="utf-8")
+               for path in sorted((TOOLKIT_ROOT / "agents").glob("*.md"))},
+        }
+
+    def test_every_sentence_naming_fairways_says_the_harbourmaster_writes_it_or_the_slice_never_does(self) -> None:
+        for name, text in self.pages().items():
+            for sentence in re.split(r"(?<=[.;:])\s+", flat(text)):
+                if "fairways/" in sentence and "careen" in sentence:
+                    with self.subTest(page=name, sentence=sentence[:120]):
+                        self.assertRegex(sentence, r"harbourmaster|[Nn]ever|may not")
+
+    def test_each_stowing_page_names_the_capability_s_record(self) -> None:
+        pages = self.pages()
+        for name in ("the budget section", "commands/sail.md", "commands/adversary.md", "commands/mutation.md",
+                     "the capability gates", "agents/sail-review-mate.md"):
+            with self.subTest(page=name):
+                self.assertIn("stowed.md", pages[name])
 
 
 if __name__ == "__main__":  # pragma: no cover

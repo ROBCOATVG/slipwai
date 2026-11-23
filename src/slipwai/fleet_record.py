@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from .logs import Entry, paused, run_dir
+from .need_check import text_check
 from .process_alive import alive
 
 
@@ -63,6 +64,57 @@ def clock_of(until: str) -> str:
     return when.astimezone().strftime("%H:%M")
 
 
+def on_trunk(root: Path | None, commit: str, line: Entry) -> set[int]:
+    """The needs of a park or hand-back whose text check trunk already passes — asked through `need_check`,
+    the harbourmaster's own reading — so a need landed leaves the board before its `need-met` is written."""
+    needs = line.fields.get("needs")
+    if root is None or not commit or not isinstance(needs, list):
+        return set()
+    return {index for index, need in enumerate(needs) if isinstance(need, dict) and isinstance(need.get("check"), dict)
+            and need["check"].get("kind") == "text" and text_check(root, need["check"], commit)}
+
+
+#: What a hand-back opens with when it is about one slice and names it in its words rather than its field.
+OPENS = re.compile(r"\s*([A-Za-z0-9_.-]{1,40}?)(?![\w-])")
+
+
+def of_merged(line: Entry, merged: Sequence[str]) -> str:
+    """The merged slice a hand-back or park is about — its `slice`, or the id its words open with — or `""`."""
+    named = str(line.fields.get("slice") or "")
+    if not named:
+        opened = OPENS.match(str(line.fields.get("message") or line.fields.get("why") or ""))
+        named = opened.group(1) if opened else ""
+    return named if named and named in merged else ""
+
+
+def stale(line: Entry, met: set[int], merged: Sequence[str]) -> str:
+    """Whether a hand-back's needs still wait on a person: `met` where every need is met — trunk has them or a
+    receipt says so, and it leaves the board — `probably` where its slice has merged and nothing left can be
+    checked against trunk, so a person is asked to confirm rather than act; `""` where it still waits. A merged
+    slice's need whose check trunk fails is still owed: a slice built on a stand-in has not landed the rest."""
+    needs = [need for need in line.fields.get("needs") or [] if isinstance(need, dict)]
+    left = [need for index, need in enumerate(needs) if index not in met]
+    if needs and not left:
+        return "met"
+    if left and of_merged(line, merged) and not any(isinstance(need.get("check"), dict) for need in left):
+        return "probably"
+    return ""
+
+
+def crossing(root: Path | None) -> str:
+    """`<old> → <new>`: the slipwai a project was made with and the one it was last moved to, off `project.json`."""
+    if root is None:
+        return ""
+    try:
+        made = json.loads((root / "project.json").read_text(encoding="utf-8")).get("generator") or {}
+    except (OSError, ValueError, UnicodeDecodeError, AttributeError):
+        return ""
+    if not isinstance(made, dict):
+        return ""
+    old, new = str(made.get("generatedWith") or ""), str(made.get("updatedWith") or "")
+    return f"{old} → {new}" if old and new and old != new else ""
+
+
 def need_rows(park: Entry, met: set[int]) -> list[dict[str, str]]:
     """A park's needs as the board draws them: what, who ticks it, how the fleet would, and whether it is."""
     needs = park.fields.get("needs")
@@ -104,29 +156,35 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key: tuple
         if row.get("kind") == "told":
             # A hand-back with needs: one change on trunk, grouped by what it asks for, like a host park.
-            key = ("told", tuple(need["what"] for need in row.get("needs") or []))
+            key = ("told", tuple(need["what"] for need in row.get("needs") or []), str(row.get("probably") or ""))
         elif cause not in GROUPED:
             key = (cause, row["fairway"], row["t"], str(row.get("slice") or ""))
         elif cause == "limit":
             key = ("limit",)
         else:
-            key = (cause, tuple(need["what"] for need in row.get("needs") or []))
+            key = (cause, tuple(need["what"] for need in row.get("needs") or []), str(row.get("obsolete") or ""))
         held = keyed.setdefault(key, {"kind": "group", "cause": cause, "slices": [], "fairways": [], "parks": [],
                                       "needs": [dict(need) for need in row.get("needs") or []],
                                       "t": row["t"], "until": "", "then": "", "what": "", "paused": "yes",
-                                      "source": str(row.get("kind"))})
+                                      "source": str(row.get("kind")),
+                                      # Asked to be confirmed rather than acted on, or a park an earlier slipwai
+                                      # wrote: neither is a thing only a person can move the work on by.
+                                      "probably": str(row.get("probably") or ""),
+                                      "obsolete": str(row.get("obsolete") or "")})
         held["slices"].append(str(row.get("slice") or row["fairway"]))
         if row["fairway"] not in held["fairways"]:
             held["fairways"].append(row["fairway"])
         held["parks"].append({"fairway": row["fairway"], "t": row["t"], "slice": str(row.get("slice") or ""),
                               "aim": str(row.get("aim") or row.get("slice") or ""), "key": str(row.get("key") or ""),
-                              **({"answer": row["answer"]} if row.get("answer") else {})})
+                              **({"answer": row["answer"]} if row.get("answer") else {}),
+                              "held": str((row.get("action") or {}).get("held") or "")})
         held["t"] = min(held["t"], row["t"])
         held["times"] = max(int(held.get("times", 1)), int(row.get("times") or 1))
         held["until"] = max(held["until"], str(row.get("until") or ""))
         if row["t"] >= max(park["t"] for park in held["parks"]):
             held["then"], held["what"] = str(row.get("then") or ""), str(row.get("what") or "")
             held["lines"] = row.get("lines") or []
+            held["action"] = row.get("action")  # what to do about it: the newest park's, as its words are
         for mine, theirs in zip(held["needs"], row.get("needs") or [], strict=False):
             if theirs.get("met") == "yes":
                 mine["met"] = "yes"

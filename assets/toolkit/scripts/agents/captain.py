@@ -92,6 +92,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import abreast  # noqa: E402
+import careen  # noqa: E402 — the fairway's last slice, and the list it closes
 import captain_agent  # noqa: E402
 import captain_events  # noqa: E402
 import captain_orders  # noqa: E402
@@ -108,6 +109,11 @@ import stuck  # noqa: E402
 import talk  # noqa: E402
 import travel  # noqa: E402
 
+try:  # the harbourmaster's predicate for a capability's last slice; without it the captain learns from the refusal
+    import capabilities  # noqa: E402
+except ImportError:  # pragma: no cover - a toolkit older than the capability hold
+    capabilities = None  # type: ignore[assignment]
+
 
 def project_root() -> Path:
     for candidate in HERE.parents:
@@ -122,6 +128,8 @@ HOOKS = ROOT / "scripts/extensions/hooks.py"
 #: The ladder itself. A harness whose print mode resolves this project's slash commands is asked `/sail`;
 #: every other is asked to read this file and follow it.
 DRIVE_COMMAND = ROOT / "commands/sail.md"
+#: What the careen slice runs instead: the fairway's hardening slice has its own command (`careen.py`).
+CAREEN_COMMAND = ROOT / "commands/careen.md"
 #: Whether this run is under `/cruise`, and who answers its product questions — `commands/cruise.md`.
 CRUISE = ROOT / ".specify/cruise.json"
 #: The `decide` values under which a product question is decided here rather than parked for a person.
@@ -265,7 +273,7 @@ def cruise_note(decide: str) -> str:
             f"`commands/cruise.md` *Decisions* says — "
             + ("the host where the stage recommends an answer or a standing decision covers it, otherwise "
                if decide == "recommended-first" else "")
-            + f"a fresh `{SKIPPER}` delegate — append the entry to the feature's decisions.md under a number "
+            + f"a fresh `{SKIPPER}` delegate — write the entry as its own decisions/D<n>.md under a number "
               f"from `python3 scripts/agents/ids.py reserve decision`, write the decision into the artifact "
               f"the stage owns, write the `decision` line carrying the question's `id` with `decided_by` "
               f"naming who decided, and carry on. Park only on a question the skipper answers `unavailable` "
@@ -523,13 +531,50 @@ def next_slices(fairway: str, beside: list[str]) -> tuple[list[str], str]:
     found = abreast.ready(charted, folded_logs, done, fairway, beside)
     if found:
         return found, ""
+    # An `observed` slice is what the code already does: nobody builds it, so it is never left to start.
+    observed = clearance.observed(charted)
     left = [one for one in mine if one not in folded_logs.merged and one not in folded_logs.claimed
-            and one not in beside]
+            and one not in beside and one not in observed]
     if not left:
+        last = careen_due(fairway, charted, folded_logs, beside)
+        if last:
+            return [last], ""
         return [], f"every slice of {fairway} is claimed or merged"
     state, why = clearance.position(charted, folded_logs, left[0], done)
     return [], (f"{left[0]} may run, and not beside {', '.join(beside)}, which the slice graph's "
                 f"parallel_ok_with leaves out" if state in abreast.READY else f"{left[0]} waits on {why}")
+
+
+def careen_due(fairway: str, charted: dict, folded_logs: clearance.Folded, beside: list[str]) -> str:
+    """The careen slice of this fairway, where it is the one thing left to start; `""` where it is not.
+
+    Its moment is every planned slice of the fairway merged — not claimed, merged, and nothing beside it in
+    flight — with a row of `fairways/<fairway>/careen.md` on trunk still open. Whatever the release state:
+    the careen was said to run "before the flag is hoisted", which on a pre-launch product never comes, and
+    the stream reported every slice claimed or merged and went idle on a list nobody worked (issue 154). A
+    careen already claimed is resumed like any claimed slice, and one already merged is not offered again.
+    """
+    last = careen.careen_slice(fairway)
+    if beside or last in folded_logs.merged or last in folded_logs.claimed:
+        return ""
+    observed = clearance.observed(charted)  # what the code already does is nobody's to build, so never merged
+    planned = [str(slice_id) for slice_id, body in (charted.get("slices") or {}).items()
+               if str((body or {}).get("fairway", "")) == fairway and str(slice_id) not in observed]
+    if not planned or any(one not in folded_logs.merged for one in planned):
+        return ""
+    return last if careen.open_rows(careen_on_trunk(fairway)) else ""
+
+
+def careen_on_trunk(fairway: str) -> str:
+    """This fairway's careen as trunk holds it, which is where the harbourmaster wrote it; the checkout's
+    copy where there is no trunk to read, and nothing where neither has one."""
+    path = careen.careen_path(fairway)
+    held = clearance.trunk()
+    shown = clearance.git("show", f"{held}:{path}") if held else ""
+    if shown:
+        return shown
+    got = talk.read_bytes(ROOT / path)
+    return got[0].decode("utf-8", errors="replace") if got is not None else ""
 
 
 def fire(point: str, **given: str) -> None:
@@ -624,7 +669,10 @@ def sail_prompt(chosen: dict | None, slice_id: str, fairway: str, retry: str = "
     berth it is already in, the cruise's rule, and why the run before did not close the gate."""
     # `sail`, the command's name: it was `drive` until the rename and the word stayed here, so a harness
     # that takes slash commands was sent `/drive`, which no project has had since.
-    prompt = harness.prompt_for(chosen, "sail", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
+    closes = careen.fairway_of(slice_id)
+    # The careen is the fairway's last slice and has a command of its own: `/careen <fairway>`, run in its berth.
+    prompt = harness.prompt_for(chosen, "careen", CAREEN_COMMAND, closes) if closes == fairway else \
+        harness.prompt_for(chosen, "sail", DRIVE_COMMAND, f"{slice_id} fairway={fairway}")
     if berth is not None:
         prompt += (f"\n\nYou are already in this slice's berth: the worktree at {berth}, on branch "
                    f"{BRANCH.format(slice=slice_id)}. Work there, and make no other worktree for it; its "
@@ -1524,8 +1572,8 @@ def skipper_prompt(slice_id: str, feature: str, fairway: str, asked: list[logs.E
               f"`commands/cruise.md` *Decisions* says: put it to a fresh `{SKIPPER}` delegate "
               f"(`agents/{SKIPPER}.md` is its brief; where this harness cannot delegate, read the brief and "
               f"decide exactly as it says), under a number from `python3 scripts/agents/ids.py reserve "
-              f"decision <count> {slice_id}`. Append each entry to "
-              f"`specs/{clearance.feature_of_slice(slice_id)}/decisions.md`, write the "
+              f"decision <count> {slice_id}`. Write each entry as its own file, "
+              f"`specs/{clearance.feature_of_slice(slice_id)}/decisions/D<n>.md`, run `make decisions`, write the "
               f"decision into the artifact the stage owns, and append one JSON line per decided question to "
               f"`{where}`: {{\"v\": 1, \"t\": <now, UTC, ...Z>, \"kind\": \"decision\", \"fairway\": "
               f"\"{fairway}\", \"slice\": \"{slice_id}\", \"id\": <the question's id>, \"what\": \"D<n>: <the "
@@ -2203,6 +2251,45 @@ def refusal_cause(why: str) -> str:
     return f"gate {target.group(1)}" if target else why[:80]
 
 
+def resolve_in_berth(slice_id: str, feature: str, fairway: str, why: str) -> str:
+    """Send the slice back into its berth to act on `why` before its merge is asked for again; why it stopped, or "".
+
+    What a refusal the berth can fix asks of it — a conflict, a failed gate, its capability's gates — is work on
+    code, so `/sail` is dispatched in this fairway's own berth, where the context is.
+    """
+    # Back into its berth to resolve, which is work on code and no longer a wait on the queue.
+    FLIGHT.setdefault(slice_id, {})["merging"] = False
+    try:
+        finished, fault, fresh = dispatch(slice_id, feature, fairway, why)
+    except Spent as spent_all:
+        return str(spent_all)
+    except NeverRan as refused:
+        return str(refused)
+    FLIGHT.setdefault(slice_id, {})["merging"] = True
+    refused_run = FLIGHT.get(slice_id, {}).pop("refusal", None)
+    if refused_run is not None:
+        # The harness said no to the run that would have resolved the merge — a usage limit — which is
+        # a pause with its time on it, as it is at a slice's first run. Read as a run that failed, it
+        # parked lean-coffee-club's access stream on `/sail exited 1` for ten hours, for a person,
+        # while the two streams beside it paused and started again by themselves.
+        record(slice_id, cause=refused_run.cause, until=refused_run.until)
+        return (f"the harness would not run {slice_id} ({refused_run.said}). Paused until "
+                f"{local_clock(refused_run.until)}, no attempt spent")
+    if not finished:
+        return fault or f"{slice_id}'s run in its berth did not finish"
+    if FLIGHT.get(slice_id, {}).pop("message_commits", False):
+        # What was held for the merge was delivered ahead of the resolve, and a message's turn committed:
+        # the slice's own gate is read again, on this run's lines, before the merge is asked for.
+        promised = sets_of(slice_id)
+        missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
+        if missing or verdict != ACCEPTED or unseeded(fresh, slice_id, feature):
+            record(slice_id, cause="gate")
+            return ("a message's turn committed to the slice while it was resolving its merge, and "
+                    "its gate was not closed again on that head — "
+                    + gate_missed(slice_id, promised, missing, verdict, unseeded(fresh, slice_id, feature)))
+    return ""
+
+
 def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool, str]:
     """Ask for the merge until it lands or until asking again cannot change the answer.
 
@@ -2212,6 +2299,17 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
     once rather than driving a slice four more times to be told the same thing.
     """
     cause, same = "", 0
+    gates_owed = capabilities.ungated(slice_id) if capabilities is not None else ""
+    if gates_owed:
+        # The harbourmaster's own predicate, asked before the merge rather than learned from its refusal: the
+        # last slice of a capability whose record has no `Cleared:` is refused every time, so its gates are
+        # dispatched first and the merge asked for once it could be granted. manda's captains asked, were
+        # refused and only then dispatched the gates, 23 times. Counted as the first answer to that cause.
+        hold_talk(fairway, slice_id, "held: this slice is at its merge")
+        fault = resolve_in_berth(slice_id, feature, fairway, f"its merge would be refused: {gates_owed}")
+        if fault:
+            return False, fault
+        cause, same = refusal_cause(gates_owed), 1
     for asked in range(MERGE_ASKS):
         hold_talk(fairway, slice_id, "held: this slice is at its merge")
         landed, why, resolvable = ask_to_merge(slice_id, feature, fairway, asked)
@@ -2226,36 +2324,9 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
         cause = refusal_cause(why)
         if same > bound:
             return False, f"{why}. That is {same} attempt(s) at the same refusal, which is what `attempts` allows"
-        # Back into its berth to resolve, which is work on code and no longer a wait on the queue.
-        FLIGHT.setdefault(slice_id, {})["merging"] = False
-        try:
-            finished, fault, fresh = dispatch(slice_id, feature, fairway, why)
-        except Spent as spent_all:
-            return False, str(spent_all)
-        except NeverRan as refused:
-            return False, str(refused)
-        FLIGHT.setdefault(slice_id, {})["merging"] = True
-        refused_run = FLIGHT.get(slice_id, {}).pop("refusal", None)
-        if refused_run is not None:
-            # The harness said no to the run that would have resolved the merge — a usage limit — which is
-            # a pause with its time on it, as it is at a slice's first run. Read as a run that failed, it
-            # parked lean-coffee-club's access stream on `/sail exited 1` for ten hours, for a person,
-            # while the two streams beside it paused and started again by themselves.
-            record(slice_id, cause=refused_run.cause, until=refused_run.until)
-            return False, (f"the harness would not run {slice_id} ({refused_run.said}). Paused until "
-                           f"{local_clock(refused_run.until)}, no attempt spent")
-        if not finished:
+        fault = resolve_in_berth(slice_id, feature, fairway, why)
+        if fault:
             return False, fault
-        if FLIGHT.get(slice_id, {}).pop("message_commits", False):
-            # What was held for the merge was delivered ahead of the resolve, and a message's turn committed:
-            # the slice's own gate is read again, on this run's lines, before the merge is asked for.
-            promised = sets_of(slice_id)
-            missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
-            if missing or verdict != ACCEPTED or unseeded(fresh, slice_id, feature):
-                record(slice_id, cause="gate")
-                return False, ("a message's turn committed to the slice while it was resolving its merge, and "
-                               "its gate was not closed again on that head — "
-                               + gate_missed(slice_id, promised, missing, verdict, unseeded(fresh, slice_id, feature)))
     return False, f"{slice_id} asked for its merge {MERGE_ASKS} times and each was refused for something new"
 
 

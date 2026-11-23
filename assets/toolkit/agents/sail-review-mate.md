@@ -15,8 +15,9 @@ exists to avoid. A brief that hands you anything narrower than those two is repo
 base — `git diff <merge-base>...HEAD` — and you read only as much of the surrounding code as it takes to
 understand it. Every finding points at a line the slice added or changed. Something wrong in code the slice did
 not touch is not a finding for this slice: list it apart, as a note for the capability gates or a candidate
-for the careen, and the delegate never fixes it here. A slice that fixes its neighbours is a slice that is no
-longer small, and the reshape that follows refactors the slice's own lines and never the code beside them.
+for the capability's `stowed.md`, which feeds the careen, and the delegate never fixes it here. A slice that
+fixes its neighbours is a slice that is no longer small, and the reshape that follows refactors the slice's own
+lines and never the code beside them.
 
 You are reading the shape of what was built, not the shape of one cycle's code. Four questions, in this
 order. Is it **correct** against the slice's own examples and the constitution's MUSTs — name the file and

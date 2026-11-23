@@ -98,12 +98,17 @@ try:  # the capability hold reads the chart through it; a harbour without it hol
     import capabilities  # noqa: E402
 except ImportError:  # pragma: no cover - a toolkit older than the capability hold
     capabilities = None  # type: ignore[assignment]
+try:  # the careen's one writer reads and writes its page through it; a toolkit without it carries nothing
+    import careen  # noqa: E402
+except ImportError:  # pragma: no cover - a toolkit older than the harbourmaster writing the careen
+    careen = None  # type: ignore[assignment]
 import claims  # noqa: E402
 import conflicts  # noqa: E402 — a conflict is settled where the rebase stopped, where it can be
 import inbox  # noqa: E402
 import lockfiles  # noqa: E402 — a lock two slices both wrote is written again, not resolved by hand
 import logs  # noqa: E402
 import mender  # noqa: E402
+import need_check  # noqa: E402 — whether trunk holds what a need asks for, the board's reading too
 import telegraph  # noqa: E402
 import travel  # noqa: E402
 
@@ -129,7 +134,7 @@ CARRIED = {"mark-set": "mark-set", "parked": "park"}
 #: Who wrote a `told`, where it says. Only a person's answers a park: the board and `/cruise-tell` write it.
 PERSON = "person"
 #: What a captain's park at the decision ceiling waits on. Cleared by reading, never by a message.
-REVIEW = "decision-review"
+REVIEW = logs.REVIEW
 #: What a request may ask for at all. A closed set: an action nobody wrote down is one nobody reviewed.
 ACTIONS = ("push", "merge", "deploy", "flag", "publish")
 #: What is never done, whoever asks and whatever the reason. Matched against the request's own text, because
@@ -328,12 +333,7 @@ def git(*argv: str, where: Path | None = None) -> subprocess.CompletedProcess[st
 
 def trunk() -> str:
     """The branch a merge lands on: what `harbour.json` says, else what the remote calls its head, else main."""
-    named = config().get("trunk")
-    if isinstance(named, str) and named:
-        return named
-    found = git("symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
-    head = found.stdout.strip().removeprefix("origin/") if found.returncode == 0 else ""
-    return head or DEFAULT_TRUNK
+    return need_check.trunk_name(ROOT, config().get("trunk"))
 
 
 def gate() -> list[str]:
@@ -365,8 +365,7 @@ def has_origin() -> bool:
 
 def base() -> str:
     """What to rebase onto: the remote's trunk where there is one, else the local branch."""
-    name = trunk()
-    return f"origin/{name}" if git("rev-parse", "--verify", "--quiet", f"origin/{name}").returncode == 0 else name
+    return need_check.base(ROOT, trunk())
 
 
 def conflicting() -> list[str]:
@@ -606,13 +605,16 @@ APPEND_STOPS = 500
 
 def record_woven(path: str) -> bool:
     """Resolve one conflicted record file in the scratch worktree — a feature's decisions, adversary log or
-    benchmark overview — with trunk's changes and the replayed commit's both (`conflicts.woven`). False
-    where it is not such a file, or the two changed the same lines."""
+    benchmark overview — with trunk's changes and the replayed commit's both: rendered again from the
+    feature's one-file-per-entry records where it keeps them (`conflicts.rendered`), else woven
+    (`conflicts.woven`). False where it is not such a file, or the two changed the same lines."""
     if not conflicts.RECORDS.match(path):
         return False
     before, onto, commit = (git("show", f":{stage}:{path}", where=SCRATCH) for stage in (1, 2, 3))
     if any(one.returncode != 0 for one in (before, onto, commit)):
         return False
+    if conflicts.rendered(SCRATCH, path, onto.stdout, commit.stdout):
+        return True
     held = conflicts.woven(before.stdout, onto.stdout, commit.stdout)
     if held is None:
         return False
@@ -746,7 +748,115 @@ def mender_settled(rebased: subprocess.CompletedProcess[str], branch: str,
     return rebased, why
 
 
-def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
+#: What the merge in hand did with its slice's hand-back patches: those it applied on the rebased slice,
+#: and those it left for a person with why. Read by `answer` onto the `granted` line.
+HANDED_BACK: dict[str, list[str]] = {"landed": [], "withheld": []}
+
+
+def handbacks_applied(branch: str, onto: str) -> str:
+    """Apply the hand-back patches the slice carries (`mender.HANDBACK`) on it, rebased in the scratch tree,
+    and commit them there, so the one full gate that follows runs over both. Why the merge is refused, or "".
+
+    A patch that touches a gate or the cloud is not applied, and the merge goes on without it: it is a
+    person's, as a need for one always was, and the `granted` line names it. A patch already on trunk —
+    the same change landed another way — is passed over. One that will not apply is refused with the
+    slice, because the slice's change and its hand-back are one change.
+    """
+    HANDED_BACK["landed"], HANDED_BACK["withheld"] = [], []
+    slice_id = branch.removeprefix(BRANCH.format(slice=""))
+    if slice_id == branch:
+        return ""
+    reasons: list[str] = []
+    for patch in mender.handback_patches(SCRATCH, slice_id):
+        name = patch.relative_to(SCRATCH).as_posix()
+        text = patch.read_text(encoding="utf-8", errors="replace")
+        why = mender.withheld(mender.patched_paths(text))
+        if why:
+            HANDED_BACK["withheld"].append(f"{name}: {why}")
+            continue
+        # The patch as committed, against the index — never either one as checked out. A Windows checkout with
+        # `core.autocrlf` writes both the patch and the files it changes with CRLF, while what git holds, and
+        # what `git diff` wrote, is LF; applying the working-tree copies would refuse every hand-back there.
+        blob = subprocess.run(["git", "show", f"HEAD:{name}"], cwd=SCRATCH, capture_output=True, check=False).stdout
+
+        def apply(*flags: str, blob: bytes = blob) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.run(["git", "apply", "--cached", *flags, "-"], cwd=SCRATCH, input=blob,
+                                  capture_output=True, check=False)
+
+        if apply("--check", "--reverse").returncode == 0:
+            continue  # already there: trunk or the slice holds this change
+        applied = apply("--whitespace=nowarn")
+        if applied.returncode != 0:
+            git("reset", "--quiet", "--hard", "HEAD", where=SCRATCH)  # drop what an earlier patch staged
+            said = (applied.stderr or applied.stdout).decode("utf-8", "replace").strip().splitlines()
+            return (f"{branch}'s hand-back {name} does not apply on it rebased onto {onto} "
+                    f"({said[-1] if said else 'git apply refused it'}). Nothing is half-done; write the patch "
+                    f"again against the rebased slice in your berth (`git diff > {name}` after making the "
+                    f"change there) and ask again")
+        HANDED_BACK["landed"].append(name)
+        reasons.append(f"- {name}: {mender.reason_of(text) or 'no reason given'}")
+    if not HANDED_BACK["landed"]:
+        return ""
+    made = git("commit", "--quiet", "--no-verify", "-m",
+               f"{slice_id}: land the hand-backs it carried, with its merge\n\n"
+               f"Applied on the slice rebased onto trunk and gated with it, because each needs the slice's own "
+               f"code.\n\n" + "\n".join(reasons), where=SCRATCH)
+    if made.returncode != 0:
+        git("reset", "--quiet", "--hard", "HEAD", where=SCRATCH)
+        return f"{branch}'s hand-backs applied and could not be committed ({(made.stderr or made.stdout).strip()})"
+    # The patches went into the index alone; the gate runs on the working tree, so bring it to the commit.
+    git("reset", "--quiet", "--hard", "HEAD", where=SCRATCH)
+    return ""
+
+
+def careen_carried(where: Path, onto: str, fairway: str, branch: str) -> str:
+    """Carry the rows of every capability `stowed.md` this merge brings in into the fairway's careen, and commit
+    them on the rebased branch before the gate. Why that could not be done, or "" — also where there was
+    nothing to carry, which is most merges.
+
+    The careen is shared by every slice of a stream, so no slice may write it (`check-slice-scope`): each
+    stows into its capability's own record, and this is the one writer that carries the rows across — a
+    file operation, never a session, one merge at a time under the merge ref. On the rebased branch, so the
+    gate runs on what trunk will hold and trunk moves once. A row already in the careen is not added again,
+    so a record every slice of a capability carries adds only what is new, and a merge asked again after a
+    refusal adds nothing twice. The careen file is made where the fairway had none.
+    """
+    if careen is None or not fairway:
+        return ""
+    changed = git("diff", "--name-only", onto, "HEAD", where=where)
+    records = sorted(path for path in changed.stdout.splitlines() if careen.STOWED.match(path.strip()))
+    if not records:
+        return ""
+    target = where / careen.careen_path(fairway)
+    try:
+        text = target.read_text(encoding="utf-8") if target.is_file() else ""
+        added = 0
+        for path in records:
+            record = where / path
+            if not record.is_file():  # the merge deleted it: nothing to carry
+                continue
+            capability = careen.STOWED.match(path).group("capability")  # type: ignore[union-attr]
+            text, more = careen.appended(text, fairway, capability, careen.rows(record.read_text(encoding="utf-8")))
+            added += more
+        if not added:
+            return ""
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8", newline="")
+    except (OSError, UnicodeDecodeError) as fault:
+        return f"{careen.careen_path(fairway)} could not be written ({fault})"
+    if git("add", "--", careen.careen_path(fairway), where=where).returncode != 0:
+        return f"{careen.careen_path(fairway)} could not be staged"
+    made = git("commit", "--quiet", "--no-verify", "-m",
+               f"Carry {branch}'s stowed rows into the {fairway} careen\n\n"
+               f"{added} row(s) from {', '.join(records)}, appended by the harbourmaster, the careen's one writer.",
+               where=where)
+    if made.returncode != 0:
+        return f"the careen could not be committed ({(made.stderr or made.stdout).strip()})"
+    print(f"harbourmaster: {added} stowed row(s) carried into {careen.careen_path(fairway)}", flush=True)
+    return ""
+
+
+def land(branch: str, spent: dict[str, int], fairway: str = "") -> tuple[str, str, bool, str, bool]:
     """One fetch, rebase, gate and advance of this branch. `merge`'s answer, plus whether trunk moved.
 
     The last says the push lost a race to trunk and nothing else went wrong, which is the one outcome
@@ -768,6 +878,9 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
         if rebased.returncode == 0 and (fault := locks_regenerated()):
             return "", (f"{branch} and {onto} each changed a lock, and {fault}. Nothing is half-done; rebase in "
                         f"your own berth, write the lock again there, and ask again"), True, "", False
+        if rebased.returncode == 0 and (fault := careen_carried(SCRATCH, onto, fairway, branch)):
+            return "", (f"{branch} stowed rows the careen could not be given: {fault}. Nothing is half-done and "
+                        f"trunk was not moved; a person looks at the careen"), False, "", False
         if rebased.returncode != 0:
             paths = conflicting()
             git("rebase", "--abort", where=SCRATCH)
@@ -778,11 +891,15 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
             return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or unnamed}.{tried} "
                         f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
                         f"ask again"), True, "", False
+        if fault := handbacks_applied(branch, onto):
+            return "", fault, True, "", False
+        carrying = (f" with its hand-backs {', '.join(HANDED_BACK['landed'])} applied, so neither lands"
+                    if HANDED_BACK["landed"] else "")
         started = time.monotonic()
         done = gated(SCRATCH)
         spent["gate_s"] = spent.get("gate_s", 0) + round(time.monotonic() - started)
         if done.returncode != 0:
-            return "", (f"the full gate failed on {branch} rebased onto {onto}: "
+            return "", (f"the full gate failed on {branch} rebased onto {onto}{carrying}: "
                         f"{gate_said(done.stdout + done.stderr)}"), True, "", False
         skipped = [line.strip() for line in (done.stdout + done.stderr).splitlines() if SKIPPED in line]
         if skipped:
@@ -805,7 +922,7 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
         git("worktree", "remove", "--force", str(SCRATCH))
 
 
-def merge(slice_id: str, spent: dict[str, int] | None = None) -> tuple[str, str, bool, str]:
+def merge(slice_id: str, spent: dict[str, int] | None = None, fairway: str = "") -> tuple[str, str, bool, str]:
     """Rebase this slice onto trunk, gate it there, and advance trunk.
 
     `(commit, "", False, note)` where it landed — the note saying what was done to the person's checkout to
@@ -827,11 +944,13 @@ def merge(slice_id: str, spent: dict[str, int] | None = None) -> tuple[str, str,
     `refs/slipwai/merge` and `gate_s` running the gate. They are what says whether integration is slow
     because the harbour queues or because the gate is long, which nothing could answer from the logs before.
     """
-    return merge_branch(BRANCH.format(slice=slice_id), spent)
+    return merge_branch(BRANCH.format(slice=slice_id), spent, fairway)
 
 
-def merge_branch(branch: str, spent: dict[str, int] | None = None) -> tuple[str, str, bool, str]:
-    """`merge`, for any branch: a slice's, or the trunk mender's."""
+def merge_branch(branch: str, spent: dict[str, int] | None = None,
+                 fairway: str = "") -> tuple[str, str, bool, str]:
+    """`merge`, for any branch: a slice's, or the trunk mender's. `fairway` is whose careen what the branch
+    stowed is carried into; the mender's names none, and stows nothing."""
     spent = {} if spent is None else spent
     if git("rev-parse", "--verify", "--quiet", branch).returncode != 0:
         return "", f"there is no branch {branch} to merge", False, ""
@@ -850,7 +969,7 @@ def merge_branch(branch: str, spent: dict[str, int] | None = None) -> tuple[str,
         return "", why, False, ""
     try:
         for race in range(PUSH_RACES + 1):
-            commit, fault, resolvable, note, raced = land(branch, spent)
+            commit, fault, resolvable, note, raced = land(branch, spent, fairway)
             if not raced:
                 return commit, fault, resolvable, note
             print(f"harbourmaster: trunk moved on the forge while {branch} was gated "
@@ -1087,36 +1206,11 @@ def unseeded(fairway: str, slice_id: str) -> str:
 def ungated(slice_id: str) -> str:
     """Why this slice may not merge yet because it is its capability's last and the gates have not cleared, or "".
 
-    The gates run once a capability is whole and before anyone is shown it, and `/sail` used to put them
-    *after* the last merge under every release mode but `keystone`. Nothing owned "after": the captain dispatches
-    slices, finds none left, and exits — recap merged all 34 of its slices, the board said *Built*, and none of
-    its eight capabilities was ever gated until a person ran `/sail` by hand, which found 34 findings in one of
-    them. So the last merge is where it holds, as `keystone` already did: the gates run on that slice's branch,
-    and its `gates.md` says `Cleared:` there before it lands.
+    `capabilities.ungated` is the predicate, and the captain asks the same one before it requests the merge.
     """
     if capabilities is None:
         return ""
-    charted, feature = capabilities.chart()
-    if not charted:
-        return ""
-    capability = next((name for name, members in capabilities.slices_by_capability(charted).items()
-                       if slice_id in members), "")
-    if not capability:
-        return ""
-    members = capabilities.slices_by_capability(charted)[capability]
-    try:
-        merged = {str(line.get("slice")) for line in capabilities.lines(feature) if line.get("kind") == "merged"}
-    except SystemExit:
-        return ""
-    if any(member not in merged for member in members if member != slice_id):
-        return ""
-    record = f"specs/{capabilities.feature_of(charted, feature, capability)}/capabilities/{capability}/gates.md"
-    shown = git("show", f"{BRANCH.format(slice=slice_id)}:{record}")
-    if shown.returncode == 0 and capabilities.CLEARED.search(shown.stdout):
-        return ""
-    return (f"{slice_id} is the last slice of {capability}, whose gates have not cleared on its branch: {record} "
-            f"has no `Cleared:` line. Run the capability gates in this berth — converge, gaps, design review, "
-            f"adversary, mutation and the walk, `/sail`'s *Capability gates* — record them there, and ask again")
+    return capabilities.ungated(slice_id)
 
 
 def attempts(fairway: str, slice_id: str) -> int:
@@ -1208,7 +1302,7 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
         # `resolve` true: the gates are the berth's to run, on this branch, before the merge that makes it whole.
         return [logs.entry("refused", harbour=True, fairway=fairway, request=request, why=owed,
                            resolve=True, slice=slice_id, **spent)]
-    commit, fault, resolvable, note = merge(slice_id, spent)
+    commit, fault, resolvable, note = merge(slice_id, spent, fairway)
     if fault:
         # `resolve` says whether going back into the berth could change the answer. A captain reads it to
         # decide between another turn and a park, which is the difference between a conflict it can fix and
@@ -1230,8 +1324,15 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
         print(f"harbourmaster: {note}", flush=True)
     # `onto` is the trunk this landed on, so a revert of the merge knows what it touched (`mender.py`).
     onto = {"onto": LANDED_ONTO["commit"]} if LANDED_ONTO.get("commit") else {}
+    # The hand-backs that landed with it, and those a person still owes, so the line says both.
+    carried = {name: list(HANDED_BACK[name]) for name in ("landed", "withheld") if HANDED_BACK[name]}
+    handed = {"handbacks": carried["landed"]} if "landed" in carried else {}
+    if "withheld" in carried:
+        handed["withheld"] = carried["withheld"]
+        print(f"harbourmaster: {slice_id} merged; its hand-backs a person still owes: "
+              f"{'; '.join(carried['withheld'])}", flush=True)
     return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what,
-                       slice=slice_id, commit=commit, ci=trunk_state, **onto, **said, **spent)]
+                       slice=slice_id, commit=commit, ci=trunk_state, **onto, **said, **handed, **spent)]
 
 
 #: Where Try it keeps what it is doing; `try_it.py` writes it and the board reads it.
@@ -1441,28 +1542,24 @@ def told_after_parks() -> list[logs.Entry]:
             continue
         told = [e for e in deck if e.kind == "told" and str(e.fields.get("fairway", "")) == fairway
                 and e.fields.get("by") == PERSON]
-        parks = [park for park in logs.open_parks(deck, harbour, fairway) if park.fields.get("waiting") != REVIEW]
-        if not told or not parks or over_ceiling(fairway) is not False:
+        parks = logs.open_parks(deck, harbour, fairway)
+        if not told or not parks:
             continue
+        over = over_ceiling(fairway)
         for park in parks:
+            # The one rule the board's *HELD* line reads too (`logs.answer_held`): a park at the ceiling, or
+            # any park while the ceiling is passed or cannot be counted, is not cleared by a message.
+            if logs.answer_held(park, over):
+                continue
             # A message aimed at one slice — the box on its red card — answers that slice's park and no
             # other: three slices parked on three different questions are three answers, not one.
             # A park of the whole stream written about one slice — its why opens `L03: …` — is answered by a
             # person's word to that slice as well as to the stream; one about the stream, only by the stream's.
-            after = [e for e in told if e.t > park.t and aimed(e, park)]
+            after = [e for e in told if logs.answers(e, park)]
             if after:
                 found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                         what=str(after[-1].fields.get("message", "")).strip() or "told"))
     return found
-
-
-def aimed(told: logs.Entry, park: logs.Entry) -> bool:
-    """Whether a person's `told` answers this park: the stream's word answers any; a word to a slice answers the
-    park about that slice — naming it, or a park of the whole stream whose why opens with it — and no other."""
-    named = str(told.fields.get("slice", ""))
-    if not named:
-        return True
-    return logs.about(park, named)
 
 
 def cleared_for_review() -> list[logs.Entry]:
@@ -1688,8 +1785,7 @@ def trunk_commit() -> str:
 def text_check(check: dict, commit: str) -> bool:
     """Whether the file at `path` on trunk holds `has`. Read with `git show`, never from a checkout, so a
     berth's uncommitted edit of the same file never ticks a need on trunk's behalf."""
-    shown = git("show", f"{commit}:{check.get('path', '')}")
-    return shown.returncode == 0 and str(check.get("has", "")) in shown.stdout
+    return need_check.text_check(ROOT, check, commit)
 
 
 def make_check(check: dict, commit: str) -> bool:
@@ -1784,6 +1880,8 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
             continue
         ticked = {(str(e.fields.get("parked", "")), int(e.fields.get("need", -1)))
                   for e in deck if e.kind == "need-done" and str(e.fields.get("fairway", "")) == fairway}
+        # A need that is a decision is asked as a `question` (`fleet.py tell`), and is met by its answer.
+        decided = {str(e.fields.get("id", "")): str(e.fields.get("what", "")) for e in deck if e.kind == "decision"}
         for park in [*logs.open_parks(deck, harbour, fairway), *open_tolds(deck, harbour, fairway)]:
             needs = park.fields.get("needs")
             if not isinstance(needs, list) or not needs or (fairway, park.t) in done:
@@ -1794,6 +1892,9 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                 how = ""
                 if (park.t, index) in ticked:
                     how = "a person ticked it on the board"
+                elif isinstance(need, dict) and need.get("decide") and need.get("question") \
+                        and str(need["question"]) in decided:
+                    how = f"decided: {decided[str(need['question'])][:200]}"
                 elif commit and (check := (need.get("check") if isinstance(need, dict) and isinstance(
                         need.get("check"), dict) else handed_back(deck, fairway, need, str(park.fields.get("why", "")))
                         if park.kind == "parked" else None)):

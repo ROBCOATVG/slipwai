@@ -53,21 +53,19 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 
-# budget: 780 — (the storyboard, its verdict and its conversation went to `storyboard_card.py`)
-# the one poll that keeps every band current, and the bands of one window, and who decided
-# each state the storyboard's note counts: where the project stands, what to expect of the stage it is on,
-# who answers at each stop of the run, the model, the screens built so far, and the work. A module per band
-# would be copies of the poll that repaints them all — and the poll is now the reason as much as the bands
-# are: it repaints the strip, and reloads the window when the signature says the page is built out of
-# different files than the ones it was drawn from. Both halves have to agree on what a band is, so both are here.
-# and a red card that opens on what its slice waits for, with a box that answers that slice and no other
-# and the strip's amber attention beside its red stop
-# and a slice card that is its number, its title and its stage until it is opened
-# and the Try it card, placed here and drawn by `try_card.py`
-# and the Now strip and a slice's live caption, drawn by `live_page.py`
-# and the tabs the bands below the strip sit in, and the Feedback card in one of them (`feedback_card.py`)
-# and the decision log's tab, drawn by `decision_cards.py`
-# and the Next features tab, placed here and drawn by `intake_card.py`
+# budget: 786 — the verdict due is a button and holds Model it next back (the storyboard, its verdict and its
+# conversation went to `storyboard_card.py`) the one poll that keeps every band current, and the bands of one
+# window, and who decided each state the storyboard's note counts: where the project stands, what to expect of
+# the stage it is on, who answers at each stop of the run, the model, the screens built so far, and the work.
+# A module per band would be copies of the poll that repaints them all — and the poll is now the reason as
+# much as the bands are: it repaints the strip, and reloads the window when the signature says the page is
+# built out of different files than the ones it was drawn from. Both halves have to agree on what a band is,
+# so both are here. and a red card that opens on what its slice waits for, with a box that answers that slice
+# and no other and the strip's amber attention beside its red stop and a slice card that is its number, its
+# title and its stage until it is opened and the Try it card, placed here and drawn by `try_card.py` and the
+# Now strip and a slice's live caption, drawn by `live_page.py` and the tabs the bands below the strip sit in,
+# and the Feedback card in one of them (`feedback_card.py`) and the decision log's tab, drawn by
+# `decision_cards.py` and the Next features tab, placed here and drawn by `intake_card.py`
 
 TITLES = {"todo": "To do", "queued": "Queued", "working": "Working", "waiting": "Waiting on you", "done": "Done"}
 #: The model's controls, in the order they sit on the bar: what each does, its face, and its tooltip.

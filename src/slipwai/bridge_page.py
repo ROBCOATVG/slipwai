@@ -15,11 +15,12 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 478 — and a reply said while the stage runs is queued, which the box says and does not wait on;
-# the waiting card now groups parks, questions, hand-backs and notes by what a person has to do, and
-# each group carries its own heading, count and the rows under it, so the page is a little longer than one
-# that listed them flat. The made card carries a reply box for a stage that has ended, and the script that sends it.
-# Five more for an answer already placed, shown on its row in place of a second box, and each row's action line.
+# budget: 483 — a drawing waiting on its verdict says so on its card; a reply said while the stage runs is
+# queued, which the box says and does not wait on; the waiting card now groups parks, questions, hand-backs
+# and notes by what a person has to do, and each group carries its own heading, count and the rows under it,
+# so the page is a little longer than one that listed them flat. The made card carries a reply box for a stage
+# that has ended, and the script that sends it. Five more for an answer already placed, shown on its row in
+# place of a second box, and each row's action line.
 from __future__ import annotations
 
 import json

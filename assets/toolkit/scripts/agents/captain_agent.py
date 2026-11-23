@@ -14,9 +14,16 @@ Its launch is the first of: a command named in `SLIPWAI_CAPTAIN` that starts an 
 (the suite's stand-in is one); `SLIPWAI_CAPTAIN=1`, the initialised harness's launch row as `SLIPWAI_ACP=1`
 reads it; otherwise the protocol launch of the harness this project runs (the row `harness.choose` names),
 where the registry marks that launch proven and this machine can make it. Nothing is ever run in print mode. The session is started in the project's root, its conversation
-`talk/<fairway>/_captain/`, saved and loaded like a slice's. Each wake-up hands it the event and the stream's
-state as the log says it now (`events/<fairway>/state.json`), never what it remembers, so a cold start
-answers as a warm one would; each is bounded by `captain.bound`, from when the session is ready.
+`talk/<fairway>/_captain/`. Each wake-up hands it the event and the stream's state as the log says it now
+(`events/<fairway>/state.json`), never what it remembers, so a cold start answers as a warm one would; each is
+bounded by `captain.bound`, from when the session is ready.
+
+**So its history is worth nothing, and it is never carried.** One session was held for a whole run and loaded
+again at the next fleet start: manda's intake captain reached 655k tokens a call after 634 calls, every one of
+them paying for a history the brief says not to believe. A captain program starts its session fresh, never
+the one saved beside its conversation, and closes it at an event boundary once its context passes
+`captain.context_ceiling` tokens (`CONTEXT_CEILING`), as the agent reports it in a `usage_update`. Where the
+agent never reports it, `captain.wake_ceiling` wake-ups (`WAKE_CEILING`) stand in for the size.
 
 **For the evals, and only for them**: `python3 scripts/agents/captain_agent.py decide <event file> [--bound
 N]` wakes a captain once with a recorded event in a throwaway project the evals laid out, and prints
@@ -26,7 +33,7 @@ pointed at a real checkout.
 
 Standalone and dependency-free: this runs inside a generated project, which has no slipwai to import.
 """
-# budget: 500 — the captain session's whole policy in one place: the command parsed as a shell would, its reads, the
+# budget: 550 — the captain session's whole policy in one place: the command parsed as a shell would, its reads, the
 # launch only over the protocol, and the evals' one door, each beside the reasons it is confined so
 from __future__ import annotations
 
@@ -55,6 +62,11 @@ COMMAND = "SLIPWAI_CAPTAIN"
 BOUND = 60.0
 #: Events a stream's captain may be woken for in an hour before the stream runs on its rules alone.
 PER_HOUR = 30
+#: Tokens of context past which the captain's session is closed at the next event and a fresh one started.
+CONTEXT_CEILING = 150_000
+#: Wake-ups one captain session answers before a fresh one, where the agent never says how large its context is:
+#: about a thousand tokens each, measured on manda, so near the same size as the token ceiling.
+WAKE_CEILING = 100
 BRIEF = "agents/drive-captain.md"
 #: Beside a stream's events: whether its captain is an agent, and why not where it is not.
 STATUS = "captain.json"
@@ -77,7 +89,9 @@ ORDERS = HERE / "orders.py"
 
 def settings(held: dict[str, Any]) -> dict[str, Any]:
     """`harbour.json`'s `captain`: whether the stream's captain is an agent (`agent`), how long a decision may
-    take (`bound`), how many times an hour it may be woken (`per_hour`), and whether it may answer a slice's
+    take (`bound`), how many times an hour it may be woken (`per_hour`), how large its session's context may
+    grow before a fresh one is started (`context_ceiling`, tokens) and, where the agent never reports that,
+    how many wake-ups one session answers (`wake_ceiling`), and whether it may answer a slice's
     mid-turn question (`answers`, off unless true: the program cannot tell an operational question from a
     product one, and under `/cruise` nothing bounds the answers it gives, so by default a question is declined
     as it always was and goes down the deck log's `question` path). Absent, or anything but `agent: true`, is
@@ -92,7 +106,9 @@ def settings(held: dict[str, Any]) -> dict[str, Any]:
     named = os.environ.get(COMMAND, "").strip()
     agent = named.lower() != "off" and (said.get("agent") is True or bool(named))
     return {"agent": agent, "bound": number("bound", BOUND), "answers": said.get("answers") is True,
-            "per_hour": int(number("per_hour", PER_HOUR))}
+            "per_hour": int(number("per_hour", PER_HOUR)),
+            "context_ceiling": int(number("context_ceiling", CONTEXT_CEILING)),
+            "wake_ceiling": int(number("wake_ceiling", WAKE_CEILING))}
 
 
 def overridden(held: dict[str, Any]) -> str:
@@ -393,6 +409,8 @@ class Runner:
         self.fairway, self.run, self.bounds = fairway, Path(run), bounds
         self.argv, self.row = started
         self.driver: drive.Drive | None = None
+        #: Wake-ups the held session has answered: the stand-in for its size where the agent never says it.
+        self.wakes = 0
 
     def bound(self, turn: Any) -> float:
         return float(self.bounds["bound"])
@@ -417,6 +435,22 @@ class Runner:
         self.close()
         self.driver = None
 
+    def outgrown(self) -> str:
+        """Why the held session is past its ceiling and is to be closed before this event, or `''`.
+
+        Asked at an event boundary — before a prompt, never during a turn — so nothing the captain is doing is
+        cut short. The context the agent last reported, where it reports one; otherwise the wake-ups answered."""
+        driver = self.driver
+        if driver is None:
+            return ""
+        used = getattr(driver, "context", None)
+        ceiling = int(self.bounds.get("context_ceiling") or CONTEXT_CEILING)
+        if isinstance(used, int):
+            return f"its context holds {used} tokens, past the ceiling of {ceiling}" if used > ceiling else ""
+        wakes = int(self.bounds.get("wake_ceiling") or WAKE_CEILING)
+        return (f"it has answered {self.wakes} wake-ups, the ceiling where the agent never says how large its "
+                f"context is" if self.wakes >= wakes else "")
+
     def wake(self, event: Path, state: Path, held: dict[str, Any], env: dict[str, str]) -> Any:
         text = prompt(self.fairway, event, state, held)
         if self.driver is not None and self.driver.unlaunched:
@@ -424,13 +458,22 @@ class Runner:
             self.driver = None
             return f"its session would not start over the protocol ({why})"
         if self.driver is not None and self.driver.alive:
-            self.driver.prompt(text)
-            return Held(self.driver)
+            grown = self.outgrown()
+            if not grown:
+                self.wakes += 1
+                self.driver.prompt(text)
+                return Held(self.driver)
+            drive.say(f"captain: {self.fairway}'s captain session is closed for a fresh one: {grown}")
+            self.reset()
         home = talk.place(self.run, self.fairway, talk.CAPTAIN)
         environment = {**harness.child_environment(self.row), **drive.acp_environment(self.row), **env}
+        # Fresh, always: never the session saved beside the conversation, which a fleet start would otherwise
+        # load with every wake-up of the run before it in its context.
         self.driver = drive.Drive(self.argv, ROOT, environment, text, kept=self.run / "acp" / f"_captain-{self.fairway}",
                                   conversation=home, activity=self.run / "activity" / self.fairway / "_captain.jsonl",
-                                  harness_key=str((self.row or {}).get("key") or ""), inbox=False, permit=permit)
+                                  fresh=True, harness_key=str((self.row or {}).get("key") or ""), inbox=False,
+                                  permit=permit)
+        self.wakes = 1
         return Held(self.driver)
 
     def close(self) -> None:

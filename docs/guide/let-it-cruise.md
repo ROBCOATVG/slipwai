@@ -118,7 +118,9 @@ captain's output: *no captain agent: this harness has no proven protocol launch*
 
 **What it costs.** Each event is one turn of the project's harness. `per_hour` (30 by default) is the most
 times a stream's captain is woken in an hour; past it, the stream runs on its rules alone until the hour has
-passed.
+passed. The captain's session starts fresh at every fleet start and again whenever its context passes
+`context_ceiling` (150,000 tokens by default), so a long run does not pay for its whole history on every
+wake-up.
 
 ### Turning the captain agent on
 

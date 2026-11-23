@@ -28,8 +28,11 @@ before it was committed — the MCP file, which the harness now passes by the pr
 instead. The first run of hr-test-2's slices abreast exited 1 three times in six seconds on the last of
 these, and would have met the first next.
 
-**A berth is left when its slice merges.** Without `--force`: a worktree with changes in it is somebody's,
-and the line that says it was kept is cheaper than the work it would have cost.
+**A berth is left when its slice merges.** A worktree whose tracked files are edited and not committed is
+somebody's, and the line that says it was kept is cheaper than the work it would have cost. Anything else in it
+goes, and so does whatever is still running there: the slice's Try it processes and any process working in the
+folder are stopped first, because one writing while git deletes left twelve of manda's merged berths beside
+the project with git's record of them already gone.
 
 Standalone and dependency-free: this runs inside a generated project, which has no slipwai to import.
 """
@@ -38,13 +41,17 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
+import stat
 import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import logs  # noqa: E402 — carried beside this script; it owns where the run's state lives
+import talk  # noqa: E402 — the one reader for a file in the run folder
 
 
 def is_link(path: Path) -> bool:
@@ -371,7 +378,15 @@ def add_worktree(root: Path, found: Path, branch: str, base: str) -> subprocess.
 
 
 def leave(root: Path, berth: Path) -> str:
-    """Remove a merged slice's worktree, or say why it was kept. Never the project's own checkout."""
+    """Remove a merged slice's worktree, or say why it was kept. Never the project's own checkout.
+
+    **What runs there is stopped before the folder goes.** manda's S96 merged with its dev server and an index
+    daemon still writing into the berth: git deleted the tree while they wrote `.vite/` and `.codegraph/` back
+    into it, failed with "Directory not empty" — having already dropped the worktree from its list — and the
+    folder sat beside the project from then on, where no tidy looks and where `berth()` refuses the slice id
+    if it is ever worked again. So the slice's own processes stop first, and a folder git leaves behind is
+    removed outright: nothing in it is work, because `unlanded` has just said the tracked files hold none.
+    """
     if berth.resolve() == root.resolve():
         return ""
     for here in places(berth):
@@ -388,15 +403,236 @@ def leave(root: Path, berth: Path) -> str:
         return (f"{berth} was kept: {len(edited)} tracked file(s) there are edited and not committed "
                 f"({', '.join(edited[:3])}{', …' if len(edited) > 3 else ''}); commit or discard them, then "
                 f"`python3 scripts/agents/fleet.py tidy`")
+    ended = stop_processes(berth)
     gone = git(root, "worktree", "remove", "--force", str(berth))
-    if gone.returncode != 0:
+    if gone.returncode != 0 and registered(root, berth):
         said = (gone.stderr or gone.stdout).strip().splitlines()
         return f"{berth} was kept: {said[-1] if said else 'git would not remove it'}"
-    # Only once the worktree is gone: a berth that was kept is somebody's, and so is what it is running.
+    left = cleared(berth)
+    if left:
+        return f"{berth} was kept: git let it go and {left}"
     stopped = stop_services(berth)
     if branch and branch != "HEAD" and git(root, "branch", "--remotes", "--contains", branch).stdout.strip():
         git(root, "branch", "--delete", "--force", branch)  # the forge holds every commit of it
-    return f"{stopped} container(s) of {berth.name} were still up and were removed" if stopped else ""
+    said = [f"{ended} process(es) still running in {berth.name} were stopped" if ended else "",
+            f"{stopped} container(s) of {berth.name} were still up and were removed" if stopped else ""]
+    return "; ".join(one for one in said if one)
+
+
+def registered(root: Path, where: Path) -> bool:
+    """Whether git still lists `where` as one of this repository's worktrees."""
+    return any(path == where.resolve() for path, _, _ in worktrees(root))
+
+
+def worktrees(root: Path) -> list[tuple[Path, str, str]]:
+    """Every worktree git lists for this repository: (where, its HEAD commit, its branch or "")."""
+    found: list[tuple[Path, str, str]] = []
+    for block in git(root, "worktree", "list", "--porcelain").stdout.split("\n\n"):
+        fields = dict(line.partition(" ")[::2] for line in block.splitlines() if line.strip())
+        if fields.get("worktree"):
+            branch = fields.get("branch", "").removeprefix("refs/heads/")
+            found.append((Path(fields["worktree"]).resolve(), fields.get("HEAD", ""), branch))
+    return found
+
+
+def cleared(folder: Path) -> str:
+    """Remove what is left of a folder, links inside it taken as links and never followed. Why it could not
+    be, or nothing.
+
+    Tried a few times, because something stopped a moment ago may still be closing a file, and on Windows a
+    read-only file is made writable first rather than refused.
+    """
+    if not folder.exists() and not folder.is_symlink():
+        return ""
+    for here in places(folder):
+        if is_link(here):  # the project's deck logs: the link goes, what it reaches is never touched
+            try:
+                here.rmdir() if os.name == "nt" else here.unlink()
+            except OSError:
+                pass
+
+    def writable(function: Any, path: str, _: Any) -> None:
+        os.chmod(path, stat.S_IWRITE)
+        function(path)
+
+    fault: OSError | None = None
+    for attempt in range(3):
+        try:
+            if sys.version_info >= (3, 12):
+                shutil.rmtree(folder, onexc=writable)
+            else:  # pragma: no cover - the older interpreter's spelling
+                shutil.rmtree(folder, onerror=writable)
+            return ""
+        except FileNotFoundError:
+            return ""
+        except OSError as caught:
+            fault = caught
+            time.sleep(0.5 * (attempt + 1))
+    return f"its folder could not be removed ({fault})"
+
+
+#: How long a process is given to end after it is asked, before it is made to.
+GRACE = 5
+
+
+def stop_processes(folder: Path) -> int:
+    """End what a merged slice left running in its folder, best effort. How many processes were asked to stop.
+
+    Two kinds are the slice's. **The Try it processes its story ran**: `try_it.py` starts each with a session
+    of its own and records its pid in the berth's own Try it state, so the whole group goes — the dev server's
+    children with it. **Any process whose working directory is inside the folder**, such as an index daemon
+    watching it or a dev server a session started by hand. Never this process or one it was started by, and
+    never a process somewhere else: a pid recorded long ago that now leads no group of its own is somebody
+    else's, and is left. Where the platform cannot say a process's directory — Windows — only the recorded
+    pids are ended.
+    """
+    spared = ancestry()
+    recorded = [pid for pid in try_it_pids(folder) if pid not in spared and leads_group(pid)]
+    found = [pid for pid in working_in(folder) if pid not in spared and pid not in recorded]
+    for pid in recorded:
+        end(pid, group=True, hard=False)
+    for pid in found:
+        end(pid, group=False, hard=False)
+    deadline = time.monotonic() + GRACE
+    while any(alive(pid) for pid in recorded + found) and time.monotonic() < deadline:
+        time.sleep(0.2)
+    for pid in recorded:
+        if alive(pid):
+            end(pid, group=True, hard=True)
+    for pid in found:
+        if alive(pid):
+            end(pid, group=False, hard=True)
+    return len(recorded) + len(found)
+
+
+def try_it_pids(folder: Path) -> list[int]:
+    """Every pid the folder's own Try it state records: each app's and what runs beside it, and the run that
+    started them. Where the state lives now and where it lived before the run state moved."""
+    found: list[int] = []
+    for home in {logs.run_dir(folder) / "try-it", folder / logs.RUN / "try-it"}:
+        state = talk.read_json(home / "state.json")
+        if not isinstance(state, dict):
+            continue
+        pids = state.get("pids") if isinstance(state.get("pids"), dict) else {}
+        for value in [*pids.values(), state.get("runner")]:
+            try:
+                pid = int(value)
+            except (TypeError, ValueError):
+                continue
+            if pid > 0 and pid not in found:
+                found.append(pid)
+    return found
+
+
+def leads_group(pid: int) -> bool:
+    """Whether the pid is alive and leads a process group, as every process Try it starts does. On Windows,
+    which has no groups, whether it is alive."""
+    if not alive(pid):
+        return False
+    if os.name == "nt":  # pragma: no cover - the other platform's branch
+        return True
+    try:
+        return os.getpgid(pid) == pid
+    except OSError:
+        return False
+
+
+def working_in(folder: Path) -> list[int]:
+    """The processes whose working directory is the folder or inside it, where the platform can say.
+
+    `/proc` where there is one; `lsof` where there is not (macOS); nothing on Windows, which keeps another
+    process's directory where only a debugger reads it.
+    """
+    inside = folder.resolve()
+    found: list[int] = []
+    proc = Path("/proc")
+    if os.name != "nt" and (proc / "self/cwd").exists():
+        for entry in proc.iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                cwd = Path(os.readlink(entry / "cwd"))
+            except OSError:
+                continue
+            if cwd.is_relative_to(inside):
+                found.append(int(entry.name))
+        return found
+    if os.name == "nt" or shutil.which("lsof") is None:
+        return found
+    try:
+        listed = subprocess.run(["lsof", "-nP", "-w", "-d", "cwd", "-Fpn"], capture_output=True, text=True,
+                                check=False, timeout=DOCKER_WAIT, encoding="utf-8", errors="replace")
+    except (OSError, subprocess.SubprocessError):
+        return found
+    pid = 0
+    for line in listed.stdout.splitlines():
+        if line.startswith("p") and line[1:].isdigit():
+            pid = int(line[1:])
+        elif line.startswith("n") and pid and Path(line[1:]).is_relative_to(inside) and pid not in found:
+            found.append(pid)
+    return found
+
+
+def ancestry() -> set[int]:
+    """This process and every process above it, which a tidy run from inside a berth must not end."""
+    found = {os.getpid()}
+    pid = os.getppid()
+    while pid > 1 and pid not in found and len(found) < 64:
+        found.add(pid)
+        if os.name == "nt":  # pragma: no cover - the other platform's branch
+            break
+        try:
+            asked = subprocess.run(["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True,
+                                   check=False, timeout=5)
+            pid = int(asked.stdout.strip() or 0)
+        except (OSError, subprocess.SubprocessError, ValueError):
+            break
+    return found
+
+
+def alive(pid: int) -> bool:
+    """Whether that process is still running, asked without touching it. Windows is asked through the process
+    handle, because signal 0 there is `CTRL_C_EVENT` to the whole console, as `try_it.py` says."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":  # pragma: no cover - the other platform's branch
+        import ctypes  # noqa: PLC0415 — Windows only
+
+        kernel = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel.OpenProcess(0x1000, False, pid)
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            return bool(kernel.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == 259
+        finally:
+            kernel.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except (OSError, ValueError):
+        return False
+    try:  # a child of this process that has ended is a zombie until it is reaped, and not running
+        done, _ = os.waitpid(pid, os.WNOHANG)
+        return done == 0
+    except ChildProcessError:
+        return True
+    except OSError:
+        return True
+
+
+def end(pid: int, group: bool, hard: bool) -> None:
+    """Ask a process — its whole group, where `group` — to end, or make it. Windows ends the tree through
+    `taskkill /T`, as `try_it.py` does."""
+    try:
+        if os.name == "nt":  # pragma: no cover - the other platform's branch
+            subprocess.run(["taskkill", "/T", *(["/F"] if hard else []), "/PID", str(pid)], capture_output=True,
+                           check=False, timeout=DOCKER_WAIT)
+        elif group:
+            os.killpg(pid, signal.SIGKILL if hard else signal.SIGTERM)
+        else:
+            os.kill(pid, signal.SIGKILL if hard else signal.SIGTERM)
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def unlanded(berth: Path) -> list[str]:
@@ -429,6 +665,11 @@ def tidy(root: Path, merged: set[str], flying: set[str], say: bool = True) -> li
     was kept then, or whose captain was stopped first, stayed beside the project for good, and a machine
     that had run three projects held thirty folders nobody would come back for. A berth whose slice has not
     merged is never removed here: it is listed, with what it holds, for a person to decide.
+
+    Two more kinds go. **The folder of a merged slice that is no longer a worktree** (`stranded`), which a
+    removal raced by a running process leaves behind. **A delegate's worktree under `.claude/worktrees/`**
+    whose commit trunk already holds (`delegates`), which the harness makes for a delegated agent and
+    cleans only while it is unchanged: manda held 52 of them, 36 GB.
     """
     lines: list[str] = []
     git(root, "worktree", "prune")
@@ -443,6 +684,87 @@ def tidy(root: Path, merged: set[str], flying: set[str], say: bool = True) -> li
             lines.append(f"{where.name}: {slice_id} has not merged, so it stays"
                          + (f" ({edited} tracked file(s) edited and not committed)" if edited else "")
                          + f"; `git worktree remove --force {where}` removes it and keeps its branch")
+    lines += stranded(root, merged - flying)
+    lines += delegates(root, say)
+    git(root, "worktree", "prune")
+    return lines
+
+
+def stranded(root: Path, merged: set[str]) -> list[str]:
+    """Remove the folder of each merged slice that is still beside the project and no longer a worktree.
+
+    `berths_of` reads git's list, so a folder git forgot halfway through removing it was never seen again,
+    and `berth()` then refused the slice id for good. The name is the chart's, `<project>-<slice id>`, and the
+    slice has merged; a folder of that name that is a repository or a worktree of anything — it holds a
+    `.git` — is somebody's and is left, and so is one of a slice that has not merged.
+    """
+    lines: list[str] = []
+    listed = {path for path, _, _ in worktrees(root)}
+    for slice_id in sorted(merged):
+        folder = root.parent / f"{root.name}-{slice_id}"
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve() in listed:
+            continue
+        if (folder / ".git").exists() or (folder / ".git").is_symlink():
+            continue
+        ended = stop_processes(folder)
+        left = cleared(folder)
+        if left:
+            lines.append(f"{folder} was kept: {slice_id} is merged and no longer a worktree, and {left}")
+            continue
+        stopped = stop_services(folder)
+        extra = [f"{ended} process(es) stopped" if ended else "", f"{stopped} container(s) removed" if stopped else ""]
+        said = "; ".join(one for one in extra if one)
+        lines.append(f"{folder.name}: {slice_id} is merged and its folder was no longer a worktree; removed"
+                     + (f" ({said})" if said else ""))
+    return lines
+
+
+def trunk_refs(root: Path) -> list[str]:
+    """The refs that say what trunk holds, local and remote, where they exist."""
+    return [ref for ref in ("main", "master", "origin/main", "origin/master")
+            if git(root, "rev-parse", "--verify", "--quiet", ref).returncode == 0]
+
+
+def is_delegate(where: Path) -> bool:
+    """Whether a worktree is one the harness made for a delegated agent: under a `.claude/worktrees/`."""
+    parts = where.parts
+    return any(parts[at:at + 2] == (".claude", "worktrees") for at in range(len(parts) - 2))
+
+
+def delegates(root: Path, say: bool = True) -> list[str]:
+    """Remove each delegate's worktree whose commit trunk holds, with its branch; leave every other one.
+
+    Only worktrees git lists, so a folder there that is not one is never touched; never one whose tracked files
+    are edited and not committed; never one whose commit trunk does not hold, which is work that has not
+    landed — said once, as a count, where `say`.
+    """
+    refs = trunk_refs(root)
+    if not refs:
+        return []
+    lines: list[str] = []
+    held = 0
+    for where, head, branch in worktrees(root):
+        if where == root.resolve() or not is_delegate(where):
+            continue
+        landed = bool(head) and any(git(root, "merge-base", "--is-ancestor", head, ref).returncode == 0
+                                    for ref in refs)
+        if not landed or not where.is_dir() or unlanded(where):
+            held += 1
+            continue
+        ended = stop_processes(where)
+        gone = git(root, "worktree", "remove", "--force", str(where))
+        if gone.returncode != 0 and registered(root, where):
+            said = (gone.stderr or gone.stdout).strip().splitlines()
+            lines.append(f"{where} was kept: {said[-1] if said else 'git would not remove it'}")
+            continue
+        left = cleared(where)
+        if branch:
+            git(root, "branch", "--delete", "--force", branch)  # every commit of it is on trunk
+        lines.append(f"{where.name}: a delegate's worktree whose work trunk holds; removed"
+                     + (f" ({ended} process(es) stopped)" if ended else "") + (f", though {left}" if left else ""))
+    if held and say:
+        lines.append(f"{held} delegate worktree(s) under .claude/worktrees/ hold work trunk does not, or edits "
+                     f"nobody committed, so they stay; `git worktree list` names them")
     return lines
 
 

@@ -24,8 +24,8 @@ from .talk_marks import SCRIPT as MARKS_SCRIPT
 from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
-# budget: 385 — the headline over every state a fleet can be in, a build merged whole and one merged but
-# ungated among them, and a group already answered showing what was said and where it stands
+# budget: 391 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# ungated or built on a stand-in among them, and a group already answered showing what was said and where it stands
 
 #: The word on a group for its cause, in the words a person uses rather than the record's.
 CAUSES = {"limit": "paused", "host": "on main", "question": "a question", "demo": "demo sent back",
@@ -209,6 +209,14 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
             return ("brass", f"Merged, not yet gated: {many} gates — {', '.join(owed)}.",
                     "`/sail` takes each through converge, gaps, design review, adversary, mutation and the walk, "
                     "then to the hand's walk, whose verdict accepts it unless the project says a person does.")
+        held = found.get("release_blockers") or []
+        if held:
+            # A stand-in on the actor's path is a release blocker: the mail that was never sent cleared its gates.
+            named = "; ".join(f"{row['capability']} ({', '.join(row['blockers'])})" for row in held)
+            many = "1 capability" if len(held) == 1 else f"{len(held)} capabilities"
+            return ("brass", f"Merged, not done: {many} built on a stand-in — {named}.",
+                    "A release blocker until the stand-in is replaced, or a person adds `· Accepted-by: <who> <date>` "
+                    "to its line in the capability's gates.md to say it is the intended behaviour.")
         return ("grey", f"Built: every stream has merged what it claimed, {plural(merged, 'slice')} in all.",
                 f"{plural(len(on_you), 'thing')} left for you below; none of them holds a slice." if on_you
                 else "Nothing is waiting on you.")

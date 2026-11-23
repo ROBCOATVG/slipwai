@@ -425,8 +425,11 @@ def deck_of(stream: str) -> Path | None:
     return next(iter(logs.streams(ROOT).get(stream, [])), None)
 
 
-#: How a need's check is spelled on the command line: `text:<path>:<has>` or `make:<target>`.
-CHECK_SPELLINGS = "text:<path>:<has> or make:<target>"
+#: How a need's check is spelled on the command line: `text:<path>:<has>` or `make:<target>` — or `decide`,
+#: for a need that is a product or model decision (a new slice, an event's name) rather than a change.
+CHECK_SPELLINGS = "text:<path>:<has>, make:<target> or decide"
+#: The spelling that makes a need a decision.
+DECIDE = "decide"
 
 
 def need_of(what: str, check: str, by: str) -> dict:
@@ -434,6 +437,9 @@ def need_of(what: str, check: str, by: str) -> dict:
     found: dict = {"what": what.strip(), "by": by}
     if not found["what"]:
         raise SystemExit("--need says what has to change, in a sentence")
+    if check == DECIDE:
+        # A person's to tick wherever nothing decides it, which is what any reader older than this reads.
+        return {**found, "by": "person", "decide": True}
     if check:
         kind, _, rest = check.partition(":")
         if kind == "text" and ":" in rest:
@@ -470,6 +476,10 @@ def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, 
     """
     if dark and not (slice_id and needs):
         raise SystemExit("--dark names the slice whose story the needs keep dark: it takes --slice and --need")
+    asked = [need for need in needs or [] if logs.asks_a_decision(need)]
+    if asked and not slice_id:
+        raise SystemExit("a need that is a product or model decision — a new slice, an event's name, the "
+                         "chart or the model — is asked against a slice: give --slice <id>")
     message = " ".join(words).strip() if words else ("" if sys.stdin.isatty() else sys.stdin.read().strip())
     if not message:
         raise SystemExit("tell takes the message as its words, or on standard input")
@@ -498,8 +508,25 @@ def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, 
             except Exception:  # noqa: BLE001 — no readable chart: the feature the stream's log is under, as before
                 pass
             extra["story"] = f"specs/{home}/slices/{slice_id}/try-it.json"
+        lines: list[logs.Entry] = []
+        if asked:
+            # The decision path, not the mender: each such need is also a `question` against the slice, which
+            # the skipper decides under `/cruise` and a person under `/sail`, and its `decision` line is what
+            # ticks the need (`harbourmaster.needs_met`). manda's mender refused six follow-up slices for
+            # want of exactly that, a session each.
+            deck = logs.fold(where.read_text(encoding="utf-8").splitlines())
+            count = sum(1 for e in deck if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id)
+            for need in extra["needs"]:
+                if not any(need is one for one in asked):
+                    continue
+                count += 1
+                need.update({"by": "person", "decide": True, "question": f"{slice_id}-decide-{count}"})
+                lines.append(logs.entry("question", fairway=stream, slice=slice_id, id=need["question"],
+                                        what=f"{need['what']} (handed back: {message[:300]})"))
         with where.open("a", encoding="utf-8") as handle:
             handle.write(logs.entry("told", fairway=stream, message=message, by=by, **extra).line())
+            for line in lines:
+                handle.write(line.line())
         written.append(stream)
     if needs:
         print(f"told {', '.join(written)}, with {len(needs)} need(s). The harbourmaster ticks each against trunk, "

@@ -746,6 +746,54 @@ def mender_settled(rebased: subprocess.CompletedProcess[str], branch: str,
     return rebased, why
 
 
+#: What the merge in hand did with its slice's hand-back patches: those it applied on the rebased slice,
+#: and those it left for a person with why. Read by `answer` onto the `granted` line.
+HANDED_BACK: dict[str, list[str]] = {"landed": [], "withheld": []}
+
+
+def handbacks_applied(branch: str, onto: str) -> str:
+    """Apply the hand-back patches the slice carries (`mender.HANDBACK`) on it, rebased in the scratch tree,
+    and commit them there, so the one full gate that follows runs over both. Why the merge is refused, or "".
+
+    A patch that touches a gate or the cloud is not applied, and the merge goes on without it: it is a
+    person's, as a need for one always was, and the `granted` line names it. A patch already on trunk —
+    the same change landed another way — is passed over. One that will not apply is refused with the
+    slice, because the slice's change and its hand-back are one change.
+    """
+    HANDED_BACK["landed"], HANDED_BACK["withheld"] = [], []
+    slice_id = branch.removeprefix(BRANCH.format(slice=""))
+    if slice_id == branch:
+        return ""
+    reasons: list[str] = []
+    for patch in mender.handback_patches(SCRATCH, slice_id):
+        name = patch.relative_to(SCRATCH).as_posix()
+        text = patch.read_text(encoding="utf-8", errors="replace")
+        why = mender.withheld(mender.patched_paths(text))
+        if why:
+            HANDED_BACK["withheld"].append(f"{name}: {why}")
+            continue
+        if git("apply", "--check", "--reverse", str(patch), where=SCRATCH).returncode == 0:
+            continue  # already there: trunk or the slice holds this change
+        applied = git("apply", "--index", "--whitespace=nowarn", str(patch), where=SCRATCH)
+        if applied.returncode != 0:
+            said = (applied.stderr or applied.stdout).strip().splitlines()
+            return (f"{branch}'s hand-back {name} does not apply on it rebased onto {onto} "
+                    f"({said[-1] if said else 'git apply refused it'}). Nothing is half-done; write the patch "
+                    f"again against the rebased slice in your berth (`git diff > {name}` after making the "
+                    f"change there) and ask again")
+        HANDED_BACK["landed"].append(name)
+        reasons.append(f"- {name}: {mender.reason_of(text) or 'no reason given'}")
+    if not HANDED_BACK["landed"]:
+        return ""
+    made = git("commit", "--quiet", "--no-verify", "-m",
+               f"{slice_id}: land the hand-backs it carried, with its merge\n\n"
+               f"Applied on the slice rebased onto trunk and gated with it, because each needs the slice's own "
+               f"code.\n\n" + "\n".join(reasons), where=SCRATCH)
+    if made.returncode != 0:
+        return f"{branch}'s hand-backs applied and could not be committed ({(made.stderr or made.stdout).strip()})"
+    return ""
+
+
 def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]:
     """One fetch, rebase, gate and advance of this branch. `merge`'s answer, plus whether trunk moved.
 
@@ -778,11 +826,15 @@ def land(branch: str, spent: dict[str, int]) -> tuple[str, str, bool, str, bool]
             return "", (f"{branch} conflicts with {onto} in {', '.join(paths) or unnamed}.{tried} "
                         f"The rebase was aborted, so nothing is half-done; resolve it in your own berth and "
                         f"ask again"), True, "", False
+        if fault := handbacks_applied(branch, onto):
+            return "", fault, True, "", False
+        carrying = (f" with its hand-backs {', '.join(HANDED_BACK['landed'])} applied, so neither lands"
+                    if HANDED_BACK["landed"] else "")
         started = time.monotonic()
         done = gated(SCRATCH)
         spent["gate_s"] = spent.get("gate_s", 0) + round(time.monotonic() - started)
         if done.returncode != 0:
-            return "", (f"the full gate failed on {branch} rebased onto {onto}: "
+            return "", (f"the full gate failed on {branch} rebased onto {onto}{carrying}: "
                         f"{gate_said(done.stdout + done.stderr)}"), True, "", False
         skipped = [line.strip() for line in (done.stdout + done.stderr).splitlines() if SKIPPED in line]
         if skipped:
@@ -1230,8 +1282,15 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
         print(f"harbourmaster: {note}", flush=True)
     # `onto` is the trunk this landed on, so a revert of the merge knows what it touched (`mender.py`).
     onto = {"onto": LANDED_ONTO["commit"]} if LANDED_ONTO.get("commit") else {}
+    # The hand-backs that landed with it, and those a person still owes, so the line says both.
+    carried = {name: list(HANDED_BACK[name]) for name in ("landed", "withheld") if HANDED_BACK[name]}
+    handed = {"handbacks": carried["landed"]} if "landed" in carried else {}
+    if "withheld" in carried:
+        handed["withheld"] = carried["withheld"]
+        print(f"harbourmaster: {slice_id} merged; its hand-backs a person still owes: "
+              f"{'; '.join(carried['withheld'])}", flush=True)
     return [logs.entry("granted", harbour=True, fairway=fairway, request=request, what=what,
-                       slice=slice_id, commit=commit, ci=trunk_state, **onto, **said, **spent)]
+                       slice=slice_id, commit=commit, ci=trunk_state, **onto, **said, **handed, **spent)]
 
 
 #: Where Try it keeps what it is doing; `try_it.py` writes it and the board reads it.
@@ -1784,6 +1843,8 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
             continue
         ticked = {(str(e.fields.get("parked", "")), int(e.fields.get("need", -1)))
                   for e in deck if e.kind == "need-done" and str(e.fields.get("fairway", "")) == fairway}
+        # A need that is a decision is asked as a `question` (`fleet.py tell`), and is met by its answer.
+        decided = {str(e.fields.get("id", "")): str(e.fields.get("what", "")) for e in deck if e.kind == "decision"}
         for park in [*logs.open_parks(deck, harbour, fairway), *open_tolds(deck, harbour, fairway)]:
             needs = park.fields.get("needs")
             if not isinstance(needs, list) or not needs or (fairway, park.t) in done:
@@ -1794,6 +1855,9 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                 how = ""
                 if (park.t, index) in ticked:
                     how = "a person ticked it on the board"
+                elif isinstance(need, dict) and need.get("decide") and need.get("question") \
+                        and str(need["question"]) in decided:
+                    how = f"decided: {decided[str(need['question'])][:200]}"
                 elif commit and (check := (need.get("check") if isinstance(need, dict) and isinstance(
                         need.get("check"), dict) else handed_back(deck, fairway, need, str(park.fields.get("why", "")))
                         if park.kind == "parked" else None)):

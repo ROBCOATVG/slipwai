@@ -25,13 +25,14 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 616 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# budget: 640 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
 # and a park written when a need was a sentence, read as the record it now is. And a need
 # the fleet was to tick with no check, read as a person's
-# and a stream's lines read from every file that holds them, the chart feature's first
+# and a stream's lines read from every file that holds them, the chart feature's first;
+# and which needs are a product or model decision, never the mender's (#154)
 from __future__ import annotations
 
 import json
@@ -188,6 +189,25 @@ CAUSES = ("limit", "host", "question", "demo", "gate", "silence", "exit", "ceili
 CHECKS = ("text", "make")
 #: Who ticks a need: a `person`, or the `fleet` through its `check`.
 TICKERS = ("person", "fleet")
+#: Where a need is a product or model decision rather than a change to land: the chart and the event
+#: model, which say what slices there are and what they record. manda's mender was sent six follow-up
+#: slices to add — each needing an event's name, a capability or a place in the split nobody had decided —
+#: and refused every one, correctly and at a session's cost each, leaving them for a person.
+DECIDED_IN = re.compile(r"^(?:specs/[^/]+/(?:chart\.yaml|story-split\.md)|(?:.*/)?docs/event-model/model\.yaml)$")
+
+
+def asks_a_decision(need: object) -> bool:
+    """Whether a need is a product or model decision — a new slice, an event's name, a change to the split —
+    which goes to whoever decides (the skipper under `/cruise`, the person under `/sail`) and never to the
+    mender: written so (`decide`, by `fleet.py tell --check decide`), or checked in the chart or the model."""
+    if not isinstance(need, dict):
+        return False
+    if need.get("decide"):
+        return True
+    check = need.get("check")
+    return isinstance(check, dict) and bool(DECIDED_IN.match(str(check.get("path", ""))))
+
+
 #: The fields a kind may carry beyond what it must. Named so a reader knows the shape to hold them to:
 #: `slice` and `waiting` were written and read for months before anything said they existed. A `parked`
 #: line is a record, not a paragraph: `cause` from `CAUSES`; `until`, an instant after which the park

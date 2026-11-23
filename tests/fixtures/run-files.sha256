@@ -100,6 +100,7 @@
 # why: 2026-11-21 0fa04abeccab661a A gate refusal leaves out the noise printed round a failure; same behaviour on macOS and Linux
 # why: 2026-11-23 19db485d51c93b3c slipwai#154: capabilities.py reads stand-ins and unreached screens as release blockers; try_it.py holds a given's seal to its data and the model
 # why: 2026-11-23 75a375250777d9e9 slipwai#154 integration: the stand-in, dispatch, tidy, captain-session, hand-back, block-action, careen, gates-first, bar and decision-record fixes together; the same behaviour on macOS and Linux as each branch recorded alone
+# why: 2026-11-23 bead4adfe1c008b2 slipwai#154: moorings.mid_rebase steps past a listed worktree whose folder is gone; same behaviour on macOS and Linux
 
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-memory-none  scripts/agents/ids.py
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-postgres-toy-serve  scripts/agents/ids.py
@@ -253,6 +254,10 @@
 62a025de938053f3a1080a92c61287380b6000793574cfc92cebf06760c87acf  standard-postgres-toy-serve  scripts/agents/feature_stages.py
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-memory-none  scripts/event-model/board-plan.ts
 62df8776b0632572acdf87f5f0cfff437156dc191ad28282b27149ade66c3874  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.ts
+634d470994dc89d6358113d103f41cc63474581121379813677ed580c8041a2b  event-modelling-memory-none  scripts/agents/moorings.py
+634d470994dc89d6358113d103f41cc63474581121379813677ed580c8041a2b  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
+634d470994dc89d6358113d103f41cc63474581121379813677ed580c8041a2b  standard-memory-none  scripts/agents/moorings.py
+634d470994dc89d6358113d103f41cc63474581121379813677ed580c8041a2b  standard-postgres-toy-serve  scripts/agents/moorings.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-memory-none  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-postgres-toy-serve  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-memory-none  scripts/test_benchmark.py
@@ -513,7 +518,3 @@ fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  event-modellin
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  event-modelling-postgres-toy-serve  scripts/agents/sail.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  standard-memory-none  scripts/agents/sail.py
 fdbf176ec840a82a1c44f10dfa0921430ad06e6ba00d7d1c8c045ccdc9f72d36  standard-postgres-toy-serve  scripts/agents/sail.py
-ff569ac1e31fa8233c95a72a24b9e55037e0a7ecc0fee7af8a3609639564f2a5  event-modelling-memory-none  scripts/agents/moorings.py
-ff569ac1e31fa8233c95a72a24b9e55037e0a7ecc0fee7af8a3609639564f2a5  event-modelling-postgres-toy-serve  scripts/agents/moorings.py
-ff569ac1e31fa8233c95a72a24b9e55037e0a7ecc0fee7af8a3609639564f2a5  standard-memory-none  scripts/agents/moorings.py
-ff569ac1e31fa8233c95a72a24b9e55037e0a7ecc0fee7af8a3609639564f2a5  standard-postgres-toy-serve  scripts/agents/moorings.py

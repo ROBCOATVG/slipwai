@@ -186,9 +186,12 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
         return (f"Paused, nothing for you to do: it lifts {when}.",
                 [f"Nothing: the harbourmaster carries it on {when}.",
                  "To try sooner, press Try the paused slices now anyway at the top of the board."])
+    if kind == "question" and row.get("kind") == "question":
+        # The row is the question in its own words already; said a third time it is noise (`test_bridge`).
+        return (f"{row.get('slice') or fairway} asked a question only a person can answer, and waits for it.",
+                [f"Read the question{' ' + str(row['id']) if row.get('id') else ''} above.", answer_step(row)])
     if kind == "question":
-        return (said, [f"Read the question{' ' + str(row['id']) if row.get('id') else ''} on this card.",
-                       answer_step(row)])
+        return said, ["Read the question in the park above.", answer_step(row)]
     if kind == "mockup":
         feature = feature_of(row) or "<feature>"
         whose = f"{named}'s" if named else "this"

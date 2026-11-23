@@ -49,7 +49,8 @@ class KindTest(unittest.TestCase):
     def test_a_question_is_answered_from_its_box_or_the_project_s_own_tell(self) -> None:
         found = action({"kind": "question", "fairway": "ORD", "slice": "ORD-01", "id": "D13", "t": "",
                         "asked": "One context or two?", "what": "D13 (ORD-01): One context or two?"})
-        self.assertEqual((found["kind"], found["why"]), ("question", "One context or two?"))
+        self.assertEqual(found["kind"], "question")
+        self.assertNotIn("One context or two?", found["why"], "the row says the question; the why does not repeat it")
         self.assertIn("Send to ORD-01", found["do"][1])
         self.assertIn('`python3 scripts/agents/fleet.py tell ORD --slice ORD-01 "<your answer>"`', found["do"][1])
 

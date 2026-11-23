@@ -109,6 +109,11 @@ import stuck  # noqa: E402
 import talk  # noqa: E402
 import travel  # noqa: E402
 
+try:  # the harbourmaster's predicate for a capability's last slice; without it the captain learns from the refusal
+    import capabilities  # noqa: E402
+except ImportError:  # pragma: no cover - a toolkit older than the capability hold
+    capabilities = None  # type: ignore[assignment]
+
 
 def project_root() -> Path:
     for candidate in HERE.parents:
@@ -2246,6 +2251,45 @@ def refusal_cause(why: str) -> str:
     return f"gate {target.group(1)}" if target else why[:80]
 
 
+def resolve_in_berth(slice_id: str, feature: str, fairway: str, why: str) -> str:
+    """Send the slice back into its berth to act on `why` before its merge is asked for again; why it stopped, or "".
+
+    What a refusal the berth can fix asks of it — a conflict, a failed gate, its capability's gates — is work on
+    code, so `/sail` is dispatched in this fairway's own berth, where the context is.
+    """
+    # Back into its berth to resolve, which is work on code and no longer a wait on the queue.
+    FLIGHT.setdefault(slice_id, {})["merging"] = False
+    try:
+        finished, fault, fresh = dispatch(slice_id, feature, fairway, why)
+    except Spent as spent_all:
+        return str(spent_all)
+    except NeverRan as refused:
+        return str(refused)
+    FLIGHT.setdefault(slice_id, {})["merging"] = True
+    refused_run = FLIGHT.get(slice_id, {}).pop("refusal", None)
+    if refused_run is not None:
+        # The harness said no to the run that would have resolved the merge — a usage limit — which is
+        # a pause with its time on it, as it is at a slice's first run. Read as a run that failed, it
+        # parked lean-coffee-club's access stream on `/sail exited 1` for ten hours, for a person,
+        # while the two streams beside it paused and started again by themselves.
+        record(slice_id, cause=refused_run.cause, until=refused_run.until)
+        return (f"the harness would not run {slice_id} ({refused_run.said}). Paused until "
+                f"{local_clock(refused_run.until)}, no attempt spent")
+    if not finished:
+        return fault or f"{slice_id}'s run in its berth did not finish"
+    if FLIGHT.get(slice_id, {}).pop("message_commits", False):
+        # What was held for the merge was delivered ahead of the resolve, and a message's turn committed:
+        # the slice's own gate is read again, on this run's lines, before the merge is asked for.
+        promised = sets_of(slice_id)
+        missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
+        if missing or verdict != ACCEPTED or unseeded(fresh, slice_id, feature):
+            record(slice_id, cause="gate")
+            return ("a message's turn committed to the slice while it was resolving its merge, and "
+                    "its gate was not closed again on that head — "
+                    + gate_missed(slice_id, promised, missing, verdict, unseeded(fresh, slice_id, feature)))
+    return ""
+
+
 def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool, str]:
     """Ask for the merge until it lands or until asking again cannot change the answer.
 
@@ -2255,6 +2299,17 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
     once rather than driving a slice four more times to be told the same thing.
     """
     cause, same = "", 0
+    gates_owed = capabilities.ungated(slice_id) if capabilities is not None else ""
+    if gates_owed:
+        # The harbourmaster's own predicate, asked before the merge rather than learned from its refusal: the
+        # last slice of a capability whose record has no `Cleared:` is refused every time, so its gates are
+        # dispatched first and the merge asked for once it could be granted. manda's captains asked, were
+        # refused and only then dispatched the gates, 23 times. Counted as the first answer to that cause.
+        hold_talk(fairway, slice_id, "held: this slice is at its merge")
+        fault = resolve_in_berth(slice_id, feature, fairway, f"its merge would be refused: {gates_owed}")
+        if fault:
+            return False, fault
+        cause, same = refusal_cause(gates_owed), 1
     for asked in range(MERGE_ASKS):
         hold_talk(fairway, slice_id, "held: this slice is at its merge")
         landed, why, resolvable = ask_to_merge(slice_id, feature, fairway, asked)
@@ -2269,36 +2324,9 @@ def merged(slice_id: str, feature: str, fairway: str, bound: int) -> tuple[bool,
         cause = refusal_cause(why)
         if same > bound:
             return False, f"{why}. That is {same} attempt(s) at the same refusal, which is what `attempts` allows"
-        # Back into its berth to resolve, which is work on code and no longer a wait on the queue.
-        FLIGHT.setdefault(slice_id, {})["merging"] = False
-        try:
-            finished, fault, fresh = dispatch(slice_id, feature, fairway, why)
-        except Spent as spent_all:
-            return False, str(spent_all)
-        except NeverRan as refused:
-            return False, str(refused)
-        FLIGHT.setdefault(slice_id, {})["merging"] = True
-        refused_run = FLIGHT.get(slice_id, {}).pop("refusal", None)
-        if refused_run is not None:
-            # The harness said no to the run that would have resolved the merge — a usage limit — which is
-            # a pause with its time on it, as it is at a slice's first run. Read as a run that failed, it
-            # parked lean-coffee-club's access stream on `/sail exited 1` for ten hours, for a person,
-            # while the two streams beside it paused and started again by themselves.
-            record(slice_id, cause=refused_run.cause, until=refused_run.until)
-            return False, (f"the harness would not run {slice_id} ({refused_run.said}). Paused until "
-                           f"{local_clock(refused_run.until)}, no attempt spent")
-        if not finished:
+        fault = resolve_in_berth(slice_id, feature, fairway, why)
+        if fault:
             return False, fault
-        if FLIGHT.get(slice_id, {}).pop("message_commits", False):
-            # What was held for the merge was delivered ahead of the resolve, and a message's turn committed:
-            # the slice's own gate is read again, on this run's lines, before the merge is asked for.
-            promised = sets_of(slice_id)
-            missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
-            if missing or verdict != ACCEPTED or unseeded(fresh, slice_id, feature):
-                record(slice_id, cause="gate")
-                return False, ("a message's turn committed to the slice while it was resolving its merge, and "
-                               "its gate was not closed again on that head — "
-                               + gate_missed(slice_id, promised, missing, verdict, unseeded(fresh, slice_id, feature)))
     return False, f"{slice_id} asked for its merge {MERGE_ASKS} times and each was refused for something new"
 
 

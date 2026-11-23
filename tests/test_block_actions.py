@@ -115,7 +115,20 @@ class KindTest(unittest.TestCase):
         why = "S97: a long paragraph. With a second sentence; and a third clause nobody templated."
         found = action(park(cause="gate", what=why))
         self.assertEqual((found["kind"], found["why"]), ("other", why))
-        self.assertIn(why, found["do"][0])
+        self.assertNotIn(why, " ".join(found["do"]), "said once, in the why: the steps do not say it again")
+
+    def test_a_park_an_earlier_slipwai_wrote_is_obsolete_and_dismissed(self) -> None:
+        found = action(park(obsolete="1.5.1 → 2.1.0.dev93", what="name the next lane, or lift the W4 lane lock"))
+        self.assertEqual(found["kind"], "obsolete")
+        self.assertIn("1.5.1 → 2.1.0.dev93", found["why"])
+        self.assertIn("Press Dismiss", found["do"][0])
+
+    def test_a_merged_slice_s_unchecked_hand_back_is_probably_done_and_confirmed_by_a_tick(self) -> None:
+        found = action({"kind": "told", "fairway": "intake", "t": "", "what": "S53: add the picker rule",
+                        "probably": "yes", "needs": [{"what": "the picker rule in base.css", "by": "person",
+                                                      "met": "no"}]})
+        self.assertEqual(found["kind"], "probably")
+        self.assertIn("press Done beside it: the picker rule in base.css", found["do"][0])
 
     def test_every_kind_is_one_the_set_names(self) -> None:
         for row in (park(), park(cause="question"), {"kind": "told", "t": "", "what": "a note"}):
@@ -192,6 +205,48 @@ class BoardTest(unittest.TestCase):
         self.assertIn("      1. First: Read 1 of the 2 unread decisions", printed)
         self.assertEqual(said_lines(self.row())[0], f"    Why: {S97.removeprefix('S97: ')}")
 
+
+
+#: S81's refusal as manda's harbour log holds it, cut.
+S81 = ("the full gate failed on slice/S81 rebased onto origin/main: make[1]: *** [test] Error 1 — it said: "
+       "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯ | npm error Lifecycle script `test` failed with error: | npm error code 1")
+
+
+class RefusalTest(unittest.TestCase):
+    """A refused merge is one sentence, and the gate's log is behind a disclosure, never inline."""
+
+    def test_a_failed_merge_gate_is_said_by_what_failed_and_where(self) -> None:
+        from slipwai.refusal_said import raw, summary
+        self.assertEqual(summary("S81", S81), "S81's merge gate failed 6 tests in the merge worktree, after its "
+                                              "own gate passed in its berth.")
+        self.assertEqual(raw(S81).splitlines()[1], "npm error Lifecycle script `test` failed with error:")
+        self.assertEqual(summary("S9", "trunk is red, so nothing merges until it is green"),
+                         "trunk is red, so nothing merges until it is green")
+
+    def test_the_needs_a_look_row_and_the_card_say_the_sentence_and_keep_the_log_folded(self) -> None:
+        from slipwai.live_page import looks
+        from slipwai.slice_card import facts_html
+        [look] = looks([{"slice": "S81", "stage": "Merge refused", "refused": S81, "state": "queued"}], {}, {})
+        self.assertNotIn("⎯", look["says"])
+        self.assertIn("failed 6 tests in the merge worktree", look["says"])
+        card = facts_html({"slice": "S81", "state": "queued", "refused": S81})
+        self.assertIn("<details><summary>The gate's own words</summary>", card)
+        self.assertEqual(card.split("<details>")[0].count("⎯"), 0, "no rule of the log before the disclosure")
+
+    def test_a_park_on_a_refused_merge_gives_its_reason_not_the_log(self) -> None:
+        found = action(park(cause="exit", what=f"S81: the merge was refused: {S81}"))
+        self.assertNotIn("npm error", found["why"])
+
+
+class ReplyOnceTest(unittest.TestCase):
+    def test_a_waiting_card_shows_the_person_s_answer_once(self) -> None:
+        from slipwai.talk_card import card_html
+        talk = {"last": {"who": "You", "text": "mock it up", "line": "seen"},
+                "answer": {"id": "m1", "text": "mock it up", "t": ""}}
+        self.assertNotIn("mock it up", card_html({"slice": "S97", "fairway": "intake", "state": "waiting",
+                                                  "talk": json.dumps(talk)}))
+        self.assertIn("mock it up", card_html({"slice": "S97", "fairway": "intake", "state": "working",
+                                               "talk": json.dumps(talk)}))
 
 
 class CardTest(unittest.TestCase):

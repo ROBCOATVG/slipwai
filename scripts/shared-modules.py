@@ -51,6 +51,9 @@ SHARED = {
     # How long a drawing of the storyboard may take: the board's ceiling on a drawing it runs over the protocol,
     # and `surfaces.py`'s on one it runs headless. The board once had its own number, and it was not the file's.
     "src/slipwai/drawing_budget.py": "assets/toolkit/scripts/agents/drawing_budget.py",
+    # Whether trunk holds what a need asks for: the harbourmaster's `need-met`, and the board's list of what is
+    # still on trunk's way, so a need already landed leaves the board before a receipt says so.
+    "src/slipwai/need_check.py": "assets/toolkit/scripts/agents/need_check.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

@@ -27,9 +27,9 @@ from .talk_marks import SCRIPT as MARKS_SCRIPT
 from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
-# budget: 394 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# budget: 420 — the headline over every state a fleet can be in, a build merged whole and one merged but
 # ungated among them, and a group already answered showing what was said and where it stands, and what
-# to do about each group, with every park's held answer
+# to do about each group, with every park's held answer, and apart from them the probably-done and obsolete
 
 #: The word on a group for its cause, in the words a person uses rather than the record's.
 CAUSES = {"limit": "paused", "host": "on main", "question": "a question", "demo": "demo sent back",
@@ -319,7 +319,15 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
         meta.append(f"said {group['times']} times")
     buttons = ""
     sent = every_placed(group.get("parks") or [])
-    if controls and group.get("source") != "told" and sent:
+    obsolete = str(group.get("obsolete") or "")
+    newest_park = max(group.get("parks") or [{}], key=lambda park: str(park.get("t", "")))
+    if controls and obsolete:
+        # Nothing in this harness acts on it: Dismiss writes the `read` it is let go by (`deck.dismiss`).
+        buttons = (f'<button type="button" class="go" data-dismiss="{esc(newest_park.get("fairway", ""))}" '
+                   f'data-told="{esc(newest_park.get("t", ""))}">Dismiss</button>')
+    elif controls and group.get("source") != "told" and sent and (group.get("action") or {}).get("held"):
+        buttons = ""  # the held line says the answer, its time and why it waits: said once
+    elif controls and group.get("source") != "told" and sent:
         # Said already: what was sent and where it stands, until the captain carries it and the park clears.
         buttons = (f'<p class="placed"><span><b>You said:</b> {esc(sent[-1].get("text", ""))}</span>'
                    f'<small class="{esc(sent[-1].get("tone", ""))}">{esc(sent[-1].get("line", ""))}</small></p>')
@@ -352,7 +360,8 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
     whole = (f'<details class="log"><summary>{esc(slices[-1] if slices else "Its")}&#8217;s own lines, and the park '
              f'in full</summary><ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
              f'</ol><p class="empty" style="white-space:pre-wrap">{esc(group.get("what") or "")}</p></details>')
-    chip = "a slice needs this on trunk" if group.get("source") == "told" else CAUSES.get(cause, cause)
+    chip = ("obsolete since " + obsolete if obsolete else "probably done" if group.get("probably")
+            else "a slice needs this on trunk" if group.get("source") == "told" else CAUSES.get(cause, cause))
     newest = max(group.get("parks") or [{}], key=lambda park: str(park.get("t", "")))
     # Every park's held answer, the newest's steps: several parks on one cause are one thing to do.
     held = "".join(f'<p class="held">{esc(park["held"])}</p>' for park in group.get("parks") or []
@@ -365,11 +374,28 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
             f'{whole}</div>')
 
 
+def groups_html(groups: list[dict], controls: bool, now: datetime | None = None) -> str:
+    """The groups a person acts on, then — apart, each under its own heading — the hand-backs of merged slices
+    that are probably done, to confirm with a tick, and the parks an earlier slipwai wrote, to dismiss."""
+    acting = [g for g in groups if not g.get("probably") and not g.get("obsolete")]
+    said = "".join(group_card(group, controls, now) for group in acting)
+    for key, title, hint in (("probably", "Probably done — confirm?",
+                              "Their slices have merged and trunk cannot be asked: tick each that landed."),
+                             ("obsolete", "Obsolete — dismiss?",
+                              "Written by an earlier slipwai; nothing acts on them.")):
+        mine = [g for g in groups if g.get(key)]
+        if mine:
+            said += (f'<div class="wait-group {key}" id="{key}"><h3>{esc(title)} <span class="count">{len(mine)}'
+                     f'</span> <small>{esc(hint)}</small></h3>{"".join(group_card(g, controls, now) for g in mine)}'
+                     f"</div>")
+    return said
+
+
 def waiting_card(found: dict, controls: bool, rows_html: str, now: datetime | None = None) -> str:
     """What waits on a person: the groups first, then the messages, questions and decisions the board
     already listed one by one (`rows_html`), then a word on questions where none is open."""
     groups = [g for g in found.get("groups") or [] if g.get("paused") != "yes"]
-    cards = "".join(group_card(group, controls, now) for group in groups)
+    cards = groups_html(groups, controls, now)
     counts = found.get("counts") or {}
     questions = int(counts.get("questions") or 0)
     none = ('<p class="empty">No slice has stopped to ask you anything.</p>'

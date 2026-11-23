@@ -58,7 +58,7 @@ SLOW += test_scaffold_starts_green
 SLOW += test_run_folder test_migration_manifest test_extension_projection
 SLOW += test_harbourmaster_stop
 # Approve and Reject on a card, through the real captain and harbourmaster, and a board served.
-SLOW += test_park_verdict
+SLOW += test_park_verdict test_board_settles
 SLOW += test_example_map_source
 # The captain as an agent: a captain run per case, and the six captain suites run twice over.
 SLOW += test_captain_agent test_captain_agent_parity test_captain_heard

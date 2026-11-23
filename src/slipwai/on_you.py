@@ -24,7 +24,7 @@ from typing import Any
 from .bridge_page import inbox_rows
 from .feedback import items
 from .feedback_card import to_look_at
-from .fleet_page import first_sentence, group_card, parks_table, plural
+from .fleet_page import first_sentence, groups_html, parks_table, plural
 from .page_shell import esc
 from .stage_session import running
 from .storyboard_card import waiting_said
@@ -82,8 +82,8 @@ def parked(fleet: dict[str, Any], rows: list[dict[str, str]]) -> list[dict[str, 
     by_slice = {row["slice"]: row for row in rows}
     seen: set[str] = set()
     for group in fleet.get("groups") or []:
-        if group.get("paused") == "yes":
-            continue
+        if group.get("paused") == "yes" or group.get("probably") or group.get("obsolete"):
+            continue  # nothing only a person can move on: `settling` lists them, once each kind
         title = first_sentence(str(group.get("what") or ""), 90) or "waiting on you"
         if group.get("source") == "told":
             needs = [str(need.get("what") or "") for need in group.get("needs") or []]
@@ -106,6 +106,17 @@ def parked(fleet: dict[str, Any], rows: list[dict[str, str]]) -> list[dict[str, 
     # A slice the fold holds on a person that no park of the fleet's names is still the person's.
     found += [slice_item(row) for row in rows if row.get("state") == "waiting" and row["slice"] not in seen]
     return found
+
+
+def settling(fleet: dict[str, Any]) -> list[dict[str, Any]]:
+    """The hand-backs of merged slices that are probably done, as one thing to confirm, and each park an earlier
+    slipwai wrote, as one thing to dismiss: listed when you have time, never as holding work up."""
+    groups = fleet.get("groups") or []
+    probably = [g for g in groups if g.get("probably")]
+    found = [{"n": 1, "href": "#probably", "text": f"{plural(len(probably), 'hand-back')} of merged slices "
+                                                    f"probably done: confirm"}] if probably else []
+    return found + [{"n": 1, "href": "#obsolete", "text": f"The {', '.join(g.get('fairways') or ['?'])} stream's park "
+                     f"is obsolete since {g['obsolete']}: dismiss it"} for g in groups if g.get("obsolete")]
 
 
 def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
@@ -157,6 +168,7 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
         said = ("A piece of feedback has" if proposed == 1 else f"{proposed} pieces of feedback have")
         later.append({"n": proposed, "href": "#feedback", "text": f"{said} a proposed route to confirm"})
     later += paused_by_you
+    later += settling(fleet)
     if not holding and not later:
         return dict(NOTHING_WAITS)
     first = (holding or later)[0]
@@ -179,7 +191,7 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
     streams = sorted({str(row["fairway"]) for row in fleet.get("berths") or []}) if controls else []
     if not groups and not others and limit is None and not streams:
         return ""
-    cards = "".join(group_card(group, controls) for group in groups)
+    cards = groups_html(groups, controls)
     listed = inbox_rows(others, controls, fleet.get("streams")) if others else ""
     paused = ""
     if controls and limit is not None:

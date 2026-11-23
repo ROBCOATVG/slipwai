@@ -25,6 +25,7 @@ from .decision_cards import slice_panel
 from .example_map_page import STYLE as MAP_STYLE
 from .example_map_page import map_panel
 from .page_shell import document, esc
+from .refusal_said import summary
 from .talk_page import SCRIPT as TALK_SCRIPT
 from .talk_page import STYLE as TALK_STYLE
 from .talk_page import pane as talk_pane
@@ -163,7 +164,7 @@ def looks(rows: list[dict[str, str]], folds: dict[str, dict], trunk: dict[str, s
         if not warned and not refused:
             continue
         said = [f"{LOOKED[one['kind']]}: {one['said']}" for one in warned]
-        said += [f"Merge refused: {refused}"] if refused else []
+        said += [f"Merge refused: {summary(row['slice'], refused)}"] if refused else []  # the log is on its card
         stage = row.get("stage") or ""
         found.append({"name": f"{row['slice']} · {stage}" if stage else row["slice"], "says": "; ".join(said),
                       "level": "red" if refused or any(one["level"] == "red" for one in warned) else "amber",

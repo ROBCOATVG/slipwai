@@ -22,10 +22,11 @@ import re
 from typing import Any
 
 from .fleet_record import clock_of
+from .refusal_said import SAID
 
 #: Every kind of block, and the only ones. `other` is the fallback that quotes the park whole.
 KINDS = ("question", "ceiling", "decisions", "mockup", "grant", "person", "handback", "machine", "demo",
-         "paused", "unreadable", "other")
+         "paused", "unreadable", "probably", "obsolete", "other")
 #: A park that waits on a verdict on a drawing: the stage that gives one is `/mockups`, and a person approves it.
 MOCKUP = re.compile(r"/mockups\b|mock[- ]?(?:up|state)s?\b[^.;]{0,120}\b(?:approv|verdict)|"
                     r"\b(?:approv|verdict)\w*\b[^.;]{0,120}\bmock[- ]?(?:up|state)", re.IGNORECASE)
@@ -40,7 +41,7 @@ PAUSED = ("limit", "trunk")
 
 def first_sentence(text: str) -> str:
     """The first sentence of what a block says, whole, without the slice's own `S97: ` at its head."""
-    said = re.sub(r"\s+", " ", text).strip()
+    said = re.sub(r"\s+", " ", text.partition(SAID)[0]).strip()  # a refused gate's log is not its reason
     said = re.sub(r"^[A-Za-z0-9_.-]{1,40}: ", "", said)
     found = re.match(r"(.+?[.!?])(?:\s|$)", said)
     return (found.group(1) if found else said).strip()
@@ -56,6 +57,10 @@ def kind_of(row: dict[str, Any]) -> str:
     kind, cause = str(row.get("kind") or ""), str(row.get("cause") or "other")
     if kind in ("unreadable", "decisions", "question"):
         return kind
+    if row.get("obsolete"):
+        return "obsolete"
+    if row.get("probably") == "yes":
+        return "probably"
     if kind == "told":
         return "handback" if row.get("needs") else "other"
     if kind != "parked":
@@ -168,6 +173,15 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
         return (f"The {fairway} log has a line nobody can read, so its captain stops at every start.",
                 [f"Open `.slipwai/run/logs/<feature>/{fairway}.jsonl` and repair the line the fault names: "
                  f"{row.get('what', '')}", "Nothing else: the harbourmaster relights the captain on its next pass."])
+    if kind == "obsolete":
+        return (f"An earlier slipwai wrote this park, and the move {row['obsolete']} carried it across; nothing in "
+                f"this harness acts on it any more.",
+                ["Press Dismiss on this card: it leaves the board, and nothing else waited on it."])
+    if kind == "probably":
+        steps = [f"If it is on trunk, press Done beside it: {need.get('what', '')}" for need in row.get("needs") or []
+                 if need.get("met") != "yes"]
+        return ("Its slice has merged and nothing left on it can be checked against trunk, so it is probably done.",
+                [*steps, f"If one is not, say so to the stream: {told_from_terminal(row)}."])
     if kind == "decisions":
         unread, ceiling = len(row.get("decisions") or []), row.get("ceiling")
         if row.get("blocking") != "yes":
@@ -218,8 +232,8 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
     if kind == "demo":
         return (said, [f"Read the demo's verdict and what it walked: {log}, or this card's own lines.",
                        f"Say what to change, or that it is right as it is: {answer_step(row)}"])
-    whole = re.sub(r"\s+", " ", str(row.get("what") or "")).strip()
-    return whole, [f"Read the park in full: {whole}", answer_step(row)]
+    whole = re.sub(r"\s+", " ", str(row.get("what") or "").partition(SAID)[0]).strip()
+    return whole, ["Decide what it needs from you: the park above is the captain's own words.", answer_step(row)]
 
 
 def action(row: dict[str, Any]) -> dict[str, Any]:

@@ -25,6 +25,7 @@ from .block_card import action_html
 from .example_map_page import card_html
 from .feedback_card import opener
 from .page_shell import esc
+from .refusal_said import raw, summary
 from .slice_rungs import AHEAD, COUNTED, instant
 from .talk_card import card_html as talk_html
 from .talk_card import fields as talk_fields
@@ -85,6 +86,7 @@ STYLE = """
 #work .compact .doing{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #work .compact .state{font-size:.78rem;color:var(--ink-3);text-align:right;white-space:nowrap}
 #work .compact a.waiting .state{color:var(--critical)}
+.slice .gate-log{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.72rem;max-height:240px;overflow:auto}
 .slice .held-trunk{font-size:.78rem;line-height:1.4;padding:4px 8px;border-radius:6px;border:1px solid var(--critical);
   background:var(--critical-soft);color:var(--ink);overflow-wrap:anywhere}
 """
@@ -278,8 +280,14 @@ def span_html(row: dict[str, str]) -> str:
 def facts_html(row: dict[str, str]) -> str:
     """What the steps do not say: why the harbour refused a merge, and why a slice not at work is not."""
     why = "" if row["state"] in ("waiting", "working", "done") else row.get("why", "")
-    facts = (("Merge refused", row.get("refused", "")), ("Why", why))
-    lines = "".join(f"<dt>{esc(label)}</dt><dd>{esc(value)}</dd>" for label, value in facts if value)
+    refused = row.get("refused", "")
+    # One sentence, and the gate's own words behind it rather than pasted into the card (`refusal_said`).
+    log = raw(refused)
+    behind = (f"<details><summary>The gate's own words</summary><pre class=\"gate-log\">{esc(log)}</pre></details>"
+              if log else "")
+    facts = (("Merge refused", summary(row["slice"], refused) if refused else ""), ("Why", why))
+    lines = "".join(f"<dt>{esc(label)}</dt><dd>{esc(value)}{behind if label == 'Merge refused' else ''}</dd>"
+                    for label, value in facts if value)
     return f'<dl class="facts">{lines}</dl>' if lines else ""
 
 

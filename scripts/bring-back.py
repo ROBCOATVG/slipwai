@@ -75,7 +75,7 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "talk_said", "talk_fold", "captain_files", "talk_page", "talk_waits", "talk_card", "captain_window",
        "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",
        # What a person does about each block on the board, drawn on its card, and a verdict given from it (#154).
-       "block_actions", "block_card", "park_verdict",
+       "block_actions", "block_card", "park_verdict", "need_check", "refusal_said",
        "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_sentence",
        "migration_slices", "migration_crossing", "migration_result", "migration_merge", "migration_renames",
        "migration_manifest", "extension_copies", "extension_upkeep", "guards_offered",

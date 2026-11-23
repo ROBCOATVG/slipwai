@@ -278,7 +278,7 @@ function paintPassage(found){
     if (model) model.querySelector('.stale').hidden = model.dataset.modelSaid === found.model;
     if (window.waiting) waiting.set(found.waiting);
     count('[data-waiting-count]', found.waiting.count, 'waiting');
-    count('[data-decisions-unread]', found.decisions, 'unread');
+    count('[data-decisions-unread]', found.decisions, 'to review');
     for (const [name, band] of Object.entries(found.bands)) {
       const node = document.querySelector('[data-band="' + name + '"]');
       if (!node || node.dataset.said === band.said || busy(node)) continue;
@@ -723,7 +723,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
              + (model_card(xml, note, viewer_fault, model_said(rows)) if xml or note or viewer_fault else "")),
             ("fleet", "Fleet", machinery),
             ("decisions", f'Decisions<span class="count" data-decisions-unread{"" if decisions[1] else " hidden"}>'
-                          f"{decisions[1]} unread</span>", decisions[0]),
+                          f"{decisions[1]} to review</span>", decisions[0]),
             ("next", "Next features", next_features(root, ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"

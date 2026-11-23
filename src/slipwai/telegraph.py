@@ -1,4 +1,4 @@
-"""The telegraph: one lever a person rings, and the nine numbers it sets.
+"""The telegraph: one lever a person rings, and the numbers of pace it sets.
 
 A run has a dozen numbers that all mean the same thing in different units — how many berths are lit, how many
 delegates each captain may have, what a slice may spend, what a day may spend, how long a stage may take.
@@ -12,6 +12,13 @@ rings a position; every number moves together.
 one and the fleet board then says `half-ahead, adjusted` — adjusted, not a new position, because a board that
 reported a position the numbers do not match is a board that is lying. Ringing a position again resets
 everything, which is what makes a hurried adjustment safe to make.
+
+**The severity bar is not on the lever.** It is a quality decision and the positions are a throughput
+decision, and while the bar was one of the positions' numbers, ringing `full-ahead` for throughput quietly
+raised it to HIGH, so every MEDIUM finding — a coerced request body that countersigns an agreement, a
+rounding that feeds a valuation — was stowed rather than fixed, and nothing on the telegraph said a ring
+had done that (slipwai#154). The bar is its own setting, MEDIUM until a person says otherwise with
+`--set bar=…`; no ring, and no banking of the fires, moves it.
 
 **Banking the fires is the same lever, pulled by the clock instead of a person.** When the day's bunker is
 spent the harbourmaster steps the position down one notch at a time, writing `fires-banked` with what it
@@ -44,7 +51,6 @@ MEANS = {
     "bunker_per_slice": "thousands of work tokens (uncached input + output) one slice may spend",
     "bunker_per_day": "thousands of work tokens (uncached input + output) the harbour may spend in a day",
     "stage_scale": "what every stage budget in `stages` is multiplied by",
-    "bar": "the severity at or above which an adversary finding must close before a merge",
     "decision_ceiling": "decisions that may stand unread before a fairway parks",
     "wait_bound": "minutes a wait may go with the harbour log silent before it is a parked line",
     # Added with slice 7.8, which needed a retry bound and found that `cycle` is not one — `cycle` is the
@@ -59,27 +65,26 @@ MEANS = {
     # a delegate that is not in a browser costs nothing here, and a session that is waits its turn.
     "browsers": "browser-driven test runs at once on this machine",
 }
-#: Each position's numbers. Not a formula: `bar` and `decision_ceiling` tighten as the run slows because a
-#: slower run is one somebody is already unhappy about, and that is a judgement rather than an arithmetic.
+#: Each position's numbers. Not a formula: `decision_ceiling` tightens as the run slows because a slower
+#: run is one somebody is already unhappy about, and that is a judgement rather than an arithmetic.
 #: `half-ahead` is a fresh harbour's, and its row is exactly `project/harbour.py`'s documented defaults —
 #: so a generated project reads `half-ahead` and not `half-ahead, adjusted` on the day it is made.
-#: A *lower* bar is stricter, so slowing lowers it: a run somebody has slowed down is one where less gets
-#: deferred, not more.
+#: **No row carries `bar`**: see `STANDING`.
 SETTINGS: dict[str, dict[str, object]] = {
     "full-ahead": {"boilers": 5, "fanout": 3, "bunker_per_slice": 1500, "bunker_per_day": 20000,
-                   "stage_scale": 1.0, "bar": "HIGH", "decision_ceiling": 12, "wait_bound": 90,
+                   "stage_scale": 1.0, "decision_ceiling": 12, "wait_bound": 90,
                    "attempts": 3, "browsers": 2},
     "half-ahead": {"boilers": 3, "fanout": 2, "bunker_per_slice": 1000, "bunker_per_day": 10000,
-                   "stage_scale": 1.0, "bar": "MEDIUM", "decision_ceiling": 10, "wait_bound": 60,
+                   "stage_scale": 1.0, "decision_ceiling": 10, "wait_bound": 60,
                    "attempts": 2, "browsers": 1},
     "slow-ahead": {"boilers": 2, "fanout": 1, "bunker_per_slice": 700, "bunker_per_day": 5000,
-                   "stage_scale": 0.75, "bar": "MEDIUM", "decision_ceiling": 5, "wait_bound": 30,
+                   "stage_scale": 0.75, "decision_ceiling": 5, "wait_bound": 30,
                    "attempts": 2, "browsers": 1},
     "dead-slow": {"boilers": 1, "fanout": 1, "bunker_per_slice": 400, "bunker_per_day": 2000,
-                  "stage_scale": 0.5, "bar": "LOW", "decision_ceiling": 3, "wait_bound": 20,
+                  "stage_scale": 0.5, "decision_ceiling": 3, "wait_bound": 20,
                   "attempts": 1, "browsers": 1},
     "stop": {"boilers": 0, "fanout": 0, "bunker_per_slice": 0, "bunker_per_day": 0,
-             "stage_scale": 0.0, "bar": "LOW", "decision_ceiling": 0, "wait_bound": 0,
+             "stage_scale": 0.0, "decision_ceiling": 0, "wait_bound": 0,
              "attempts": 0, "browsers": 0},
 }
 #: Mirrored from `.specify/sail.json` so a person sets every width in one place. The telegraph does not own
@@ -111,6 +116,21 @@ LISTS = {
 WIDTHS = {
     "abreast": "slices one fairway may run at once, within `boilers` — 1 is one slice at a time",
 }
+#: The severities a bar can be, lowest first — the order a bar is read against.
+SEVERITIES = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
+#: The bar a harbour has where nobody has set one: MEDIUM, because the experiment's LOWs were genuinely
+#: wording and its MEDIUMs genuinely were not.
+BAR = "MEDIUM"
+#: Settings no position rings because they are not a pace — so far one. `bar` is what may merge unfixed,
+#: which is a quality decision: a run rung up for throughput is not a run that has decided to defer more,
+#: and a run whose fires were banked at four o'clock is not one that has decided to defer less. So the bar
+#: survives every ring, changes only with `--set bar=…`, and is shown beside the position wherever the
+#: position is shown. A harbour.json written before this kept the bar its position set; the catch-up says
+#: to put it back to `BAR` unless a person chose it.
+STANDING = {
+    "bar": "the severity at or above which a finding must close before a merge rather than be stowed — "
+           "its own setting, which no position moves",
+}
 NUMBERS = tuple(MEANS)
 
 
@@ -141,8 +161,9 @@ def parse_setting(text: str) -> tuple[str, object]:
     name, value = name.strip(), value.strip()
     if not value:
         raise Refused(f"`--set` takes `<name>=<value>`; {text!r} has no value")
-    if name not in MEANS and name not in MIRRORED and name not in LISTS and name not in WIDTHS:
-        known = {**MEANS, **WIDTHS, **LISTS, **{one: said for one, (said, _) in MIRRORED.items()}}
+    if name not in MEANS and name not in MIRRORED and name not in LISTS and name not in WIDTHS \
+            and name not in STANDING:
+        known = {**MEANS, **STANDING, **WIDTHS, **LISTS, **{one: said for one, (said, _) in MIRRORED.items()}}
         raise Refused(f"`{name}` is not a setting the telegraph has. It sets: "
                               + "; ".join(f"{one} ({said})" for one, said in known.items()))
     if name in LISTS:
@@ -160,6 +181,9 @@ def parse_setting(text: str) -> tuple[str, object]:
             raise Refused(f"`{name}` is {said}, which is one of {', '.join(allowed)}; {value!r} is not")
         return name, value
     if name == "bar":
+        if value.upper() not in SEVERITIES:
+            raise Refused(f"`bar` is {STANDING['bar']}, which is one of {', '.join(SEVERITIES)}; "
+                          f"{value!r} is not")
         return name, value.upper()
     if name in WIDTHS and not (value.isdigit() and int(value) >= 1):
         # Zero would be a fairway that may run no slice, which is `boilers: 0` said in the wrong place.
@@ -188,9 +212,19 @@ def described(name: str, held: dict) -> str:
     return f"{name}, adjusted" if adjusted(name, held) else name
 
 
+def bar_of(held: dict) -> str:
+    """The bar a harbour is held to: what `harbour.json` says where it says a severity, else `BAR`.
+
+    An unreadable value reads as the default rather than as no bar at all, because no bar would be every
+    finding stowed — the failure the bar exists to stop."""
+    value = str(held.get("bar", "")).upper()
+    return value if value in SEVERITIES else BAR
+
+
 def applied(name: str, held: dict) -> dict:
     """`held` with this position's numbers over it. Ringing resets every one of them, which is what makes
-    a hurried `--set` safe: there is one action that puts everything back."""
+    a hurried `--set` safe: there is one action that puts everything back. The bar is not one of them, so
+    whatever `held` says about it survives."""
     return {**held, "position": position(name), **settings(name)}
 
 

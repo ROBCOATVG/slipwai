@@ -5,6 +5,9 @@ telegraph <position>` rings it, which sets every number together. `slipwai teleg
 changes one and leaves the rest, and the board then says `half-ahead, adjusted` — because a board reporting
 a position the numbers do not match is a board that is lying.
 
+`bar` is set here and never rung: what may merge unfixed is a quality decision rather than a pace, so ringing
+a position leaves it where a person put it (slipwai#154).
+
 `delegate` and `cycle` belong to `/sail` and are mirrored here, so a person sets every width in one place;
 `--set` writes them back to `.specify/sail.json`, where `/sail` reads them. The telegraph never rings them,
 because they are not the harbour's to decide.
@@ -18,7 +21,20 @@ from pathlib import Path
 from .assets import this_command
 from .errors import GenerationError, refuse
 from .project.harbour import CONFIG
-from .telegraph import LISTS, MEANS, MIRRORED, POSITIONS, WIDTHS, Refused, applied, described, parse_setting, scaled
+from .telegraph import (
+    LISTS,
+    MEANS,
+    MIRRORED,
+    POSITIONS,
+    STANDING,
+    WIDTHS,
+    Refused,
+    applied,
+    bar_of,
+    described,
+    parse_setting,
+    scaled,
+)
 
 SAIL = ".specify/sail.json"
 
@@ -43,12 +59,13 @@ def write(path: Path, held: dict) -> None:
 
 
 def shown(held: dict) -> list[str]:
-    """Where the telegraph is, and every number under it."""
+    """Where the telegraph is, the bar beside it — which no position moves — and every number under it."""
     at = str(held.get("position", "full-ahead"))
     lines = [f"telegraph: {described(at, held)}"]
-    width = max(len(name) for name in {**MEANS, **WIDTHS})
-    for name, said in {**MEANS, **WIDTHS}.items():
-        lines.append(f"  {name:<{width}}  {held.get(name, 'unset')!s:<8}  {said}")
+    width = max(len(name) for name in {**MEANS, **STANDING, **WIDTHS})
+    for name, said in {**STANDING, **MEANS, **WIDTHS}.items():
+        value = bar_of(held) if name in STANDING else held.get(name, "unset")
+        lines.append(f"  {name:<{width}}  {value!s:<8}  {said}")
     return lines
 
 

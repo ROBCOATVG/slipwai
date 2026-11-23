@@ -98,6 +98,7 @@
 # why: 2026-11-21 af5e469d1089971e A freed slot is taken and a cleared slice carried on mid-turn; same behaviour on macOS and Linux
 # why: 2026-11-21 e3dad77878752c9a The mender settles up to twelve stops of one rebase; same behaviour on macOS and Linux
 # why: 2026-11-21 0fa04abeccab661a A gate refusal leaves out the noise printed round a failure; same behaviour on macOS and Linux
+# why: 2026-11-23 8755a6c0af38590a The severity bar is its own setting and no telegraph position rings it (slipwai#154); same behaviour on macOS and Linux
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -273,6 +274,10 @@
 72ac35172c6a00b3ba3ce4528835f1576e7bb20bc951113025263b457d628b3b  event-modelling-postgres-toy-serve  scripts/check-flags.py
 72ac35172c6a00b3ba3ce4528835f1576e7bb20bc951113025263b457d628b3b  standard-memory-none  scripts/check-flags.py
 72ac35172c6a00b3ba3ce4528835f1576e7bb20bc951113025263b457d628b3b  standard-postgres-toy-serve  scripts/check-flags.py
+766570def37587b025538137fbdd938213dc72b1e72c71a554f017144875b9ea  event-modelling-memory-none  scripts/agents/telegraph.py
+766570def37587b025538137fbdd938213dc72b1e72c71a554f017144875b9ea  event-modelling-postgres-toy-serve  scripts/agents/telegraph.py
+766570def37587b025538137fbdd938213dc72b1e72c71a554f017144875b9ea  standard-memory-none  scripts/agents/telegraph.py
+766570def37587b025538137fbdd938213dc72b1e72c71a554f017144875b9ea  standard-postgres-toy-serve  scripts/agents/telegraph.py
 7917589b2ead031be7f95e0defde4a249c97af8bcb44e471253d78f5a80a2031  event-modelling-memory-none  scripts/agents/deck_line.py
 7917589b2ead031be7f95e0defde4a249c97af8bcb44e471253d78f5a80a2031  event-modelling-postgres-toy-serve  scripts/agents/deck_line.py
 7917589b2ead031be7f95e0defde4a249c97af8bcb44e471253d78f5a80a2031  standard-memory-none  scripts/agents/deck_line.py
@@ -466,10 +471,6 @@ ee624cef478aa29ec1a5d85220a070ba170fe57b5e8098451cdc409d96e9d4d5  event-modellin
 ee624cef478aa29ec1a5d85220a070ba170fe57b5e8098451cdc409d96e9d4d5  event-modelling-postgres-toy-serve  scripts/agents/capabilities.py
 ee624cef478aa29ec1a5d85220a070ba170fe57b5e8098451cdc409d96e9d4d5  standard-memory-none  scripts/agents/capabilities.py
 ee624cef478aa29ec1a5d85220a070ba170fe57b5e8098451cdc409d96e9d4d5  standard-postgres-toy-serve  scripts/agents/capabilities.py
-efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  event-modelling-memory-none  scripts/agents/telegraph.py
-efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  event-modelling-postgres-toy-serve  scripts/agents/telegraph.py
-efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  standard-memory-none  scripts/agents/telegraph.py
-efbbe91a8312f6773f6907065151ed8dcd79fa8a26e0beba20e3bc09f5092345  standard-postgres-toy-serve  scripts/agents/telegraph.py
 f001587374ca3877dfcf4b474ac36b2a679f5d716eff79d68eeb4483f8adc807  event-modelling-memory-none  scripts/extensions/elected.py
 f001587374ca3877dfcf4b474ac36b2a679f5d716eff79d68eeb4483f8adc807  event-modelling-postgres-toy-serve  scripts/extensions/elected.py
 f001587374ca3877dfcf4b474ac36b2a679f5d716eff79d68eeb4483f8adc807  standard-memory-none  scripts/extensions/elected.py

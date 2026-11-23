@@ -165,9 +165,23 @@ with five open. A finding at or above the fairway's severity bar closes before t
 the same fairway — or, for the per-slice exception, before the slice's push. One below it is **stowed** — a row
 in `fairways/<name>/careen.md` naming the capability or the slice — and the work goes on. The careen is a
 hardening slice the fairway runs when its planned slices are done, and its demo is that the findings are
-closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is the
-harbour's to set and defaults to `MEDIUM`, because the experiment's LOWs were genuinely wording and its
-MEDIUMs genuinely were not.
+closed. Work is never dropped; it is moved somewhere a person can see the size of it. The bar is
+`harbour.json`'s `bar`, set only by a person with `slipwai telegraph --set bar=…`, and defaults to `MEDIUM`,
+because the experiment's LOWs were genuinely wording and its MEDIUMs genuinely were not. No telegraph
+position moves it: ringing for speed is not deciding to defer more.
+
+**A finding that leaves a feature unusable or untrustworthy for its actor is never deferred.** Whatever its
+severity and whatever the bar, a finding of one of these kinds is never stowed: it closes, or parks, exactly
+like a finding at or above the bar, and its row carries `kind: <tag>` so the next reader sees why.
+
+- `validation-bypass` — input coercion or a validation bypass on a state-changing route
+- `document-forgery` — forgery or injection into a generated document — a PDF, an email
+- `erasure-leak` — personal data that survives, or leaks, after deletion or erasure
+- `money-arithmetic` — wrong arithmetic in a money or financial figure
+
+Each was a MEDIUM stowed on a real run at a raised bar — a coerced request body that countersigned an
+agreement, a control character that forged a line in a signed PDF, a removed person still mailed, a rounding
+that fed a valuation — and each left its feature unusable or untrustworthy for the actor it was built for.
 
 **An open `CRITICAL` is the next slice**, placed ahead of every product and
 method slice in the split until it is fixed or a person defers it in that row; the ready set

@@ -28,7 +28,7 @@ from .talk_marks import SCRIPT as MARKS_SCRIPT
 from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
-# budget: 429 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# budget: 431 — the headline over every state a fleet can be in, a build merged whole and one merged but
 # ungated or built on a stand-in among them, and a group already answered showing what was said and where
 # it stands, and what to do about each group, with every park's held answer, and apart from them the
 # probably-done and obsolete

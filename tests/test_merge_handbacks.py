@@ -42,7 +42,8 @@ def load_mender() -> Any:
 class HandbackMergeTest(MergeFixture):
     def write(self, path: str, body: str) -> None:
         (self.root / path).parent.mkdir(parents=True, exist_ok=True)
-        (self.root / path).write_text(body, encoding="utf-8")
+        # LF on every platform: the patch is diffed from these files, and Windows text mode would write CRLF.
+        (self.root / path).write_text(body, encoding="utf-8", newline="\n")
 
     def on_trunk(self, path: str, body: str) -> None:
         self.git("checkout", "--quiet", "main")

@@ -81,7 +81,8 @@ class TravelFixture(Fixture):
 
     def git(self, *argv: str, where: Path | None = None) -> subprocess.CompletedProcess:
         return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@local", *argv],
-                              cwd=where or self.root, capture_output=True, text=True, check=False)
+                              cwd=where or self.root, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", check=False)
 
     def run_as(self, machine: str, *extra: str) -> subprocess.CompletedProcess:
         """One pass, as a named machine, reaching the forge — which is what `--no-fetch` turns off."""
@@ -131,7 +132,8 @@ class MergeFixture(Fixture):
 
     def git(self, *argv: str, where: Path | None = None) -> subprocess.CompletedProcess:
         return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@local", *argv],
-                              cwd=where or self.root, capture_output=True, text=True, check=False)
+                              cwd=where or self.root, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", check=False)
 
     def commit(self, message: str) -> None:
         self.git("add", "-A")

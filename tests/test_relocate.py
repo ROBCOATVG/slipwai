@@ -27,7 +27,8 @@ class RelocateTest(unittest.TestCase):
 
     def git(self, *argv: str) -> str:
         return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@local", *argv], cwd=self.root,
-                              capture_output=True, text=True, check=True).stdout
+                              capture_output=True, text=True, encoding="utf-8",
+                              check=True).stdout
 
     def write(self, path: str, text: str) -> None:
         (self.root / path).parent.mkdir(parents=True, exist_ok=True)

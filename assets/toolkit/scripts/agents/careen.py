@@ -108,6 +108,13 @@ one that moves a row's state to `done`.
 is the next slice rather than something to look at later, and the stage that found it says so instead of
 writing a row.
 
+**Nor is any finding of these kinds, whatever its severity and whatever the bar.** A finding that leaves a feature unusable or untrustworthy for its actor is never deferred:
+
+- `validation-bypass` — input coercion or a validation bypass on a state-changing route
+- `document-forgery` — forgery or injection into a generated document — a PDF, an email
+- `erasure-leak` — personal data that survives, or leaks, after deletion or erasure
+- `money-arithmetic` — wrong arithmetic in a money or financial figure
+
 **A row is a decision, not a note.** *What it is* says what is wrong and what closing it would take, in one
 line a reader who was not there can act on. A row that only names a file is a row the careen slice has to
 rediscover, which is the cost the stowing was supposed to avoid.

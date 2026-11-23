@@ -457,7 +457,7 @@ def shared(path: str) -> bool:
 
 def eligible(need: object, by_person: bool) -> str:
     """The path a need's check reads where the mender may land it, or ""."""
-    if not isinstance(need, dict) or not isinstance(need.get("check"), dict):
+    if not isinstance(need, dict) or not isinstance(need.get("check"), dict) or logs.asks_a_decision(need):
         return ""
     check = need["check"]
     path = str(check.get("path", ""))
@@ -465,6 +465,61 @@ def eligible(need: object, by_person: bool) -> str:
         return ""
     by = str(need.get("by", ""))
     return path if by == "fleet" or (by_person and by == "person") else ""
+
+
+# Hand-backs that land with the slice's merge.
+
+#: Where a slice hands back a change it may not write and that needs its own unmerged code: one patch per
+#: change in its own record, `specs/<feature>/slices/<id>/handback/<name>.patch`, with its reason as the
+#: prose before the first `diff --git`. The harbourmaster applies them on the slice rebased onto trunk, in
+#: its merge's scratch tree, and runs the one full gate over both: both land, or neither does.
+#:
+#: Sent to the mender as a need instead, manda's were 43 failed jobs: about twenty needed the slice's own
+#: code and said "they have to land together", fifteen landed on a trunk without the slice and then failed
+#: the full gate, and a few cited what only the slice's branch held.
+HANDBACK = "handback"
+
+
+def handback_patches(where: Path, slice_id: str) -> list[Path]:
+    """The patches a slice carries in its own record, in name order, in the tree at `where`."""
+    return sorted(path for path in where.glob(f"specs/*/slices/{slice_id}/{HANDBACK}/*.patch") if path.is_file())
+
+
+def patched_paths(text: str) -> list[str]:
+    """Every path a patch touches, from its `diff --git` headers and its `---`/`+++` lines."""
+    found: list[str] = []
+    for line in text.splitlines():
+        named: list[str] = []
+        if line.startswith("diff --git "):
+            named = re.findall(r"(?:^| )[ab]/(\S+)", line[len("diff --git"):])
+        elif line.startswith(("--- a/", "+++ b/")):
+            named = [line[6:].split("\t")[0].strip()]
+        elif line.startswith(("rename from ", "rename to ", "copy from ", "copy to ")):
+            named = [line.split(" ", 2)[2].strip()]
+        for path in named:
+            if path and path != "/dev/null" and path not in found:
+                found.append(path)
+    return found
+
+
+def reason_of(text: str) -> str:
+    """What a patch says it is for: its prose before the first diff, as one line."""
+    head = re.split(r"^(?:diff --git |--- |Index: )", text, maxsplit=1, flags=re.MULTILINE)[0]
+    return " ".join(line.strip() for line in head.splitlines() if line.strip() and not line.startswith("#"))[:300]
+
+
+def withheld(paths: list[str]) -> str:
+    """Why a hand-back patch may not land with its slice's merge, or "": a gate, or what runs one or decides
+    what an agent may do, is never the mender's, and the cloud under `infra/` is a person's — a change there
+    spends money and reaches production — but for the flag declaration, which is additive and seeded off."""
+    for path in paths:
+        if any(path.startswith(one) for one in KEPT_UP) or path == FLAGS:
+            continue
+        if never(path):
+            return f"{path} is never a hand-back's to change: a gate passes on its own merits"
+        if any(path.startswith(one) for one in PERSONS):
+            return f"{path} is the cloud's, which is a person's: a change there spends money and reaches production"
+    return ""
 
 
 def need_turn(state: str, open_needs: list[tuple[str, logs.Entry, int]], harbour: list[logs.Entry]) -> dict | None:

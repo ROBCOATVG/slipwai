@@ -109,8 +109,10 @@ def mid_rebase(root: Path, branch: str) -> Path | None:
             continue
         where = Path(line[len("worktree "):])
         for kind in ("rebase-merge", "rebase-apply"):
-            named = git(where, "rev-parse", "--git-path", f"{kind}/head-name").stdout.strip()
+            # A sibling's berth is listed until its folder is gone and pruned, and one removed after its merge
+            # while this looks is a folder git cannot be started in: it holds no rebase of this branch.
             try:
+                named = git(where, "rev-parse", "--git-path", f"{kind}/head-name").stdout.strip()
                 held = (where / named).read_text(encoding="utf-8").strip() if named else ""
             except OSError:
                 continue

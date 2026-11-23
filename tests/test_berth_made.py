@@ -76,6 +76,17 @@ class BerthMadeTest(unittest.TestCase):
         self.assertEqual((found.resolve(), why), (berth.resolve(), ""))
         self.assertEqual((berth / "a.txt").read_text(encoding="utf-8"), "the slice's\n")
 
+    def test_a_sibling_s_berth_removed_as_this_one_is_made_is_stepped_past(self) -> None:
+        """A sibling merged and its folder went while a cleared slice looked for its own berth: git still
+        listed the worktree, starting git in a folder that is gone raised, and the cleared slice parked on
+        `the captain met FileNotFoundError` naming the sibling's berth (slipwai#154, parity)."""
+        sibling, _ = self.module.berth(self.root, "S2", "slice/S2", "main")
+        assert sibling is not None
+        shutil.rmtree(sibling)  # gone, and not yet pruned: `git worktree list` still names it
+        found, why = self.module.berth(self.root, "S1", "slice/S1", "main")
+        assert found is not None, why
+        self.assertEqual(found.resolve(), (self.home / "project-S1").resolve())
+
 
 if __name__ == "__main__":
     unittest.main()

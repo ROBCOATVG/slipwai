@@ -37,6 +37,13 @@ that is wrong costs more than a miss here: this one blocks a push, and a gate pe
 nothing at all. Decision ids (`D12`), task ids (`T018`), request ids (`R3`) and question ids (`Q7`) are
 excluded by shape, because they are not slices and never were.
 
+**A finding names its slice first.** The review, gaps, adversary and converge stages mint their own ids —
+`F1`, `G-1`, `MS-1` — and a commit that closes one says so after the slice it belongs to: `S61 F1: …`. Such
+a token qualifies a planned slice rather than claiming work of its own, so it is let through where a planned
+slice comes before it in the same subject and its letters are not that slice's (`SB4-SB7` is a range of
+slices, not a finding of `SB4`). A subject whose only id is unknown — `UI3: …`, `036 UI9: …` — is refused as
+before: there is no slice there for it to qualify.
+
 Standalone and dependency-free: PyYAML is read where it is installed and the charts are read by pattern
 where it is not, because a gate that could not run without a dependency would be a gate nobody installed.
 """
@@ -75,6 +82,9 @@ PLANNED = r"[A-Za-z]+-?\d+[A-Za-z]*"
 #: Shapes that are id-like and are never slices: a decision, a task, a request and a question. Excluded by what they are rather
 #: than by a list of the ones seen so far, which would need editing every time a project minted one.
 NOT_SLICES = re.compile(r"^(D\d+|T\d+|R\d+|Q\d+)$")
+#: What a review, gaps, adversary or converge finding id looks like: one or two letters, an optional hyphen,
+#: digits — `F1`, `G-1`, `MS-1`. Only ever a qualifier, and only after a planned slice (`qualifiers`).
+FINDING = re.compile(r"^([A-Z]{1,2})-?\d+$")
 #: Where a commit says what it is about. Everything after the first colon is prose about the change.
 SUBJECT = re.compile(r"^([^:\n]*):")
 
@@ -152,6 +162,30 @@ def named(subject: str, hyphenated: bool = False) -> list[str]:
             if (SHAPE.match(word) or (hyphenated and HYPHENATED.match(word))) and not NOT_SLICES.match(word)]
 
 
+def letters(token: str) -> str:
+    """The letters an id opens with: `S` for `S61`, `MTG` for `MTG-01`."""
+    return re.sub(r"[^A-Z].*$", "", token)
+
+
+def qualifiers(tokens: list[str], plans: set[str]) -> set[str]:
+    """The tokens of one subject that qualify a planned slice before them rather than claiming work.
+
+    `S61 F1:` is a finding of S61, and the slice is what the gate judges. A token is a qualifier only where
+    it is finding-shaped, no plan knows it, a planned slice comes earlier in the same subject, and it does
+    not open with that slice's letters — so `SB4-SB7`, a range of slices, still has `SB7` judged as one.
+    """
+    found: set[str] = set()
+    before: list[str] = []
+    for token in tokens:
+        if token in plans:
+            before.append(token)
+            continue
+        shape = FINDING.match(token)
+        if before and shape and all(shape.group(1) != letters(one) for one in before):
+            found.add(token)
+    return found
+
+
 def trunk() -> str:
     for candidate in ("origin/main", "origin/master", "main", "master"):
         if git("rev-parse", "--verify", "--quiet", candidate).strip():
@@ -203,7 +237,11 @@ def faults(span: str, plans: set[str], accounted: set[str]) -> list[str]:
     found = []
     hyphenated = any(HYPHENATED.match(one) for one in plans)
     for commit, subject in commits(span):
-        for token in named(subject, hyphenated):
+        tokens = named(subject, hyphenated)
+        qualifying = qualifiers(tokens, plans)
+        for token in tokens:
+            if token in qualifying:
+                continue
             if token not in plans:
                 found.append(
                     f"{commit[:8]} names {token}, which is in no chart, no event model and no "

@@ -94,6 +94,16 @@ def recorded(found: dict) -> list[str]:
     return [str(row.get("capability")) for row in found.get("rows") or [] if row.get("recorded")]
 
 
+def release_blockers(found: dict) -> list[dict]:
+    """The capabilities whole and gated and built on a stand-in, each with what blocks it: never *Built*.
+
+    Read off the project's own rows (`capabilities.py`'s `blockers`), so an older script that has no such
+    field reports none rather than every capability."""
+    return [{"capability": str(row.get("capability")), "blockers": [str(one) for one in row["blockers"]]}
+            for row in found.get("rows") or []
+            if row.get("whole") and row.get("gated") and isinstance(row.get("blockers"), list) and row["blockers"]]
+
+
 def accept(root: Path, capability: str) -> str:
     """A person's Accept, written as the `accepted` line with `by: person`, or why not.
 

@@ -16,7 +16,7 @@ from __future__ import annotations
 from ..layout import AT_ROOT, Layout
 from ..origin import Adoption
 from ..services import App, web_apps
-from .capability_gates import capability_gates_stage, open_mode_note
+from .capability_gates import CLOUD_PREREQUISITES, capability_gates_stage, open_mode_note
 from .converge_stage import OPEN_SLICE
 from .design_stage import PLAN_STYLING, with_design_rungs
 from .existing import release_stage
@@ -65,7 +65,9 @@ TRY_STORY = """Beside `quickstart.md` it writes `try-it.json`: the records that 
    that needs someone new writes their file beside it — never the realm file, which is the host's. A mark
    this slice steers by whose setter has not merged is **given, not waited for**: `given` is the events the
    story needs, in the model's shape, appended through the service's seed door (`make seed-<service>
-   FILE=…`) before the first step, and the card marks those records *given, not made*; a story that gives
+   FILE=…`) before the first step, and the card marks those records *given, not made*; a field the product
+   seals under a key of its own is given in plain text and named in the given's `"seal": {"key": "<whose
+   key>", "fields": ["<field>"]}`, which the door seals through the project's hook; a story that gives
    nothing and steers by an unset mark cannot seed, and says why in `plan.md`. `make check-try` holds the
    file to all of that with no app running. Then the live half, against the app this berth runs: `python3
    scripts/agents/try_it.py people --apply`, then `python3 scripts/agents/try_it.py seed --slice <id> --api
@@ -224,7 +226,7 @@ def sail_ladder(
    version's requirement — cites the artefact it was read from: the library's documentation at the pinned
    version, its source, a run against it. A statement with no citation reads *assumed*, and a plan does not
    rest on it."""
-        + context_decision + (PLAN_STYLING if web else ""),
+        + context_decision + CLOUD_PREREQUISITES + (PLAN_STYLING if web else ""),
         """**Implementation** — tasks remain unchecked, and this slice's `examples.md` has at least one
    example under a rule. A map with none is a stop, not a licence to infer: go back to the example map rung
    and say which rule is waiting on which question. Before anything is implemented, run `/speckit-analyze`.

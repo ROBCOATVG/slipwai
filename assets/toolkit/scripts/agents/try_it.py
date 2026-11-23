@@ -973,6 +973,7 @@ def story_faults(name: str, story: object, known: set[str], mounted_routes: list
             said.append(f"{name}: given {number}'s `data` is an object in the model's shape")
             continue
         named = [str(one.get("name")) for one in events[event] if isinstance(one, dict) and one.get("name")]
+        said += seal_faults(f"{name}: given {number}", given.get("seal"), data, named)
         if named:
             said += [f"{name}: given {number}: {event} has no attribute `{key}` (docs/event-model/model.yaml#{event})"
                      for key in data if key not in named]
@@ -980,6 +981,25 @@ def story_faults(name: str, story: object, known: set[str], mounted_routes: list
                      f"which the data leaves out" for one in events[event]
                      if isinstance(one, dict) and one.get("identifies") and one.get("name") not in data]
     return said
+
+
+def seal_faults(where: str, seal: object, data: dict, named: list[str]) -> list[str]:
+    """Why a given's `seal` could not be honoured, read off the file: `{"key": "<whose key>", "fields": [...]}`.
+
+    A product that seals personal fields under a per-workspace key cannot be given them as plain JSON, and
+    manda's founder screens went unwalked for it. So a given names the fields its service's seed door seals,
+    in plain text here, and the key they are sealed under; the language package's door hands both to the
+    project's own sealing hook, because only the project knows its cryptography. Absent is nothing sealed."""
+    if seal is None:
+        return []
+    if not isinstance(seal, dict) or not str(seal.get("key", "")).strip() or not seal.get("fields"):
+        return [f"{where}'s `seal` is {{\"key\": \"<whose key>\", \"fields\": [\"<field>\", ...]}}"]
+    fields = seal["fields"] if isinstance(seal["fields"], list) else [seal["fields"]]
+    said = [f"{where} seals `{field}`, which its data does not give" for field in fields if field not in data]
+    said += [f"{where} seals `{field}`, which is not plain text to seal" for field in fields
+             if field in data and not isinstance(data[field], str)]
+    return said + [f"{where} seals `{field}`, which the model's event has no attribute of" for field in fields
+                   if named and field in data and field not in named]
 
 
 def token_for(username: str, env: dict[str, str], where: Path) -> str:

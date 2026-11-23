@@ -142,6 +142,13 @@ mark at the repository root would be a contract only the host could ever change.
 Write the file as well as the entry. A mark naming a file nobody wrote is a promise that gets discovered at
 the far end, by the fairway that believed it, and `check-chart` refuses it here instead.
 
+**A port whose real adapter needs cloud the project has not got** — a sending domain, an IAM grant, a queue —
+is said here, once, as one question to the person for the whole bundle: the adapter's resources, the IAM in
+`infra/bootstrap/` and the domain or account to verify. The slices then build the real adapter behind the port,
+contract-tested, so the grant is the only thing missing. A capability that ships on a no-transport or empty
+stand-in instead is a release blocker and is not done (`/sail`'s *Capability gates*): the mail that was never
+sent cleared its gates on the safe half, because nobody asked for the cloud half until the gate.
+
 **A mark is set once and never moved.** That is why this stage is a stop and not a form: every one of these
 is a commitment another fairway builds against, and withdrawing one later is taken out of whoever steered
 by it. `check-chart` refuses a deletion; an amendment is additive and goes in `fairways/<name>/chart.d/`.

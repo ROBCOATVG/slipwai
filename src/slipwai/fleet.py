@@ -17,7 +17,7 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 664 — the clearance answers one read of the board shares, a `read` tied to its `told` by inbox id,
+# budget: 665 — the clearance answers one read of the board shares, a `read` tied to its `told` by inbox id,
 # and today's tokens; every column of the
 # board folded from the logs, an instant read in either shape it is written, including what waits on a person: a park,
 # a deck log nobody can read, a last-seen age said in the unit a person reads it in,
@@ -43,7 +43,7 @@ from typing import Any
 
 from . import spend
 from .deck import recent, said
-from .demos import on_board
+from .demos import on_board, release_blockers, report
 from .fleet_record import (  # noqa: F401 - RUNNING and GROUPED are read by name through this module
     FEED,
     GROUPED,
@@ -648,6 +648,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
         "demos": demos,
         "accepted": accepted,
         "gates_owed": gates_owed(root),
+        "release_blockers": release_blockers(report(root)),  # built on a stand-in: not done, whatever merged
         "demo_due": sorted(due_in),
         "demo_due_in": due_in,  # each against the fairway whose log said it
         # Each stream's own lines, said rather than printed. The board answers "is anything stuck"; the

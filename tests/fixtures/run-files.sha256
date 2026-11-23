@@ -98,6 +98,7 @@
 # why: 2026-11-21 af5e469d1089971e A freed slot is taken and a cleared slice carried on mid-turn; same behaviour on macOS and Linux
 # why: 2026-11-21 e3dad77878752c9a The mender settles up to twelve stops of one rebase; same behaviour on macOS and Linux
 # why: 2026-11-21 0fa04abeccab661a A gate refusal leaves out the noise printed round a failure; same behaviour on macOS and Linux
+# why: 2026-11-23 d57d818771e17d78 check-dispatch lets a finding id through after its planned slice; same behaviour on macOS and Linux
 
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-memory-none  .githooks/pre-push
 05f4cadaa836b0e46623199b91678eda668f8c87a765cb66a6f09417c0fe4765  event-modelling-postgres-toy-serve  .githooks/pre-push
@@ -155,10 +156,6 @@
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-postgres-toy-serve  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-memory-none  scripts/check-crossing.py
 2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-postgres-toy-serve  scripts/check-crossing.py
-2fa8a7283fed86e800037c66c80efd62b71d6ebf6e6f290a58e075960bba595e  event-modelling-memory-none  scripts/check-dispatch.py
-2fa8a7283fed86e800037c66c80efd62b71d6ebf6e6f290a58e075960bba595e  event-modelling-postgres-toy-serve  scripts/check-dispatch.py
-2fa8a7283fed86e800037c66c80efd62b71d6ebf6e6f290a58e075960bba595e  standard-memory-none  scripts/check-dispatch.py
-2fa8a7283fed86e800037c66c80efd62b71d6ebf6e6f290a58e075960bba595e  standard-postgres-toy-serve  scripts/check-dispatch.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  event-modelling-memory-none  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  event-modelling-postgres-toy-serve  scripts/check-imports.py
 3253eac67afc9d9d97119ef3553ba04b15703fa450923a5a0a5523002ee15bdf  standard-memory-none  scripts/check-imports.py
@@ -263,6 +260,10 @@
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  event-modelling-postgres-toy-serve  scripts/check-decisions.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-memory-none  scripts/check-decisions.py
 6f64cafd5eafea2ba240d6a41f01de6fe815aa1bd2104f8fe6f18e162a935302  standard-postgres-toy-serve  scripts/check-decisions.py
+70165bbbf431cd353290a1df76b450d0ec8964867b2f0ab9b8aab5c80c4946b3  event-modelling-memory-none  scripts/check-dispatch.py
+70165bbbf431cd353290a1df76b450d0ec8964867b2f0ab9b8aab5c80c4946b3  event-modelling-postgres-toy-serve  scripts/check-dispatch.py
+70165bbbf431cd353290a1df76b450d0ec8964867b2f0ab9b8aab5c80c4946b3  standard-memory-none  scripts/check-dispatch.py
+70165bbbf431cd353290a1df76b450d0ec8964867b2f0ab9b8aab5c80c4946b3  standard-postgres-toy-serve  scripts/check-dispatch.py
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-memory-none  scripts/event-model/palette.ts
 71a36f3629c51a371715dc3baaba64291ff4fd15d6c87a70c60869b6d7ff1f7f  event-modelling-postgres-toy-serve  scripts/event-model/palette.ts
 7251998719c9c652a4742cb9e62e827f8aa4b68f4f78e072aa3a6cc3f58e93ee  event-modelling-memory-none  scripts/agents/preflight.py

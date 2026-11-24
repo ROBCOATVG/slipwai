@@ -21,10 +21,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .bridge_page import inbox_rows
 from .feedback import items
 from .feedback_card import to_look_at
-from .fleet_page import first_sentence, groups_html, parks_table, plural
+from .fleet_page import first_sentence, parks_table, plural
 from .page_shell import esc
 from .stage_session import running
 from .storyboard_card import waiting_said
@@ -32,6 +31,7 @@ from .talk_waits import captain_window
 from .talk_waits import items as talk_items
 from .trunk_card import held_item
 from .upstream import NAMED, held_by, unjudged
+from .waiting_inbox import inbox
 
 NOTHING_WAITS: dict[str, Any] = {"count": 0, "text": "", "href": "", "holding": [], "later": [], "slices": []}
 
@@ -191,13 +191,8 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
     streams = sorted({str(row["fairway"]) for row in fleet.get("berths") or []}) if controls else []
     if not groups and not others and limit is None and not streams:
         return ""
-    cards = groups_html(groups, controls)
-    # A question is judgement, so it is drawn before the hand-backs the harness can land; notes and unread
-    # decisions, which hold nothing up, after them. D495 sat under thirteen thousand pixels of CSS hand-backs.
-    asked = [row for row in others if row["kind"] in ("question", "unreadable")]
-    rest = [row for row in others if row not in asked]
-    first = inbox_rows(asked, controls, fleet.get("streams")) if asked else ""
-    listed = inbox_rows(rest, controls, fleet.get("streams")) if rest else ""
+    # One compact row per thing, in the order attention goes (`waiting_inbox`); the card each was is its Details.
+    cards = inbox({**fleet, "groups": groups}, controls) if groups or others else ""
     paused = ""
     if controls and limit is not None:
         lifts = f"; it lifts by itself at {limit['clock']}" if limit.get("clock") else ""
@@ -214,6 +209,6 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
     return (f'<div class="card" id="from-streams"><h2>Waiting on you</h2><p class="empty">What the streams '
             f"have asked of you or left for you, answered from here: what only you can decide first, then what "
             f"the harness can do once asked, then tidying. Notes and unread decisions hold nothing up, so they "
-            f"are not counted as waiting on you.</p>{first}{cards}{listed}{paused}{told}</div>"
+            f"are not counted as waiting on you.</p>{cards}{paused}{told}</div>"
             f"{parks_table(fleet)}")
 

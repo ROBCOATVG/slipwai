@@ -18,7 +18,7 @@ from pathlib import Path
 import checkout_packages  # noqa: F401
 
 from slipwai import fleet, logs
-from slipwai.deck import dismiss, mend_again, tick_need
+from slipwai.deck import dismiss, keep_recommendation, mend_again, tick_need
 from slipwai.fleet_page import groups_html, headline
 from slipwai.on_you import parked, settling
 from slipwai.project.harbour import harbour_config
@@ -109,6 +109,15 @@ class SettleTest(unittest.TestCase):
         self.assertEqual([(e.kind, e.fields["parked"]) for e in deck if e.kind == "mend-again"], [("mend-again", at)])
         with self.assertRaisesRegex(ValueError, "no hand-back with needs"):
             mend_again(self.root, "intake", "2026-01-01T00:00:00Z")
+
+    def test_keeping_a_chart_question_s_recommendation_closes_it(self) -> None:
+        self.deck(logs.entry("question", fairway="intake", slice="chart", id="D495", what="Which contexts?",
+                             t="2026-11-24T08:48:31Z"))
+        self.assertEqual([row["kind"] for row in self.rows()], ["question"])
+        self.assertIn("kept", keep_recommendation(self.root, "intake", "D495"))
+        self.assertNotIn("question", [row["kind"] for row in self.rows()])
+        with self.assertRaisesRegex(ValueError, "no question D9"):
+            keep_recommendation(self.root, "intake", "D9")
 
     def test_a_park_an_earlier_slipwai_wrote_is_obsolete_once_and_dismissed_everywhere(self) -> None:
         at = "2026-11-18T13:51:39Z"

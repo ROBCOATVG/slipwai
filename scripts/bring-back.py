@@ -67,6 +67,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "launch_lock",
        # The one next step at the top of the Voyage, in one shape at every pause.
        "your_turn",
+       # Waiting on you as an inbox: a compact row and one button per thing, by section.
+       "waiting_inbox",
        # A conversation with a slice: the experiment wrote what a person said into the deck log.
        "talk",
        # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.

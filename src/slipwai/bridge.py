@@ -62,7 +62,7 @@ from .console import answered as console_answer
 from .console import for_root as console_for
 from .decision_log import confirm as confirm_decision
 from .decision_log import mark as mark_decisions
-from .deck import dismiss, mark_read, mend_again, tick_need
+from .deck import dismiss, keep_recommendation, mark_read, mend_again, tick_need
 from .dials import set_dial
 from .drawn import withdrawn
 from .errors import Busy, GenerationError
@@ -905,6 +905,8 @@ class Bridge(BaseHTTPRequestHandler):
                 except (TypeError, ValueError):
                     raise ValueError("`need` is the index of the need in the park's list") from None
                 said = tick_need(self.root, str(held.get("fairway", "")), str(held.get("parked", "")), index)
+            elif where == "/keep":
+                said = keep_recommendation(self.root, str(held.get("fairway", "")), str(held.get("id", "")))
             elif where == "/mend-again":
                 said = mend_again(self.root, str(held.get("fairway", "")), str(held.get("parked", "")))
             elif where == "/ring":

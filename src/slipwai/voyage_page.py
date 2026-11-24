@@ -56,6 +56,8 @@ from .trunk_card import STYLE as TRUNK_STYLE
 from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
+from .waiting_inbox import SCRIPT as INBOX_SCRIPT
+from .waiting_inbox import STYLE as INBOX_STYLE
 from .your_turn import SCRIPT as TURN_SCRIPT
 from .your_turn import STYLE as TURN_STYLE
 from .your_turn import box, classes, turn
@@ -751,11 +753,11 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("next", "Next features", next_features(root, ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
-            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}{INTAKE_STYLE}{LOCK_STYLE}{TURN_STYLE}</style>"
+            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}{INTAKE_STYLE}{LOCK_STYLE}{TURN_STYLE}{INBOX_STYLE}</style>"
             f"{where}{band('trunk', trunk)}{landed}{'' if adopting else band('expect', expect_card(found))}"
             f"{band('captains', captains)}"
             f"{tabs_html(tabs)}{console_card()}")
-    script = SCRIPT + LOCK_SCRIPT + TURN_SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT \
+    script = SCRIPT + LOCK_SCRIPT + TURN_SCRIPT + INBOX_SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT \
         + (TRY_SCRIPT if trying else "") \
         + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") + INTAKE_SCRIPT \
         + ("" if viewer_fault or not xml else "\n")

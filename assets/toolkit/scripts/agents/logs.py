@@ -25,7 +25,8 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 672 — where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
+# budget: 677 — a person's mend-again and its receipt;
+# where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
 # every reader needs, among them which slices a fairway holds in flight now that it holds several at once,
@@ -157,6 +158,9 @@ DECK_KINDS: dict[str, tuple[str, ...]] = {
     # A person's tick of one need of a park, from the board: `parked` is the park's instant, `need` its
     # index. Not a `told` — a `told` after a park clears the whole park, and a tick is one item of it.
     "need-done": ("fairway", "parked", "need"),
+    # A person's word, from the board, that the trunk mender may try a hand-back's needs again: `parked` is the
+    # park's (or `told`'s) instant. The mender stops after its attempts; nothing else ever started it again.
+    "mend-again": ("fairway", "parked"),
     # A slice's `try-it.json` ran green against the app its berth runs, at the Demo rung: `records` is how
     # many steps answered, `commit` the berth's head the story was run from. Written by `try_it.py seed
     # --slice` the way a stage writes `mark-set`, and held to by the captain the same way: a slice with a
@@ -270,6 +274,9 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     "fix-trunk": ("fairway", "slice", "commit", "job"),
     "mend": ("job", "commit", "attempt"),
     "mended": ("job", "commit"),
+    # The harbourmaster's receipt of a person's `mend-again`: the attempts the mender spent on that park's needs
+    # count from here, so each gets its attempts afresh. `at` is the deck line's instant, written once.
+    "mend-again": ("fairway", "parked", "at"),
     "mend-failed": ("job", "why"),
     # The merge ref taken off a machine past its lease: `from` held it, `since` is the last time it said it
     # was still merging. Harbour-wide, because the merge is — and the one line that explains a trunk two

@@ -530,6 +530,11 @@ def need_turn(state: str, open_needs: list[tuple[str, logs.Entry, int]], harbour
     tried: dict[tuple[str, str, int], int] = {}
     landed: set[tuple[str, str, int]] = set()
     for line in harbour:
+        if line.kind == "mend-again":
+            # A person asked from the board for this park's needs to be tried afresh: attempts count from here.
+            again = (str(line.fields.get("fairway", "")), str(line.fields.get("parked", "")))
+            tried = {key: n for key, n in tried.items() if key[:2] != again}
+            continue
         if line.fields.get("job") != NEED or line.kind not in ("mend", "mended"):
             continue
         key = (str(line.fields.get("fairway", "")), str(line.fields.get("parked", "")),

@@ -127,6 +127,7 @@ its newest lines. These are its kinds, all written by the program or a slice's s
 | `stopped` | a slice was ended mid-way and is carried on later | `slice` |
 | `parked` | a slice or the stream stopped, and why | `why`; `slice`, `cause`, `needs`, `then`, `until` |
 | `need-done` | a person ticked one need of a park | `parked`, `need` |
+| `mend-again` | a person asked the trunk mender to try a hand-back's needs afresh | `parked` |
 | `noted` | the program saying something about you — that you failed, or were refused commands; nothing waits on it | `what`, `by` |
 
 A last line of `merged` with cleared work left means the stream is idle until the program's next turn; a

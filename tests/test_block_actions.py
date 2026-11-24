@@ -100,7 +100,8 @@ class KindTest(unittest.TestCase):
         found = action({"kind": "told", "fairway": "intake", "t": "", "what": "S50 hands back: two edits.",
                         "needs": [need]})
         self.assertEqual(found["kind"], "handback")
-        self.assertIn("ticks itself when model.yaml holds it", found["do"][0])
+        self.assertIn("Have the mender try again", found["do"][0], "the button first; the edit by hand is the fallback")
+        self.assertIn("ticks itself when model.yaml holds it", found["do"][1])
 
     def test_a_run_that_stopped_on_the_machine_says_where_to_read_and_how_to_send_it_on(self) -> None:
         found = action(park(cause="exit", what="S12: /sail exited 1: docker is not running."))

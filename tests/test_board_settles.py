@@ -18,8 +18,8 @@ from pathlib import Path
 import checkout_packages  # noqa: F401
 
 from slipwai import fleet, logs
-from slipwai.deck import dismiss, tick_need
-from slipwai.fleet_page import headline
+from slipwai.deck import dismiss, mend_again, tick_need
+from slipwai.fleet_page import groups_html, headline
 from slipwai.on_you import parked, settling
 from slipwai.project.harbour import harbour_config
 
@@ -91,6 +91,24 @@ class SettleTest(unittest.TestCase):
                                             "text": "1 hand-back of merged slices probably done: confirm"}])
         tick_need(self.root, "intake", "2026-11-20T09:00:00Z", 0)
         self.assertEqual([row for row in self.rows() if row["kind"] == "told"], [], "the tick is the confirmation")
+
+    def test_a_hand_back_the_harness_owes_offers_the_mender_and_comes_after_judgement(self) -> None:
+        """manda's eleven CSS hand-backs sat in arrival order above the one verdict that held the project,
+        each telling a person to edit trunk by hand; the mender, which lands them, had given up."""
+        at = "2026-11-20T09:00:00Z"
+        self.deck(logs.entry("told", fairway="intake", message="S53 hands back the SES grant", t=at, by="session",
+                             needs=[NOT_YET]),
+                  logs.entry("parked", fairway="intake", why="S12: which context owns alerts?",
+                             t="2026-11-21T09:00:00Z"))
+        drawn = groups_html(self.board()["groups"], True)
+        self.assertLess(drawn.index('id="judgement"'), drawn.index('id="harness"'), "what only you decide, first")
+        self.assertIn("data-mend-again=", drawn)
+        self.assertIn("Have the mender try again", drawn)
+        self.assertIn("the mender may try", mend_again(self.root, "intake", at))
+        deck = logs.fold(logs.deck_path(self.root, "pir", "intake").read_text(encoding="utf-8").splitlines())
+        self.assertEqual([(e.kind, e.fields["parked"]) for e in deck if e.kind == "mend-again"], [("mend-again", at)])
+        with self.assertRaisesRegex(ValueError, "no hand-back with needs"):
+            mend_again(self.root, "intake", "2026-01-01T00:00:00Z")
 
     def test_a_park_an_earlier_slipwai_wrote_is_obsolete_once_and_dismissed_everywhere(self) -> None:
         at = "2026-11-18T13:51:39Z"

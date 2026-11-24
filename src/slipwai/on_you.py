@@ -192,7 +192,12 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
     if not groups and not others and limit is None and not streams:
         return ""
     cards = groups_html(groups, controls)
-    listed = inbox_rows(others, controls, fleet.get("streams")) if others else ""
+    # A question is judgement, so it is drawn before the hand-backs the harness can land; notes and unread
+    # decisions, which hold nothing up, after them. D495 sat under thirteen thousand pixels of CSS hand-backs.
+    asked = [row for row in others if row["kind"] in ("question", "unreadable")]
+    rest = [row for row in others if row not in asked]
+    first = inbox_rows(asked, controls, fleet.get("streams")) if asked else ""
+    listed = inbox_rows(rest, controls, fleet.get("streams")) if rest else ""
     paused = ""
     if controls and limit is not None:
         lifts = f"; it lifts by itself at {limit['clock']}" if limit.get("clock") else ""
@@ -206,8 +211,9 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
                        for one in streams)
     told = (f'<h3>Talk to a stream\'s captain</h3><p class="talk-to">{links}</p>'
             if links else "")
-    return (f'<div class="card" id="from-streams"><h2>From the streams</h2><p class="empty">What each stream '
-            f"has asked of you or left for you, answered from here. Notes and unread decisions hold nothing up, "
-            f"so they are not counted as waiting on you.</p>{cards}{listed}{paused}{told}</div>"
+    return (f'<div class="card" id="from-streams"><h2>Waiting on you</h2><p class="empty">What the streams '
+            f"have asked of you or left for you, answered from here: what only you can decide first, then what "
+            f"the harness can do once asked, then tidying. Notes and unread decisions hold nothing up, so they "
+            f"are not counted as waiting on you.</p>{first}{cards}{listed}{paused}{told}</div>"
             f"{parks_table(fleet)}")
 

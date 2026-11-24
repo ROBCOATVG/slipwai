@@ -166,7 +166,7 @@ class FurtherFeatureTest(unittest.TestCase):
         card = passage_card("manda", found, False, False, held=held_for(found, reason))
         self.assertIn('id="launch" disabled>Continue the build', card, "locked and shown, never hidden")
         self.assertIn(html.escape(reason), card)
-        self.assertIn('href="#mockups">Open the storyboards</a>', card, "the way to unlock it is a link")
+        self.assertIn('href="#mockups">Open the storyboard to approve it</a>', card, "the way to unlock it is a link")
 
     def test_a_held_launch_is_not_shown_where_the_chart_is_not_the_next_step(self) -> None:
         found = stages(self.root, slices={"done": 1})

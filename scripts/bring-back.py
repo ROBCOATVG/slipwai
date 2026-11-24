@@ -65,6 +65,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "trunk_story", "trunk_card",
        # Continue the build, locked: shown disabled with why, never hidden.
        "launch_lock",
+       # The one next step at the top of the Voyage, in one shape at every pause.
+       "your_turn",
        # A conversation with a slice: the experiment wrote what a person said into the deck log.
        "talk",
        # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.

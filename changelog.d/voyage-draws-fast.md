@@ -4,4 +4,4 @@ PATCH
 
 A read of the project past its two seconds is answered at once and made again behind the request, rather than waited on by whichever request found it old: on manda that wait was seven seconds. A person's own action still drops it, so what they did is never answered from before it, and nothing older than a minute is answered.
 
-**Catch-up:** nothing beyond upgrading slipwai.
+**Catch-up:** `slipwai migrate` brings the new `scripts/agents/spend.py`; the board's changes need nothing beyond upgrading slipwai.

@@ -27,8 +27,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-from . import file_memo
-
 #: Where a slice's record lies, under a checkout.
 RECORDS = "specs/*/slices/*/benchmark.json"
 USAGE_KEYS = ("input", "output", "cache_read", "cache_creation")
@@ -103,6 +101,25 @@ def common_dir(root: Path) -> Path | None:
     return (shared if shared.is_absolute() else own / shared).resolve()
 
 
+#: Each benchmark record as last read, against its size and when it was written: the board asks for every
+#: record three times a request, and on manda that was some 24,000 opens of files that had not changed.
+#: Standard library only, as everything in this module is: a project carries it with no slipwai to import.
+_RECORDS: dict[str, tuple[int, int, Any]] = {}
+
+
+def _record(path: Path) -> Any:
+    """One record's JSON, read again only where the file has changed since it was last read."""
+    stat = path.stat()
+    held = _RECORDS.get(str(path))
+    if held and held[0] == stat.st_mtime_ns and held[1] == stat.st_size:
+        return held[2]
+    found = json.loads(path.read_text(encoding="utf-8"))
+    if len(_RECORDS) > 50_000:
+        _RECORDS.clear()
+    _RECORDS[str(path)] = (stat.st_mtime_ns, stat.st_size, found)
+    return found
+
+
 def stages(root: Path) -> list[tuple[str, dict[str, Any]]]:
     """Every ended stage the project's records hold, each once: (`ended`, the entry)."""
     seen: set[tuple[str, str, str, str]] = set()
@@ -110,7 +127,7 @@ def stages(root: Path) -> list[tuple[str, dict[str, Any]]]:
     for checkout in checkouts(root):
         for path in sorted(checkout.glob(RECORDS)):
             try:
-                record = file_memo.read(path, json.loads, "benchmark")
+                record = _record(path)
             except (OSError, ValueError, UnicodeDecodeError):
                 continue
             entries = record.get("stages") if isinstance(record, dict) else None

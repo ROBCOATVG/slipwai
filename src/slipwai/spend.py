@@ -27,6 +27,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from . import file_memo
+
 #: Where a slice's record lies, under a checkout.
 RECORDS = "specs/*/slices/*/benchmark.json"
 USAGE_KEYS = ("input", "output", "cache_read", "cache_creation")
@@ -108,7 +110,7 @@ def stages(root: Path) -> list[tuple[str, dict[str, Any]]]:
     for checkout in checkouts(root):
         for path in sorted(checkout.glob(RECORDS)):
             try:
-                record = json.loads(path.read_text(encoding="utf-8"))
+                record = file_memo.read(path, json.loads, "benchmark")
             except (OSError, ValueError, UnicodeDecodeError):
                 continue
             entries = record.get("stages") if isinstance(record, dict) else None

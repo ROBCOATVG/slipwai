@@ -35,6 +35,8 @@ from .voyage import feedback_points, fleet_running, folded
 #: Seconds a read is kept. Under the page's poll, so each poll of a window on its own still reads the run
 #: fresh; long enough that every band, window and route asking at once is answered by one read.
 KEEP = 2.0
+#: How old a kept read may be and still answer at once while it is made again behind the request.
+STALE = 60.0
 #: Projects held at once. A board kept up by a login service is pointed at a lot of trees in a month.
 HELD = 16
 
@@ -57,6 +59,8 @@ LOCKS: dict[str, threading.Lock] = {}
 KEPT: dict[str, tuple[float, Read]] = {}
 #: Bumped by `forget`, so a read begun before a person's action is not kept after it.
 EPOCH: dict[str, int] = {}
+#: The projects whose read is being made again behind a request already answered.
+REMAKING: set[str] = set()
 
 
 def trunk_of(harbour: list[Entry]) -> dict[str, str]:
@@ -90,14 +94,44 @@ def fold(root: Path) -> Read:
 
 
 def read(root: Path) -> Read:
-    """The project's read: the one kept, while it is fresh, else a new one, made once however many ask."""
+    """The project's read: the one kept, while it is fresh, else a new one, made once however many ask.
+
+    A read past its `KEEP` but younger than `STALE` is answered at once and made again behind it, by one thread:
+    on a project as large as manda's a read takes seconds, and every request that found the kept one two seconds
+    old waited all of them, so the window drew in one second and then in seven. A person's own action drops the
+    kept read (`forget`), so what they did is never answered from before it; nothing older than `STALE` is."""
     key = str(root)
     with GUARD:
         lock = LOCKS.setdefault(key, threading.Lock())
+        kept = KEPT.get(key)
+        age = time.monotonic() - kept[0] if kept is not None else None
+        behind = age is not None and KEEP <= age < STALE and key not in REMAKING
+        if behind:
+            REMAKING.add(key)
+    if behind and kept is not None:
+        threading.Thread(target=remake, args=(root, lock), daemon=True).start()
+        return kept[1]
+    return made_now(root, lock)
+
+
+def remake(root: Path, lock: threading.Lock) -> None:
+    """Make the read again behind the request that was answered from the kept one."""
+    try:
+        made_now(root, lock, force=True)
+    except Exception:  # noqa: BLE001 — a read that fails here is made again, in the open, by the next request
+        pass
+    finally:
+        with GUARD:
+            REMAKING.discard(str(root))
+
+
+def made_now(root: Path, lock: threading.Lock, force: bool = False) -> Read:
+    """The read made under the project's lock, or the one kept where it is fresh and this is not a remake."""
+    key = str(root)
     with lock:
         with GUARD:
             kept, epoch = KEPT.get(key), EPOCH.get(key, 0)
-        if kept is not None and KEEP > 0 and time.monotonic() - kept[0] < KEEP:
+        if kept is not None and KEEP > 0 and time.monotonic() - kept[0] < KEEP and not force:
             return kept[1]
         made = fold(root)
         with GUARD:

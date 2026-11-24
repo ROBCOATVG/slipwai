@@ -20,6 +20,7 @@ from .passage import Stage, current
 
 STYLE = """
 .lock-why{margin:0;padding:0;border:0;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.lock-why[hidden]{display:none}
 .lock-why b{color:var(--critical)}
 .unlock{display:grid;gap:8px}
 .lock-why a{font:inherit;padding:8px 14px;border-radius:8px;background:var(--brass);color:var(--paper);

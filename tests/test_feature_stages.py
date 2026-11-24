@@ -24,7 +24,7 @@ from slipwai import board_settings, stage_session
 from slipwai.board_settings import Launch
 from slipwai.feature_stages import approved_for, claims, home, in_hand, modelled_for, name_in_hand, split_for
 from slipwai.init_run import CRUISE
-from slipwai.launch_lock import held_for
+from slipwai.launch_lock import held_for, line, unlock
 from slipwai.passage import current, drawn_in_hand, modelled_in_hand, stages
 from slipwai.stage_steps import launch_steps
 from slipwai.upstream import drawing_of
@@ -167,6 +167,22 @@ class FurtherFeatureTest(unittest.TestCase):
         self.assertIn('id="launch" disabled>Continue the build', card, "locked and shown, never hidden")
         self.assertIn(html.escape(reason), card)
         self.assertIn('href="#mockups">Open the storyboard to approve it</a>', card, "the way to unlock it is a link")
+
+    def test_a_launch_held_by_an_earlier_storyboard_carries_that_storyboard_s_verdict(self) -> None:
+        """manda: the lock said to approve 002's storyboard again, and the only Approve on the page was 003's,
+        given already and disabled; the person had nothing to press."""
+        earlier = self.root / "specs" / FIRST / "mockups"
+        earlier.mkdir()
+        (earlier / "home.html").write_text("<html></html>", encoding="utf-8")
+        (earlier / "mock-states.md").write_text("## Surface: Home\n- empty \u2014 approved\n", encoding="utf-8")
+        held = f"the storyboard for {FIRST} has changed since its verdict (Home): approve or disapprove it again first"
+        form = unlock(self.root, held)
+        self.assertIn(f'data-storyboard="{FIRST}" data-verdict="approved"', form)
+        self.assertIn(f"specs/{FIRST}/mockups/storyboard.html", form)
+        self.assertEqual(unlock(self.root, "a fleet is running in this project"), "", "only a storyboard's lock")
+        drawn = line(held, form)
+        self.assertIn(form, drawn)
+        self.assertIn('href="#mockups" hidden>', drawn, "the tab link gives way to the verdict itself")
 
     def test_the_session_poll_leaves_a_locked_launch_shown(self) -> None:
         """manda's live board hid the locked button again: the session card's poll set `hidden` from

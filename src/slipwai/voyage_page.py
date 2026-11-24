@@ -502,7 +502,7 @@ def expect_card(found: list[Stage]) -> str:
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
                  stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
-                 modelable: bool = False, draftable: bool = False, held: str = "") -> str:
+                 modelable: bool = False, draftable: bool = False, held: str = "", form: str = "") -> str:
     extra = classes(found)
     strip = "".join(stage_html(one, index, extra[one.key]) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
@@ -542,7 +542,7 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
                    f"Open specs/{esc(feature)}/{esc(SPEC)}</a>")
     return (f'<div class="card" id="passage" data-shape="{esc(shape)}"><h2>{esc(name)}</h2>'
             f'<div class="passage" role="list" style="{esc(wide)}">{strip}</div>'
-            f'<div class="next">{box(found, said, button, line(held), held)}</div></div>')
+            f'<div class="next">{box(found, said, button, line(held, form), held)}</div></div>')
 
 
 def model_card(xml: str, note: str, viewer_fault: str, said: str = "") -> str:
@@ -705,7 +705,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
          dates: str = "", draftable: bool = False, machinery: str = "", streams: str = "",
          waiting: dict | None = None, captains: str = "", stage: dict | None = None, trunk: str = "",
-         locked: str = "") -> str:
+         locked: str = "", unlocking: str = "") -> str:
     """The window. `strip` is Needs a look, `machinery` the Fleet tab and `streams` what the streams asked,
     each a band the poll keeps current; `waiting` is the one list, whose slices the column draws; `stage` is
     the stage with a tab of its own running now, which that tab says (`storyboard_card.live`)."""
@@ -724,7 +724,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     landed = fitting_card(made, "Adopted" if adopting else "Made", waits) if made else ""
     # Past it, the strategy's checkpoint stands above the strip, never in its place.
     where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
-                                     feature, drawable, shape, modelable, draftable, held_for(found, locked))
+                                     feature, drawable, shape, modelable, draftable, held_for(found, locked),
+                                     unlocking if held_for(found, locked) else "")
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]

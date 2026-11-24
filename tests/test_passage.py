@@ -175,6 +175,24 @@ class StoryboardVerdictTest(unittest.TestCase):
         self.assertNotIn("Storyboard", text)
         self.assertNotIn("Contents", text)
 
+    def test_approving_again_keeps_a_withdrawn_state_the_page_still_draws(self) -> None:
+        """manda: S56's `Changed in another window` was approved under a decision and drawn under a heading the
+        reader does not see; re-approving after a withdrawal dropped it, and trunk went red on check-surfaces."""
+        root = self.root()
+        page = root / "specs/001-demo/mockups/discover.html"
+        page.write_text(page.read_text(encoding="utf-8")
+                        + '<article class="state"><h2 class="state-name">Moved elsewhere</h2></article>\n',
+                        encoding="utf-8")
+        states = root / "specs/001-demo/mockups/mock-states.md"
+        states.write_text("<!-- withdrawn: Discover \u2014 Populated, Moved elsewhere, Gone for good (page "
+                          "specs/001-demo/mockups/discover.html; changed at 2026-11-23 15:28, after it) -->\n",
+                          encoding="utf-8")
+        record_verdict(root, "001-demo", "approved")
+        text = states.read_text(encoding="utf-8")
+        self.assertIn("- Moved elsewhere \u2014 approved\n", text)
+        self.assertNotIn("Gone for good", text, "a state the page no longer says stays out")
+        self.assertEqual(text.count("- Populated \u2014 approved"), 1)
+
     def test_disapproving_parks_every_state_with_the_reason(self) -> None:
         root = self.root()
         with self.assertRaises(ValueError) as refused:

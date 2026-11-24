@@ -30,7 +30,7 @@ from .intake_card import STYLE as INTAKE_STYLE
 from .intake_card import next_features
 from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
-from .passage import Stage, current
+from .passage import Stage, current, meanwhile
 from .slice_card import STYLE as SLICE_STYLE
 from .slice_card import (  # noqa: F401 — the card's names, kept importable here
     answer_html,
@@ -768,7 +768,7 @@ def now_said(found: list[Stage]) -> str:
     """The one sentence about where the project is and what moves it, as the strip, the poll and the
     landing all say it."""
     now = current(found)
-    said = (f"Now: {now.title.lower()} — {now.detail}. Next: {now.next}." if now
+    said = (f"Now: {now.title.lower()} — {now.detail}. Next: {now.next}.{meanwhile(found, now)}" if now
             else "Every stage is done: the voyage is complete.")
     spec = next((one for one in found if one.key == "specification" and "waiting:" in one.detail), None)
     if spec and (now is None or now.key != "specification"):

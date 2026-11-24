@@ -140,6 +140,27 @@ class FurtherFeatureTest(unittest.TestCase):
         found = {stage.key: stage for stage in stages(self.root, slices={"done": 1})}
         self.assertEqual((found["storyboard"].state, found["storyboard"].detail), ("done", "1 of 1 states approved"))
 
+    def test_a_modelled_further_feature_is_on_its_chart_and_not_on_an_earlier_one_s_stopped_fleet(self) -> None:
+        """manda: the third feature approved and modelled, the second's fleet stopped on a park, and the board
+        said *Now: slices — stopped until you act … Next: make cruise* over the chart that moved the project."""
+        drawing = self.root / "specs" / FURTHER / "mockups"
+        drawing.mkdir()
+        (drawing / "nda.html").write_text("<html></html>", encoding="utf-8")
+        (drawing / "mock-states.md").write_text("## Surface: NDA\n- ready \u2014 approved\n", encoding="utf-8")
+        self.model.write_text(MODEL + f"  - id: S2\n    name: two\n    feature: {FURTHER}\n", encoding="utf-8")
+        (self.root / ".specify/integration.json").write_text('{"default_integration": "claude"}', encoding="utf-8")
+        (self.root / ".specify/memory").mkdir()
+        (self.root / ".specify/memory/constitution.md").write_text("# Ratified\n", encoding="utf-8")
+        stopped = {"inbox": [{"kind": "parked", "fairway": "a", "slice": "S1", "what": "S1: stuck."}]}
+        found = stages(self.root, fleet=stopped, slices={"done": 1})
+        said = {stage.key: stage for stage in found}
+        self.assertEqual((said["model"].state, said["chart"].state, said["slices"].state), ("done", "todo", "waiting"))
+        self.assertEqual(current(found).key, "chart")  # type: ignore[union-attr]
+        line = now_said(found)
+        self.assertTrue(line.startswith(f"Now: chart & split — {FURTHER} is not charted or split yet."), line)
+        self.assertIn("Meanwhile, the earlier features' slices: stopped until you act: 1 park.", line,
+                      "the earlier feature's stop is still said, after the step that moves this one")
+
     def test_the_strip_says_the_further_feature_is_not_modelled_or_split(self) -> None:
         found = {stage.key: stage for stage in stages(self.root, slices={"done": 1})}
         self.assertEqual((found["model"].state, found["chart"].state), ("todo", "todo"))

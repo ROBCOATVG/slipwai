@@ -200,6 +200,14 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
         return (f"Paused, nothing for you to do: it lifts {when}.",
                 [f"Nothing: the harbourmaster carries it on {when}.",
                  "To try sooner, press Try the paused slices now anyway at the top of the board."])
+    if kind == "question" and row.get("kind") == "question" and row.get("slice") == "chart":
+        # The chart's context answer is posted as `"slice": "chart"` *so nothing waits on it* (`commands/chart.md`):
+        # the chart goes ahead on the recommendation. Said as a wait, manda's D495 read as the thing to answer
+        # before Continue the build, when the button was the one thing that moved the project.
+        return ("Nothing waits on this: the chart goes ahead on the recommendation it names, and this asks you to "
+                "confirm it or say what is wrong.",
+                [f"Read the question{' ' + str(row['id']) if row.get('id') else ''} above; its decision entry has "
+                 "the evidence.", f"If it is wrong, say why: {answer_step(row)} The chart is redone from your answer."])
     if kind == "question" and row.get("kind") == "question":
         # The row is the question in its own words already; said a third time it is noise (`test_bridge`).
         return (f"{row.get('slice') or fairway} asked a question only a person can answer, and waits for it.",

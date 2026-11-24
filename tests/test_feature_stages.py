@@ -168,6 +168,12 @@ class FurtherFeatureTest(unittest.TestCase):
         self.assertIn(html.escape(reason), card)
         self.assertIn('href="#mockups">Open the storyboard to approve it</a>', card, "the way to unlock it is a link")
 
+    def test_the_session_poll_leaves_a_locked_launch_shown(self) -> None:
+        """manda's live board hid the locked button again: the session card's poll set `hidden` from
+        `launchable` alone, after the strip's poll had shown it disabled."""
+        from slipwai.bridge_page import SCRIPT
+        self.assertIn("launch.hidden = !said.launchable && !(launch.disabled && launch.id === 'launch')", SCRIPT)
+
     def test_a_held_launch_is_not_shown_where_the_chart_is_not_the_next_step(self) -> None:
         found = stages(self.root, slices={"done": 1})
         self.assertNotEqual(current(found).key, "chart")  # type: ignore[union-attr]

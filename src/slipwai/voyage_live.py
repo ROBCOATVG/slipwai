@@ -28,6 +28,7 @@ from .feedback_card import payload as feedback_payload
 from .film import films_card, films_of
 from .fleet_tab import fleet_tab
 from .init_run import outside_session
+from .launch_lock import unlock
 from .live_page import look_html
 from .live_page import window as slice_window
 from .live_page import window_payload as slice_payload
@@ -179,7 +180,8 @@ def voyage(board: Any) -> str:
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
                        draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed,
                        captains=strip_html(root, kept.rows, set(listed["slices"])), stage=now,
-                       trunk=trunk_band(kept.trunk), locked=flags["held"])
+                       trunk=trunk_band(kept.trunk), locked=flags["held"],
+                       unlocking=unlock(root, flags["held"], seat))
 
 
 def route_get(board: Any, where: str, query: str) -> bool:

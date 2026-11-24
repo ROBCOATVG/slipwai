@@ -15,7 +15,8 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 483 — a drawing waiting on its verdict says so on its card; a reply said while the stage runs is
+# budget: 487 — a locked launch left shown by the session poll;
+# a drawing waiting on its verdict says so on its card; a reply said while the stage runs is
 # queued, which the box says and does not wait on; the waiting card now groups parks, questions, hand-backs
 # and notes by what a person has to do, and each group carries its own heading, count and the rows under it,
 # so the page is a little longer than one that listed them flat. The made card carries a reply box for a stage
@@ -105,7 +106,10 @@ if (fitting) {
       chip.className = said.code ? 'chip stalled' : 'chip';
     }
     // The card's own button and, on the Voyage, the strip's: two elements, so two ids.
-    document.querySelectorAll('#launch, #launch-made').forEach(launch => { launch.hidden = !said.launchable; });
+    // A locked launch (`launch_lock`) stays shown and disabled: the live poll owns it, and this one hid it.
+    document.querySelectorAll('#launch, #launch-made').forEach(launch => {
+      launch.hidden = !said.launchable && !(launch.disabled && launch.id === 'launch');
+    });
     replying.hidden = !said.talk;  // while it runs too: what is said then is queued for the end of its turn
     paint();
     if (running) setTimeout(poll, 700);

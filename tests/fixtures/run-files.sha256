@@ -103,6 +103,7 @@
 # why: 2026-11-23 bead4adfe1c008b2 slipwai#154: moorings.mid_rebase steps past a listed worktree whose folder is gone; same behaviour on macOS and Linux
 # why: 2026-11-23 89ded76eaf32367c slipwai#154: the harbourmaster applies a hand-back as committed, against the index, so a Windows checkout with core.autocrlf lands it; same behaviour on macOS and Linux
 # why: 2026-11-24 0b32d599743f41a2 a person's mend-again: the harbourmaster receipts it once and the mender's attempts at that hand-back count from it (harbourmaster.py, mender.py, logs.py)
+# why: 2026-11-24 5506f03a12ab54d2 spend.py keeps each benchmark record's reading until the file changes: the board read every record three times a request
 
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-memory-none  scripts/agents/ids.py
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-postgres-toy-serve  scripts/agents/ids.py
@@ -473,10 +474,6 @@ e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  event-modellin
 e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  event-modelling-postgres-toy-serve  scripts/agents/session.py
 e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  standard-memory-none  scripts/agents/session.py
 e4bbb72f0ceb8b3c6bd437fb8527338a75dfc6d0a13764af17778229ad70d294  standard-postgres-toy-serve  scripts/agents/session.py
-e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  event-modelling-memory-none  scripts/agents/spend.py
-e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  event-modelling-postgres-toy-serve  scripts/agents/spend.py
-e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  standard-memory-none  scripts/agents/spend.py
-e7af37c2a62684f4a703987b54616c7aa88a427019b1224acb7874b23b543e7b  standard-postgres-toy-serve  scripts/agents/spend.py
 e9230f685030c27ff248f567a38df7341a28986c6d25c484bf614e2ce72ab9c7  event-modelling-memory-none  scripts/event-model/board-plan.test.ts
 e9230f685030c27ff248f567a38df7341a28986c6d25c484bf614e2ce72ab9c7  event-modelling-postgres-toy-serve  scripts/event-model/board-plan.test.ts
 f001587374ca3877dfcf4b474ac36b2a679f5d716eff79d68eeb4483f8adc807  event-modelling-memory-none  scripts/extensions/elected.py
@@ -494,6 +491,10 @@ f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  event-modellin
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  standard-memory-none  scripts/agents/abreast.py
 f284d8b77e82e0808298b236776a04306a4b8db33e6c1a24c9f0fe2ba85e21f6  standard-postgres-toy-serve  scripts/agents/abreast.py
 f4ba1de76577cefb9054ad6545d9a790134a8e5a32820f1517fb7c03f1b73d47  standard-memory-none  Makefile
+f4e7a3bf6952753ea30f2f2558b4ab4c0ce6fd9d45358cbef9358bf7d1e0094e  event-modelling-memory-none  scripts/agents/spend.py
+f4e7a3bf6952753ea30f2f2558b4ab4c0ce6fd9d45358cbef9358bf7d1e0094e  event-modelling-postgres-toy-serve  scripts/agents/spend.py
+f4e7a3bf6952753ea30f2f2558b4ab4c0ce6fd9d45358cbef9358bf7d1e0094e  standard-memory-none  scripts/agents/spend.py
+f4e7a3bf6952753ea30f2f2558b4ab4c0ce6fd9d45358cbef9358bf7d1e0094e  standard-postgres-toy-serve  scripts/agents/spend.py
 f508c25f7a70a19c6b576dbe46fa60ad8337b81e59716816676442727daaaeee  event-modelling-memory-none  scripts/agents/launch.py
 f508c25f7a70a19c6b576dbe46fa60ad8337b81e59716816676442727daaaeee  event-modelling-postgres-toy-serve  scripts/agents/launch.py
 f508c25f7a70a19c6b576dbe46fa60ad8337b81e59716816676442727daaaeee  standard-memory-none  scripts/agents/launch.py

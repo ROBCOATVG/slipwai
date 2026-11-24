@@ -63,6 +63,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "on_you", "fleet_tab", "demos",
        # Trunk on the board: the trunk mender's attempts and words, folded and drawn.
        "trunk_story", "trunk_card",
+       # A file read once until it changes: the board reads the same records on every request.
+       "file_memo",
        # Every press on the board said: pressed, working, and what came of it.
        "press_feedback",
        # Continue the build, locked: shown disabled with why, never hidden.

@@ -76,7 +76,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                     # release stage, the slice gate and `slipwai release-state` read one table.
                     "release_state",
                     # What the harbour has spent, from the stages' own records: the board and the bunker.
-                    "spend")),
+                    "spend",
+                    # A file read once until it changes, which the records' readers in this tier share.
+                    "file_memo")),
     # What a caller may ask for, what an option declares about the feature it owns, what an optional
     # dev-tooling hook is, where a project goes to production, what differs per package and where each
     # backend answers its probes. The registry and the loader land here in phase 2.

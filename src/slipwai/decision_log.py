@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from . import file_memo
 from .decision_entry import ID, SENTENCE, awaiting, is_id, parse
 from .deck import entries, mark_read, streams
 from .logs import logs_dir
@@ -94,10 +95,10 @@ def written(root: Path) -> dict[tuple[str, str], dict[str, str]]:
         for path, feature in [*((one, one.parent.parent.name) for one in sorted(place.glob("specs/*/decisions/*.md"))),
                               *((one, one.parent.name) for one in sorted(place.glob("specs/*/decisions.md")))]:
             try:
-                text = path.read_text(encoding="utf-8")
+                entries_of = file_memo.read(path, parse, "decisions")
             except (OSError, UnicodeDecodeError):
                 continue
-            for number, parts in parse(text).items():
+            for number, parts in entries_of.items():
                 found.setdefault((feature, number), {**parts, FROM: feature})
     return found
 

@@ -63,6 +63,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "on_you", "fleet_tab", "demos",
        # Trunk on the board: the trunk mender's attempts and words, folded and drawn.
        "trunk_story", "trunk_card",
+       # Continue the build, locked: shown disabled with why, never hidden.
+       "launch_lock",
        # A conversation with a slice: the experiment wrote what a person said into the deck log.
        "talk",
        # The captain as an agent: a slice's stuck warnings shared with the captain, and what each captain decided.

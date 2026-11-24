@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from . import feature_stages
@@ -59,6 +59,11 @@ class Stage:
     #: second half is the one that matters — a stage that waits for somebody by design looks exactly like
     #: a stage that has hung, and the difference is a sentence nobody had written down.
     expect: str = ""
+    #: A stage that speaks for features before the one in hand — the fleet's slices and acceptances while the
+    #: feature in hand is not split yet. Shown as it is, but never where the person is: manda's third feature,
+    #: modelled and waiting for Continue the build, read *Now: slices — stopped until you act* off the second
+    #: feature's stopped fleet, and the board sent the person to `make cruise` instead of to its chart.
+    elsewhere: bool = False
 
 
 #: One state of one surface in `specs/<feature>/mockups/mock-states.md`, marked by the person who looked
@@ -405,6 +410,8 @@ def stages(root: Path, receipt: dict | None = None, fleet: dict | None = None,
                               "Each capability walked by the hand, whose verdict accepts it. Nothing stops "
                               "for you: each film is there to watch, and to say what it showed, when you "
                               "have time."))
+    if unsplit:
+        found = [replace(one, elsewhere=True) if one.key in ("slices", "accepted") else one for one in found]
     return found
 
 
@@ -425,6 +432,19 @@ def wanting(wants: list[dict], counts: dict[str, int]) -> str:
 
 
 def current(found: list[Stage]) -> Stage | None:
-    """The stage a person is on: the first that is working or waiting, else the first still to do."""
-    return (next((one for one in found if one.state in ("working", "attention", "waiting")), None)
-            or next((one for one in found if one.state == "todo"), None))
+    """The stage a person is on: the first that is working or waiting, else the first still to do — of the
+    feature in hand's stages first, and of an earlier feature's only where the feature in hand owes nothing."""
+    for pool in ([one for one in found if not one.elsewhere], found):
+        now = (next((one for one in pool if one.state in ("working", "attention", "waiting")), None)
+               or next((one for one in pool if one.state == "todo"), None))
+        if now:
+            return now
+    return None
+
+
+def meanwhile(found: list[Stage], now: Stage | None) -> str:
+    """What an earlier feature's stage wants while the person is on the feature in hand, said after the Now
+    line rather than instead of it — or `""`."""
+    other = next((one for one in found if one.elsewhere and one is not now
+                  and one.state in ("working", "attention", "waiting")), None)
+    return f" Meanwhile, the earlier features' {other.title.lower()}: {other.detail}." if other else ""

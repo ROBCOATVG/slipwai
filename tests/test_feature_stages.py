@@ -8,6 +8,7 @@ one's — and that a project with one feature reads exactly as it did.
 """
 from __future__ import annotations
 
+import html
 import importlib.util
 import json
 import sys
@@ -23,10 +24,11 @@ from slipwai import board_settings, stage_session
 from slipwai.board_settings import Launch
 from slipwai.feature_stages import approved_for, claims, home, in_hand, modelled_for, name_in_hand, split_for
 from slipwai.init_run import CRUISE
+from slipwai.launch_lock import held_for
 from slipwai.passage import current, drawn_in_hand, modelled_in_hand, stages
 from slipwai.stage_steps import launch_steps
 from slipwai.upstream import drawing_of
-from slipwai.voyage_page import now_said
+from slipwai.voyage_page import now_said, passage_card
 
 ROOT = Path(__file__).resolve().parent.parent
 AGENT = Path(__file__).resolve().parent / "fixtures" / "acp_agent.py"
@@ -139,6 +141,38 @@ class FurtherFeatureTest(unittest.TestCase):
         (drawing / "mock-states.md").write_text("## Surface: NDA\n- ready \u2014 approved\n", encoding="utf-8")
         found = {stage.key: stage for stage in stages(self.root, slices={"done": 1})}
         self.assertEqual((found["storyboard"].state, found["storyboard"].detail), ("done", "1 of 1 states approved"))
+
+    def test_a_modelled_further_feature_is_on_its_chart_and_not_on_an_earlier_one_s_stopped_fleet(self) -> None:
+        """manda: the third feature approved and modelled, the second's fleet stopped on a park, and the board
+        said *Now: slices — stopped until you act … Next: make cruise* over the chart that moved the project."""
+        drawing = self.root / "specs" / FURTHER / "mockups"
+        drawing.mkdir()
+        (drawing / "nda.html").write_text("<html></html>", encoding="utf-8")
+        (drawing / "mock-states.md").write_text("## Surface: NDA\n- ready \u2014 approved\n", encoding="utf-8")
+        self.model.write_text(MODEL + f"  - id: S2\n    name: two\n    feature: {FURTHER}\n", encoding="utf-8")
+        (self.root / ".specify/integration.json").write_text('{"default_integration": "claude"}', encoding="utf-8")
+        (self.root / ".specify/memory").mkdir()
+        (self.root / ".specify/memory/constitution.md").write_text("# Ratified\n", encoding="utf-8")
+        stopped = {"inbox": [{"kind": "parked", "fairway": "a", "slice": "S1", "what": "S1: stuck."}]}
+        found = stages(self.root, fleet=stopped, slices={"done": 1})
+        said = {stage.key: stage for stage in found}
+        self.assertEqual((said["model"].state, said["chart"].state, said["slices"].state), ("done", "todo", "waiting"))
+        self.assertEqual(current(found).key, "chart")  # type: ignore[union-attr]
+        line = now_said(found)
+        self.assertTrue(line.startswith(f"Now: chart & split — {FURTHER} is not charted or split yet."), line)
+        self.assertIn("Meanwhile, the earlier features' slices: stopped until you act: 1 park.", line,
+                      "the earlier feature's stop is still said, after the step that moves this one")
+        reason = "the storyboard for 001-first has changed since its verdict (Home): approve it again first"
+        card = passage_card("manda", found, False, False, held=held_for(found, reason))
+        self.assertIn('id="launch" disabled>Continue the build', card, "locked and shown, never hidden")
+        self.assertIn(html.escape(reason), card)
+        self.assertIn('href="#mockups">Open the storyboards</a>', card, "the way to unlock it is a link")
+
+    def test_a_held_launch_is_not_shown_where_the_chart_is_not_the_next_step(self) -> None:
+        found = stages(self.root, slices={"done": 1})
+        self.assertNotEqual(current(found).key, "chart")  # type: ignore[union-attr]
+        self.assertEqual(held_for(found, "anything"), "")
+        self.assertIn('id="launch" hidden>', passage_card("manda", found, False, False, held=held_for(found, "x")))
 
     def test_the_strip_says_the_further_feature_is_not_modelled_or_split(self) -> None:
         found = {stage.key: stage for stage in stages(self.root, slices={"done": 1})}

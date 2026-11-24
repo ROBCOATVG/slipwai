@@ -72,9 +72,12 @@ def parts(board: Any) -> tuple[list, list[dict[str, str]], str, dict, dict, Read
     return found, kept.rows, kept.fault, kept.fleet, kept.config, kept
 
 
-def able(board: Any, rows: list[dict[str, str]], fleet: dict) -> dict[str, bool]:
-    """The flags that show the strip's buttons, and that the list of what waits on a person reads."""
-    return {"launchable": board.launchable(), "castable": board.castable(rows, fleet),
+def able(board: Any, rows: list[dict[str, str]], fleet: dict) -> dict[str, Any]:
+    """The flags that show the strip's buttons, and that the list of what waits on a person reads; `held` is
+    why Continue the build is locked, which the strip shows beside it rather than hiding it (`launch_lock`)."""
+    launchable = board.launchable()
+    return {"launchable": launchable, "held": "" if launchable else board.held_back(),
+            "castable": board.castable(rows, fleet),
             "stoppable": board.stoppable(fleet), "drawable": board.drawable(), "modelable": board.modelable(),
             "draftable": board.draftable()}
 
@@ -90,13 +93,13 @@ def shaped(made_of: str, decided: bool, running: str = "") -> str:
     return f"{running}|{'d' if decided else ''}" if running else f"{made_of}|{'d' if decided else ''}"
 
 
-def passage(board: Any, found: list, rows: list[dict[str, str]], fleet: dict, flags: dict[str, bool],
+def passage(board: Any, found: list, rows: list[dict[str, str]], fleet: dict, flags: dict[str, Any],
             listed: dict[str, Any], decided: bool) -> str:
     return voyage_payload(found, flags["launchable"], any(one.state == "working" for one in found),
                           flags["castable"], flags["stoppable"], flags["drawable"],
                           shaped(board.made_of(rows, fleet)[1], decided, live(board)["running"]),
                           flags["modelable"], waiting=listed,
-                          draftable=flags["draftable"], writing=writing(board))
+                          draftable=flags["draftable"], writing=writing(board), held=flags["held"])
 
 
 def writing(board: Any) -> bool:
@@ -176,7 +179,7 @@ def voyage(board: Any) -> str:
                        dates="" if adopting else remote_card(root) + strategy_dates(root),
                        draftable=flags["draftable"], machinery=tab, streams=streams_card(fleet), waiting=listed,
                        captains=strip_html(root, kept.rows, set(listed["slices"])), stage=now,
-                       trunk=trunk_band(kept.trunk))
+                       trunk=trunk_band(kept.trunk), locked=flags["held"])
 
 
 def route_get(board: Any, where: str, query: str) -> bool:

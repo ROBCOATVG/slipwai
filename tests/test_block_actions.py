@@ -54,6 +54,17 @@ class KindTest(unittest.TestCase):
         self.assertIn("Send to ORD-01", found["do"][1])
         self.assertIn('`python3 scripts/agents/fleet.py tell ORD --slice ORD-01 "<your answer>"`', found["do"][1])
 
+    def test_the_chart_s_context_question_says_nothing_waits_on_it(self) -> None:
+        """`commands/chart.md` posts it as `"slice": "chart"` so nothing waits on it; manda's D495 card said the
+        chart waited, over a Continue the build that was the only thing moving the project."""
+        found = action({"kind": "question", "fairway": "intake", "slice": "chart", "id": "D495", "t": "",
+                        "what": "Which bounded contexts does 003 touch (D495)? Taken as it stands: two."})
+        self.assertEqual(found["kind"], "question")
+        self.assertTrue(found["why"].startswith("Nothing waits on this"), found["why"])
+        self.assertNotIn("waits for it", found["why"])
+        self.assertIn("Read the question D495 above", found["do"][0])
+        self.assertIn("Send to chart", found["do"][1])
+
     def test_a_park_at_the_ceiling_says_how_many_to_read(self) -> None:
         found = action(park(waiting="decision-review", cause="ceiling", unread=34, ceiling=12))
         self.assertEqual(found["kind"], "ceiling")

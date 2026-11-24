@@ -89,7 +89,7 @@ def answer_box(fairway: str, slice_id: str, of: str, question: str = "", primary
     Details, whose question was folded again inside, so a person pressed it and saw nothing happen."""
     box = "w-say-" + "".join(ch if ch.isalnum() else "-" for ch in f"{fairway}-{slice_id}-{of or question}")
     asks = f' data-question="{esc(question)}"' if question else ""
-    return (f'<span class="w-say"><input id="{esc(box)}" placeholder="Your answer…" aria-label="Your answer">'
+    return (f'<span class="w-say"><input id="{esc(box)}" placeholder="Type an answer…" aria-label="Type an answer">'
             f'<button type="button" class="{"go" if primary else "install"}" data-tell="{esc(fairway)}" '
             f'data-box="{esc(box)}"{asks} data-slice="{esc(slice_id)}" data-of="{esc(of)}">Send</button></span>')
 

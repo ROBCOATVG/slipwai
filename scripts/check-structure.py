@@ -246,6 +246,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "launch_lock",
               # And the one next step at the top of the Voyage, in one shape at every pause.
               "your_turn",
+              # And Waiting on you as an inbox: a compact row and one button per thing, by section.
+              "waiting_inbox",
               # And talking to the fleet: a conversation drawn, what it adds to a card and to the one list,
               # a captain's window, the captains on the board, and the routes every message goes through.
               "talk_page", "talk_waits", "talk_card", "captain_window", "captains_strip", "talk_routes",

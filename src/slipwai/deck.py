@@ -180,6 +180,21 @@ def mend_again(root: Path, fairway: str, parked: str) -> str:
     return f"the mender may try {fairway}'s hand-back of {parked} again, on the harbourmaster's next pass"
 
 
+def keep_recommendation(root: Path, fairway: str, question: str) -> str:
+    """Confirm a chart question's recommendation as the person's answer: the `decision` line carrying its id,
+    which is what closes a question. Only a question the stream holds open is answered."""
+    found, fault = entries(root, fairway)
+    if fault and not found:
+        raise ValueError(fault)
+    asked = next((e for e in found if e.kind == "question" and str(e.fields.get("id", "")) == question), None)
+    if asked is None:
+        raise ValueError(f"{fairway} has no question {question}")
+    with deck_path(root, feature_of(root, fairway), fairway).open("a", encoding="utf-8") as handle:
+        handle.write(entry("decision", fairway=fairway, id=question,
+                           what=f"{question}: the recommendation is kept, confirmed by a person on the board.").line())
+    return f"{question} kept as recommended"
+
+
 def dismiss(root: Path, fairway: str, told: str) -> str:
     """Write the `read` receipt for one `told`, named by its instant, so it leaves *Waiting on you*.
 

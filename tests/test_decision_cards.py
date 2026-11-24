@@ -177,7 +177,7 @@ class BoardTest(unittest.TestCase):
         self.assertIn("<b>Would change if:</b> a person says organisers", html)
         self.assertIn("Awaiting your confirmation", html)
         self.assertIn('data-decision-confirm="md:D45"', html)
-        self.assertIn("<summary>Why, in full</summary>", html)
+        self.assertIn("<summary>Options and why, in full</summary>", html)
 
     def test_a_persons_own_answer_with_no_deck_line_shows_as_theirs(self) -> None:
         mine = self.found()["D60"]
@@ -193,15 +193,15 @@ class BoardTest(unittest.TestCase):
 
     def test_the_tab_opens_on_what_nobody_has_read_least_sure_first_and_counts_it(self) -> None:
         html, count = tab(self.root, lambda name, drawn: f'<div data-band="{name}">{drawn}</div>')
-        self.assertEqual(count, 3, "D1, D45 and D55 are unread; D60 is a person's own answer")
-        self.assertIn("4 decisions · 3 unread · 2 awaiting your confirmation", html)
-        first = html[html.index("Not read yet, least sure first · 3"):html.index("Everything else · 1")]
-        self.assertLess(first.index("D55"), first.index("D45"), "low confidence before high")
-        self.assertLess(first.index("D45"), first.index("D1<"), "a capability's group gathers its slices")
-        self.assertIn("<h4>sign-in-and-join</h4>", first)
+        self.assertEqual(count, 2, "D1 and D55 are unread and less than sure; D45 is high; D60 a person's own")
+        self.assertIn("4 decisions · 2 worth your eye · 1 taken with high confidence and not read", html)
+        first = html[html.index("Worth your eye: medium or low confidence · 2"):html.index("Taken with high")]
+        self.assertLess(first.index("D55"), first.index("D1<"), "low confidence before medium")
+        self.assertNotIn("D45", first, "a high-confidence call waits folded, to be marked read in one press")
+        self.assertIn("data-decision-read-all='[&quot;md:D45&quot;]'", html)
         self.assertIn('<div data-band="decisions">', html)
         mark(self.root, ["md:D55"])
-        self.assertEqual(tab(self.root, lambda name, drawn: drawn)[1], 2, "reading a card takes it off the count")
+        self.assertEqual(tab(self.root, lambda name, drawn: drawn)[1], 1, "reading a card takes it off the count")
 
     def test_the_filters_sit_outside_the_band_and_each_card_carries_what_they_filter_by(self) -> None:
         html, _ = tab(self.root, lambda name, drawn: f'<div data-band="{name}">{drawn}</div>')

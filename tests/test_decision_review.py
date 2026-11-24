@@ -31,9 +31,11 @@ def book(root: Path, *entries: str) -> None:
 
 class TabCountTest(BoardTest):
     def test_the_tab_and_the_poll_count_what_nobody_has_read_not_what_awaits_confirmation(self) -> None:
-        book(self.root, ENTRY.format(n=1, sure="high", status="standing"),
-             ENTRY.format(n=2, sure="high", status="awaiting human confirmation"))
-        self.assertEqual(json.loads(self.get("/live.json")[1])["decisions"], 2, "two unread, one of them awaiting")
+        book(self.root, ENTRY.format(n=1, sure="medium", status="standing"),
+             ENTRY.format(n=2, sure="low", status="awaiting human confirmation"),
+             ENTRY.format(n=3, sure="high", status="awaiting human confirmation"))
+        self.assertEqual(json.loads(self.get("/live.json")[1])["decisions"], 2,
+                         "two unread and less than sure, one of them awaiting; the high one is not counted")
         self.assertIn('<span class="count" data-decisions-unread>2 to review</span>', self.get("/voyage")[1])
         self.assertIn("count('[data-decisions-unread]', found.decisions, 'to review');", PAGE_SCRIPT)
 

@@ -71,6 +71,16 @@ class InboxTest(unittest.TestCase):
         self.assertEqual(posts(self.drawn, "Done"),
                          [["/dismiss", {"fairway": "intake", "told": "2026-11-24T09:04:00Z"}]])
 
+    def test_a_question_is_answered_from_a_box_in_its_own_row(self) -> None:
+        """manda: Answer opened the row's Details, whose question was folded again, and nothing showed."""
+        rows = [row(kind="question", slice="S102", aim="S102", id="S102-decide-1", key="question:S102-decide-1",
+                    what="Add idempotencyKey to three events? The story seeds one holder meanwhile.")]
+        drawn = inbox({"inbox": rows, "groups": [], "streams": {}})
+        top = drawn.split("<details>")[0]
+        self.assertIn('data-tell="intake"', top, "the box is in the row, not behind Details")
+        self.assertIn('data-question="S102-decide-1" data-slice="S102" data-of="question:S102-decide-1"', top)
+        self.assertNotIn("data-w-open", top)
+
     def test_every_row_keeps_its_card_under_details(self) -> None:
         self.assertEqual(self.drawn.count('class="w-row"'), self.drawn.count("<summary>Details</summary>"))
 

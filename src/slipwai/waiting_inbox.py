@@ -46,6 +46,9 @@ STYLE = """
 .w-text{display:grid;gap:2px;min-width:0}.w-text b{font-size:.95rem;overflow-wrap:anywhere}
 .w-text span{color:var(--ink-2);font-size:.86rem}.w-text small{color:var(--ink-3);font-size:.78rem}
 .w-act{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
+.w-say{display:flex;gap:6px;flex:1 1 320px;min-width:min(100%,320px)}
+.w-say input{flex:1;min-width:0;font:inherit;padding:8px 10px;border:1px solid var(--rule);border-radius:8px;
+  background:var(--paper);color:var(--ink)}
 .w-row details{grid-column:1/-1}.w-row details>summary{cursor:pointer;color:var(--ink-3);font-size:.8rem}
 @media (max-width:640px){.w-row{grid-template-columns:1fr}.w-act{justify-content:flex-start}}
 """
@@ -78,6 +81,17 @@ def button(face: str, calls: list[tuple[str, dict]], primary: bool = True) -> st
     shape = "go" if primary else "install"
     return (f'<button type="button" class="{shape}" data-w-primary="{"yes" if primary else ""}" '
             f"data-w-post='{esc(json.dumps(calls))}'>{esc(face)}</button>")
+
+
+def answer_box(fairway: str, slice_id: str, of: str, question: str = "", primary: bool = True) -> str:
+    """The box a question or a park is answered in, in the row itself: the bridge's own `data-tell` handler
+    sends it (`/tell`), to the slice that asked, carrying what it answers. *Answer* used to open the row's
+    Details, whose question was folded again inside, so a person pressed it and saw nothing happen."""
+    box = "w-say-" + "".join(ch if ch.isalnum() else "-" for ch in f"{fairway}-{slice_id}-{of or question}")
+    asks = f' data-question="{esc(question)}"' if question else ""
+    return (f'<span class="w-say"><input id="{esc(box)}" placeholder="Your answer…" aria-label="Your answer">'
+            f'<button type="button" class="{"go" if primary else "install"}" data-tell="{esc(fairway)}" '
+            f'data-box="{esc(box)}"{asks} data-slice="{esc(slice_id)}" data-of="{esc(of)}">Send</button></span>')
 
 
 def opener(face: str, primary: bool = True) -> str:
@@ -125,7 +139,9 @@ def group_row(group: dict, controls: bool, answers: str = "") -> tuple[str, dict
     if kind in ("ceiling", "decisions"):
         row["buttons"] = opener("Read them")
         return "tidy", row
-    row["buttons"] = opener("Answer")
+    newest = max(parks or [{}], key=lambda park: str(park.get("t", "")))
+    row["buttons"] = answer_box(str(newest.get("fairway") or ""), str(newest.get("aim") or newest.get("slice") or ""),
+                                str(newest.get("key") or ""))
     return "judgement", row
 
 
@@ -144,9 +160,11 @@ def inbox_row(row: dict, controls: bool, streams: dict | None) -> tuple[str, dic
             found["detail"] = "Nothing waits on this: the chart went ahead on the recommendation it names."
             found["buttons"] = (button("Keep the recommendation", [("/keep", {"fairway": row["fairway"],
                                                                              "id": str(row.get("id") or "")})])
-                                + opener("Change it…", primary=False))
+                                + answer_box(str(row["fairway"]), "chart", str(row.get("key") or ""),
+                                             str(row.get("id") or ""), primary=False))
             return "judgement", found
-        found["buttons"] = opener("Answer")
+        found["buttons"] = answer_box(str(row["fairway"]), str(row.get("aim") or row.get("slice") or ""),
+                                      str(row.get("key") or ""), str(row.get("id") or ""))
         return "judgement", found
     if kind == "unreadable":
         found["buttons"] = opener("Repair it")

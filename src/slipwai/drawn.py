@@ -175,8 +175,15 @@ def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by:
                "had it approved and it is not built yet; no verdict was asked or given here) -->"
                for page in planned_pages(home)]
     lines += framed + ([""] if framed else [])
+    earlier = named_before(home / "mock-states.md")
     for page in surface_pages(root / "specs" / feature / "mockups"):
         name, states = decided_states(page)
+        # A state the earlier verdict named and the page's headings do not — one added by a decision, or one whose
+        # heading the reader cannot see — is kept: manda's re-approval of 002 dropped S56's `Changed in another
+        # window`, approved under D362, and trunk went red on a split that delivers it.
+        # Only where the page still says it: a state a redraw took out stays out.
+        read, said = [state for state, _ in states], page.read_text(encoding="utf-8", errors="replace")
+        states = [*states, *((state, "") for state in earlier.get(name, []) if state not in read and state in said)]
         # Which page, and what it said, when the verdict was given: a page that says something else since —
         # changed in a conversation, by hand, or gone — is a page nobody has given this verdict on.
         lines.append(f"<!-- page: {where_in(root, page)} {digest(page)} -->")
@@ -186,6 +193,21 @@ def record_verdict(root: Path, feature: str, verdict: str, reason: str = "", by:
         lines.append("")
     (root / "specs" / feature / "mockups" / "mock-states.md").write_text("\n".join(lines), encoding="utf-8")
     return "approved" if verdict == "approved" else "disapproved"
+
+
+def named_before(path: Path) -> dict[str, list[str]]:
+    """Each surface's states as the verdict already in `mock-states.md` names them, a withdrawn one's included."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    named: dict[str, list[str]] = {}
+    for found in WITHDRAWN.finditer(text):
+        named.setdefault(found.group("surface").strip(), []).extend(
+            one.strip() for one in found.group("states").split(", ") if one.strip())
+    for block in blocks(text):
+        named.setdefault(block["name"], []).extend(block["states"])
+    return {name: list(dict.fromkeys(states)) for name, states in named.items()}
 
 
 # A verdict stands for the pages it was given on. `record_verdict` writes, above each surface's block, the page

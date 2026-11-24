@@ -26,6 +26,8 @@ from .attention import SCRIPT as ATTENTION
 from .attention import STRIP, TELL
 from .attention import STYLE as WAITING
 from .brand import MARK, favicon, inline, svg
+from .press_feedback import SCRIPT as PRESS_SCRIPT
+from .press_feedback import STYLE as PRESS_STYLE
 
 # budget: 470 — the waiting groups' chips and their row styles landed here with the rest of the sheet;
 # one stylesheet, one document, the bar and its two ways back, the four routes an installable
@@ -455,7 +457,7 @@ def document(title: str, sub: str, body: str, script: str = "", now: str = "") -
 <title>{esc(title)}</title>
 <link rel="icon" href="{favicon()}">
 {HEAD if served else ""}
-<style>{STYLE}{FORM}{WORKING}{WAITING if served else ""}</style></head>
+<style>{STYLE}{FORM}{WORKING}{WAITING if served else ""}{PRESS_STYLE if served else ""}</style></head>
 <body><div class="wrap">
 <div class="top"><div><h1>{esc(title)}</h1><div class="sub">{esc(sub)}</div></div>
 <div class="corner">{INSTALL + TELL if served else ""}{THEME}{inline(
@@ -463,6 +465,6 @@ def document(title: str, sub: str, body: str, script: str = "", now: str = "") -
 {tabs(now) if now else ""}
 {STRIP if served else ""}
 {body}
-</div>{"<script>" + SEATED + ATTENTION + script + REGISTER + "</script>" if served else
+</div>{"<script>" + PRESS_SCRIPT + SEATED + ATTENTION + script + REGISTER + "</script>" if served else
        "<script>" + script + "</script>" if script else ""}</body></html>
 """

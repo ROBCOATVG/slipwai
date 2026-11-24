@@ -69,7 +69,8 @@
 # A stream has one log, under the chart's feature, and a session is told where it is
 # (`changelog.d/a-further-feature-s-slices-are-read-where-they-are.md`): `agents/drive-captain.md` names it.
 # Only its rows moved, deliberately. Every other row is still its earlier reading.
-e5bac52c0a8088125cac395c34f8ae88f5308b3f9a4bd4c3464f8623cf653313  .  agents/drive-captain.md
+# Re-taken 2026-11-24 for changelog.d/your-turn.md: only the rows for agents/drive-captain.md moved, deliberately — the captain's table of deck kinds gains `mend-again`, a person's word that the trunk mender may try a hand-back afresh.
+0d4afb24326081e3d109e39586023eb88ea9751670eb4881bfc163d6f6fd17c2  .  agents/drive-captain.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  .  agents/sail-adversary-privateer.md
 4f3e3139ed3c6800c19788b8264df9db44f8e27a1d958ef7203e5ff7a074e6b7  .  agents/sail-converge-navigator.md
 18c2e8c34573dc481f04cd5ffbd3aa06888798948a865aa5dc0bf111953a211a  .  agents/sail-decide-skipper.md
@@ -81,7 +82,7 @@ fbca43e32f30c05aebf9c48be775f32854e0448a1aa50b890207e65a12f6c6be  .  agents/sail
 4492447d638cc6fa08a9b755c73dfd283259bc6e4d361e75898ad4522410f8ae  .  agents/sail-slice-watch.md
 53861e19e2da5e7f1a96df5d177a2bba80a2a08a66aeff2a7bee435ef836a89c  .  agents/sail-tasks-quartermaster.md
 3d88ebe388c5f5c56361ab63b9211828233ff0ab57221e2577df2da108f85125  .  agents/sail-unblock-bosun.md
-e5bac52c0a8088125cac395c34f8ae88f5308b3f9a4bd4c3464f8623cf653313  delivery  agents/drive-captain.md
+0d4afb24326081e3d109e39586023eb88ea9751670eb4881bfc163d6f6fd17c2  delivery  agents/drive-captain.md
 5ba650feeda7049a5a08172df5ba105b70dfb3c32a4479c348f958c07d70b753  delivery  agents/sail-adversary-privateer.md
 71038dc18e9bfb179b300d3013f5ee68255b119241b6f027e0d8fd0f36ad73ff  delivery  agents/sail-converge-navigator.md
 18c2e8c34573dc481f04cd5ffbd3aa06888798948a865aa5dc0bf111953a211a  delivery  agents/sail-decide-skipper.md

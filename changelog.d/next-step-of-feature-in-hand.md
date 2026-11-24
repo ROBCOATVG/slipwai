@@ -12,4 +12,10 @@ The chart's context question, the one posted with `"slice": "chart"` *so nothing
 says that the chart *waits for it*. Its card says the chart goes ahead on the recommendation, and asks for a
 correction only where the recommendation is wrong.
 
+**Continue the build is never hidden while it is the next step.** Where the board holds it back, it stays in
+its row, disabled, with the reason under it and a link to where that is undone. manda's third feature showed
+only *Open spec.md*, because drawing it had changed two pages the second feature's verdict covered and the
+launch was held until that storyboard was approved again; the reason was only ever said to a press of the
+hidden button. The reason now names the pages that changed.
+
 **Catch-up:** nothing to do beyond upgrading slipwai; the board's changes reach every project.

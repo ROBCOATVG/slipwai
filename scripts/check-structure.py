@@ -242,6 +242,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # And trunk on it: what the trunk mender did about a red trunk, folded, and drawn as a band,
               # a card on the Fleet tab and an item under Waiting on you.
               "trunk_story", "trunk_card",
+              # And Continue the build, locked: shown disabled with why, never hidden.
+              "launch_lock",
               # And talking to the fleet: a conversation drawn, what it adds to a card and to the one list,
               # a captain's window, the captains on the board, and the routes every message goes through.
               "talk_page", "talk_waits", "talk_card", "captain_window", "captains_strip", "talk_routes",

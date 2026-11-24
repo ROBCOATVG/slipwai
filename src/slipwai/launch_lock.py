@@ -1,0 +1,50 @@
+"""Continue the build, locked: shown disabled, with why and the way to unlock it, never hidden.
+
+manda's third feature was approved and modelled and the board's one next step was Continue the build, but
+the button was hidden: drawing the third feature had changed two pages the second feature's verdict
+covered, and `Board.held_back` held the launch until that storyboard was approved again. The reason
+existed, word for word, and the only way to read it was to press a button nobody could see — so a person
+looked at a page whose only control was *Open spec.md* and concluded the run had stopped for nothing.
+
+So while the chart is the stage the person is on, the button stays in its row, disabled, and the line
+under it says what holds it and links to where that is undone. Elsewhere a held launch is not the next
+step, and nothing changes.
+"""
+from __future__ import annotations
+
+from html import escape as esc
+
+from .passage import Stage, current
+
+STYLE = """
+.held{margin:0;color:var(--ink-2)}
+.held b{color:var(--critical)}
+.held a{margin-left:6px}
+"""
+
+#: Run by the strip's paint after the buttons are shown or hidden: the poll carries `held` beside `launchable`.
+SCRIPT = """
+function paintHeld(found){
+  const line = document.getElementById('launch-held'), button = document.getElementById('launch');
+  if (!line || !button) return;
+  const held = found.held || '';
+  button.hidden = !(found.launchable || held);
+  button.disabled = !found.launchable;
+  line.hidden = !held;
+  line.querySelector('span').textContent = held;
+  line.querySelector('a').hidden = !/storyboard/.test(held);
+}
+"""
+
+
+def held_for(found: list[Stage], held: str) -> str:
+    """Why Continue the build is locked, where it is the next step; `""` everywhere else."""
+    now = current(found)
+    return held if now is not None and now.key == "chart" else ""
+
+
+def line(held: str) -> str:
+    """The sentence under the locked button, always in the page so the poll can fill or empty it."""
+    return (f'<p class="held" id="launch-held"{"" if held else " hidden"}><b>Locked:</b> '
+            f'<span>{esc(held)}</span><a href="#mockups"{"" if "storyboard" in held else " hidden"}>'
+            "Open the storyboards</a></p>")

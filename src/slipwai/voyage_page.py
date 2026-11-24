@@ -28,6 +28,9 @@ from .fleet_tab import fleet_sub
 from .intake_card import SCRIPT as INTAKE_SCRIPT
 from .intake_card import STYLE as INTAKE_STYLE
 from .intake_card import next_features
+from .launch_lock import SCRIPT as LOCK_SCRIPT
+from .launch_lock import STYLE as LOCK_STYLE
+from .launch_lock import held_for, line
 from .live_page import STYLE as LIVE_STYLE
 from .page_shell import document, esc
 from .passage import Stage, current, meanwhile
@@ -53,7 +56,8 @@ from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
 
-# budget: 786 — the verdict due is a button and holds Model it next back (the storyboard, its verdict and its
+# budget: 795 — a locked Continue the build shown with why (`launch_lock`);
+# the verdict due is a button and holds Model it next back (the storyboard, its verdict and its
 # conversation went to `storyboard_card.py`) the one poll that keeps every band current, and the bands of one
 # window, and who decided each state the storyboard's note counts: where the project stands, what to expect of
 # the stage it is on, who answers at each stop of the run, the model, the screens built so far, and the work.
@@ -235,6 +239,7 @@ function paintPassage(found){
     const button = document.getElementById(id);
     if (button) { button.hidden = !found[flag]; if (id !== 'launch' && id !== 'cast-off') button.disabled = false; }
   }
+  paintHeld(found);
 }
 // One poll keeps the whole page current: /live.json every few seconds, one read on the server shared by
 // every window, carrying each band's signature and drawing. A band is swapped only when its signature moved,
@@ -491,7 +496,7 @@ def expect_card(found: list[Stage]) -> str:
 
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
                  stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
-                 modelable: bool = False, draftable: bool = False) -> str:
+                 modelable: bool = False, draftable: bool = False, held: str = "") -> str:
     strip = "".join(stage_html(one, index) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
@@ -505,7 +510,8 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
     button = ('<a class="go" href="#mockups">Review the storyboard</a>' if verdict_due else '')
     button += ('<span class="chip">Model it next: the event-modeling skill, in the agent, with a person</span>'
               if model_next else
-              f'<button class="go" id="launch"{"" if launchable else " hidden"}>Continue the build</button>'
+              f'<button class="go" id="launch"{"" if launchable or held else " hidden"}'
+              f'{" disabled" if held and not launchable else ""}>Continue the build</button>'
               f'<button class="go" id="cast-off"{"" if castable else " hidden"}>Cast off the fleet</button>')
     # Beside them whatever else the strip says, because the one thing a person wants at the moment they
     # want it is the way to make it stop. Not styled as the primary action: stopping is the exception.
@@ -529,7 +535,7 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
                    f"Open specs/{esc(feature)}/{esc(SPEC)}</a>")
     return (f'<div class="card" id="passage" data-shape="{esc(shape)}"><h2>{esc(name)}</h2>'
             f'<div class="passage" role="list" style="{esc(wide)}">{strip}</div>'
-            f'<div class="next"><p id="now">{esc(said)}</p><div class="ask">{button}</div></div></div>')
+            f'<div class="next"><p id="now">{esc(said)}</p><div class="ask">{button}</div>{line(held)}</div></div>')
 
 
 def model_card(xml: str, note: str, viewer_fault: str, said: str = "") -> str:
@@ -691,7 +697,8 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
          modelable: bool = False, trying: str = "", strip: str = "", feedback: str = "",
          decisions: tuple[str, int] = ("", 0), points: list[dict] | None = None, adopting: str = "",
          dates: str = "", draftable: bool = False, machinery: str = "", streams: str = "",
-         waiting: dict | None = None, captains: str = "", stage: dict | None = None, trunk: str = "") -> str:
+         waiting: dict | None = None, captains: str = "", stage: dict | None = None, trunk: str = "",
+         locked: str = "") -> str:
     """The window. `strip` is Needs a look, `machinery` the Fleet tab and `streams` what the streams asked,
     each a band the poll keeps current; `waiting` is the one list, whose slices the column draws; `stage` is
     the stage with a tab of its own running now, which that tab says (`storyboard_card.live`)."""
@@ -710,7 +717,7 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     landed = fitting_card(made, "Adopted" if adopting else "Made", waits) if made else ""
     # Past it, the strategy's checkpoint stands above the strip, never in its place.
     where = adopting or dates + passage_card(root.resolve().name, found, launchable, model_next, castable, stoppable,
-                                     feature, drawable, shape, modelable, draftable)
+                                     feature, drawable, shape, modelable, draftable, held_for(found, locked))
     taken = {shot["feature"] for shot in (shots or [])}
     # A feature's mock-ups move next to its screenshots. One that has no screenshot yet stays where it was.
     left = [row for row in (mocks or []) if row["feature"] not in taken]
@@ -735,11 +742,11 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("next", "Next features", next_features(root, ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
-            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}{INTAKE_STYLE}</style>"
+            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}{INTAKE_STYLE}{LOCK_STYLE}</style>"
             f"{where}{band('trunk', trunk)}{landed}{'' if adopting else band('expect', expect_card(found))}"
             f"{band('captains', captains)}"
             f"{tabs_html(tabs)}{console_card()}")
-    script = SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT + (TRY_SCRIPT if trying else "") \
+    script = SCRIPT + LOCK_SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT + (TRY_SCRIPT if trying else "") \
         + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") + INTAKE_SCRIPT \
         + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
@@ -778,8 +785,9 @@ def now_said(found: list[Stage]) -> str:
 
 def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool = False,
             stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False,
-            waiting: dict | None = None, draftable: bool = False, writing: bool = False) -> str:
+            waiting: dict | None = None, draftable: bool = False, writing: bool = False, held: str = "") -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
+                       "held": held_for(found, held),
                        "castable": castable, "stoppable": stoppable, "drawable": drawable, "modelable": modelable,
                        "draftable": draftable, "writing": writing,
                        "shape": shape, "now": now_said(found),

@@ -148,7 +148,8 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 943 — a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
+# budget: 946 — the held launch names the pages a later drawing changed;
+# a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
 # by a conversation keeps Model again away, and a verdict is refused while a turn is about to change the
 # pages, and Continue the build gives one answer with Model again on a storyboard changed since its verdict
 # (fifteen lines, against the 940 that was).
@@ -517,7 +518,11 @@ class Bridge(BaseHTTPRequestHandler):
         gone = [one.parent.parent.name for one in storyboards(self.root)
                 if withdrawn(self.root, one.parent.parent.name)]
         if gone:
-            return f"the storyboard for {gone[0]} has changed since its verdict: approve or disapprove it again first"
+            # Which pages, by name: "has changed" sent a person looking for a change in a storyboard of a feature
+            # that was finished, when a later feature's drawing had edited two of its pages.
+            pages = "; ".join(one.split(" \u2014 ")[0] for one in withdrawn(self.root, gone[0]))
+            return (f"the storyboard for {gone[0]} has changed since its verdict ({pages}): approve or disapprove "
+                    "it again first")
         if profile_of(self.root) == EVENT_PROFILE and not modelled_in_hand(self.root):
             if modelled(self.root):  # an earlier feature's model, which holds nothing of this one
                 return (f"specs/{feature.name} is not in the model yet: its storyboard and then its model come "

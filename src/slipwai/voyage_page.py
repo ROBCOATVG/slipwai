@@ -732,8 +732,9 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
     listed = waiting or {}
     held = set(listed.get("slices") or []) if waiting is not None else None
     count = int(listed.get("count") or 0)
-    work = (band("look", strip) + band("points", feedback_points_card(points or []))
-            + band("work", work_card(rows, fault, held), ' data-view="cards"') + band("streams", streams))
+    # What waits on a person first: it sat under ninety-six done slices, eighteen thousand pixels down.
+    work = (band("streams", streams) + band("look", strip) + band("points", feedback_points_card(points or []))
+            + band("work", work_card(rows, fault, held), ' data-view="cards"'))
     tabs = [("work", f'Work<span class="count" data-waiting-count{"" if count else " hidden"}>'
                      f'{f"{count} waiting" if count else ""}</span>', work),
             ("try", "Try it & feedback" if trying else "Feedback", f"{trying}{feedback}"),

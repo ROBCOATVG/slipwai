@@ -162,6 +162,24 @@ def tick_need(root: Path, fairway: str, parked: str, need: int) -> str:
     return f"ticked need {need} of {fairway}'s park at {parked}"
 
 
+def mend_again(root: Path, fairway: str, parked: str) -> str:
+    """Write a person's word that the trunk mender may try a hand-back's needs again: a `mend-again` line.
+
+    The mender takes a need at most `attempts` times and then never again, and nothing on the board could
+    start it: manda's 002 had eleven hand-backs it had tried three times each, every one telling the person
+    to edit CSS on trunk by hand. The harbourmaster turns this into its receipt, from which the attempts count
+    afresh. Only a park or hand-back with needs is named, so a stale page writes nothing.
+    """
+    found, fault = entries(root, fairway)
+    if fault and not found:
+        raise ValueError(fault)
+    if not any(e.kind in ("parked", "told") and e.t == parked and e.fields.get("needs") for e in found):
+        raise ValueError(f"{fairway} has no hand-back with needs at {parked}")
+    with deck_path(root, feature_of(root, fairway), fairway).open("a", encoding="utf-8") as handle:
+        handle.write(entry("mend-again", fairway=fairway, parked=parked).line())
+    return f"the mender may try {fairway}'s hand-back of {parked} again, on the harbourmaster's next pass"
+
+
 def dismiss(root: Path, fairway: str, told: str) -> str:
     """Write the `read` receipt for one `told`, named by its instant, so it leaves *Waiting on you*.
 

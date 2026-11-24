@@ -231,6 +231,10 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
         if row.get("cause") == "host" and kind != "handback":
             steps.append("Once it is on trunk, press I have landed it, carry on.")
         if kind == "handback":
+            if any(need.get("met") != "yes" and need.get("by") != "person" for need in row.get("needs") or []):
+                # The edit by hand is the fallback, not the instruction: the mender lands these (`deck.mend_again`).
+                steps.insert(0, "Press Have the mender try again: it makes these edits on a branch of its own, runs "
+                                "the gates and lands them. Or make them on trunk yourself:")
             steps.append("It leaves the board once the last need is met.")
         return said, steps or [answer_step(row)]
     if kind == "machine":

@@ -179,6 +179,29 @@ class NeedTest(MenderFixture):
         self.assertEqual((len(self.of_kind("mend")), len(self.of_kind("mended")), self.of_kind("mend-failed")),
                          (1, 1, []), self.kinds())
 
+    def test_a_person_s_mend_again_gives_a_spent_need_its_attempts_afresh(self) -> None:
+        """manda's 002 had eleven hand-backs the mender had tried its attempts at and dropped, each telling a
+        person to edit the file on trunk by hand; Have the mender try again writes `mend-again` instead."""
+        self.does("nothing")
+        self.forge_says(run("success", sha=self.head("main")))
+        self.harbour_config(ci=json.loads((self.root / "harbour.json").read_text(encoding="utf-8"))["ci"], attempts=1)
+        self.told_a_need()
+        self.run_once()
+        self.settle()
+        self.run_once()
+        self.assertEqual((len(self.of_kind("mend")), len(self.of_kind("mend-failed"))), (1, 1), self.kinds())
+        path = logs.deck_path(self.root, "ordering", "ORD")
+        told = next(e for e in logs.fold(path.read_text(encoding="utf-8").splitlines()) if e.kind == "told")
+        self.does("need")
+        self.deck("ordering", "ORD", logs.entry("mend-again", fairway="ORD", parked=told.t))
+        self.run_once()
+        self.assertEqual(len(self.of_kind("mend-again")), 1, "the person's word, received once")
+        self.assertEqual(len(self.of_kind("mend")), 2, self.kinds())
+        self.settle()
+        self.assertEqual(len(self.of_kind("mended")), 1, self.kinds())
+        self.run_once()
+        self.assertEqual(len(self.of_kind("mend-again")), 1, "a receipt is written once, not every pass")
+
     def test_a_landed_branch_is_deleted_and_the_next_hand_back_s_first_need_starts(self) -> None:
         """`clubs-0` was three needs, one per hand-back. The first one's branch outlived its landing —
         git will not delete a branch its worktree still holds — and the other two could never start."""

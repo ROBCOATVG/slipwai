@@ -1484,6 +1484,7 @@ def once() -> int:
     written += cleared_by_time(written)
     written += cleared_by_merge(written)
     written += needs_met(written)
+    written += mends_again(written)
     if mending():
         # Last, so a need this pass ticked is not offered, and after the trunk lines so a red this pass found
         # is mended in it. Each pass finishes an attempt that is over or starts the next one; none waits.
@@ -1915,6 +1916,26 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                 else:
                     found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                             what=f"needs met: {len(needs)} of {len(needs)}"))
+    return found
+
+
+def mends_again(already: list[logs.Entry]) -> list[logs.Entry]:
+    """The receipt of each `mend-again` a person wrote from the board, once: the mender's attempts at that
+    park's needs count from it (`mender.need_turn`). Without it a need the mender had tried its attempts at
+    was never tried again, and the board told a person to make the edit on trunk by hand."""
+    seen = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")), str(e.fields.get("at", "")))
+            for e in [*harbour_entries(), *already] if e.kind == "mend-again"}
+    found: list[logs.Entry] = []
+    for path in deck_logs():
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        for e in deck:
+            key = (path.stem, str(e.fields.get("parked", "")), e.t)
+            if e.kind == "mend-again" and key not in seen:
+                seen.add(key)
+                found.append(logs.entry("mend-again", harbour=True, fairway=key[0], parked=key[1], at=key[2]))
     return found
 
 

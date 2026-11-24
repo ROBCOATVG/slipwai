@@ -62,7 +62,7 @@ from .console import answered as console_answer
 from .console import for_root as console_for
 from .decision_log import confirm as confirm_decision
 from .decision_log import mark as mark_decisions
-from .deck import dismiss, mark_read, tick_need
+from .deck import dismiss, mark_read, mend_again, tick_need
 from .dials import set_dial
 from .drawn import withdrawn
 from .errors import Busy, GenerationError
@@ -148,7 +148,7 @@ from .voyage_live import route_get as voyage_get
 from .voyage_page import now_said
 from .wheel import set_stop
 
-# budget: 946 — the held launch names the pages a later drawing changed;
+# budget: 949 — the mend-again route; the held launch names the pages a later drawing changed;
 # a person's verdict lets go of the hold their word put on the board, and a verdict withdrawn
 # by a conversation keeps Model again away, and a verdict is refused while a turn is about to change the
 # pages, and Continue the build gives one answer with Model again on a storyboard changed since its verdict
@@ -905,6 +905,8 @@ class Bridge(BaseHTTPRequestHandler):
                 except (TypeError, ValueError):
                     raise ValueError("`need` is the index of the need in the park's list") from None
                 said = tick_need(self.root, str(held.get("fairway", "")), str(held.get("parked", "")), index)
+            elif where == "/mend-again":
+                said = mend_again(self.root, str(held.get("fairway", "")), str(held.get("parked", "")))
             elif where == "/ring":
                 ring(self.root, str(held.get("position", "")))
                 said = f"rung to {held.get('position')}"

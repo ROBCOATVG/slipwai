@@ -28,7 +28,9 @@ from .talk_marks import SCRIPT as MARKS_SCRIPT
 from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
-# budget: 431 — the headline over every state a fleet can be in, a build merged whole and one merged but
+# budget: 470 — Waiting on you in the order attention goes (judgement, what the harness can do, tidying),
+# with Have the mender try again and one press for a whole section;
+# the headline over every state a fleet can be in, a build merged whole and one merged but
 # ungated or built on a stand-in among them, and a group already answered showing what was said and where
 # it stands, and what to do about each group, with every park's held answer, and apart from them the
 # probably-done and obsolete
@@ -96,8 +98,25 @@ document.addEventListener('click', event => {
     each('/tell', parks.map(park => ({fairway: park.fairway, slice: park.aim || park.slice, of: park.key || '',
                                       message: many.dataset.message})));
   }
+  const again = event.target.closest('[data-mend-again]');
+  if (again) {
+    again.disabled = true;
+    each('/mend-again', JSON.parse(again.dataset.mendAgain).map(park => ({fairway: park.fairway, parked: park.t})));
+  }
+  // Every tick or dismissal a section holds, in one press and one reload: thirteen probably-done hand-backs
+  // were thirteen presses, each reloading the page under the next one.
+  const all = event.target.closest('[data-all]');
+  if (all) {
+    all.disabled = true;
+    const section = document.getElementById(all.dataset.all);
+    const ticks = [...section.querySelectorAll('[data-need]')].flatMap(one => JSON.parse(one.dataset.parks)
+      .map(park => ({fairway: park.fairway, parked: park.t, need: Number(one.dataset.need)})));
+    const gone = [...section.querySelectorAll('[data-dismiss]')]
+      .map(one => ({fairway: one.dataset.dismiss, told: one.dataset.told}));
+    (async () => { if (ticks.length) await each('/need', ticks); if (gone.length) await each('/dismiss', gone); })();
+  }
   const tick = event.target.closest('[data-need]');
-  if (tick) {
+  if (tick && !all) {
     const parks = JSON.parse(tick.dataset.parks);
     each('/need', parks.map(park => ({fairway: park.fairway, parked: park.t, need: Number(tick.dataset.need)})));
   }
@@ -342,6 +361,12 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
         # Said already: what was sent and where it stands, until the captain carries it and the park clears.
         buttons = (f'<p class="placed"><span><b>You said:</b> {esc(sent[-1].get("text", ""))}</span>'
                    f'<small class="{esc(sent[-1].get("tone", ""))}">{esc(sent[-1].get("line", ""))}</small></p>')
+    elif controls and group.get("source") == "told" and not group.get("probably") \
+            and any(need.get("met") != "yes" and need.get("by") != "person" for need in needs):
+        # The mender lands these between reds, and stops after its attempts; this is the one way to start it
+        # again, instead of a person editing the file on trunk by hand (`deck.mend_again`).
+        buttons = (f'<button type="button" class="go" data-mend-again=\'{esc(parks)}\'>Have the mender try again'
+                   f'</button>')
     elif controls and group.get("source") != "told":
         # A hand-back's needs are met by trunk or ticked one by one; nothing a person says carries it on.
         label = "I have landed it, carry on" if cause == "host" else "Sorted, carry on"
@@ -389,16 +414,28 @@ def groups_html(groups: list[dict], controls: bool, now: datetime | None = None)
     """The groups a person acts on, then — apart, each under its own heading — the hand-backs of merged slices
     that are probably done, to confirm with a tick, and the parks an earlier slipwai wrote, to dismiss."""
     acting = [g for g in groups if not g.get("probably") and not g.get("obsolete")]
-    said = "".join(group_card(group, controls, now) for group in acting)
-    for key, title, hint in (("probably", "Probably done — confirm?",
-                              "Their slices have merged and trunk cannot be asked: tick each that landed."),
-                             ("obsolete", "Obsolete — dismiss?",
-                              "Written by an earlier slipwai; nothing acts on them.")):
-        mine = [g for g in groups if g.get(key)]
-        if mine:
-            said += (f'<div class="wait-group {key}" id="{key}"><h3>{esc(title)} <span class="count">{len(mine)}'
-                     f'</span> <small>{esc(hint)}</small></h3>{"".join(group_card(g, controls, now) for g in mine)}'
-                     f"</div>")
+    # In the order a person should spend their attention: what only they can decide, then what the harness
+    # can do once asked, then tidying. One list in arrival order put eleven CSS hand-backs above the one
+    # verdict that held the project, and a person read the whole of it as chores to do by hand.
+    sections = (("judgement", "Needs your judgement", "Only you can answer these.",
+                 [g for g in acting if g.get("source") != "told"], ""),
+                ("harness", "The harness can do these",
+                 "Edits a slice may not make itself. The trunk mender lands them between reds; where it gave up, "
+                 "Have the mender try again starts it afresh.", [g for g in acting if g.get("source") == "told"], ""),
+                ("probably", "Probably done — confirm?",
+                 "Their slices have merged and trunk cannot be asked: tick each that landed.",
+                 [g for g in groups if g.get("probably")], "Confirm all"),
+                ("obsolete", "Obsolete — dismiss?", "Written by an earlier slipwai; nothing acts on them.",
+                 [g for g in groups if g.get("obsolete")], "Dismiss all"))
+    said = ""
+    for key, title, hint, mine, bulk in sections:
+        if not mine:
+            continue
+        press = (f' <button type="button" class="install" data-all="{key}">{esc(bulk)} {len(mine)}</button>'
+                 if bulk and controls and len(mine) > 1 else "")
+        said += (f'<div class="wait-group {key}" id="{key}"><h3>{esc(title)} <span class="count">{len(mine)}'
+                 f'</span> <small>{esc(hint)}</small>{press}</h3>{"".join(group_card(g, controls, now) for g in mine)}'
+                 f"</div>")
     return said
 
 

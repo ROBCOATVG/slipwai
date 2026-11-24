@@ -19,7 +19,10 @@ stream's (F, `docs/captain-agent-plan.md`); when they land, this button hands to
 """
 from __future__ import annotations
 
+# budget: 380 — the cards, the tab and its poll, and what is worth a person's eye apart from what was taken with
+# high confidence, which is folded and read in one press: one page of one log, drawn whole.
 import hashlib
+import json
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -128,6 +131,12 @@ SCRIPT = """
     if (event.target.closest('.decs .bar')) { keep(); filter(); }
   });
   document.addEventListener('click', async event => {
+    const many = event.target.closest('[data-decision-read-all]');
+    if (many) {
+      many.disabled = true;
+      if (await post('/decisions/read', {keys: JSON.parse(many.dataset.decisionReadAll)})) location.reload();
+      else many.disabled = false;
+    }
     const read = event.target.closest('[data-decision-read]');
     const sure = event.target.closest('[data-decision-confirm]');
     const card = (read || sure) && (read || sure).closest('article');
@@ -252,14 +261,17 @@ def card_html(one: Decision, here: bool = True) -> str:
             if one.awaiting else "") + change_button(one, here) + (
         "" if one.read else f'<button type="button" class="install" data-decision-read="{esc(one.key)}">Mark read'
                             "</button>")
+    # The decision in one line and its buttons; the options, what would change it and the whole entry under one
+    # fold. Every card drawn open made manda's tab 218,000 pixels of essays with a thousand buttons in them.
+    more = (options_html(one) + (f'<p class="rev"><b>Would change if:</b> {esc(plain(reverse))}</p>'
+                                 if reverse else "") + f"<dl>{rows}</dl>")
     return (f'<article class="{kind}" data-key="{esc(one.key)}" '
             f'data-stream="{esc(one.stream)}" data-slice="{esc(one.slice)}" '
             f'data-by="{esc(who(one.decided_by).split(",")[0])}" data-status="{esc(status_of(one))}">'
             f'<div class="meta">{"".join(part for part in meta if part)}</div>'
-            f'<h3 class="lead">{esc(plain(lead))}</h3>{asked}{options_html(one)}'
-            + (f'<p class="rev"><b>Would change if:</b> {esc(plain(reverse))}</p>' if reverse else "")
-            + f'<details data-card="{esc(one.key)}"><summary>Why, in full</summary><dl>{rows}</dl></details>'
-            f'<div class="acts">{acts}</div></article>')
+            f'<h3 class="lead">{esc(plain(lead))}</h3>{asked}<div class="acts">{acts}</div>'
+            f'<details data-card="{esc(one.key)}"><summary>Options and why, in full</summary>{more}</details>'
+            f"</article>")
 
 
 def grouped(found: list[Decision]) -> str:
@@ -285,27 +297,43 @@ def confidence(one: Decision) -> int:
     return SURE.get(said[0].strip(".,;") if said else "", 1)
 
 
+def worth(one: Decision) -> bool:
+    """A decision worth a person's eye: unread, and taken with less than high confidence."""
+    return not one.read and confidence(one) < SURE["high"]
+
+
 def unread(found: list[Decision]) -> int:
-    """The count on the tab: decisions nobody has read, which is what the decision ceiling counts.
+    """The count on the tab: decisions nobody has read that were not taken with high confidence.
 
     Not what awaits confirmation: agents stamp nearly every entry `awaiting human confirmation` — 64 of 69 on
-    game-club-manager's trunk — and a number that is always most of the log is one a person learns to ignore."""
-    return sum(1 for one in found if not one.read)
+    game-club-manager's trunk — and a number that is always most of the log is one a person learns to ignore.
+    Nor every unread one: manda's tab said *319 to review*, most of them high-confidence calls a person would
+    read only to agree with, and a number that large is one nobody starts on."""
+    return sum(1 for one in found if worth(one))
 
 
 def listing(found: list[Decision]) -> str:
     """The band the poll swaps: what nobody has read first, least sure first, then the rest."""
-    first = sorted((one for one in found if not one.read), key=confidence)
+    first = sorted((one for one in found if worth(one)), key=confidence)
+    sure = [one for one in found if not one.read and not worth(one)]
     rest = [one for one in found if one.read]
-    waiting = sum(1 for one in found if one.awaiting)
-    says = (f"{len(found)} decision{'s' if len(found) != 1 else ''} · {len(first)} unread · {waiting} awaiting "
-            "your confirmation · grouped by capability, then slice")
+    says = (f"{len(found)} decision{'s' if len(found) != 1 else ''} · {len(first)} worth your eye · {len(sure)} "
+            "taken with high confidence and not read · grouped by capability, then slice")
     html = f'<p class="says">{says}</p>'
     if first:
-        html += (f'<h3 class="part">Not read yet, least sure first · {len(first)}</h3>'
+        html += (f'<h3 class="part">Worth your eye: medium or low confidence · {len(first)}</h3>'
                  f"<div>{grouped(first)}</div>")
+    else:
+        html += '<p class="empty">Nothing needs your eye: every unread decision was taken with high confidence.</p>'
+    if sure:
+        keys = esc(json.dumps([one.key for one in sure]))
+        html += (f'<details class="part-fold"><summary><h3 class="part">Taken with high confidence, not read · '
+                 f'{len(sure)}</h3></summary><p><button type="button" class="install" '
+                 f"data-decision-read-all='{keys}'>Mark all {len(sure)} read</button></p>"
+                 f"<div>{grouped(sure)}</div></details>")
     if rest:
-        html += f'<h3 class="part">Everything else · {len(rest)}</h3><div>{grouped(rest)}</div>'
+        html += (f'<details class="part-fold"><summary><h3 class="part">Read · {len(rest)}</h3></summary>'
+                 f"<div>{grouped(rest)}</div></details>")
     return f'<div class="dec-list">{html}</div>'
 
 

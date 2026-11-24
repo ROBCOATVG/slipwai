@@ -17,9 +17,10 @@ from html import escape as esc
 from .passage import Stage, current
 
 STYLE = """
-.held{margin:0;color:var(--ink-2)}
-.held b{color:var(--critical)}
-.held a{margin-left:6px}
+.lock-why{margin:0;padding:0;border:0;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.lock-why b{color:var(--critical)}
+.lock-why a{font:inherit;padding:8px 14px;border-radius:8px;background:var(--brass);color:var(--paper);
+  text-decoration:none;font-weight:600}
 """
 
 #: Run by the strip's paint after the buttons are shown or hidden: the poll carries `held` beside `launchable`.
@@ -45,6 +46,6 @@ def held_for(found: list[Stage], held: str) -> str:
 
 def line(held: str) -> str:
     """The sentence under the locked button, always in the page so the poll can fill or empty it."""
-    return (f'<p class="held" id="launch-held"{"" if held else " hidden"}><b>Locked:</b> '
+    return (f'<p class="lock-why" id="launch-held"{"" if held else " hidden"}><b>Locked:</b> '
             f'<span>{esc(held)}</span><a href="#mockups"{"" if "storyboard" in held else " hidden"}>'
-            "Open the storyboards</a></p>")
+            "Open the storyboard to approve it</a></p>")

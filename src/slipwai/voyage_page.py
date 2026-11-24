@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 from .bridge_page import SCRIPT as BOARD_SCRIPT
 from .bridge_page import fitting_card
@@ -55,8 +56,12 @@ from .trunk_card import STYLE as TRUNK_STYLE
 from .try_card import SCRIPT as TRY_SCRIPT
 from .try_card import STYLE as TRY_STYLE
 from .voyage import COLUMNS, SPEC, SPEC_ROUTE, states_of, viewer_config
+from .your_turn import SCRIPT as TURN_SCRIPT
+from .your_turn import STYLE as TURN_STYLE
+from .your_turn import box, classes, turn
 
-# budget: 795 — a locked Continue the build shown with why (`launch_lock`);
+# budget: 806 — the step box and the strip's current stage (`your_turn`), a locked Continue the build
+# shown with why (`launch_lock`);
 # the verdict due is a button and holds Model it next back (the storyboard, its verdict and its
 # conversation went to `storyboard_card.py`) the one poll that keeps every band current, and the bands of one
 # window, and who decided each state the storyboard's note counts: where the project stands, what to expect of
@@ -239,7 +244,7 @@ function paintPassage(found){
     const button = document.getElementById(id);
     if (button) { button.hidden = !found[flag]; if (id !== 'launch' && id !== 'cast-off') button.disabled = false; }
   }
-  paintHeld(found);
+  paintHeld(found); paintTurn(found);
 }
 // One poll keeps the whole page current: /live.json every few seconds, one read on the server shared by
 // every window, carrying each band's signature and drawing. A band is swapped only when its signature moved,
@@ -432,7 +437,7 @@ MODEL_SCRIPT = """
 """
 
 
-def stage_html(stage: Stage, index: int) -> str:
+def stage_html(stage: Stage, index: int, extra: str = "") -> str:
     """One stage of the strip. A stage waiting on a person is a link to the thing that is waiting: the
     inbox for the fleet's stages, the receipt for the board's own child.
 
@@ -448,14 +453,15 @@ def stage_html(stage: Stage, index: int) -> str:
                  else "#mockups" if stage.key == "storyboard" else "#fitting")
         title = f'<a href="{where}">{title}</a>'
     shown = "" if stage.state == "skipped" else stage.evidence
-    return (f'<div class="stage {esc(stage.state)}" data-stage="{esc(stage.key)}" role="listitem">'
+    named = f"{stage.state} {extra}".strip()
+    return (f'<div class="stage {esc(named)}" data-stage="{esc(stage.key)}" role="listitem">'
             f'<div class="dot">{esc(dot)}</div><b>{title}</b><small>{esc(stage.detail)}</small>'
             f'<span class="ev">{esc(shown).replace("/", "/<wbr>")}</span></div>')
 
 
-def stage_payload(found: list[Stage]) -> list[dict[str, str]]:
+def stage_payload(found: list[Stage]) -> list[dict[str, Any]]:
     """What the poll repaints: the stage, its state, its dot and its words."""
-    return [{"key": one.key, "state": one.state, "detail": one.detail,
+    return [{"key": one.key, "state": one.state, "detail": one.detail, "elsewhere": one.elsewhere,
              "dot": DOTS.get(one.state, "") or str(index + 1)} for index, one in enumerate(found)]
 
 
@@ -497,7 +503,8 @@ def expect_card(found: list[Stage]) -> str:
 def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bool, castable: bool = False,
                  stoppable: bool = False, feature: str = "", drawable: bool = False, shape: str = "",
                  modelable: bool = False, draftable: bool = False, held: str = "") -> str:
-    strip = "".join(stage_html(one, index) for index, one in enumerate(found))
+    extra = classes(found)
+    strip = "".join(stage_html(one, index, extra[one.key]) for index, one in enumerate(found))
     wide = f"--stages:{max(1, len(found))}"
     said = now_said(found)
     # On the event profile the step after the specification is a conversation, not a button: the chart is
@@ -535,7 +542,7 @@ def passage_card(name: str, found: list[Stage], launchable: bool, model_next: bo
                    f"Open specs/{esc(feature)}/{esc(SPEC)}</a>")
     return (f'<div class="card" id="passage" data-shape="{esc(shape)}"><h2>{esc(name)}</h2>'
             f'<div class="passage" role="list" style="{esc(wide)}">{strip}</div>'
-            f'<div class="next"><p id="now">{esc(said)}</p><div class="ask">{button}</div>{line(held)}</div></div>')
+            f'<div class="next">{box(found, said, button, line(held), held)}</div></div>')
 
 
 def model_card(xml: str, note: str, viewer_fault: str, said: str = "") -> str:
@@ -742,11 +749,12 @@ def page(root: Path, found: list[Stage], rows: list[dict[str, str]], fault: str,
             ("next", "Next features", next_features(root, ideas or []))]
     body = (f"<style>{STYLE}{TRY_STYLE if trying else ''}{FEEDBACK_STYLE if feedback else ''}"
             f"{DECISIONS_STYLE if decisions[0] else ''}{LIVE_STYLE}{SLICE_STYLE}{FILM_STYLE}{FLEET_STYLE}"
-            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}{INTAKE_STYLE}{LOCK_STYLE}</style>"
+            f"{MACHINERY_STYLE}{CAPTAINS_STYLE}{STORYBOARD_STYLE}{TRUNK_STYLE}{INTAKE_STYLE}{LOCK_STYLE}{TURN_STYLE}</style>"
             f"{where}{band('trunk', trunk)}{landed}{'' if adopting else band('expect', expect_card(found))}"
             f"{band('captains', captains)}"
             f"{tabs_html(tabs)}{console_card()}")
-    script = SCRIPT + LOCK_SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT + (TRY_SCRIPT if trying else "") \
+    script = SCRIPT + LOCK_SCRIPT + TURN_SCRIPT + FILM_SCRIPT + CAPTAINS_SCRIPT + STORYBOARD_SCRIPT \
+        + (TRY_SCRIPT if trying else "") \
         + (FEEDBACK_SCRIPT if feedback else "") + (DECISIONS_SCRIPT if decisions[0] else "") + INTAKE_SCRIPT \
         + ("" if viewer_fault or not xml else "\n")
     # Named for the project rather than "Voyage": this is a window of its own now, and what a person
@@ -787,7 +795,7 @@ def payload(found: list[Stage], launchable: bool, moving: bool, castable: bool =
             stoppable: bool = False, drawable: bool = False, shape: str = "", modelable: bool = False,
             waiting: dict | None = None, draftable: bool = False, writing: bool = False, held: str = "") -> str:
     return json.dumps({"stages": stage_payload(found), "launchable": launchable, "moving": moving,
-                       "held": held_for(found, held),
+                       "held": held_for(found, held), "turn": turn(found, held_for(found, held)),
                        "castable": castable, "stoppable": stoppable, "drawable": drawable, "modelable": modelable,
                        "draftable": draftable, "writing": writing,
                        "shape": shape, "now": now_said(found),

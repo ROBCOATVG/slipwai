@@ -19,6 +19,7 @@ import checkout_packages  # noqa: F401
 from slipwai import fleet, logs
 from slipwai.block_actions import KINDS, action, kind_of, said_lines
 from slipwai.cli_fleet import lines
+from slipwai.fleet_page import group_card
 from slipwai.project.harbour import harbour_config
 
 #: S97's park as manda's intake log holds it, cut to what the case needs.
@@ -94,6 +95,30 @@ class KindTest(unittest.TestCase):
         self.assertEqual(found["do"][0], "rotate the API key — then press Done beside it on this card.")
         self.assertNotIn("already done", " ".join(found["do"]))
         self.assertIn("I have landed it, carry on", found["do"][-1])
+
+    def test_a_park_on_the_events_module_rule_names_the_rule_and_what_carry_on_does(self) -> None:
+        """manda's S115 parked here with a card that said *a person or the host lands it on main*, which names
+        nobody on the board (issue 168). The card names the rule and what the button does."""
+        refusal = ("S115: make verify stops at check-slice-scope: apps/app/src/domain/intake/events.ts: the events "
+                   "module may only grow on a slice branch, and this change reads as a member removed "
+                   "(`, 'digest'`). Events already written are read back through it.")
+        found = action(park(slice="S115", cause="host", what=refusal))
+        self.assertEqual(found["kind"], "trunk")
+        self.assertIn("the events module may only grow", found["why"])
+        self.assertIn("the gate saw a member removed (`, 'digest'`)", found["why"])
+        self.assertNotIn("the host", " ".join([found["why"], *found["do"]]))
+        self.assertIn("I have landed it, carry on: S115 merges trunk and carries on", found["do"][-1])
+
+    def test_its_card_s_button_says_it_was_landed_whatever_the_park_s_cause(self) -> None:
+        said = "S115: events.ts: the events module may only grow on a slice branch, and this change reads as x."
+        row = park(slice="S115", what=said)
+        card = group_card({**row, "parks": [row], "slices": ["S115"], "action": action(row)}, controls=True)
+        self.assertIn(">I have landed it, carry on</button>", card)
+        self.assertNotIn("Sorted, carry on", card)
+
+    def test_a_park_in_the_gate_s_words_before_issue_168_is_read_the_same(self) -> None:
+        said = "S115: events.ts: the events module is the contract and grows additively — a line was removed."
+        self.assertEqual(action(park(slice="S115", what=said))["kind"], "trunk")
 
     def test_a_hand_back_is_landed_on_trunk_and_ticks_itself(self) -> None:
         need = {"what": "the S92 frame in model.yaml", "by": "fleet", "met": "no", "how": "model.yaml holds it"}

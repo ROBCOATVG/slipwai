@@ -104,6 +104,8 @@ SLOW += test_stream_strays
 SLOW += test_decisions_two_features
 # `check-try.py` run in a project, for a further feature's story.
 SLOW += test_further_feature_extras
+# A git repository per case: the events module judged on a real slice branch (issue 168).
+SLOW += test_slice_scope_events
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

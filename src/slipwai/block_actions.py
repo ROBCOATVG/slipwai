@@ -25,7 +25,7 @@ from .fleet_record import clock_of
 from .refusal_said import SAID
 
 #: Every kind of block, and the only ones. `other` is the fallback that quotes the park whole.
-KINDS = ("question", "ceiling", "decisions", "mockup", "grant", "person", "handback", "machine", "demo",
+KINDS = ("question", "ceiling", "decisions", "mockup", "grant", "person", "handback", "trunk", "machine", "demo",
          "paused", "unreadable", "probably", "obsolete", "other")
 #: A park that waits on a verdict on a drawing: the stage that gives one is `/mockups`, and a person approves it.
 MOCKUP = re.compile(r"/mockups\b|mock[- ]?(?:up|state)s?\b[^.;]{0,120}\b(?:approv|verdict)|"
@@ -37,6 +37,12 @@ GRANT = re.compile(r"\binfra/|\bIAM\b|\bbootstrap\b|\bses:|\biam:", re.IGNORECAS
 #: A run that stopped for a reason on the machine, not a question: it exited, went silent, or spent its budget.
 MACHINE = ("exit", "silence", "budget")
 PAUSED = ("limit", "trunk")
+#: A park on `check-slice-scope`'s events-module rule: a change only trunk may take, in the gate's words now
+#: and in the words it used before issue 168. manda's S115 parked on it with a card that said *a person or the
+#: host lands it on main*, which names nobody on the board.
+EVENTS_RULE = re.compile(r"the events module (?:may only grow|is the contract and grows additively)", re.IGNORECASE)
+#: What the gate saw, where its refusal says: `… and this change reads as a member removed (…). Events …`.
+EVENTS_SAW = re.compile(r"this change reads as (.+?)\. Events already")
 
 
 def first_sentence(text: str) -> str:
@@ -71,6 +77,8 @@ def kind_of(row: dict[str, Any]) -> str:
         return "paused"
     if MOCKUP.search(words_of(row)):
         return "mockup"
+    if EVENTS_RULE.search(words_of(row)):
+        return "trunk"
     if cause == "question":
         return "question"
     if any(need.get("by") == "person" for need in row.get("needs") or []) or cause == "host":
@@ -223,6 +231,16 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
                        f"Press Approve or Reject on {whose} card on the board: that writes "
                        f"`specs/{feature}/mockups/mock-states.md` as the storyboard's verdict does, and answers the "
                        f"park. Reject asks for one line on what to change."])
+    if kind == "trunk":
+        saw = EVENTS_SAW.search(words_of(row))
+        what = f" — the gate saw {saw.group(1)}" if saw else ""
+        whose = named or fairway
+        return (f"{whose} needs a change to its events module that only trunk may take: the events module may only "
+                f"grow on a slice branch{what}.",
+                ["Land that change on trunk as a commit of its own, from a checkout of main, with `make verify` "
+                 "green before you push. Nothing on the board lands it for you yet.",
+                 f"Then press I have landed it, carry on: {whose} merges trunk and carries on from where it "
+                 f"parked."])
     if kind in ("grant", "person", "handback"):
         steps = need_steps(row)
         if kind == "grant":

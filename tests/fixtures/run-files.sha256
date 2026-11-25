@@ -105,6 +105,7 @@
 # why: 2026-11-24 0b32d599743f41a2 a person's mend-again: the harbourmaster receipts it once and the mender's attempts at that hand-back count from it (harbourmaster.py, mender.py, logs.py)
 # why: 2026-11-24 5506f03a12ab54d2 spend.py keeps each benchmark record's reading until the file changes: the board read every record three times a request
 # why: 2026-11-25 1a35d057ae41be99 harbourmaster.py brings the person's checkout level with trunk after a push, names local-only trunk commits and says when its own scripts moved (#166)
+# why: 2026-11-25 f2a8bd4044074b84 check-slice-scope judges the events module's change by token, not by line: a widened enum, literal union or an added optional field is in scope (issue 168); every narrowing it refused it still refuses, with a message naming what it saw
 
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-memory-none  scripts/agents/ids.py
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-postgres-toy-serve  scripts/agents/ids.py
@@ -266,6 +267,10 @@
 644b44b96460af7bbcb4d0c0c6ed9f9775bf640f8417b64971625a572c159c6e  event-modelling-postgres-toy-serve  scripts/agents/logs.py
 644b44b96460af7bbcb4d0c0c6ed9f9775bf640f8417b64971625a572c159c6e  standard-memory-none  scripts/agents/logs.py
 644b44b96460af7bbcb4d0c0c6ed9f9775bf640f8417b64971625a572c159c6e  standard-postgres-toy-serve  scripts/agents/logs.py
+66257017e3332ecfe874a3fb909d66d2c7df5701cde8844a5a5aa7fab892f624  event-modelling-memory-none  scripts/check-slice-scope.py
+66257017e3332ecfe874a3fb909d66d2c7df5701cde8844a5a5aa7fab892f624  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
+66257017e3332ecfe874a3fb909d66d2c7df5701cde8844a5a5aa7fab892f624  standard-memory-none  scripts/check-slice-scope.py
+66257017e3332ecfe874a3fb909d66d2c7df5701cde8844a5a5aa7fab892f624  standard-postgres-toy-serve  scripts/check-slice-scope.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-memory-none  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  event-modelling-postgres-toy-serve  scripts/test_benchmark.py
 6b1af959893a9407e594a403592af193b4259ac4468466f76818004419177006  standard-memory-none  scripts/test_benchmark.py
@@ -500,10 +505,6 @@ f508c25f7a70a19c6b576dbe46fa60ad8337b81e59716816676442727daaaeee  event-modellin
 f508c25f7a70a19c6b576dbe46fa60ad8337b81e59716816676442727daaaeee  event-modelling-postgres-toy-serve  scripts/agents/launch.py
 f508c25f7a70a19c6b576dbe46fa60ad8337b81e59716816676442727daaaeee  standard-memory-none  scripts/agents/launch.py
 f508c25f7a70a19c6b576dbe46fa60ad8337b81e59716816676442727daaaeee  standard-postgres-toy-serve  scripts/agents/launch.py
-f5a2a774b7a8c0cb274dc6da36c0373abcf97ebfbb4dd52cd73965cf21bbef67  event-modelling-memory-none  scripts/check-slice-scope.py
-f5a2a774b7a8c0cb274dc6da36c0373abcf97ebfbb4dd52cd73965cf21bbef67  event-modelling-postgres-toy-serve  scripts/check-slice-scope.py
-f5a2a774b7a8c0cb274dc6da36c0373abcf97ebfbb4dd52cd73965cf21bbef67  standard-memory-none  scripts/check-slice-scope.py
-f5a2a774b7a8c0cb274dc6da36c0373abcf97ebfbb4dd52cd73965cf21bbef67  standard-postgres-toy-serve  scripts/check-slice-scope.py
 f61e9a247777509afd32e87d3df288fa6baa42da4ebc6736807524b865eed646  event-modelling-memory-none  scripts/event-model/render.ts
 f61e9a247777509afd32e87d3df288fa6baa42da4ebc6736807524b865eed646  event-modelling-postgres-toy-serve  scripts/event-model/render.ts
 f79b2d4f55db33311c800567e5e748930417f46f4eb73f08243844f40ba29149  event-modelling-memory-none  scripts/event-model/model.ts

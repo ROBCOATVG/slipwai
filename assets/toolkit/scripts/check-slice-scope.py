@@ -38,7 +38,11 @@ What a slice's change may contain — everything since the branch left `main`, c
   too** (`package-lock.json`, `pnpm-lock.yaml`, `uv.lock`): it is derived from the manifests, and where two
   slices' locks conflict the harbourmaster takes trunk's and writes it again (`scripts/agents/lockfiles.py`) — and, where the block names a `context`, nothing under another context's directory in
   `domain/` or `application/`. A browser app is open to every slice: a white box is one screen;
-- **the context's events module additively**: a line may be added, none removed. It is the contract;
+- **the context's events module additively**: it may only grow. A line may be added, and so may a member of an
+  enum or a union of literals and an optional field of a shape, in any language whose lists, unions and shapes
+  read as such (TypeScript and zod, Python, Go, Java); a member or field removed or renamed, a field made
+  required, a type changed, or anything the gate cannot read as one of these, is refused, naming which it saw.
+  It is the contract, and events already written are read back through it (issue 168);
 - **its own flag's declaration**, `infra/service/flags.auto.tfvars`, additively and seeded `off`: a key, a
   comment, a blank line may be added, nothing removed or changed. The method asks for the declaration in the
   same change as the code that reads it, and `check-flags` holds a branch to that — declared and never read is
@@ -78,10 +82,11 @@ slice), and a stale base charges the slice with `main`'s own files.
 
 from __future__ import annotations
 
+import difflib
+import fnmatch
 import importlib.util
 import json
 import os
-import fnmatch
 import re
 import subprocess
 import sys
@@ -200,6 +205,191 @@ def deletions(base: str, path: str) -> int:
         if len(parts) >= 2 and parts[1].isdigit():
             return int(parts[1])
     return 0
+
+
+# The events module may only grow.
+#
+# It used to be held by line: a line may be added and none removed (`deletions`). Widening an enum is the most
+# ordinary change an events module gets, and by line it is a removed line — manda's S115 needed
+# `z.enum(['alert', 'reminder', 'digest'])` to gain `'invite'`, was refused here, and parked for good, with
+# nothing on the board able to land it (issue 168). So the change is judged and not the line: the module is
+# read as tokens, comments and layout dropped, and every place it differs from the base must be a line added
+# or an insertion that only widens what an event may carry. Where it cannot tell, it refuses, as it always did,
+# and says what it saw.
+
+#: A token: a string (triple-quoted first), a number, a name, or one character of punctuation. Comments are
+#: matched so they can be dropped — `//` and `/* */` everywhere but Python, `#` in Python, where `//` divides.
+TRIPLE = r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\''
+STRINGS = TRIPLE + r'|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|`(?:\\.|[^`\\])*`'
+SLASH_COMMENT = r"//[^\n]*|/\*[\s\S]*?\*/"
+HASH_COMMENT = r"#[^\n]*"
+WORDS = r"\d+(?:\.\d+)?|[A-Za-z_$][\w$]*|\S"
+TOKENS = {
+    "slash": re.compile(f"(?P<comment>{SLASH_COMMENT})|(?P<token>{STRINGS}|{WORDS})"),
+    # A triple-quoted string in Python is a docstring far more often than a value, so it goes with the comments.
+    "hash": re.compile(f"(?P<comment>{HASH_COMMENT}|{TRIPLE})|(?P<token>{STRINGS}|{WORDS})"),
+}
+#: What separates the members of a list, a union or a shape.
+SEPARATORS = {",", "|", ";"}
+OPENING, CLOSING = {"(": ")", "[": "]", "{": "}"}, {")", "]", "}"}
+NAME = re.compile(r"^[A-Za-z_$][\w$]*$")
+LITERAL = re.compile(r"^(?:\"[\s\S]*\"|'[\s\S]*'|`[\s\S]*`|\d+(?:\.\d+)?)$")
+#: Names that make a growing list *narrow* what it allows — `.exclude([...])`, `Omit<T, 'a' | 'b'>`, a JSON
+#: schema's `required` — so a member added near one is not read as a widening.
+NARROWING = {"exclude", "omit", "pick", "required", "not", "except", "without"}
+#: What says a field may be absent. Taken away, the field became required.
+OPTIONAL_MARKS = {"optional", "nullish", "nullable", "Optional", "NotRequired", "None", "undefined", "null", "?"}
+
+
+def comment_style(path: str) -> str:
+    return "hash" if Path(path).suffix in (".py", ".pyi") else "slash"
+
+
+def code_lines(text: str, style: str) -> list[list[str]]:
+    """The module as lines of tokens, comments and blank lines dropped, so neither a comment nor a reflow is a
+    change. A token that spans lines belongs to the line it starts on."""
+    lines: dict[int, list[str]] = {}
+    line = 1
+    at = 0
+    for found in TOKENS[style].finditer(text):
+        line += text.count("\n", at, found.start())
+        at = found.start()
+        if found.group("token") is not None:
+            lines.setdefault(line, []).append(found.group("token"))
+    return [lines[number] for number in sorted(lines)]
+
+
+def split_members(run: list[str]) -> list[list[str]] | None:
+    """A run of tokens split at the separators outside any bracket, or None where its brackets do not balance —
+    an insertion that opens what it does not close is not a member."""
+    pieces: list[list[str]] = [[]]
+    depth: list[str] = []
+    for token in run:
+        if token in OPENING:
+            depth.append(OPENING[token])
+        elif token in CLOSING and (not depth or depth.pop() != token):
+            return None
+        if token in SEPARATORS and not depth:
+            pieces.append([])
+        else:
+            pieces[-1].append(token)
+    return None if depth else pieces
+
+
+def dotted(tokens: list[str]) -> bool:
+    """`Kind`, `z.literal`, `Kinds.INVITE`."""
+    return bool(tokens) and len(tokens) % 2 == 1 and all(
+        NAME.match(token) if index % 2 == 0 else token == "." for index, token in enumerate(tokens))
+
+
+def a_member(piece: list[str]) -> bool:
+    """A member of an enum or a union: `'invite'`, `z.literal('invite')`, `INVITE`, `INVITE("invite")` (Java),
+    `Invite = 'invite'` (a TypeScript enum), `InviteSent` (a schema in a union)."""
+    if len(piece) == 1:
+        return bool(LITERAL.match(piece[0]) or NAME.match(piece[0]))
+    if len(piece) >= 4 and piece[-3] == "(" and piece[-1] == ")" and LITERAL.match(piece[-2]):
+        return dotted(piece[:-3])
+    return len(piece) == 3 and bool(NAME.match(piece[0])) and piece[1] == "=" and bool(LITERAL.match(piece[2]))
+
+
+def a_key(token: str) -> bool:
+    return bool(NAME.match(token) or LITERAL.match(token))
+
+
+def an_optional_field(piece: list[str]) -> bool:
+    """A field a reader of an old event finds absent and is fine: `invitedBy?: string` (TypeScript),
+    `invitedBy: z.string().optional()` or `.nullish()` (zod). A Python or Go field is a line of its own, and a
+    line added is the module growing already."""
+    if len(piece) >= 4 and a_key(piece[0]) and piece[1] == "?" and piece[2] == ":":
+        return True
+    if len(piece) < 3 or not a_key(piece[0]) or piece[1] != ":":
+        return False
+    rest = piece[2:]
+    return len(rest) >= 4 and rest[-4:-2] in ([".", "optional"], [".", "nullish"]) and rest[-2:] == ["(", ")"]
+
+
+def a_field(piece: list[str]) -> bool:
+    return len(piece) >= 3 and a_key(piece[0]) and (piece[1] == ":" or piece[1:3] == ["?", ":"])
+
+
+def widening(run: list[str], after: list[str], end: int) -> str | None:
+    """Why an inserted run of tokens is not a widening, or None where it is: one or more members, or optional
+    fields, each with the separator that joins it to its neighbours — or a separator alone, a trailing comma."""
+    pieces = split_members(run)
+    if pieces is None:
+        return f"an insertion that does not close what it opens (`{' '.join(run)}`)"
+    if len(pieces) == 1:
+        if run == ["?"] and end < len(after) and after[end] == ":":
+            return (f"a field made optional (`{' '.join(run)}`), which a slice may not do to a field events "
+                    f"already carry")
+        return f"an insertion the gate cannot read as a new member or an optional field (`{' '.join(run)}`)"
+    inner = pieces[1:-1]
+    if any(not piece for piece in inner):
+        return f"an insertion the gate cannot read as a new member or an optional field (`{' '.join(run)}`)"
+    for piece in [piece for piece in pieces if piece]:
+        if a_member(piece) or an_optional_field(piece):
+            continue
+        if a_field(piece):
+            return f"a required field added to a shape events already carry (`{' '.join(piece)}`)"
+        return f"an insertion the gate cannot read as a new member or an optional field (`{' '.join(piece)}`)"
+    return None
+
+
+def words_of_name(token: str) -> set[str]:
+    return {word.lower() for word in re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])", token)}
+
+
+def taken_away(removed: list[str], added: list[str], before: str = "", following: str = "") -> str:
+    """What a deletion or a replacement did, in the words of the rule: a member removed or renamed, a field
+    removed, renamed or made required, a type changed — or that it cannot tell which. `before` and `following`
+    are the tokens either side of it, which say whether a name swapped is a key or a member, or a type."""
+    shown = " ".join(removed)
+    if (OPTIONAL_MARKS & set(removed)) - set(added):
+        return f"a field made required (`{shown}` taken away)"
+    if not added:
+        pieces = split_members(removed) or [removed]
+        if any(a_field(piece) for piece in pieces):
+            return f"a field removed (`{shown}`)"
+        if all(a_member(piece) for piece in pieces if piece):
+            return f"a member removed (`{shown}`)"
+        return f"something removed (`{shown}`)"
+    typed = before in (".", ":") and following != ":"
+    if len(removed) == len(added) == 1 and a_key(removed[0]) and a_key(added[0]) and not typed:
+        return f"a member or a field renamed (`{removed[0]}` became `{added[0]}`)"
+    return f"a type changed (`{shown}` became `{' '.join(added)}`)"
+
+
+def chunk_violation(before: list[str], after: list[str]) -> str | None:
+    """Why one changed stretch of the module is not a widening, or None where it is."""
+    narrowing = sorted({word for token in after if NAME.match(token) for word in words_of_name(token)} & NARROWING)
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, before, after, autojunk=False).get_opcodes():
+        if tag == "equal":
+            continue
+        if tag != "insert":
+            return taken_away(before[i1:i2], after[j1:j2], before[i1 - 1] if i1 else "",
+                              before[i2] if i2 < len(before) else "")
+        if why := widening(after[j1:j2], after, j2):
+            return why
+        if narrowing:
+            return (f"a member added beside `{narrowing[0]}`, where a longer list may allow less "
+                    f"(`{' '.join(after[j1:j2])}`)")
+    return None
+
+
+def events_violation(base_text: str, text: str, path: str) -> str | None:
+    """What the events module's change did that a slice may not do, or None where it only grows: lines added,
+    members added to an enum or a union of literals, optional fields added to a shape."""
+    style = comment_style(path)
+    old, new = code_lines(base_text, style), code_lines(text, style)
+    flat_old, flat_new = [" ".join(line) for line in old], [" ".join(line) for line in new]
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, flat_old, flat_new, autojunk=False).get_opcodes():
+        if tag in ("equal", "insert"):
+            continue  # a line added is the module growing, as it always was
+        before = [token for line in old[i1:i2] for token in line]
+        after = [token for line in new[j1:j2] for token in line]
+        if why := chunk_violation(before, after):
+            return why
+    return None
 
 
 def deployables() -> dict[str, dict]:
@@ -425,11 +615,30 @@ class Scope:
                     )
         stem = Path(path).stem
         if "domain" in parts and stem.lower().endswith("events") and status != "A" and deletions(self.base, path):
-            return (
-                f"{path}: the events module is the contract and grows additively — a line was removed. Add the new "
-                f"shape beside the old; retiring one is the host's, once nothing folds it."
-            )
+            return self.events_violation(path)
         return None
+
+    def events_violation(self, path: str) -> str | None:
+        """The events module changed with lines taken away: a widening, or what it did that only trunk may do."""
+        base_text = git("show", f"{self.base}:{path}")
+        try:
+            text = (ROOT / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            text = None
+        if base_text is not None and text is not None:
+            saw = events_violation(base_text, text, path)
+            if saw is None:
+                return None
+        else:
+            saw = "the module deleted" if text is None else "a change it could not read against the base"
+        return (
+            f"{path}: the events module may only grow on a slice branch, and this change reads as {saw}. Events "
+            f"already written are read back through it, so a slice may add lines, members of an enum or a union of "
+            f"literals, and optional fields — never remove, rename or retype what is there, or make a field "
+            f"required. Add the new shape beside the old one; where none can be added, the change is trunk's, "
+            f"landed on `main` as a commit of its own, and this slice merges trunk after it. Then "
+            f"`python3 scripts/check-slice-scope.py` again."
+        )
 
     def ledger_violation(self, path: str) -> str | None:
         """A slice branch carries its own dispatch ledger file and nothing else under `.slipwai/dispatch/`."""

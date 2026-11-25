@@ -369,7 +369,8 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
                    f'</button>')
     elif controls and group.get("source") != "told":
         # A hand-back's needs are met by trunk or ticked one by one; nothing a person says carries it on.
-        label = "I have landed it, carry on" if cause == "host" else "Sorted, carry on"
+        landed = cause == "host" or (group.get("action") or {}).get("kind") == "trunk"
+        label = "I have landed it, carry on" if landed else "Sorted, carry on"
         buttons = (f'<button type="button" class="go" data-tell-each=\'{esc(parks)}\' '
                    f'data-message="{esc(label.lower())}: {esc(title)}">{esc(label)}</button>')
     items = []

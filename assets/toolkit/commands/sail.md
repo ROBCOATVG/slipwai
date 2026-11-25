@@ -451,8 +451,7 @@ with the committed canvas `model.drawio` regenerated from it (`{{make}} model-dr
 holds the canvas to the model, so a slice that advanced its block cannot pass `verify` without it) and, on the
 event-modelling profile, the chart `specs/<feature>/chart.yaml` re-rendered the same way (`{{make}} chart`,
 which `check-chart` holds to the model), the mockups, the code and tests of the service that owns it — one bounded context where the service holds
-several — the context's events module *additively* (lines, members of an enum or a union of literals, optional
-fields; never a removal, a rename, a retype or a field made required), **new** migration files named by a timestamp
+several — the context's events module *additively*, **new** migration files named by a timestamp
 (`date -u +%Y%m%d%H%M`, so two slices never mint the same name), a **new** ADR under `docs/adr/` at
 `Proposed` (never an edit to one that stands), the composition root, its own flag's declaration in
 `infra/service/flags.auto.tfvars` — additively and seeded `off`, in the same change as the code that reads it

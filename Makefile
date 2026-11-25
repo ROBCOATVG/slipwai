@@ -57,6 +57,8 @@ SLOW += test_mender test_stop_the_line test_merge_handbacks
 SLOW += test_scaffold_starts_green
 SLOW += test_run_folder test_migration_manifest test_extension_projection
 SLOW += test_harbourmaster_stop
+# A repository and a forge per case: the person's checkout kept level with trunk, and the board saying when not.
+SLOW += test_merge_level test_checkout_on_board
 # Approve and Reject on a card, through the real captain and harbourmaster, and a board served.
 SLOW += test_park_verdict test_board_settles
 SLOW += test_example_map_source

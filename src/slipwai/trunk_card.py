@@ -15,6 +15,10 @@ its merge would have waited behind a red trunk. This draws `trunk_story`'s fold 
   link kept only where it is to the web), and the CI run's link where the run carries one;
 - **the item** under *Waiting on you*, while a harbour park stands.
 
+And the folder the board reads, against the forge's trunk (`checkout_level`, slipwai#166): a band at the top
+while it is behind, with the count, so an old project is never drawn as the current one; and an item under
+*Waiting on you* while the local trunk holds commits the forge's does not, naming them and how to land them.
+
 Every word that came from the log or the agent is escaped here; none of it reaches the page as markup.
 """
 from __future__ import annotations
@@ -23,7 +27,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-from .fleet_page import first_sentence, when
+from .fleet_page import first_sentence, plural, when
 from .page_shell import esc
 from .spec_page import STYLE as DOC_STYLE
 from .spec_page import rendered
@@ -52,6 +56,10 @@ STYLE = DOC_STYLE + """
 #trunk-mend .doc{margin-top:8px;max-height:560px;overflow:auto;padding:4px 12px;border:1px solid var(--rule);
   border-radius:7px;background:var(--paper)}
 #trunk-mend .runs{display:flex;flex-wrap:wrap;gap:8px;font-size:.85rem}
+#checkout{display:grid;gap:6px;border-left:5px solid var(--brass);background:var(--brass-soft)}
+#checkout h2{margin:0;font-size:1.05rem}
+#checkout p{margin:0;font-size:.9rem;line-height:1.45;overflow-wrap:anywhere}
+#checkout code{font-family:var(--mono);font-size:.82rem}
 @media (max-width:640px){#trunk-mend .mend-row{grid-template-columns:1fr 1fr}#trunk-mend .mend-row .why{
   grid-column:1 / -1}}
 """
@@ -134,6 +142,45 @@ def held_item(trunk: dict[str, Any]) -> list[dict[str, Any]]:
         return []
     why = first_sentence(str(parked.get("why") or "trunk is red and nobody is sent to fix it"), 170)
     return [{"n": 1, "href": "#trunk", "text": f"Trunk: {why}"}]
+
+
+def checkout_band(trunk: dict[str, Any]) -> str:
+    """Above the Voyage while the folder the board reads is behind the forge's trunk — by how much, and how to
+    bring it level — or while its local trunk has commits of its own, which are landed first."""
+    level = trunk.get("checkout") or {}
+    behind, name = int(level.get("behind") or 0), str(level.get("trunk") or "main")
+    stranded = [str(one) for one in level.get("stranded") or []]
+    if behind <= 0 and not stranded:
+        return ""
+    own = (f"<p>Local <code>{esc(name)}</code> has {esc(plural(len(stranded), 'commit'))} the forge's does not, "
+           f"and nothing pushes them: {esc('; '.join(one[:80] for one in stranded[:5]))}"
+           f"{esc(f'; and {len(stranded) - 5} more') if len(stranded) > 5 else ''}. Put them on a branch and push "
+           f"it — <code>git branch keep-local {esc(name)}</code>, <code>git push origin keep-local</code> — and "
+           f"open a pull request. Never reset or rebase <code>{esc(name)}</code> over them.</p>" if stranded else "")
+    if behind <= 0:
+        return (f'<div class="card" id="checkout" role="status"><h2>This checkout has commits trunk does not'
+                f"</h2>{own}</div>")
+    then = (f"Once they are on the forge, <code>git switch -C {esc(name)} origin/{esc(name)}</code> here brings "
+            f"it level; until then it stays behind." if stranded else
+            "<code>git pull --ff-only</code> here brings it level.")
+    return (f'<div class="card" id="checkout" role="status"><h2>This checkout is '
+            f"{esc(plural(behind, 'commit'))} behind the forge's {esc(name)}</h2><p>The board reads the project "
+            f"from this folder, so what it draws is that older project: slices merged since are not on it."
+            f"</p>{own}<p>{then}</p></div>")
+
+
+def stranded_item(trunk: dict[str, Any]) -> list[dict[str, Any]]:
+    """The local trunk's own commits, which nothing pushes, as one item under *Waiting on you*."""
+    level = trunk.get("checkout") or {}
+    stranded = [str(one) for one in level.get("stranded") or []]
+    if not stranded:
+        return []
+    name = str(level.get("trunk") or "main")
+    listed = "; ".join(one[:80] for one in stranded[:3]) + (f"; and {len(stranded) - 3} more"
+                                                             if len(stranded) > 3 else "")
+    return [{"n": 1, "href": "#checkout",
+             "text": f"Local {name} has {plural(len(stranded), 'commit')} the forge's {name} does not, and nothing "
+                     f"pushes them: {listed}. Put them on a branch and push it"}]
 
 
 def attempt_row(one: dict[str, Any], now: datetime | None = None) -> str:

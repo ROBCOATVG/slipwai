@@ -40,8 +40,7 @@ from .settings_card import project_tabs, settings
 from .slice_card import lit
 from .storyboard_card import copy_said, live
 from .storyboard_card import payload as talk_payload
-from .trunk_card import band_html as trunk_band
-from .trunk_card import mend_card
+from .trunk_card import band_html, checkout_band, mend_card
 from .trunk_remote import card as remote_card
 from .try_card import card as try_card
 from .try_card import payload as try_payload
@@ -62,6 +61,11 @@ from .voyage_page import page as voyage_page
 from .voyage_page import payload as voyage_payload
 
 JSON = "application/json; charset=utf-8"
+
+
+def trunk_band(trunk: dict) -> str:
+    """The band at the top: the folder the board reads, where it is behind trunk, then trunk's own CI."""
+    return checkout_band(trunk) + band_html(trunk)
 
 
 def parts(board: Any) -> tuple[list, list[dict[str, str]], str, dict, dict, Read]:

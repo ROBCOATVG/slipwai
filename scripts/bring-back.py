@@ -61,8 +61,9 @@ ASSETS_HERE = trees_here()
 # Written for version 2 rather than brought back, so the ledger will never hold them.
 OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_page", "board_read", "voyage_live",
        "on_you", "fleet_tab", "demos",
-       # Trunk on the board: the trunk mender's attempts and words, folded and drawn.
-       "trunk_story", "trunk_card",
+       # Trunk on the board: the trunk mender's attempts and words, folded and drawn; and whether the folder
+       # the board reads is level with the forge's trunk (#166).
+       "trunk_story", "trunk_card", "checkout_level",
        # A file read once until it changes: the board reads the same records on every request.
        "file_memo",
        # Every press on the board said: pressed, working, and what came of it.

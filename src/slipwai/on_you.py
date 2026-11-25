@@ -29,7 +29,7 @@ from .stage_session import running
 from .storyboard_card import waiting_said
 from .talk_waits import captain_window
 from .talk_waits import items as talk_items
-from .trunk_card import held_item
+from .trunk_card import held_item, stranded_item
 from .upstream import NAMED, held_by, unjudged
 from .waiting_inbox import inbox
 
@@ -127,7 +127,7 @@ def waiting(board: Any, fleet: dict[str, Any], able: dict[str, bool],
     the button there agree; a stage still running offers no button, and is not a wait. `trunk` is the
     board's (`trunk_story`): a park the harbour wrote with no fairway — the trunk mender's attempts spent, or
     no mender at all — holds every merge, and is first."""
-    holding: list[dict[str, Any]] = held_item(trunk or {})
+    holding: list[dict[str, Any]] = held_item(trunk or {}) + stranded_item(trunk or {})
     asked = open_asks(board)
     if asked:
         holding.append({"n": asked, "href": "#stage-asks", "text": "The agent asks you something" if asked == 1

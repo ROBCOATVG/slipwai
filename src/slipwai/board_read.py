@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from .activity import live
+from .checkout_level import level
 from .fleet import ASKED, board, harbour_log
 from .harbour import config
 from .logs import Entry
@@ -86,8 +87,10 @@ def fold(root: Path) -> Read:
         if fault or (isinstance(unreadable, dict) and unreadable.get("clearance")):
             ANSWERED.clear()  # the shell's answer may be why: the next read asks it again
         harbour = harbour_log(root)
+        # And whether this folder is level with the forge's trunk, which is how old a project it is drawing.
         return Read(rows, fault, fleet, held, live(root, rows), feedback_points(root),
-                    {**trunk_of(harbour), **story(root, harbour, held)})
+                    {**trunk_of(harbour), **story(root, harbour, held),
+                     "checkout": level(root, held.get("trunk"))})
     finally:
         ASKED.reset(asked)
         KEEP_LOGIN.reset(login)

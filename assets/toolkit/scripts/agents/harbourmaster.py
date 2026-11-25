@@ -79,6 +79,7 @@ has no slipwai to import. `logs.py` and `berths.py` beside it are the keel's own
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -381,27 +382,33 @@ def advance(name: str, commit: str) -> tuple[str, str, bool]:
     other machine or person pushed in between. That is not a fault in the slice or in anything a person
     must decide, so `merge` reads it as *gate it again on the new trunk* rather than as a refusal.
 
-    Pushed where there is a remote, because then nobody's working tree is touched and every checkout catches
-    up on its own next fetch. A remote with no trunk on it yet — a repository made empty on the forge, which
-    is what a board-given remote usually is — is given trunk by this push, and the local branch is moved as
-    well so the two start equal: game-club-manager merged locally for a day with a remote nothing was ever
-    pushed to, because only a remote that already had trunk was pushed to. With no remote there is only the
-    local ref — and if the person's own checkout
-    is sitting on trunk, moving the ref under it would leave their working tree looking like a mass
-    deletion, so that case is a fast-forward in their checkout.
+    **Where there is a remote with trunk on it, trunk is the forge's, and it is pushed there.** A fetch moves
+    `origin/<trunk>` and nothing else: the person's own local trunk moves only when somebody moves it, so a
+    push alone left manda's checkout where it was last pulled while 493 commits landed on the forge, and the
+    board drew that day-old project and the harbourmaster ran day-old scripts out of it (slipwai#166). So
+    after the push the person's checkout is brought level where that is a fast-forward and nothing else
+    (`level`): it is never reset, rebased or detached, and where git refuses, the note says so and why.
+
+    A remote with no trunk on it yet — a repository made empty on the forge, which is what a board-given
+    remote usually is — is given trunk by this push, and the local branch is moved as well so the two start
+    equal: game-club-manager merged locally for a day with a remote nothing was ever pushed to, because only
+    a remote that already had trunk was pushed to. With no remote there is only the local ref — and if the
+    person's own checkout is sitting on trunk, moving the ref under it would leave their working tree looking
+    like a mass deletion, so that case is a fast-forward in their checkout.
 
     **A person's uncommitted changes never stop the run.** For a long while they did: any edit on trunk
     refused the merge, the refusal was not one a berth could fix, and the fairway parked behind a slice that
     had already passed its gate — a whole voyage stopped by an `AGENTS.md` nobody had committed. Git's own
     fast-forward already refuses only where the merge would overwrite a changed file, so it is asked first.
-    Where it does refuse, the checkout is detached exactly where it stands — working tree and index
-    untouched — and the ref moves on without it: the person's work is all still there, and switching back
-    to trunk is theirs to do when they have committed or stashed it.
+    With no remote, the local ref *is* trunk, so where git does refuse, the checkout is detached exactly
+    where it stands — working tree and index untouched — and the ref moves on without it: the person's work
+    is all still there, and switching back to trunk is theirs to do when they have committed or stashed it.
+    With a remote, trunk has already moved on the forge, so nothing is detached: the checkout stays as it is.
     """
     if git("rev-parse", "--verify", "--quiet", "origin/" + name).returncode == 0:
         pushed = git("push", "origin", f"{commit}:refs/heads/{name}")
         if pushed.returncode == 0:
-            return "", "", False
+            return "", level(name, commit), False
         return last_line(pushed), "", bool(MOVED_UNDER.search(pushed.stderr or ""))
     if has_origin():
         pushed = git("push", "origin", f"{commit}:refs/heads/{name}")
@@ -424,6 +431,123 @@ def advance(name: str, commit: str) -> tuple[str, str, bool]:
         note = ""
     moved = git("update-ref", f"refs/heads/{name}", commit)
     return ("" if moved.returncode == 0 else last_line(moved)), note, False
+
+
+def stranded(name: str, against: str = "") -> list[str]:
+    """The commits on the local trunk the forge's does not have, each `<short id> <subject>`: a person's own,
+    made in this checkout. Nothing here pushes, resets or rebases them; they are named, so they are landed
+    before a pull, a reset or a tidy throws them away — manda's D499, D500 and ADR 0027 sat here for a day
+    while the fleet gave those numbers to other decisions on trunk."""
+    against = against or f"refs/remotes/origin/{name}"
+    if any(git("rev-parse", "--verify", "--quiet", ref).returncode != 0 for ref in (f"refs/heads/{name}", against)):
+        return []
+    found = git("log", "--format=%h %s", f"{against}..refs/heads/{name}")
+    return [line.strip() for line in found.stdout.splitlines() if line.strip()] if found.returncode == 0 else []
+
+
+def stranded_said(name: str, commits: list[str]) -> str:
+    """What a person reads about their trunk's own commits, with how to land them."""
+    listed = "; ".join(commits[:5]) + (f"; and {len(commits) - 5} more" if len(commits) > 5 else "")
+    return (f"local {name} has {len(commits)} commit{'s' if len(commits) != 1 else ''} the forge's {name} does "
+            f"not ({listed}), so it was not moved and they are where they were. Nothing pushes them: put them "
+            f"on a branch and push it (`git branch keep-local {name}`, `git push origin keep-local`) and open a "
+            f"pull request; never reset or rebase {name} over them")
+
+
+def level(name: str, commit: str) -> str:
+    """Bring the person's local trunk to the commit just pushed, where that is a fast-forward. What was not
+    done and why, or `""` where it is level or was made so.
+
+    The same rules as the no-remote path, less its detach. On trunk, git's own `merge --ff-only`, which
+    refuses rather than overwrite an uncommitted change — and a refusal leaves the tree exactly as it is.
+    On any other branch, the local trunk ref moves only as `git fetch origin main:main` would move it: a
+    strict fast-forward, and never under a worktree that has it checked out. A local trunk with commits of
+    its own is not an ancestor, so it is never moved off them; they are named instead (`stranded`).
+    """
+    here = git("rev-parse", "--verify", "--quiet", f"refs/heads/{name}")
+    if here.returncode != 0 or here.stdout.strip() == commit:
+        return ""
+    if git("merge-base", "--is-ancestor", f"refs/heads/{name}", commit).returncode != 0:
+        return stranded_said(name, stranded(name, commit))
+    head = git("symbolic-ref", "--quiet", "--short", "HEAD")
+    if head.returncode == 0 and head.stdout.strip() == name:
+        moved = git("merge", "--ff-only", "--quiet", commit)
+        if moved.returncode == 0:
+            return ""
+        return (f"this checkout is on {name} and was left exactly where it stood, behind the forge's {name}: "
+                f"git would not fast-forward it ({last_line(moved)}). Nothing in it was touched; commit or stash "
+                f"what is uncommitted, then `git merge --ff-only origin/{name}`")
+    moved = git("fetch", "--quiet", ".", f"{commit}:refs/heads/{name}")
+    if moved.returncode == 0:
+        return ""
+    return (f"local {name} was left where it stood, behind the forge's {name}: git would not fast-forward it "
+            f"({last_line(moved)}). `git fetch origin {name}:{name}` moves it once it can be")
+
+
+#: Each of this directory's scripts this process has loaded, with a digest of what it read: what it is
+#: running, which a merge that moves the checkout under it does not change (`scripts_moved`).
+LOADED: dict[str, str] = {}
+#: The scripts last said to have moved, so a long run says it once per change rather than once per merge.
+SAID_MOVED: dict[str, str] = {}
+
+
+def digest(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
+def scripts_loaded() -> dict[str, str]:
+    """This directory's modules in this process, by file name, each with the digest of what is on disk now."""
+    found: dict[str, str] = {}
+    for module in list(sys.modules.values()):
+        named = getattr(module, "__file__", None)
+        if named and Path(named).resolve().parent == HERE:
+            found[Path(named).name] = digest(Path(named).resolve())
+    return found
+
+
+LOADED.update(scripts_loaded())  # here, below every import of the module, so it is what this process holds
+
+
+def scripts_moved() -> list[str]:
+    """The scripts this process loaded that differ on disk now, by name: a merge moved them under it."""
+    return sorted(name for name, was in LOADED.items() if digest(HERE / name) != was)
+
+
+def at_start() -> list[str]:
+    """What this process is running, said at start where it is not trunk's, each a line to print.
+
+    The scripts it loaded are this checkout's, so where the checkout is behind the forge's trunk they are
+    older than trunk's; and the local trunk's own commits nobody pushed are named, as each merge names them.
+    """
+    name = trunk()
+    if git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{name}").returncode != 0:
+        return []
+    said: list[str] = []
+    counted = git("rev-list", "--count", f"HEAD..refs/remotes/origin/{name}").stdout.strip()
+    if counted.isdigit() and int(counted):
+        said.append(f"this checkout is {counted} commit{'s' if counted != '1' else ''} behind the forge's {name}, "
+                    f"so the scripts this harbourmaster runs are older than trunk's: `git pull --ff-only` here, "
+                    f"then restart it")
+    own = stranded(name)
+    if own:
+        said.append(stranded_said(name, own))
+    return said
+
+
+def after_merge() -> list[str]:
+    """A script this process loaded that a merge has changed on disk since, said once per change: the merge
+    moved the checkout and this process is still the old code. A restart on the person's word is the
+    answer; nothing here reloads itself, since a harbourmaster swapping its code mid-merge is worse."""
+    moved = {one: digest(HERE / one) for one in scripts_moved()}
+    if not moved or moved == SAID_MOVED:
+        return []
+    SAID_MOVED.clear()
+    SAID_MOVED.update(moved)
+    return [f"the scripts this harbourmaster loaded have changed on disk since it started ({', '.join(moved)}), "
+            f"so it is running older code than the checkout now holds. Restart it to run what is on disk"]
 
 
 def last_line(done: subprocess.CompletedProcess[str]) -> str:
@@ -926,7 +1050,7 @@ def merge(slice_id: str, spent: dict[str, int] | None = None, fairway: str = "")
     """Rebase this slice onto trunk, gate it there, and advance trunk.
 
     `(commit, "", False, note)` where it landed — the note saying what was done to the person's checkout to
-    land it, if anything — or `("", why not, whether a berth can fix it, "")`. That flag is
+    land it, or why it was not brought level with trunk (`level`), if anything — or `("", why not, whether a berth can fix it, "")`. That flag is
     what tells a captain whether to go back into its berth and try again or to stop and park: a conflict and
     a failed gate are work on code, and a missing branch or an unmovable trunk are not.
 
@@ -1315,6 +1439,8 @@ def answer(entry: logs.Entry, trunk_state: str = "unverified", trunk_why: str = 
     # `before-merge` was the nearest wrong answer.
     fire("after-merge", slice=slice_id, fairway=fairway, commit=commit)
     refresh_try_it(slice_id)
+    for line in after_merge():
+        print(f"harbourmaster: {line}", flush=True)
     # `ci` says what was known about trunk when this was granted. `unverified` is not `green`: a harbour
     # with no forge keeps working, and nobody reads the line later as a run that was checked.
     # `note` only where the person's checkout was touched to land it, so a reader who finds their branch
@@ -2169,6 +2295,11 @@ def main(argv: list[str]) -> int:
         return 0 if ok else 1
     if not parsed.once:
         signal.signal(signal.SIGTERM, asked_to_stop)
+    if not parsed.no_fetch:
+        git("fetch", "--quiet", "origin", trunk())
+    # What this process is running, and the local trunk's own commits, said once before the first pass.
+    for line in at_start():
+        print(f"harbourmaster: {line}", flush=True)
     try:
         while True:
             if not parsed.no_fetch:

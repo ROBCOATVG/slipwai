@@ -242,8 +242,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               # carries every band, the one list of what waits on a person, and the Fleet tab's machinery.
               "board_read", "voyage_live", "on_you", "fleet_tab",
               # And trunk on it: what the trunk mender did about a red trunk, folded, and drawn as a band,
-              # a card on the Fleet tab and an item under Waiting on you.
-              "trunk_story", "trunk_card",
+              # a card on the Fleet tab and an item under Waiting on you; and whether the folder the board
+              # reads is level with the forge's trunk, and which of its trunk's commits only it has.
+              "trunk_story", "trunk_card", "checkout_level",
               # And every press on the board said: pressed, working, and what came of it.
               "press_feedback",
               # And Continue the build, locked: shown disabled with why, never hidden.

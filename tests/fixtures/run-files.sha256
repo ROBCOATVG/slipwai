@@ -104,6 +104,7 @@
 # why: 2026-11-23 89ded76eaf32367c slipwai#154: the harbourmaster applies a hand-back as committed, against the index, so a Windows checkout with core.autocrlf lands it; same behaviour on macOS and Linux
 # why: 2026-11-24 0b32d599743f41a2 a person's mend-again: the harbourmaster receipts it once and the mender's attempts at that hand-back count from it (harbourmaster.py, mender.py, logs.py)
 # why: 2026-11-24 5506f03a12ab54d2 spend.py keeps each benchmark record's reading until the file changes: the board read every record three times a request
+# why: 2026-11-25 1a35d057ae41be99 harbourmaster.py brings the person's checkout level with trunk after a push, names local-only trunk commits and says when its own scripts moved (#166)
 
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-memory-none  scripts/agents/ids.py
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-postgres-toy-serve  scripts/agents/ids.py
@@ -181,10 +182,6 @@
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  event-modelling-postgres-toy-serve  scripts/check-chart.py
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  standard-memory-none  scripts/check-chart.py
 4262c189f08cb385b382a9a6f72492a08f531ae6b6a0e258f6ee087e6d4c794e  standard-postgres-toy-serve  scripts/check-chart.py
-439f0112b9e75cad490a677882b2b2b71aaa920e2842351bf4d5dee6c211392e  event-modelling-memory-none  scripts/agents/harbourmaster.py
-439f0112b9e75cad490a677882b2b2b71aaa920e2842351bf4d5dee6c211392e  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
-439f0112b9e75cad490a677882b2b2b71aaa920e2842351bf4d5dee6c211392e  standard-memory-none  scripts/agents/harbourmaster.py
-439f0112b9e75cad490a677882b2b2b71aaa920e2842351bf4d5dee6c211392e  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-memory-none  scripts/event-model/drawio.test.ts
 43ffc90eea6f5607551ebb8f435c6ed5533791e0b67795ffb2ad84c70f574771  event-modelling-postgres-toy-serve  scripts/event-model/drawio.test.ts
 445d3c93f8740dd4b846e627db405eacfe68e21a2f728823d741b0d19131c668  event-modelling-memory-none  scripts/agents/no_surface.py
@@ -291,6 +288,10 @@
 766570def37587b025538137fbdd938213dc72b1e72c71a554f017144875b9ea  event-modelling-postgres-toy-serve  scripts/agents/telegraph.py
 766570def37587b025538137fbdd938213dc72b1e72c71a554f017144875b9ea  standard-memory-none  scripts/agents/telegraph.py
 766570def37587b025538137fbdd938213dc72b1e72c71a554f017144875b9ea  standard-postgres-toy-serve  scripts/agents/telegraph.py
+7888f97a6ef1fd23f9bed82c851aa9c499acc1106f4c91b056695f1d620b0db0  event-modelling-memory-none  scripts/agents/harbourmaster.py
+7888f97a6ef1fd23f9bed82c851aa9c499acc1106f4c91b056695f1d620b0db0  event-modelling-postgres-toy-serve  scripts/agents/harbourmaster.py
+7888f97a6ef1fd23f9bed82c851aa9c499acc1106f4c91b056695f1d620b0db0  standard-memory-none  scripts/agents/harbourmaster.py
+7888f97a6ef1fd23f9bed82c851aa9c499acc1106f4c91b056695f1d620b0db0  standard-postgres-toy-serve  scripts/agents/harbourmaster.py
 7917589b2ead031be7f95e0defde4a249c97af8bcb44e471253d78f5a80a2031  event-modelling-memory-none  scripts/agents/deck_line.py
 7917589b2ead031be7f95e0defde4a249c97af8bcb44e471253d78f5a80a2031  event-modelling-postgres-toy-serve  scripts/agents/deck_line.py
 7917589b2ead031be7f95e0defde4a249c97af8bcb44e471253d78f5a80a2031  standard-memory-none  scripts/agents/deck_line.py

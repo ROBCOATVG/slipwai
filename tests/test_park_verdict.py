@@ -47,8 +47,8 @@ class VerdictTest(Fixture):
 
     def harbourmaster(self) -> list[logs.Entry]:
         """One pass of the real harbourmaster, lighting nothing (`boilers: 0`), and its receipts."""
-        for name in ("harbourmaster.py", "need_check.py", "lockfiles.py", "conflicts.py", "telegraph.py", "mender.py",
-                     "capabilities.py"):
+        for name in ("harbourmaster.py", "need_check.py", "need_owner.py", "lockfiles.py", "conflicts.py",
+                     "telegraph.py", "mender.py", "capabilities.py"):
             shutil.copy(AGENTS / name, self.root / "scripts/agents" / name)
         done = subprocess.run([sys.executable, str(self.root / "scripts/agents/harbourmaster.py"), "--once",
                                "--no-fetch"], capture_output=True, text=True, cwd=self.root, timeout=120)

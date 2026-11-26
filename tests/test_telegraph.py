@@ -236,7 +236,7 @@ class BankingTest(unittest.TestCase):
         (self.root / "project.json").write_text("{}", encoding="utf-8")
         place = self.root / "scripts/agents"
         place.mkdir(parents=True)
-        for name in ("harbourmaster.py", "need_check.py", "lockfiles.py", "conflicts.py",
+        for name in ("harbourmaster.py", "need_check.py", "need_owner.py", "lockfiles.py", "conflicts.py",
                      "logs.py", "evidence.py", "berths.py", "spend.py", "telegraph.py", "claims.py", "travel.py",
                      "inbox.py", "mender.py"):
             (place / name).write_text((AGENTS / name).read_text(encoding="utf-8"), encoding="utf-8")

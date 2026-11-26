@@ -41,6 +41,7 @@ sys.path.insert(0, str(HERE))
 
 import clearance  # noqa: E402
 import logs  # noqa: E402
+import need_owner  # noqa: E402 — a need that names its hand-back patch lands with the merge, not as a question
 import moorings  # noqa: E402 — the berths of merged slices are cleared away at cast-off
 import published  # noqa: E402 — the plan is on the trunk the slices are cut from, before any is lit
 import talk  # noqa: E402
@@ -432,11 +433,21 @@ CHECK_SPELLINGS = "text:<path>:<has>, make:<target> or decide"
 DECIDE = "decide"
 
 
-def need_of(what: str, check: str, by: str) -> dict:
-    """One need in the park's shape, from the words `tell --need` and `--check` were given, or a refusal."""
+def need_of(what: str, check: str, by: str, plain: str = "") -> dict:
+    """One need in the park's shape, from the words `tell --need`, `--check` and `--plain` were given, or a
+    refusal. `plain` is what the board leads with: what is wrong and why it matters, for a person who reads
+    only the board, held to the rule a decision's **In short** is (`logs.unplain`). manda's seven cards were
+    each in the slice agent's words for another agent — paths, line numbers, `maxReceiveCount` — and the one
+    person reading them could not tell what was asked or why it was theirs (#172)."""
     found: dict = {"what": what.strip(), "by": by}
     if not found["what"]:
         raise SystemExit("--need says what has to change, in a sentence")
+    refused = logs.unplain(plain)
+    if refused:
+        raise SystemExit(f"--plain for the need {found['what'][:80]!r} is not plain: {refused}. Give each --need a "
+                         f"--plain, in order: one or two sentences in plain English saying what is wrong and why it "
+                         f"matters, with no paths, identifiers or line numbers")
+    found["plain"] = " ".join(plain.split())
     if check == DECIDE:
         # A person's to tick wherever nothing decides it, which is what any reader older than this reads.
         return {**found, "by": "person", "decide": True}
@@ -476,7 +487,8 @@ def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, 
     """
     if dark and not (slice_id and needs):
         raise SystemExit("--dark names the slice whose story the needs keep dark: it takes --slice and --need")
-    asked = [need for need in needs or [] if logs.asks_a_decision(need)]
+    # A need that names its hand-back patch lands with the slice's merge (`need_owner.whose`), not as a question.
+    asked = [need for need in needs or [] if logs.asks_a_decision(need) and not need_owner.PATCH.search(need["what"])]
     if asked and not slice_id:
         raise SystemExit("a need that is a product or model decision — a new slice, an event's name, the "
                          "chart or the model — is asked against a slice: give --slice <id>")
@@ -522,7 +534,8 @@ def tell(streams: list[str], words: list[str], needs: list[dict] | None = None, 
                 count += 1
                 need.update({"by": "person", "decide": True, "question": f"{slice_id}-decide-{count}"})
                 lines.append(logs.entry("question", fairway=stream, slice=slice_id, id=need["question"],
-                                        what=f"{need['what']} (handed back: {message[:300]})"))
+                                        what=f"{need['what']} (handed back: {message[:300]})",
+                                        **({"plain": need["plain"]} if need.get("plain") else {})))
         with where.open("a", encoding="utf-8") as handle:
             handle.write(logs.entry("told", fairway=stream, message=message, by=by, **extra).line())
             for line in lines:
@@ -612,6 +625,10 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--check", action="append", default=[],
                         help=f"for `tell --need`: how the fleet proves it landed, {CHECK_SPELLINGS}, one per --need "
                              f"in order; a need with none is a person's to tick")
+    parser.add_argument("--plain", action="append", default=[],
+                        help="for `tell --need`: what is wrong and why it matters, in a sentence or two of plain "
+                             "English with no paths, ids or line numbers — the line the board leads with; one "
+                             "per --need, in order, and required")
     parser.add_argument("--slice", default="", help="for `tell`: the slice the message is about")
     parser.add_argument("--dark", action="store_true",
                         help="for `tell --slice --need`: these needs are why the slice's story cannot seed yet")
@@ -638,7 +655,12 @@ def main(argv: list[str]) -> int:
         words = list(parsed.words)
         named = words.pop(0) if words and not parsed.everyone else None
         checks = list(parsed.check) + [""] * (len(parsed.need) - len(parsed.check))
-        needs = [need_of(what, check, "fleet" if check else "person") for what, check in zip(parsed.need, checks)]
+        if parsed.plain and len(parsed.plain) != len(parsed.need):
+            raise SystemExit(f"--plain is one per --need, in order: {len(parsed.need)} need(s) and "
+                             f"{len(parsed.plain)} --plain")
+        plains = list(parsed.plain) + [""] * (len(parsed.need) - len(parsed.plain))
+        needs = [need_of(what, check, "fleet" if check else "person", plain)
+                 for what, check, plain in zip(parsed.need, checks, plains, strict=True)]
         return tell(telling(named, parsed.everyone), words, needs, parsed.slice, parsed.dark)
     held = config()
     limit = parsed.boilers if parsed.boilers is not None else held.get("boilers")

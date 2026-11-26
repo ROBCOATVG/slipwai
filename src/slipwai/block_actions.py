@@ -158,17 +158,29 @@ def release_step(row: dict[str, Any]) -> str:
     return ""
 
 
+def plain_of(row: dict[str, Any]) -> str:
+    """The plain line a block leads with: its first unmet need's, or a question's own, or `""` (#172)."""
+    owed = [need for need in row.get("needs") or [] if need.get("met") != "yes"]
+    return next((str(need["plain"]) for need in owed if need.get("plain")), "") or str(row.get("plain") or "")
+
+
 def need_steps(row: dict[str, Any]) -> list[str]:
-    """One step per need not met yet: a person's, done and then ticked; the fleet's, ticked by trunk."""
+    """One step per need not met yet: a person's, done and then ticked; the fleet's, ticked by trunk; and the
+    mender's or a merge's, which are nobody's to do, said so — each in its plain words where it has them."""
     steps = []
     for need in row.get("needs") or []:
         if need.get("met") == "yes":
             continue
-        if need.get("by") == "person":
-            steps.append(f"{need.get('what', '')} — then press Done beside it on this card.")
+        said = str(need.get("plain") or need.get("what") or "")
+        whose = f" ({need['whose']})" if need.get("whose") else ""
+        if need.get("who") == "mender":
+            steps.append(f"Nothing: the mender will do this — {said}")
+        elif need.get("who") == "merge":
+            steps.append("Nothing: " + str(need.get("whose") or "it lands with its slice's merge."))
+        elif need.get("by") == "person":
+            steps.append(f"{said}{whose} — then press Done beside it on this card.")
         else:
-            steps.append(f"Land on trunk: {need.get('what', '')} — it ticks itself when "
-                         f"{need.get('how') or 'trunk has it'}.")
+            steps.append(f"Land on trunk: {said}{whose} — it ticks itself when {need.get('how') or 'trunk has it'}.")
     return steps
 
 
@@ -218,7 +230,8 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
                  "the evidence.", f"If it is wrong, say why: {answer_step(row)} The chart is redone from your answer."])
     if kind == "question" and row.get("kind") == "question":
         # The row is the question in its own words already; said a third time it is noise (`test_bridge`).
-        return (f"{row.get('slice') or fairway} asked a question only a person can answer, and waits for it.",
+        return (plain_of(row) or f"{row.get('slice') or fairway} asked a question only a person can answer, and "
+                                  f"waits for it.",
                 [f"Read the question{' ' + str(row['id']) if row.get('id') else ''} above.", answer_step(row)])
     if kind == "question":
         return said, ["Read the question in the park above.", answer_step(row)]
@@ -242,6 +255,7 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
                  f"Then press I have landed it, carry on: {whose} merges trunk and carries on from where it "
                  f"parked."])
     if kind in ("grant", "person", "handback"):
+        said = plain_of(row) or said
         steps = need_steps(row)
         if kind == "grant":
             steps.append("A person with admin cloud credentials applies the grant from a checkout of main: "
@@ -249,8 +263,9 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
         if row.get("cause") == "host" and kind != "handback":
             steps.append("Once it is on trunk, press I have landed it, carry on.")
         if kind == "handback":
-            if any(need.get("met") != "yes" and need.get("by") != "person" for need in row.get("needs") or []):
-                # The edit by hand is the fallback, not the instruction: the mender lands these (`deck.mend_again`).
+            if any(need.get("met") != "yes" and need.get("who") == "spent" for need in row.get("needs") or []):
+                # The edit by hand is the fallback, not the instruction: the mender lands these (`deck.mend_again`),
+                # and is asked again only where it would take them and has spent its attempts (#172).
                 steps.insert(0, "Press Have the mender try again: it makes these edits on a branch of its own, runs "
                                 "the gates and lands them. Or make them on trunk yourself:")
             steps.append("It leaves the board once the last need is met.")

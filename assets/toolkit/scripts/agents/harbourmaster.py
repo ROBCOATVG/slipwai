@@ -111,6 +111,7 @@ import lockfiles  # noqa: E402 — a lock two slices both wrote is written again
 import logs  # noqa: E402
 import mender  # noqa: E402
 import need_check  # noqa: E402 — whether trunk holds what a need asks for, the board's reading too
+import need_owner  # noqa: E402 — which paths the slices in flight hold, the board's reading too
 import telegraph  # noqa: E402
 import travel  # noqa: E402
 
@@ -895,7 +896,7 @@ def handbacks_applied(branch: str, onto: str) -> str:
     for patch in mender.handback_patches(SCRATCH, slice_id):
         name = patch.relative_to(SCRATCH).as_posix()
         text = patch.read_text(encoding="utf-8", errors="replace")
-        why = mender.withheld(mender.patched_paths(text))
+        why = mender.withheld(mender.patched_paths(text)) or mender.model_patch_refusal(text, in_code)
         if why:
             HANDED_BACK["withheld"].append(f"{name}: {why}")
             continue
@@ -932,6 +933,13 @@ def handbacks_applied(branch: str, onto: str) -> str:
     # The patches went into the index alone; the gate runs on the working tree, so bring it to the commit.
     git("reset", "--quiet", "--hard", "HEAD", where=SCRATCH)
     return ""
+
+
+def in_code(name: str) -> bool:
+    """Whether the rebased slice in the scratch tree names this outside the model and the specs: what a
+    hand-back to the model may bring it in line with, rather than decide."""
+    return git("grep", "-q", "-F", "-e", name, "HEAD", "--", ".", ":(exclude)specs", ":(exclude)docs/event-model",
+               ":(exclude,glob)**/docs/event-model/**", where=SCRATCH).returncode == 0
 
 
 def careen_carried(where: Path, onto: str, fairway: str, branch: str) -> str:
@@ -1621,12 +1629,13 @@ def once() -> int:
     written += cleared_by_time(written)
     written += cleared_by_merge(written)
     written += needs_met(written)
+    written += questions_met(written)
     written += mends_again(written)
     if mending():
         # Last, so a need this pass ticked is not offered, and after the trunk lines so a red this pass found
         # is mended in it. Each pass finishes an attempt that is over or starts the next one; none waits.
         written += mender.turn(trunk_state, said, [*harbour_entries(), *written], open_needs(written),
-                               base, mend_land, broke_it, reverting)
+                               base, mend_land, broke_it, reverting, owned)
     if written:
         append(written)
     write_cursors(cursors)
@@ -1990,6 +1999,79 @@ def handed_back(deck: list[logs.Entry], fairway: str, need: object, why: str) ->
     return None
 
 
+#: A decision's number as an entry opens with it and a need or a question cites it: `D523: reconcile …`.
+DECISION_NUMBER = re.compile(r"\bD\d+\b")
+
+
+def landed_slices(deck: list[logs.Entry], harbour: list[logs.Entry], fairway: str) -> set[str]:
+    """The slices of this fairway that have merged: its own `merged` lines, and the harbour's `granted`."""
+    return {str(e.fields.get("slice", "")) for e in deck if e.kind == "merged"} | {
+        str(e.fields.get("slice", "")) for e in harbour if e.kind == "granted" and e.fields.get("commit")
+        and str(e.fields.get("fairway", "")) == fairway}
+
+
+def answered_since(said: str, slice_id: str, landed: set[str], deck: list[logs.Entry]) -> str:
+    """How a need or a question raised by a slice that has merged is answered by a recorded decision it cites,
+    or "": its slice merged, and a `decision` line opens with a number its words name. manda's S110 cited D523,
+    D523 was decided and S110 merged, and its question stood on the board for a person with nothing owed (#172)."""
+    if not slice_id or slice_id not in landed:
+        return ""
+    recorded = {found.group(0) for e in deck if e.kind == "decision"
+                and (found := DECISION_NUMBER.match(str(e.fields.get("what", "")).strip()))}
+    cited = [one for one in dict.fromkeys(DECISION_NUMBER.findall(said)) if one in recorded]
+    return f"{slice_id} has merged and {', '.join(cited)} answers it" if cited else ""
+
+
+def owned() -> mender.Owners:
+    """What the slices in flight hold, for the mender: each path an open slice's branch changes against trunk,
+    and the slices that have merged, whose own folders are nobody's now (`need_owner.path_refusal`)."""
+    harbour = harbour_entries()
+    merged: set[str] = set()
+    flying: list[str] = []
+    for path in deck_logs():
+        try:
+            deck = logs.fold(path.read_text(encoding="utf-8").splitlines())
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        merged |= landed_slices(deck, harbour, path.stem)
+        flying += logs.unmerged(deck)
+    merged.discard("")
+    return need_owner.touched(ROOT, trunk_commit(), [one for one in flying if one not in merged]), frozenset(merged)
+
+
+def questions_met(already: list[logs.Entry]) -> list[logs.Entry]:
+    """A `question-met` receipt for every open question nobody owes an answer to any more: the need it was
+    asked for is met — trunk has it, or a person ticked it — or its slice has merged and a recorded decision
+    it cites answers it. Only a `decision` with the question's own id closed one before, and a need asked as
+    a question and then met another way left its question on the board for good (manda's S110-decide-2)."""
+    harbour = [*harbour_entries(), *already]
+    closed = {(str(e.fields.get("fairway", "")), str(e.fields.get("id", ""))) for e in harbour if e.kind == "question-met"}
+    met = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")), int(e.fields.get("need", -1))): e
+           for e in harbour if e.kind == "need-met"}
+    found: list[logs.Entry] = []
+    for fairway, paths in logs.streams(ROOT).items():
+        try:
+            deck = logs.fold(logs.stream_lines(paths))
+        except (logs.Unreadable, OSError, UnicodeDecodeError):
+            continue
+        decided = {str(e.fields.get("id", "")) for e in deck if e.kind == "decision"}
+        asked_for = {str(need.get("question")): (e.t, index) for e in deck if e.kind in ("told", "parked")
+                     for index, need in enumerate(e.fields.get("needs") or [])
+                     if isinstance(need, dict) and need.get("question")}
+        landed = landed_slices(deck, harbour, fairway)
+        for e in deck:
+            named = str(e.fields.get("id", ""))
+            if e.kind != "question" or named in decided or (fairway, named) in closed:
+                continue
+            ticked = met.get((fairway, *asked_for[named])) if named in asked_for else None
+            how = (f"the need it was asked for is met: {ticked.fields.get('how', '')}" if ticked is not None else
+                   answered_since(f"{e.fields.get('what', '')}", str(e.fields.get("slice", "")), landed, deck))
+            if how:
+                closed.add((fairway, named))
+                found.append(logs.entry("question-met", harbour=True, fairway=fairway, id=named, how=how[:300]))
+    return found
+
+
 def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
     """A `need-met` receipt for every need of an open park that trunk now satisfies or a person has ticked,
     and a `cleared` receipt for every park whose needs are all met. A `told` with needs is walked beside
@@ -2020,6 +2102,7 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                   for e in deck if e.kind == "need-done" and str(e.fields.get("fairway", "")) == fairway}
         # A need that is a decision is asked as a `question` (`fleet.py tell`), and is met by its answer.
         decided = {str(e.fields.get("id", "")): str(e.fields.get("what", "")) for e in deck if e.kind == "decision"}
+        landed = landed_slices(deck, harbour, fairway)
         for park in [*logs.open_parks(deck, harbour, fairway), *open_tolds(deck, harbour, fairway)]:
             needs = park.fields.get("needs")
             if not isinstance(needs, list) or not needs or (fairway, park.t) in done:
@@ -2033,6 +2116,10 @@ def needs_met(already: list[logs.Entry]) -> list[logs.Entry]:
                 elif isinstance(need, dict) and need.get("decide") and need.get("question") \
                         and str(need["question"]) in decided:
                     how = f"decided: {decided[str(need['question'])][:200]}"
+                elif isinstance(need, dict) and (need.get("decide") or not isinstance(need.get("check"), dict)) \
+                        and (answer := answered_since(f"{need.get('what', '')} {park.fields.get('message', '')}",
+                                                      str(park.fields.get("slice") or ""), landed, deck)):
+                    how = answer
                 elif commit and (check := (need.get("check") if isinstance(need, dict) and isinstance(
                         need.get("check"), dict) else handed_back(deck, fairway, need, str(park.fields.get("why", "")))
                         if park.kind == "parked" else None)):

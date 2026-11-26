@@ -109,6 +109,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                  "block_actions",
                  # Whether trunk holds what a need asks for, read the harbourmaster's way (#154).
                  "need_check", "refusal_said",
+                 # Who acts on a need and why, the mender's rule and the board's alike, and the board's
+                 # reading of it over the harbour's attempts (#172).
+                 "need_owner", "need_who",
                  # What the board says to the fleet, placed in an inbox; a conversation read the way a person
                  # reads it, with what they have seen; and what a captain decided, off its orders and events.
                  "talk_said", "talk_fold", "captain_files",

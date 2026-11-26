@@ -54,6 +54,9 @@ SHARED = {
     # Whether trunk holds what a need asks for: the harbourmaster's `need-met`, and the board's list of what is
     # still on trunk's way, so a need already landed leaves the board before a receipt says so.
     "src/slipwai/need_check.py": "assets/toolkit/scripts/agents/need_check.py",
+    # Who acts on a need — the mender, a slice's merge, whoever decides, a person — and why: the mender before it
+    # starts an attempt, and the board before it says who acts, so the card and the attempt cannot disagree (#172).
+    "src/slipwai/need_owner.py": "assets/toolkit/scripts/agents/need_owner.py",
 }
 BANNER = """# Written by scripts/shared-modules.py from {source}. Do not edit: edit the keel's module,
 # run `make shared`, and commit both. A generated project has no slipwai to import, and both runtimes need

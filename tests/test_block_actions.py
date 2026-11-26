@@ -121,7 +121,8 @@ class KindTest(unittest.TestCase):
         self.assertEqual(action(park(slice="S115", what=said))["kind"], "trunk")
 
     def test_a_hand_back_is_landed_on_trunk_and_ticks_itself(self) -> None:
-        need = {"what": "the S92 frame in model.yaml", "by": "fleet", "met": "no", "how": "model.yaml holds it"}
+        need = {"what": "the S92 frame in model.yaml", "by": "fleet", "met": "no", "how": "model.yaml holds it",
+                "who": "spent"}
         found = action({"kind": "told", "fairway": "intake", "t": "", "what": "S50 hands back: two edits.",
                         "needs": [need]})
         self.assertEqual(found["kind"], "handback")

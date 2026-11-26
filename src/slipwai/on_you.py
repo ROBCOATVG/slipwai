@@ -31,7 +31,7 @@ from .talk_waits import captain_window
 from .talk_waits import items as talk_items
 from .trunk_card import held_item, stranded_item
 from .upstream import NAMED, held_by, unjudged
-from .waiting_inbox import inbox
+from .waiting_inbox import inbox, mender_card
 
 NOTHING_WAITS: dict[str, Any] = {"count": 0, "text": "", "href": "", "holding": [], "later": [], "slices": []}
 
@@ -82,11 +82,13 @@ def parked(fleet: dict[str, Any], rows: list[dict[str, str]]) -> list[dict[str, 
     by_slice = {row["slice"]: row for row in rows}
     seen: set[str] = set()
     for group in fleet.get("groups") or []:
-        if group.get("paused") == "yes" or group.get("probably") or group.get("obsolete"):
-            continue  # nothing only a person can move on: `settling` lists them, once each kind
+        if group.get("paused") == "yes" or group.get("probably") or group.get("obsolete") \
+                or group.get("acts") == "fleet":
+            continue  # nothing only a person can move on: `settling` lists them, once each kind, or the fleet's own
         title = first_sentence(str(group.get("what") or ""), 90) or "waiting on you"
         if group.get("source") == "told":
-            needs = [str(need.get("what") or "") for need in group.get("needs") or []]
+            needs = [str(need.get("plain") or need.get("what") or "") for need in group.get("needs") or []
+                     if need.get("met") != "yes"]
             found.append({"n": 1, "href": "#from-streams",
                           "text": f"A slice needs this on trunk: {first_sentence(needs[0], 90) if needs else title}"})
             continue
@@ -208,7 +210,7 @@ def streams_card(fleet: dict[str, Any], controls: bool = True) -> str:
             if links else "")
     return (f'<div class="card" id="from-streams"><h2>Waiting on you</h2><p class="empty">What the streams '
             f"have asked of you or left for you, answered from here: what only you can decide first, then what "
-            f"the harness can do once asked, then tidying. Notes and unread decisions hold nothing up, so they "
-            f"are not counted as waiting on you.</p>{cards}{paused}{told}</div>"
-            f"{parks_table(fleet)}")
+            f"the mender tried and could not land, then tidying. Notes and unread decisions hold nothing up, so "
+            f"they are not counted as waiting on you.</p>{cards}{paused}{told}</div>"
+            f"{mender_card({**fleet, 'groups': groups}, controls)}{parks_table(fleet)}")
 

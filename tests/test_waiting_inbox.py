@@ -9,9 +9,10 @@ import unittest
 import checkout_packages  # noqa: F401
 
 from slipwai.fleet_record import groups
-from slipwai.waiting_inbox import inbox
+from slipwai.waiting_inbox import inbox, mender_card
 
-LANDS = {"what": "base.css: the picker rule", "by": "fleet", "met": "no", "index": 0,
+LANDS = {"what": "base.css: the picker rule", "by": "fleet", "met": "no", "index": 0, "who": "spent",
+         "whose": "The mender tried and could not land it.",
          "check": {"kind": "text", "path": "base.css", "has": ".picker"}}
 HANDS = {"what": "free a Docker network pool", "by": "person", "met": "no", "index": 0}
 
@@ -46,15 +47,15 @@ class InboxTest(unittest.TestCase):
         order = [self.drawn.index(f'id="w-{key}"') for key in ("judgement", "harness", "hands", "tidy")]
         self.assertEqual(order, sorted(order))
         self.assertIn("<b>2</b> need you", self.drawn, "the question and the thing on this machine")
-        self.assertIn("<b>1</b> the harness can do", self.drawn)
+        self.assertIn("<b>1</b> the mender tried", self.drawn)
         self.assertIn("<b>4</b> to tidy", self.drawn)
 
     def test_a_chart_question_is_kept_in_one_press_and_its_title_is_the_question(self) -> None:
         self.assertEqual(posts(self.drawn, "Keep the recommendation"), [["/keep", {"fairway": "intake", "id": "D495"}]])
         self.assertIn("<b>Which contexts does 003 touch (D495)?</b>", self.drawn)
 
-    def test_a_hand_back_the_mender_can_land_is_landed_or_marked_done(self) -> None:
-        self.assertEqual(posts(self.drawn, "Land it"),
+    def test_a_hand_back_the_mender_could_not_land_is_asked_again_or_marked_done(self) -> None:
+        self.assertEqual(posts(self.drawn, "Have the mender try again"),
                          [["/mend-again", {"fairway": "intake", "parked": "2026-11-24T09:01:00Z"}]])
         self.assertIn(["/need", {"fairway": "intake", "parked": "2026-11-24T09:01:00Z", "need": 0}],
                       posts(self.drawn, "Mark done"))
@@ -83,6 +84,17 @@ class InboxTest(unittest.TestCase):
 
     def test_every_row_keeps_its_card_under_details(self) -> None:
         self.assertEqual(self.drawn.count('class="w-row"'), self.drawn.count("<summary>Details</summary>"))
+
+    def test_what_the_mender_will_do_is_not_waiting_on_you(self) -> None:
+        """manda's seven cards under Waiting on you, six of them the fleet's own work (#172)."""
+        rows = [row(kind="told", slice="S53", t="2026-11-24T09:01:00Z", what="S53 hands back the picker rule",
+                    acts="fleet", needs=[{**LANDS, "who": "mender", "whose": "", "plain": "The picker looks wrong."}])]
+        found = {"inbox": rows, "groups": groups(rows), "streams": {}}
+        self.assertIn("Nothing is waiting on you.", inbox(found))
+        drawn = mender_card(found)
+        self.assertIn("The mender will do these · 1", drawn)
+        self.assertIn("<b>The picker looks wrong</b>", drawn)
+        self.assertNotIn("data-w-post", drawn, "nothing to press: it is not yours")
 
     def test_nothing_waiting_says_so(self) -> None:
         self.assertIn("Nothing is waiting on you.", inbox({"inbox": [], "groups": []}))

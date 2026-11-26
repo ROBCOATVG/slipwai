@@ -7,6 +7,7 @@ Both now read `evidence.py`, and the refusal names everything still owed.
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -14,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 import checkout_packages  # noqa: F401
 from captain_fixture import Fixture
@@ -23,9 +25,18 @@ from slipwai import logs
 from slipwai.assets import TOOLKIT_ROOT
 
 AGENTS = TOOLKIT_ROOT / "scripts/agents"
-sys.path.insert(0, str(AGENTS))
 
-import evidence  # noqa: E402
+
+def loaded(name: str) -> Any:
+    spec = importlib.util.spec_from_file_location(f"{name}_under_test", AGENTS / f"{name}.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclasses look a module up by name
+    spec.loader.exec_module(module)
+    return module
+
+
+evidence = loaded("evidence")
 
 STORY = "specs/ordering/slices/ORD-01/try-it.json"
 
@@ -46,7 +57,9 @@ def commit(root: Path, files: dict[str, str], message: str) -> str:
 
 
 def demo(at: str = "", verdict: str = "accepted") -> logs.Entry:
-    return logs.entry("demo", fairway="ORD", slice="ORD-01", verdict=verdict, **({"commit": at} if at else {}))
+    if at:
+        return logs.entry("demo", fairway="ORD", slice="ORD-01", verdict=verdict, commit=at)
+    return logs.entry("demo", fairway="ORD", slice="ORD-01", verdict=verdict)
 
 
 def seeded(at: str) -> logs.Entry:
@@ -62,7 +75,7 @@ class RuleTest(unittest.TestCase):
         git(self.root, "init", "--quiet", "--initial-branch=main")
         self.first = commit(self.root, {"src/app.py": "one\n", STORY: "{}\n"}, "the slice")
 
-    def read(self, lines: list[logs.Entry], head: str, turn: list[logs.Entry] | None = None) -> evidence.Standing:
+    def read(self, lines: list[logs.Entry], head: str, turn: list[logs.Entry] | None = None) -> Any:
         return evidence.standing(lines, "ORD-01", head, self.root, STORY, turn=turn)
 
     def test_the_s114_sequence_at_one_head_is_whole_on_the_third_run(self) -> None:

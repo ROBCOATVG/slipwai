@@ -96,7 +96,7 @@ class RuleTest(unittest.TestCase):
 
 
 class CaptainTest(Fixture):
-    """The captain's gate, run: the lines an earlier run wrote at this head are kept, and what is owed is named whole."""
+    """The captain's gate, run: an earlier run's lines at this head are kept, and what is owed is named whole."""
 
     def setUp(self) -> None:
         super().setUp()
@@ -155,7 +155,7 @@ with path.open("a", encoding="utf-8") as handle:
 
 
 class HarbourTest(MergeFixture):
-    """The harbourmaster's hold reads the same rule: a seed counts at the branch's head, and not after its code moved."""
+    """The harbourmaster's hold reads the same rule: a seed counts at the head, and not after its code moved."""
 
     def setUp(self) -> None:
         super().setUp()

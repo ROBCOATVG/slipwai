@@ -25,7 +25,8 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 715 — a need's and a question's plain line (#172); a person's mend-again and its receipt;
+# budget: 745 — a need's, a question's and a park's plain line (#172), and the one rule for whether a
+# question is still open, which the board, the captain and clearance all ask; a person's mend-again and its receipt;
 # where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
@@ -41,6 +42,7 @@ import json
 import os
 import platform
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -247,7 +249,8 @@ def unplain(said: str) -> str:
 #: held the four things that darkened every story, as notes a person could dismiss. A `seeded` line may say
 #: how many `given` records the story appended first, the `api` it ran against and the `story` file.
 OPTIONAL: dict[str, tuple[str, ...]] = {
-    "parked": ("slice", "waiting", "cause", "until", "needs", "then"),
+    # A park's `plain` is the sentence a person reads first, as a question's is: `why` is the captain's own.
+    "parked": ("slice", "waiting", "cause", "until", "needs", "then", "plain"),
     "told": ("slice", "needs", "by", "story"),
     "seeded": ("given", "api", "story"),
     # One or two sentences a person reads first on the board, held to `unplain` where it is written. A need
@@ -662,6 +665,26 @@ def open_parks(deck: list[Entry], harbour: list[Entry], fairway: str) -> list[En
     return [e for index, e in enumerate(deck) if e.kind == "parked" and str(e.fields["fairway"]) == fairway
             and (fairway, e.t) not in receipts and not (e.fields.get("crossed") and e.t in dismissed)
             and last_claim.get(str(e.fields.get("slice") or ""), -1) < index]
+
+
+def unanswered(asked: Iterable[Entry], answers: Iterable[Entry], fairway: str = "") -> list[Entry]:
+    """The `question` lines among `asked` that somebody still owes an answer: no `decision` in `answers`
+    carries the question's `id`, and no harbour `question-met` names its fairway and `id`.
+
+    The one rule for whether a question is open, which the board, the captain and clearance all ask. Before
+    it, only the board read `question-met`: manda's S110-decide-2 left the board once D523 answered it, and
+    clearance still held the slice and the captain still put it to the skipper. `answers` is deck and harbour
+    lines together, so a caller passes what it has read; `fairway` is the stream a `question-met` must name,
+    or each question's own `fairway` where it is not given.
+    """
+    decided, met = set(), set()
+    for e in answers:
+        if e.kind == "decision":
+            decided.add(str(e.fields.get("id", "")))
+        elif e.kind == "question-met":
+            met.add((str(e.fields.get("fairway", "")), str(e.fields.get("id", ""))))
+    return [e for e in asked if e.kind == "question" and (named := str(e.fields.get("id", ""))) not in decided
+            and (fairway or str(e.fields.get("fairway", "")), named) not in met]
 
 
 def fairway_parks(parks: list[Entry]) -> list[Entry]:

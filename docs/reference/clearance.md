@@ -67,7 +67,9 @@ anybody asks.
 
 **A question is a line in the log.** When a delegate meets a product question, the delegate writes a
 `question` line (`fairway`, `slice`, `id`, `what`) to the deck log and returns. The slice is
-*awaiting-decision* until a `decision` line has the same `id`. Only that slice waits. The wait also reaches
+*awaiting-decision* until a `decision` line has the same `id`, or the harbourmaster writes a
+`question-met` for it: the need it was asked for is met, or its slice merged and a recorded decision answers
+it. The board and the captain read the same rule. Only that slice waits. The wait also reaches
 the siblings that steer by a mark that the waiting slice has not set, and the sentence names those siblings.
 Nothing else stops.
 

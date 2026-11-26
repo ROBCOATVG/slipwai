@@ -169,7 +169,8 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             key = (cause, tuple(need["what"] for need in row.get("needs") or []), str(row.get("obsolete") or ""))
         held = keyed.setdefault(key, {"kind": "group", "cause": cause, "slices": [], "fairways": [], "parks": [],
                                       "needs": [dict(need) for need in row.get("needs") or []],
-                                      "t": row["t"], "until": "", "then": "", "what": "", "paused": "yes",
+                                      "t": row["t"], "until": "", "then": "", "what": "", "plain": "",
+                                      "paused": "yes",
                                       "source": str(row.get("kind")),
                                       # Asked to be confirmed rather than acted on, or a park an earlier slipwai
                                       # wrote: neither is a thing only a person can move the work on by.
@@ -187,6 +188,7 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         held["until"] = max(held["until"], str(row.get("until") or ""))
         if row["t"] >= max(park["t"] for park in held["parks"]):
             held["then"], held["what"] = str(row.get("then") or ""), str(row.get("what") or "")
+            held["plain"] = str(row.get("plain") or "")  # the newest park's plain line, as its words are
             held["lines"] = row.get("lines") or []
             held["action"] = row.get("action")  # what to do about it: the newest park's, as its words are
         for mine, theirs in zip(held["needs"], row.get("needs") or [], strict=False):

@@ -1742,7 +1742,8 @@ def cleared_by_decisions(already: list[logs.Entry]) -> list[logs.Entry]:
     so nothing is left for a person to say. **Only a slice's own park**, only where at least one of the slice's
     questions was still open when the park was written, and only once no question of that slice is open: a park on anything else
     is still a person's, and so is one whose skipper left a question `unavailable`. Not a message — a
-    person's `told` still clears a park in `told_after_parks`, unchanged; this reads decisions alone.
+    person's `told` still clears a park in `told_after_parks`, unchanged; this reads answers alone — a
+    decision, or a `question-met` the harbour log holds (`logs.unanswered`).
     """
     harbour = harbour_entries()
     done = {(str(e.fields.get("fairway", "")), str(e.fields.get("parked", "")))
@@ -1755,21 +1756,21 @@ def cleared_by_decisions(already: list[logs.Entry]) -> list[logs.Entry]:
             deck = logs.fold(logs.stream_lines(paths))
         except (logs.Unreadable, OSError, UnicodeDecodeError):
             continue
-        decided = {str(e.fields.get("id", "")) for e in deck if e.kind == "decision"}
+        answers = [*deck, *harbour, *already]
         for park in logs.open_parks(deck, harbour, fairway):
             slice_id = str(park.fields.get("slice") or "")
             if not slice_id or park.fields.get("waiting") == REVIEW or (fairway, park.t) in done:
                 continue
-            asked = [str(e.fields.get("id", "")) for e in deck
-                     if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id]
-            # The questions the park was waiting on: asked by then and not yet decided by then. A park written
+            asked = [e for e in deck if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id]
+            # The questions the park was waiting on: asked by then and not yet answered by then. A park written
             # after every question was already answered is about something else — hr-test-2's L21 parked
             # "implementation held by D50 until L09 is on main" with D45-D50 all written, and was cleared two
             # seconds later as though its questions were what held it, to be run again before L09 landed.
-            settled = {str(e.fields.get("id", "")) for e in deck if e.kind == "decision" and e.t <= park.t}
-            waited = [str(e.fields.get("id", "")) for e in deck if e.kind == "question" and e.t <= park.t
-                      and str(e.fields.get("slice", "")) == slice_id and str(e.fields.get("id", "")) not in settled]
-            if not waited or any(one not in decided for one in asked):
+            # Answered is `logs.unanswered`'s, the rule the captain and clearance read: a decision or a
+            # `question-met`. A receipt written earlier in this pass has no instant yet, and is after the park.
+            waited = [str(e.fields.get("id", "")) for e in logs.unanswered(
+                [e for e in asked if e.t <= park.t], [e for e in answers if e.t and e.t <= park.t], fairway)]
+            if not waited or logs.unanswered(asked, answers, fairway):
                 continue
             found.append(logs.entry("cleared", harbour=True, fairway=fairway, parked=park.t,
                                     what=f"answered by decisions {', '.join(dict.fromkeys(waited))}"))
@@ -2054,14 +2055,13 @@ def questions_met(already: list[logs.Entry]) -> list[logs.Entry]:
             deck = logs.fold(logs.stream_lines(paths))
         except (logs.Unreadable, OSError, UnicodeDecodeError):
             continue
-        decided = {str(e.fields.get("id", "")) for e in deck if e.kind == "decision"}
         asked_for = {str(need.get("question")): (e.t, index) for e in deck if e.kind in ("told", "parked")
                      for index, need in enumerate(e.fields.get("needs") or [])
                      if isinstance(need, dict) and need.get("question")}
         landed = landed_slices(deck, harbour, fairway)
-        for e in deck:
+        for e in logs.unanswered(deck, [*deck, *harbour], fairway):
             named = str(e.fields.get("id", ""))
-            if e.kind != "question" or named in decided or (fairway, named) in closed:
+            if (fairway, named) in closed:
                 continue
             ticked = met.get((fairway, *asked_for[named])) if named in asked_for else None
             how = (f"the need it was asked for is met: {ticked.fields.get('how', '')}" if ticked is not None else

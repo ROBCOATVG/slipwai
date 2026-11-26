@@ -164,6 +164,59 @@ ANSWER_POLL = 2.0
 STOPS = (" is parked — ", " is paused until ", "nothing to start", " is held by ", " yields its berth to ")
 #: What a park waits on, as `waiting` says it, against the one-word cause the record carries.
 CAUSE_OF_WAIT = {"decision-review": "ceiling", "green-trunk": "trunk"}
+#: What a park the captain writes says first to a person, by its cause: one or two sentences in plain UK
+#: English with no paths or ids, held to `logs.unplain` by the tests as every `plain` line is where it is
+#: written. Its `why` stays the captain's own words, under *Details*. Before these, every park the captain
+#: wrote rendered with the note that its wording was the agent's own (#172).
+PARK_PLAIN = {
+    "question": "This slice has stopped on a product question that nobody here can decide. Once it is "
+                "answered, the captain carries on with it.",
+    "gate": "This slice has used every run it is allowed without finishing the work its step owes. A person "
+            "needs to look at what went wrong before it runs again.",
+    "silence": "The session working on this slice went quiet for too long, so the captain ended it. A person "
+               "needs to look at what it was doing before it runs again.",
+    "exit": "The session working on this slice stopped with an error before it finished. A person needs to "
+            "look at what went wrong before it runs again.",
+    "demo": "The demo of this slice was sent back, so it needs changing before it can merge. Say what should "
+            "change, or that it is right as it is.",
+    "limit": "The coding agent will not take on more work for now. This slice waits, and starts again by "
+             "itself when the limit lifts.",
+    "host": "This slice needs a change that only a person may make. It carries on once that change is in place.",
+    "ceiling": "Too many of the fleet's decisions are waiting to be read. This slice carries on once a person "
+               "has read enough of them.",
+    "trunk": "The main branch is failing its checks, so nothing can merge yet. This slice carries on by itself "
+             "once the checks pass again.",
+    "budget": "This slice has used the time set aside for its step. A person decides whether it gets more.",
+    "other": "The captain has stopped this slice for a person to look at. The details say why, in the "
+             "captain's own words.",
+}
+#: The park a slice gets when it has been run as often as it may be between a person's words: `gate` by
+#: cause, but not the same thing as running out of attempts at a gate, so it says what lets it run again.
+SPENT_PLAIN = ("This slice has been run as many times as it may be without a person saying anything to it. "
+               "Send it a word, and it runs again.")
+#: A park that holds a whole stream because its work did not travel with it from another machine.
+STRANDED_PLAIN = ("This stream was taken over from another machine, and the work in progress there did not "
+                  "come with it. A person needs to bring that work across, or say to start the slice again.")
+#: What a need the captain carries says first, where the words it was given are not plain enough to lead with.
+NEED_PLAIN = "A person needs to do what the details ask before this slice can go on."
+#: A need's own words lead only where they are this short: one or two sentences, not a paragraph.
+PLAIN_LONGEST = 240
+
+
+def need_plain(said: str) -> str:
+    """The plain line a need the captain carries leads with: the words it was given, where they pass
+    `logs.unplain` and are a sentence or two, and otherwise `NEED_PLAIN`, the words staying its `what`."""
+    said = " ".join(said.split())
+    sentences = [one for one in re.split(r"(?<=[.!?])\s+", said) if one]
+    return said if said and not logs.unplain(said) and len(said) <= PLAIN_LONGEST and len(sentences) <= 2 \
+        else NEED_PLAIN
+
+
+def person_need(said: object) -> dict[str, str]:
+    """A need a person meets, as the captain carries it: its words, who ticks it, and its plain line."""
+    return {"what": str(said), "by": "person", "plain": need_plain(str(said))}
+
+
 #: Minutes a harbour may be *silent* for before a wait on it is a park, where `harbour.json` does not say.
 #: `half-ahead`'s number. Silence and not elapsed time: see `await_answer`.
 DEFAULT_WAIT_MINUTES = 60
@@ -1250,20 +1303,23 @@ def seed_need(slice_id: str, feature: str) -> list[dict]:
     """The need a park on an unseeded story carries: the static half `check-try` can tick, the live half
     the next run's."""
     return [{"what": f"the story in {slice_home(slice_id)}/try-it.json seeds green against the app "
-                     f"this berth runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"}}]
+                     f"this berth runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"},
+             "plain": "The slice's demo story has to run cleanly against the app before the slice can merge. "
+                      "It ticks itself once it does."}]
 
 
 def open_questions(found: list[logs.Entry], slice_id: str) -> list[logs.Entry]:
-    """The `question` lines against this slice no `decision` has answered: open until one carries the `id`.
+    """The `question` lines against this slice somebody still owes an answer, by `logs.unanswered`: open until
+    a `decision` carries the `id` or the harbourmaster writes a `question-met` for it — the rule the board and
+    clearance read too. Before it, a question met another way stood open here, and was put to the skipper.
 
     A question a session wrote to a file of the stream's name under its own feature is asked all the same —
     it was never seen here, so the slice stopped on it and nothing was put to anyone — and is answered by a
     decision anywhere in the stream's log, since `found` may be one turn's lines."""
     elsewhere = strays()
     known = [*elsewhere, *entries(ON.get("feature", ""), ON.get("fairway", ""))] if elsewhere else []
-    answered = {str(e.fields.get("id", "")) for e in [*known, *found] if e.kind == "decision"}
-    return [e for e in [*elsewhere, *found] if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id
-            and str(e.fields.get("id", "")) not in answered]
+    asked = [e for e in [*elsewhere, *found] if e.kind == "question" and str(e.fields.get("slice", "")) == slice_id]
+    return logs.unanswered(asked, [*known, *found, *harbour_entries()]) if asked else []
 
 
 def about(park: logs.Entry, slice_id: str) -> bool:
@@ -1374,7 +1430,7 @@ def dispatch(slice_id: str, feature: str, fairway: str, retry: str = "",
     starts: past `ceiling()` runs since a person last spoke to the slice, it is not run. `free` is why this run
     costs no attempt, where it does not."""
     if counted_runs(feature, fairway, slice_id) >= ceiling():
-        record(slice_id, cause="gate")
+        record(slice_id, cause="gate", plain=SPENT_PLAIN)
         raise Spent(f"{slice_id} has had {ceiling()} runs since a person last said anything to it, which is every "
                     f"run `attempts` allows between them: it waits for a person, whoever asks for another")
     note = {"why": "", "free": free}
@@ -1642,8 +1698,8 @@ def skipper_round(slice_id: str, feature: str, fairway: str, asked: list[logs.En
         end(process)
         flying.pop("process", None)
     fire("after-stage", stage="decide", slice=slice_id, fairway=fairway)
-    decided = {str(e.fields.get("id", "")) for e in entries(feature, fairway) if e.kind == "decision"}
-    return [one for one in ids if one not in decided]
+    still = {str(e.fields.get("id", "")) for e in logs.unanswered(asked, [*entries(feature, fairway), *harbour_entries()])}
+    return [one for one in ids if one in still]
 
 
 def put_already(fairway: str, slice_id: str) -> Path:
@@ -1653,7 +1709,7 @@ def put_already(fairway: str, slice_id: str) -> Path:
 
 
 def settled(found: list[logs.Entry], slice_id: str) -> bool:
-    """Whether a slice parked on questions has had every one of them answered by a `decision` line."""
+    """Whether a slice parked on questions has had every one of them answered (`open_questions`)."""
     return any(e.kind == "question" and str(e.fields.get("slice", "")) == slice_id for e in found) \
         and not open_questions(found, slice_id)
 
@@ -1671,9 +1727,8 @@ def park_waited_on_questions(found: list[logs.Entry], parks: list[logs.Entry]) -
         return False
     park = parks[-1]
     slice_id = str(park.fields.get("slice", ""))
-    settled_then = {str(e.fields.get("id", "")) for e in found if e.kind == "decision" and e.t <= park.t}
-    return any(e.kind == "question" and e.t <= park.t and str(e.fields.get("slice", "")) == slice_id
-               and str(e.fields.get("id", "")) not in settled_then for e in found)
+    asked = [e for e in found if e.kind == "question" and e.t <= park.t and str(e.fields.get("slice", "")) == slice_id]
+    return bool(asked) and bool(logs.unanswered(asked, [e for e in [*found, *harbour_entries()] if e.t <= park.t]))
 
 
 def decide_parked(feature: str, fairway: str, held: dict[str, str]) -> list[str]:
@@ -1837,7 +1892,7 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
         if "`seeded`" in why:
             carried["needs"] = seed_need(slice_id, feature)
         if chosen.get("needs"):
-            carried["needs"] = [*carried.get("needs", []), {"what": str(chosen["needs"]), "by": "person"}]  # type: ignore[list-item]
+            carried["needs"] = [*carried.get("needs", []), person_need(chosen["needs"])]  # type: ignore[list-item]
         record(slice_id, **carried)
         return False, str(chosen["why"])
 
@@ -2055,7 +2110,7 @@ def look_stuck(feature: str, fairway: str, flying: list[str]) -> None:
                     # Ended through its conversation, as a person's stop is, and parked where it ends.
                     FLIGHT[slice_id]["parking"] = str(one.get("why") or "its captain parked it")
                     if one.get("needs"):  # what would let it go on, carried as the gate-failed park carries it
-                        FLIGHT[slice_id]["parking_needs"] = [{"what": str(one["needs"]), "by": "person"}]
+                        FLIGHT[slice_id]["parking_needs"] = [person_need(one["needs"])]
                     talk.send(conversation(fairway, slice_id), "stop", str(one.get("why") or ""),
                               by=f"captain:{fairway}")
         guarded("putting stuck", lambda: helm.later("stuck", slice_id, {"slice": slice_id, "warnings": found},
@@ -2749,6 +2804,8 @@ def finished(feature: str, fairway: str, slice_id: str, done: bool, fault: str, 
     named.update(carried or {})
     if "cause" not in named and waiting in CAUSE_OF_WAIT:
         named["cause"] = CAUSE_OF_WAIT[waiting]
+    # What a person reads first, by its cause, where the run did not leave a plainer one (#172).
+    named.setdefault("plain", PARK_PLAIN.get(str(named.get("cause") or "other"), PARK_PLAIN["other"]))
     write(feature, fairway, logs.entry("parked", fairway=fairway, why=f"{slice_id}: {fault}", **named))
     if str(named.get("cause", "")) == "limit" and named.get("until"):
         return f"captain: {fairway} paused at {slice_id} until {local_clock(str(named['until']))} — {fault}"
@@ -3064,7 +3121,7 @@ def turn(fairway: str) -> str:
             return f"captain: {fairway} is paused until {lifting} — {parked}"
         return f"captain: {fairway} is parked — {parked}"
     if stranded:
-        write(feature, fairway, logs.entry("parked", fairway=fairway, why=stranded))
+        write(feature, fairway, logs.entry("parked", fairway=fairway, why=stranded, plain=STRANDED_PLAIN))
         return f"captain: {fairway} parked — {stranded}"
     # Claimed and not merged is this stream's own work, whatever left it there: a cleared park, a stop, a
     # reboot. A slice still parked on its own is left until it is cleared, and one another captain on this

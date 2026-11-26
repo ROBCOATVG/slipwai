@@ -159,7 +159,8 @@ def release_step(row: dict[str, Any]) -> str:
 
 
 def plain_of(row: dict[str, Any]) -> str:
-    """The plain line a block leads with: its first unmet need's, or a question's own, or `""` (#172)."""
+    """The plain line a block leads with: its first unmet need's, or a question's or a park's own, or `""`
+    (#172)."""
     owed = [need for need in row.get("needs") or [] if need.get("met") != "yes"]
     return next((str(need["plain"]) for need in owed if need.get("plain")), "") or str(row.get("plain") or "")
 
@@ -187,7 +188,8 @@ def need_steps(row: dict[str, Any]) -> list[str]:
 def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
     """The why and the steps of one kind of block, before any held answer's release is put first."""
     fairway, named = str(row.get("fairway") or ""), str(row.get("aim") or row.get("slice") or "")
-    said = first_sentence(str(row.get("asked") or row.get("what") or ""))
+    # A park's plain line, where the captain wrote one, leads as a need's and a question's does (#172).
+    said = plain_of(row) or first_sentence(str(row.get("asked") or row.get("what") or ""))
     log = f"`slipwai fleet {fairway}`"
     if kind == "unreadable":
         return (f"The {fairway} log has a line nobody can read, so its captain stops at every start.",
@@ -278,7 +280,8 @@ def steps_for(kind: str, row: dict[str, Any]) -> tuple[str, list[str]]:
         return (said, [f"Read the demo's verdict and what it walked: {log}, or this card's own lines.",
                        f"Say what to change, or that it is right as it is: {answer_step(row)}"])
     whole = re.sub(r"\s+", " ", str(row.get("what") or "").partition(SAID)[0]).strip()
-    return whole, ["Decide what it needs from you: the park above is the captain's own words.", answer_step(row)]
+    return plain_of(row) or whole, ["Decide what it needs from you: the park above is the captain's own words.",
+                                    answer_step(row)]
 
 
 def action(row: dict[str, Any]) -> dict[str, Any]:

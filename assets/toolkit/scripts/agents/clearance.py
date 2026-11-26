@@ -231,7 +231,7 @@ class Folded:
         #: Capabilities a person's demo is owed for and has not accepted: `demo-due` without a later `accepted`.
         #: Only where `demos` is `person`; under `hand` the hand's verdict was the acceptance and this stays empty.
         self.demo_due: set[str] = set()
-        #: Open questions per slice: a `question` whose `id` no `decision` has carried since.
+        #: Open questions per slice: a `question` still owed an answer (`logs.unanswered`).
         self.questions: dict[str, list[tuple[str, str]]] = {}
         self.parked: dict[str, str] = {}  # fairway -> why
         #: Slices held by a park of their own — a `parked` line naming a `slice` — which hold no sibling.
@@ -259,9 +259,10 @@ def demos_setting(root: Path | None = None) -> str:
 
 
 def folded(found: list[dict], demos: str | None = None) -> Folded:
-    """The fold. Order matters for every pair that answers each other — a `decision` closes the `question`
-    it names, an `accepted` closes the `demo-due` for its capability, a `claimed` lifts its fairway's park.
-    `demos` is who accepts a capability, read from the project where it is not given."""
+    """The fold. Order matters for every pair that answers each other — an `accepted` closes the `demo-due`
+    for its capability, a `claimed` lifts its fairway's park — but not for a question, which is open by
+    `logs.unanswered` whatever came first. `demos` is who accepts a capability, read from the project where it
+    is not given."""
     person = (demos or demos_setting()) == PERSON_DEMOS
     state = Folded()
     slice_park_at: dict[str, tuple[str, str]] = {}
@@ -291,12 +292,6 @@ def folded(found: list[dict], demos: str | None = None) -> Folded:
             state.demo_due.add(str(line.get("capability", "")))
         elif kind == "accepted" and line.get("by") != DEMO_HAND:
             state.demo_due.discard(str(line.get("capability", "")))
-        elif kind == "question" and slice_id and line.get("id"):
-            state.questions.setdefault(slice_id, []).append((str(line["id"]), str(line.get("what", ""))))
-        elif kind == "decision" and line.get("id"):
-            answered = str(line["id"])
-            for asked in state.questions.values():
-                asked[:] = [(ident, what) for ident, what in asked if ident != answered]
         elif kind == "parked" and slice_id:
             state.slice_parked[slice_id] = str(line.get("why", ""))
             slice_park_at[slice_id] = (str(line.get("fairway", "")), str(line.get("t", "")))
@@ -313,6 +308,14 @@ def folded(found: list[dict], demos: str | None = None) -> Folded:
                 state.paused.pop(str(line.get("fairway", "")), None)
         elif kind == "cleared":
             receipts.add((str(line.get("fairway", "")), str(line.get("parked", ""))))
+    # The questions still owed an answer, by `logs.unanswered`, the rule the board and the captain read: a
+    # `decision` carrying the id, or the harbourmaster's `question-met`. Only a decision closed one here
+    # before, so a question met another way held its slice and its capability's gates for good (#172).
+    read = [logs.Entry(kind=str(line.get("kind") or ""), fields=line, t=str(line.get("t") or "")) for line in found
+            if line.get("kind") in ("question", "decision", "question-met")]
+    for asked in logs.unanswered([e for e in read if e.fields.get("slice") and e.fields.get("id")], read):
+        state.questions.setdefault(str(asked.fields["slice"]), []).append(
+            (str(asked.fields["id"]), str(asked.fields.get("what", ""))))
     # A park the harbourmaster has receipted is answered, as `logs.open_parks` reads it for the captain. After
     # the loop, because the receipt is in the harbour log and that is read after every deck log.
     for slice_id, at in slice_park_at.items():

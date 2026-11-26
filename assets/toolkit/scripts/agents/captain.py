@@ -100,6 +100,7 @@ import captain_rules  # noqa: E402
 import claims  # noqa: E402
 import clearance  # noqa: E402
 import drive  # noqa: E402
+import evidence  # noqa: E402 — whether a demo and a seed are still evidence of the branch's head
 import fleet  # noqa: E402
 import harness  # noqa: E402
 import inbox  # noqa: E402
@@ -1188,25 +1189,35 @@ def sets_of(slice_id: str) -> list[str]:
 
 
 def owed(fresh: list[logs.Entry], slice_id: str, promised: list[str],
-         standing: list[logs.Entry] | None = None) -> tuple[list[str], str]:
-    """What this slice still owes: (marks not set, the verdict of the demo written this turn).
+         standing: list[logs.Entry] | None = None) -> tuple[list[str], evidence.Standing]:
+    """What this slice still owes: (marks not set, what its `demo` and `seeded` lines are evidence of now).
 
-    The verdict is `""` where no demo was written at all, which is a different fault from one that was
-    written and sent back — the first says the rung never ran, the second says a person watched it and
-    wanted something changed, and they get different answers.
+    The verdict is `""` where no demo counts at all, which is a different fault from one that was written
+    and sent back — the first says the rung never ran, the second says a person watched it and wanted
+    something changed, and they get different answers.
 
     **A mark is set once.** It is a contract a sibling steers by from the moment its line is written, and
-    nothing un-sets it, so a `mark-set` anywhere in the slice's own log (`standing`) counts. The demo is the
-    line that has to be this turn's: one line is enough to tell a run that happened from one that printed
-    a help message and exited 0, and it is the one that is true of *this* head. game-club-manager's TB1 set
-    its mark at 08:59, was refused its merge on a red trunk, and was then parked twenty-four times for
+    nothing un-sets it, so a `mark-set` anywhere in the slice's own log (`standing`) counts. game-club-manager's
+    TB1 set its mark at 08:59, was refused its merge on a red trunk, and was then parked twenty-four times for
     *wrote no `mark-set`* — a line it had written, asked for again, for a contract that had not moved.
+
+    **A demo and a seed count while the code they were written against is the branch's** (`evidence.py`, the
+    rule the harbourmaster's hold reads too), whichever turn wrote them. Counting only this turn's lost manda's
+    S114 its three attempts at one commit, each run writing what the last was told it lacked and losing what
+    the last had written (issue 170). A line that records no commit counts only where this turn wrote it, as
+    every line did before.
     """
-    mine = [e for e in fresh if str(e.fields.get("slice", "")) == slice_id]
     held = [e for e in (standing if standing is not None else fresh) if str(e.fields.get("slice", "")) == slice_id]
     done = {str(e.fields["mark"]) for e in held if e.kind == "mark-set"}
-    verdicts = [str(e.fields["verdict"]) for e in mine if e.kind == "demo"]
-    return [mark for mark in promised if mark not in done], (verdicts[-1] if verdicts else "")
+    lines = held + [e for e in fresh if str(e.fields.get("slice", "")) == slice_id and e not in held]
+    found = evidence.standing(lines, slice_id, head(BRANCH.format(slice=slice_id)), ROOT,
+                              f"{slice_home(slice_id)}/try-it.json", turn=fresh)
+    return [mark for mark in promised if mark not in done], found
+
+
+def closed_gate(missing: list[str], found: evidence.Standing, dark: bool) -> bool:
+    """Whether a slice's gate is closed: every mark set, a demo accepted and, with a story, a seed, at its head."""
+    return not missing and found.verdict == ACCEPTED and not dark
 
 
 def story_of(slice_id: str, feature: str) -> Path | None:
@@ -1223,8 +1234,8 @@ def story_of(slice_id: str, feature: str) -> Path | None:
     return None
 
 
-def unseeded(fresh: list[logs.Entry], slice_id: str, feature: str) -> bool:
-    """Whether this slice has a story and this turn wrote no `seeded` line for it.
+def unseeded(found: evidence.Standing, slice_id: str, feature: str) -> bool:
+    """Whether this slice has a story and no `seeded` line that counts at its head (`owed`).
 
     The third thing a turn owes, beside its marks and its demo, and the one recap had no gate for: fifteen
     slices merged with a story each and every story refused at its first call, each saying *this step
@@ -1232,7 +1243,7 @@ def unseeded(fresh: list[logs.Entry], slice_id: str, feature: str) -> bool:
     """
     if story_of(slice_id, feature) is None:
         return False
-    return not any(e.kind == "seeded" and str(e.fields.get("slice", "")) == slice_id for e in fresh)
+    return not found.seeded
 
 
 def seed_need(slice_id: str, feature: str) -> list[dict]:
@@ -1766,8 +1777,8 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             # no attempt. The slice is through if the lines say so, and otherwise carries on where it was.
             if landed_already(slice_id, feature, fairway):
                 return True, ""
-            missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
-            if not missing and verdict == ACCEPTED and not unseeded(fresh, slice_id, feature):
+            missing, found = owed(fresh, slice_id, promised, entries(feature, fairway))
+            if closed_gate(missing, found, unseeded(found, slice_id, feature)):
                 return True, ""
             retry = "a person interrupted it to say something, and was answered; carry on from where it was"
             FLIGHT.setdefault(slice_id, {})["carry"] = True
@@ -1798,11 +1809,13 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             return False, str(own[-1].fields.get("why", ""))
         if landed_already(slice_id, feature, fairway):
             return True, ""
+        missing, found = owed(fresh, slice_id, promised, entries(feature, fairway))
+        dark = unseeded(found, slice_id, feature)
+        if closed_gate(missing, found, dark):
+            # Whichever way the session ended, and whichever turn wrote the lines: the evidence is whole at
+            # this head, so this run is not a failed attempt and nothing is asked of the next one.
+            return True, ""
         if finished:
-            missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
-            dark = unseeded(fresh, slice_id, feature)
-            if not missing and verdict == ACCEPTED and not dark:
-                return True, ""
             asked = open_questions(fresh, slice_id) if not asked else asked
             if asked:
                 # Before the mark check: a stage that stopped to ask is not a stage that wrote nothing, and
@@ -1812,7 +1825,7 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
                 return False, (f"{slice_id} is awaiting a decision — {said}. A person answers with "
                                f"`/cruise-tell {fairway} <answer>`; the captain records the decision and "
                                f"resumes {slice_id}")
-            why = gate_missed(slice_id, promised, missing, verdict, dark)
+            why = gate_missed(slice_id, promised, missing, found, dark)
         chosen = gate_failed(slice_id, feature, fairway, why, tried, bound)
         if chosen["verb"] == "retry":
             retry = str(chosen["note"])
@@ -2215,25 +2228,47 @@ def next_facts(feature: str, candidates: list[str], free: int, flying: list[str]
                          "progress": progress(feature, one, found)} for one in candidates]}
 
 
-def gate_missed(slice_id: str, promised: list[str], missing: list[str], verdict: str, dark: bool = False) -> str:
-    """Why a run that finished did not close the gate, in the words the park and the retry carry."""
-    if verdict and verdict != ACCEPTED:
-        return f"the demo came back {verdict!r}. The notes are in the slice; a person decides what happens next"
+def gate_missed(slice_id: str, promised: list[str], missing: list[str], found: evidence.Standing,
+                dark: bool = False) -> str:
+    """Why a run that finished did not close the gate, in the words the park and the retry carry.
+
+    **Everything still owed, in one sentence.** It was an if/else chain that named the first thing missing,
+    so a turn that lacked both its demo and its seed was told of one, wrote it, and was told of the other
+    on the next run — which, with the lines counted only for the turn that wrote them, lost the first again.
+    manda's S114 spent its three attempts that way (issue 170). A demo sent back leads, because a person or
+    the hand said why, and what else is owed follows it.
+    """
+    owes = []
     if missing:
-        return (f"the chart says {slice_id} sets {', '.join(promised)}, and its log holds no `mark-set` "
-                f"for {', '.join(missing)}. A stage that wrote no line made no progress, so nothing here is "
-                f"evidence the slice was built. `python3 scripts/agents/deck_line.py mark-set --slice "
-                f"{slice_id} --mark <mark>` writes the line once the contract exists")
-    if not verdict:
-        return (f"this turn wrote no `demo` line for {slice_id}, so nothing says a person watched it work. "
-                f"`/sail` exiting 0 is the agent's account of itself, which is the one thing this loop does not "
-                f"read. `python3 scripts/agents/deck_line.py demo --slice {slice_id} --verdict <verdict>` "
-                f"writes the line once the demo has been walked on this head")
-    return (f"{slice_id} has a try-it.json and this turn wrote no `seeded` line for it, so nothing says its "
-            f"story seeded green against the app this berth runs — a story the service refused is what a "
-            f"person would have seen first. Fix the refused step at the Demo rung; `python3 "
-            f"scripts/agents/try_it.py seed --slice {slice_id} --api <the berth's service>` writes the line on "
-            f"a green run")
+        owes.append(f"the chart says {slice_id} sets {', '.join(promised)}, and its log holds no `mark-set` "
+                    f"for {', '.join(missing)}. A stage that wrote no line made no progress, so nothing here is "
+                    f"evidence the slice was built. `python3 scripts/agents/deck_line.py mark-set --slice "
+                    f"{slice_id} --mark <mark>` writes the line once the contract exists")
+    if not found.verdict:
+        lead = (f"the `demo` line for {slice_id} was written before a commit that changed its code, so it is "
+                f"not evidence of this head" if "demo" in found.stale else
+                f"no `demo` line for {slice_id} was written at this head, so nothing says a person watched it "
+                f"work. `/sail` exiting 0 is the agent's account of itself, which is the one thing this loop "
+                f"does not read")
+        owes.append(f"{lead}. `python3 scripts/agents/deck_line.py demo --slice {slice_id} --verdict <verdict>` "
+                    f"writes the line once the demo has been walked on this head")
+    if dark:
+        lead = (f"{slice_id} has a try-it.json, and its `seeded` line was written before a commit that changed "
+                f"its code or its story, so it is not evidence of this head" if "seeded" in found.stale else
+                f"{slice_id} has a try-it.json and no `seeded` line for it was written at this head")
+        owes.append(f"{lead}, so nothing says its story seeded green against the app this berth runs — a story "
+                    f"the service refused is what a person would have seen first. Fix the refused step at the "
+                    f"Demo rung; `python3 scripts/agents/try_it.py seed --slice {slice_id} --api <the berth's "
+                    f"service>` writes the line on a green run")
+    if found.verdict and found.verdict != ACCEPTED:
+        sent = f"the demo came back {found.verdict!r}. The notes are in the slice; a person decides what happens next"
+        return sent if not owes else f"{sent}. It also owes: " + "; and ".join(owes)
+    if len(owes) == 1:
+        return owes[0]
+    return (f"{slice_id} owes {len(owes)} things at this head, and a run that writes one of them keeps the "
+            f"others it has: " + "; ".join(f"({n}) {one}" for n, one in enumerate(owes, 1))
+            + ". Each line counts while the code it was written against is the branch's, whichever run wrote "
+              "it, so write the ones still owed after the last commit")
 
 
 #: How many times one turn asks for a slice's merge whatever the refusals were; `ceiling` holds the runs.
@@ -2281,12 +2316,13 @@ def resolve_in_berth(slice_id: str, feature: str, fairway: str, why: str) -> str
         # What was held for the merge was delivered ahead of the resolve, and a message's turn committed:
         # the slice's own gate is read again, on this run's lines, before the merge is asked for.
         promised = sets_of(slice_id)
-        missing, verdict = owed(fresh, slice_id, promised, entries(feature, fairway))
-        if missing or verdict != ACCEPTED or unseeded(fresh, slice_id, feature):
+        missing, found = owed(fresh, slice_id, promised, entries(feature, fairway))
+        dark = unseeded(found, slice_id, feature)
+        if not closed_gate(missing, found, dark):
             record(slice_id, cause="gate")
             return ("a message's turn committed to the slice while it was resolving its merge, and "
                     "its gate was not closed again on that head — "
-                    + gate_missed(slice_id, promised, missing, verdict, unseeded(fresh, slice_id, feature)))
+                    + gate_missed(slice_id, promised, missing, found, dark))
     return ""
 
 

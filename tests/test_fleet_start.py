@@ -23,7 +23,7 @@ from slipwai.project.harbour import harbour_config
 
 AGENTS = TOOLKIT_ROOT / "scripts/agents"
 CARRIED = ("fleet.py", "published.py", "moorings.py", "conflicts.py",
-           "clearance.py", "harbourmaster.py", "need_check.py", "lockfiles.py", "captain.py", "logs.py", "berths.py",
+           "clearance.py", "harbourmaster.py", "need_check.py", "lockfiles.py", "captain.py", "logs.py", "evidence.py", "berths.py",
            "spend.py",
            "abreast.py", "telegraph.py", "inbox.py", "ids.py", "mender.py", "talk.py", "careen.py")
 #: The `fairways` block is in neither the slices' order nor the alphabet's, which is how a test can tell

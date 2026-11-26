@@ -38,7 +38,7 @@ class DeckLineTest(unittest.TestCase):
         self.tree = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.tree, True)
         (self.tree / "scripts/agents").mkdir(parents=True)
-        for name in ("deck_line.py", "clearance.py", "logs.py", "capabilities.py"):
+        for name in ("deck_line.py", "clearance.py", "logs.py", "capabilities.py", "careen.py"):
             shutil.copy(AGENTS / name, self.tree / "scripts/agents" / name)
         (self.tree / "project.json").write_text("{}", encoding="utf-8")
         (self.tree / "specs/001-club").mkdir(parents=True)
@@ -95,6 +95,21 @@ class DeckLineTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual([e.kind for e in self.deck()], ["mark-set"])
         self.assertFalse(logs.deck_path(self.tree, "002-further", "tables").exists())
+
+    def test_a_fairway_s_careen_has_its_demo_written_though_no_chart_lists_it(self) -> None:
+        """manda's modelling-careen parked seven times with every row done: the captain asked for its `demo`
+        line, as `/careen` says, and this door refused it as a slice on no chart (issue 170)."""
+        refused = self.run_line("demo", "--slice", "tables-careen", "--verdict", "accepted")
+        self.assertEqual(refused.returncode, 1)
+        self.assertIn("no fairways/tables/careen.md", refused.stderr)
+        (self.tree / "fairways/tables").mkdir(parents=True)
+        (self.tree / "fairways/tables/careen.md").write_text("# The careen\n", encoding="utf-8")
+        done = self.run_line("demo", "--slice", "tables-careen", "--verdict", "accepted")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual([(e.kind, e.fields["slice"], e.fields["verdict"]) for e in self.deck()],
+                         [("demo", "tables-careen", "accepted")])
+        marked = self.run_line("mark-set", "--slice", "tables-careen", "--mark", "ClubWeekSet")
+        self.assertEqual(marked.returncode, 1, "a careen sets no mark")
 
 
 if __name__ == "__main__":

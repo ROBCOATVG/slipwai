@@ -33,12 +33,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import capabilities  # noqa: E402
+import careen  # noqa: E402 — a fairway's careen is a slice no chart lists
 import clearance  # noqa: E402
 import logs  # noqa: E402
 
@@ -67,6 +69,16 @@ def charted(slice_id: str, feature: str = "") -> tuple[str, dict]:
     body = (found.get("slices") or {}).get(slice_id)
     if not name:
         raise Refused("no feature under specs/ has a chart.yaml, so nothing says which slices there are")
+    closes = careen.fairway_of(slice_id)
+    if closes and not isinstance(body, dict):
+        # A fairway's careen is its last slice and no chart lists it, yet the captain closes it on a `demo`
+        # line like any other and `/careen` says to write it here. Refused as uncharted, manda's
+        # modelling-careen parked seven times with every row done (issue 170). It sets no mark, so a
+        # `mark-set` for it is still refused below; its line goes in its own fairway's log.
+        if not (ROOT / careen.careen_path(closes)).is_file():
+            raise Refused(f"{slice_id} is the careen of {closes}, and there is no {careen.careen_path(closes)} "
+                          f"for it to close")
+        return name, {"fairway": closes, "sets": []}
     if not isinstance(body, dict):
         raise Refused(f"{slice_id} is not a slice on specs/{name}/chart.yaml")
     return name, body
@@ -76,6 +88,18 @@ def fairway_of(body: dict) -> str:
     """The fairway whose log the line belongs in: the captain's word for a session it dispatched, the
     chart's for one run by hand — as `try_it.py` reads it for `seeded`."""
     return os.environ.get("SLIPWAI_FAIRWAY", "") or str(body.get("fairway", ""))
+
+
+def head() -> str:
+    """The commit this checkout is at, or `""` where git cannot say.
+
+    A `demo` line says which commit it was walked at, as `seeded` always has, so it stays evidence for a
+    later run at the same code (`evidence.py`) instead of being owed again by every run. A line without
+    one is read as before: evidence only for the turn that wrote it.
+    """
+    done = subprocess.run(["git", "rev-parse", "--verify", "--quiet", "HEAD"], cwd=ROOT,
+                          capture_output=True, text=True, check=False)
+    return done.stdout.strip() if done.returncode == 0 else ""
 
 
 def line(kind: str, slice_id: str, feature: str = "", mark: str = "", verdict: str = "",
@@ -95,7 +119,8 @@ def line(kind: str, slice_id: str, feature: str = "", mark: str = "", verdict: s
     if stowed and verdict != "accepted":
         raise Refused("`--stowed` is for an `accepted` verdict: it says how many findings the last walk allowed "
                       "left as tasks in the careen. A verdict that sends the slice back stows nothing")
-    said = {name: value for name, value in (("by", by), ("log", log), ("stowed", stowed)) if value}
+    said = {name: value for name, value in (("by", by), ("log", log), ("stowed", stowed), ("commit", head()))
+            if value}
     try:
         return logs.entry("demo", fairway=fairway, slice=slice_id, verdict=verdict, **said)
     except logs.Unreadable as fault:

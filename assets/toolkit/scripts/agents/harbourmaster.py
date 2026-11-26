@@ -105,6 +105,7 @@ except ImportError:  # pragma: no cover - a toolkit older than the harbourmaster
     careen = None  # type: ignore[assignment]
 import claims  # noqa: E402
 import conflicts  # noqa: E402 — a conflict is settled where the rebase stopped, where it can be
+import evidence  # noqa: E402 — the captain's rule for when a seed is still evidence, read here too
 import inbox  # noqa: E402
 import lockfiles  # noqa: E402 — a lock two slices both wrote is written again, not resolved by hand
 import logs  # noqa: E402
@@ -1318,11 +1319,21 @@ def unseeded(fairway: str, slice_id: str) -> str:
     except (OSError, UnicodeDecodeError, logs.Unreadable):
         return ""
     mine = [one for one in lines if str(one.fields.get("slice", "")) == slice_id]
-    if any(one.kind == "seeded" or (one.kind == "told" and one.fields.get("needs")
-                                    and one.fields.get("story") == story) for one in mine):
+    if any(one.kind == "told" and one.fields.get("needs") and one.fields.get("story") == story for one in mine):
         return ""
-    return (f"{slice_id} has a story ({story}) and no `seeded` line says it ran green against the app its "
-            f"berth runs. Seed it with `python3 scripts/agents/try_it.py seed --slice {slice_id}`, or, where "
+    # The captain's own rule (`evidence.py`): a `seeded` line counts while the code and the story it ran
+    # against are the branch's, whichever turn wrote it. Any line used to do here and only this turn's at the
+    # captain, and a slice could pass one and not the other (issue 170). One that records no commit counts
+    # wherever it is, as every line did here before.
+    tip = git("rev-parse", "--verify", "--quiet", f"refs/heads/{BRANCH.format(slice=slice_id)}").stdout.strip()
+    found = evidence.standing(mine, slice_id, tip, ROOT, story)
+    if found.seeded:
+        return ""
+    said = ("its `seeded` line was written before a commit that changed its code or its story, so it is not "
+            "evidence of the branch's head" if "seeded" in found.stale else
+            "no `seeded` line says it ran green against the app its berth runs")
+    return (f"{slice_id} has a story ({story}) and {said}. Seed it with `python3 scripts/agents/try_it.py "
+            f"seed --slice {slice_id}`, or, where "
             f"it is dark until a shared need lands, hand the need back as what keeps it dark — `fleet.py tell "
             f"{fairway} <message> --slice {slice_id} --dark --need '<what>'` — then ask again")
 

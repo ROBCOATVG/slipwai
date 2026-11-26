@@ -193,6 +193,29 @@ class PreviewTest(Fixture):
             self.assertTrue((self.repo / name).read_text(encoding="utf-8").startswith("# theirs\n"))
 
 
+class TheirIgnoresTest(Fixture):
+    """A repository's own `.gitignore` is older than the delivery method and knows nothing of its paths. A
+    bare `bin` from the Python template matches the codegraph launcher under `scripts/extensions/codegraph/
+    bin/`, and `git add` refuses an ignored path named on its command line — so the adoption stopped after
+    writing everything and before its commit, half-done and staged. The launcher only ships where the
+    codegraph package is installed, so a bare `scripts` stands in for it here: every adoption writes under
+    `scripts/`, and the rule bites the same way."""
+
+    def test_a_path_their_gitignore_matches_is_still_committed(self) -> None:
+        (self.repo / ".gitignore").write_text("# Packages\nbin\nbuild\nscripts\n", encoding="utf-8")
+        env = {**os.environ, **IDENTITY}
+        subprocess.run(["git", "add", ".gitignore"], cwd=self.repo, check=True, env=env)
+        subprocess.run(["git", "commit", "-qm", "their ignores"], cwd=self.repo, check=True, env=env)
+        found = survey(self.repo)
+        adopted = adopt(self.repo, Answers("shop", applications=proposed(found, "shop")), found)
+        self.assertEqual(self.dirty(), "")
+        tracked = set(subprocess.run(["git", "ls-files"], cwd=self.repo, text=True, capture_output=True,
+                                     check=True).stdout.splitlines())
+        matched = [path for path in adopted.written if "/scripts/" in f"/{path}"]
+        self.assertTrue(matched, "the adoption no longer writes anything under a scripts/ directory")
+        self.assertEqual([path for path in matched if path not in tracked], [])
+
+
 class ServedTest(Fixture):
     """Over the board's own server: a directory picked, looked at, and only then adopted."""
 

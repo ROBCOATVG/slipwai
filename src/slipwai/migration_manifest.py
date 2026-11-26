@@ -94,7 +94,7 @@ def settled(root: Path, conflicts: tuple[str, ...]) -> tuple[str, ...]:
     if result is None:
         return conflicts
     (root / MANIFEST).write_text(result, encoding="utf-8", newline="")
-    subprocess.run(["git", "add", "--", MANIFEST], cwd=root, capture_output=True, check=True)
+    subprocess.run(["git", "add", "-f", "--", MANIFEST], cwd=root, capture_output=True, check=True)
     left = tuple(path for path in conflicts if path != MANIFEST)
     if not left:
         conclude(root)

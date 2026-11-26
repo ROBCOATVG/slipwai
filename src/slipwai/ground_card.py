@@ -42,6 +42,9 @@ SAID = ("confirmed", "overridden")
 UNKNOWN = "dont-know"
 #: The answer to a row the tree reads: the reading is right. It records the person agreeing with it.
 AS_READ = "as-read"
+#: Said where Record the answer was pressed with no answer chosen, on the page and by the server alike.
+NOTHING_PICKED = ("Nothing is selected yet: choose one of the answers above, then press Record the answer. "
+                  "If you are not sure, choose I don't know.")
 #: Rows the tree settles. Asked only as "is this reading right?" — what moves them is a change to the tree.
 READ = {
     "build": "each application's build tool, how its dependencies are declared, its compile target, and what is "
@@ -147,7 +150,8 @@ def card(root: Path, fault: str = "") -> str:
     return (head + f'<h3>{esc(now.axis.title)}</h3>'
             f'<p>As recorded: <b>{esc(row.get("rung", "—"))}</b> ({esc(row.get("provenance", "unrecorded"))}) — '
             f'{esc(row.get("evidence", ""))}</p>{reading}<ol class="lines rungs">{ladder}</ol>'
-            f'<form class="ask-page" id="ground-form"><input type="hidden" name="axis" value="{esc(now.axis.key)}">'
+            f'<form class="ask-page" id="ground-form" data-kind="{esc(now.kind)}">'
+            f'<input type="hidden" name="axis" value="{esc(now.axis.key)}">'
             f'<div class="checks">{options}</div>{words}</form>'
             '<div class="ask"><button class="go" id="ground-answer">Record the answer</button></div></div>')
 
@@ -169,8 +173,11 @@ def record(root: Path, answers: Mapping[str, str], today: str | None = None) -> 
     if now.kind == "why" and answer != UNKNOWN:
         answer = "why" if words else ""
     offered = {value for value, _ in now.choices} | ({"why"} if now.kind == "why" else set())
+    if not answer:
+        raise GenerationError(NOTHING_PICKED)
     if answer != UNKNOWN and answer not in offered:
-        raise GenerationError("pick one of the answers on offer — I don't know is one of them")
+        raise GenerationError(f"{answer!r} is not one of the answers on offer here — pick one of them; "
+                              "I don't know is one of them")
     refuse_foreign(root, resurvey.writes(root, layout_of(document)), "grounding the map")
     when = today or datetime.date.today().isoformat()
     said = words or "said on the board"
@@ -213,7 +220,7 @@ def record(root: Path, answers: Mapping[str, str], today: str | None = None) -> 
     (root / "project.json").write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
     refreshed = resurvey.refresh(root, clean_checked=True)
     paths = sorted({"project.json", *refreshed.rewritten})
-    subprocess.run(["git", "add", "--", *paths], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-f", "--", *paths], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-q", "-m", f"Ground the map: {axis.title.lower()}"], cwd=root,
                    check=False, capture_output=True)
     return paths
@@ -225,6 +232,21 @@ document.addEventListener('click', async event => {
   if (event.target.id !== 'ground-answer') return;
   const form = document.getElementById('ground-form');
   const held = Object.fromEntries(new FormData(form).entries());
+  // A strategy's row is answered in words; every other row by a choice, and none chosen is said here, at once,
+  // rather than after a round trip that redraws the card with nothing selected.
+  if (!held.answer && !(form.dataset.kind === 'why' && (held.evidence || '').trim())) {
+    let said = document.getElementById('ground-unpicked');
+    if (!said) {
+      said = document.createElement('p');
+      said.id = 'ground-unpicked';
+      said.className = 'said bad';
+      said.setAttribute('role', 'alert');
+      form.before(said);
+    }
+    said.textContent = %s;
+    form.querySelector('input[type=radio]')?.focus();
+    return;
+  }
   event.target.disabled = true;
   const answer = await fetch('/adopt/ground', {method:'POST', headers:{'Content-Type':'application/json'},
                                               body: JSON.stringify(held)});
@@ -232,4 +254,4 @@ document.addEventListener('click', async event => {
   if (answer.ok) { location.reload(); return; }
   document.getElementById('ground').outerHTML = await answer.text();
 });
-"""
+""".replace("%s", json.dumps(NOTHING_PICKED))

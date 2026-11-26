@@ -18,12 +18,13 @@ from pathlib import Path
 from . import next_steps
 from .adoption_flow import PRD, control
 from .adoption_flow import SCRIPT as STEPPING
-from .adoption_run import GROUND, STRATEGY, key_of
+from .adoption_run import GROUND, INIT, STRATEGY, key_of
+from .board_settings import chosen, read
 from .errors import GenerationError
 from .folder_field import SCRIPT as CHOOSING
 from .ground_card import SCRIPT as GROUNDING
 from .ground_card import card as ground_card
-from .harness import detect, keys, name_of
+from .harness import detect, from_spec_kit, keys, name_of
 from .interview_form import field_html
 from .interview_page import extensions_asked
 from .layout import layout_of
@@ -31,6 +32,20 @@ from .manifest import apps_from_manifest, read_manifest
 from .origin import adoption_of
 from .page_shell import esc
 from .stack_proposal import proposed
+
+
+def handed_to(root: Path) -> str | None:
+    """Whom `./init`'s "Hand it to" offers first: the harness Spec Kit already recorded, where it did, then the
+    agent this board runs on, then what the tree and the environment read. The board's own choice comes before
+    the reading because every stage after `./init` runs through the harness picked here — a reading that
+    landed on an agent the board was never signed in to left the first agent step to fail on its handshake."""
+    recorded = from_spec_kit(root)
+    if recorded is not None and recorded.harness:
+        return recorded.harness
+    board = chosen(read())
+    if board is not None and board.key in keys():
+        return board.key
+    return detect(root).harness
 
 
 def adoption_card(root: Path, running: bool = False) -> str:
@@ -61,7 +76,7 @@ def adoption_card(root: Path, running: bool = False) -> str:
         seen = seen or not step.done
         rows.append(f'<li class="{mark}"><b>{esc(mark)}</b> {esc(step.action)} — {esc(step.why)}</li>')
     key = key_of(now.action) if now else ""
-    harness = detect(root).harness
+    harness = handed_to(root) if key == INIT else detect(root).harness
     agents = "".join(f'<option value="{esc(one)}"{" selected" if one == harness else ""}>{esc(name_of(one))}</option>'
                      for one in keys())
     # The step the board can take itself, under the checklist: `/ground`'s questions one row at a time, or the

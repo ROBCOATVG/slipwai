@@ -14,8 +14,9 @@ through it from the board as well.
 """
 from __future__ import annotations
 
-# budget: 370 — a stage run, a turn of conversation and a message queued for one, and the routes that answer them
-# — the card, the stop, what is said, Carry on and Discard — beside the session they act on.
+# budget: 410 — a stage run, a turn of conversation and a message queued for one, and the routes that answer them
+# — the card, the stop, what is said, Carry on and Discard — beside the session they act on; and what a stage
+# says where its agent's handshake is refused for want of a sign-in, which names that agent and how to switch.
 import contextlib
 import os
 import re
@@ -26,10 +27,11 @@ from pathlib import Path
 from typing import Any
 
 from . import drawing_budget, stage_talk
+from .acp import SIGNED_OUT, Fault
 from .board_agent import BoardAgent
 from .board_settings import Launch, chosen, read
 from .drawn import fingerprints, withdraw
-from .harness import acp_environment
+from .harness import acp_environment, from_spec_kit
 from .logs import run_dir
 from .review_reading import DECLARE
 from .shell_environment import login_environment
@@ -72,6 +74,32 @@ def launchable(root: Path) -> Launch | None:
     """The agent a stage in this project would run through, or `None` where the headless path is the way."""
     found = chosen(read(), root, login_environment().get("PATH"))
     return found if found is not None and found.able else None
+
+
+def signed_out(root: Path, launch: Launch, fault: Exception) -> str:
+    """What a stage says where its agent refused the handshake for want of a sign-in: which agent, why it is
+    that one, and the two ways on. The agent's own words — "Authentication required" — said neither, and the
+    step ended on them with nothing to press."""
+    said = (f"{launch.name} refused to start the session: it is not signed in for the board ({fault}). Open "
+            f"Settings and press Sign in under {launch.name} (press Make ready there first, if it shows no Sign "
+            "in), then run the step again.")
+    recorded, board = from_spec_kit(root), chosen(read())
+    if recorded is not None and recorded.harness == launch.key and board is not None and board.key != launch.key:
+        said += (f" {launch.name} is this project's agent because `./init` was run for it, and that comes before "
+                 f"the {board.name} this board runs on: `./{init_of(root)} --integration {board.key}` hands the "
+                 f"project's stages to {board.name} instead.")
+    return said
+
+
+def init_of(root: Path) -> str:
+    """The project's `init`, as a path from its root: under the delivery folder in an adopted repository."""
+    import json
+
+    try:
+        delivery = json.loads((root / "project.json").read_text(encoding="utf-8"))["layout"]["delivery"]
+    except (OSError, ValueError, KeyError, TypeError):
+        delivery = ""
+    return f"{delivery}/init" if isinstance(delivery, str) and delivery not in ("", ".") else "init"
 
 
 class StageSession:
@@ -251,6 +279,10 @@ class StageSession:
             if stop == "end_turn" and self.after and (left := self.after()):
                 fitting.say(f"! {left}")
                 stop = "short"
+        except Fault as fault:
+            fitting.say(f"! {signed_out(self.root, launch, fault)}" if fault.code == SIGNED_OUT else
+                        f"! The session could not run: {fault}")
+            stop = "fault"
         except Exception as fault:  # noqa: BLE001 — a stage that raised would leave the run with no end
             fitting.say(f"! The session could not run: {fault}")
             stop = "fault"

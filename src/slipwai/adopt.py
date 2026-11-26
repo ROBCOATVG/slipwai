@@ -290,7 +290,10 @@ def adopt(root: Path, answers: Answers, found: Survey | None = None) -> Adopted:
     wrappers = write_wrappers(root, wrapped_of(apps))
     theirs = [path for paths in wrappers.values() for path in paths]
 
-    subprocess.run(["git", "add", "--", *written, *appended, *theirs], cwd=root, check=True)
+    # `-f`: every path here is one slipwai wrote and means to track, and the repository's own `.gitignore` is
+    # older than it. A bare `bin` or `scripts` there matches a delivery path, and `git add` refuses an ignored
+    # path it is named — which stopped the adoption after writing everything and before its commit.
+    subprocess.run(["git", "add", "-f", "--", *written, *appended, *theirs], cwd=root, check=True)
     subprocess.run(
         ["git", *NO_MAINTENANCE, "commit", "-q", "-m",
          f"Adopt the delivery method for {answers.name} with slipwai {VERSION}"],

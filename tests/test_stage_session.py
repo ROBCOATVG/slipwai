@@ -193,5 +193,29 @@ class StageRoutesTest(BoardTest):
         self.assertIn("Drawn: the organiser does", said["lines"])
 
 
+class SignedOutTest(unittest.TestCase):
+    """The handshake refused for want of a sign-in: which agent, why that one, and the two ways on."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        (self.root / "project.json").write_text(json.dumps({"layout": {"delivery": "adopt"}}))
+        self.cursor = Launch("cursor-agent", "Cursor", ("agent", "acp"), "")
+        self.fault = stage_session.Fault("the agent refused session/new: Authentication required")
+
+    def test_it_names_the_agent_and_where_to_sign_in(self) -> None:
+        with mock.patch.object(stage_session, "from_spec_kit", return_value=None):
+            said = stage_session.signed_out(self.root, self.cursor, self.fault)
+        self.assertIn("Cursor refused to start the session", said)
+        self.assertIn("press Sign in under Cursor", said)
+
+    def test_a_project_recorded_for_another_agent_than_the_boards_says_how_to_switch(self) -> None:
+        claude = Launch("claude", "Claude Code", ("claude-agent-acp",), "")
+        with mock.patch.object(stage_session, "from_spec_kit", return_value=mock.Mock(harness="cursor-agent")), \
+                mock.patch.object(stage_session, "chosen", return_value=claude):
+            said = stage_session.signed_out(self.root, self.cursor, self.fault)
+        self.assertIn("`./adopt/init --integration claude`", said)
+        self.assertIn("this board runs on", said)
+
+
 if __name__ == "__main__":
     unittest.main()

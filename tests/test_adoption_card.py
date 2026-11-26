@@ -15,6 +15,7 @@ import checkout_packages  # noqa: F401
 
 from slipwai import adoption_card as card
 from slipwai.assets import TOOLKIT_ROOT
+from slipwai.board_settings import Launch
 from slipwai.next_steps import Step
 
 
@@ -121,6 +122,31 @@ class DraftTest(unittest.TestCase):
                              capture_output=True, text=True, check=False)
         self.assertEqual(ran.returncode, 2)
         self.assertIn("adopt/docs/prd.md is not a file", ran.stderr)
+
+
+class HandedToTest(unittest.TestCase):
+    """Whom `./init`'s "Hand it to" offers first. A reading of the tree once landed on Cursor for a board that
+    runs on Claude, and every stage after `./init` went to an agent the board had never signed in to."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+
+    def test_the_agent_the_board_runs_on_comes_before_a_reading(self) -> None:
+        board = Launch("claude", "Claude Code", ("claude-agent-acp",), "")
+        with mock.patch.object(card, "chosen", return_value=board), \
+                mock.patch.object(card, "detect", return_value=mock.Mock(harness="cursor-agent")):
+            self.assertEqual(card.handed_to(self.root), "claude")
+
+    def test_what_spec_kit_recorded_is_an_answer_and_stands(self) -> None:
+        board = Launch("claude", "Claude Code", ("claude-agent-acp",), "")
+        with mock.patch.object(card, "chosen", return_value=board), \
+                mock.patch.object(card, "from_spec_kit", return_value=mock.Mock(harness="codex")):
+            self.assertEqual(card.handed_to(self.root), "codex")
+
+    def test_with_nothing_the_board_can_launch_the_reading_is_offered(self) -> None:
+        with mock.patch.object(card, "chosen", return_value=None), \
+                mock.patch.object(card, "detect", return_value=mock.Mock(harness="cursor-agent")):
+            self.assertEqual(card.handed_to(self.root), "cursor-agent")
 
 
 if __name__ == "__main__":

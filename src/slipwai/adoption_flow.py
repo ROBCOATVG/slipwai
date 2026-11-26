@@ -131,7 +131,7 @@ def decide(root: Path, layout: Layout, answers: Mapping[str, str], today: str | 
     relative = path.relative_to(root).as_posix()
     # The record reads the decision off the ADR when it is refreshed, and the map and the pages follow it.
     paths = sorted({relative, "project.json", *resurvey.refresh(root, clean_checked=True).rewritten})
-    subprocess.run(["git", "add", "--", *paths], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-f", "--", *paths], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-q", "-m", f"Decide the change strategy: {strategy}", "--", *paths],
                    cwd=root, check=False, capture_output=True)
     return relative

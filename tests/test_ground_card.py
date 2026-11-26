@@ -63,7 +63,7 @@ class GroundTest(unittest.TestCase):
                          ("trunk", "confirmed", "every branch is merged the same day"))
         self.assertEqual(paths, ["adopt/docs/convergence.md", "project.json"])
         added = self.git.call_args_list[0].args[0]
-        self.assertEqual(added, ["git", "add", "--", "adopt/docs/convergence.md", "project.json"])
+        self.assertEqual(added, ["git", "add", "-f", "--", "adopt/docs/convergence.md", "project.json"])
 
     def test_the_path_to_production_writes_the_release_path_the_gate_caps_it_by(self) -> None:
         self.answer("path-to-production", "one-path")
@@ -102,6 +102,20 @@ class GroundTest(unittest.TestCase):
         with self.assertRaises(GenerationError):
             self.answer("integration", "nightly")
         self.assertEqual(self.document(), before)
+
+    def test_nothing_selected_says_so_and_writes_nothing(self) -> None:
+        """Record the answer pressed with no radio chosen: the refusal says nothing was selected, rather than
+        that the answer was not one on offer — there was no answer."""
+        before = self.document()
+        with self.assertRaisesRegex(GenerationError, "Nothing is selected yet"):
+            self.answer("build", "")
+        self.assertEqual(self.document(), before)
+        self.git.assert_not_called()
+
+    def test_the_page_catches_nothing_selected_before_it_posts(self) -> None:
+        self.assertIn(ground_card.NOTHING_PICKED.split(":")[0], ground_card.SCRIPT)
+        self.assertNotIn("%s", ground_card.SCRIPT)
+        self.assertIn('data-kind="', ground_card.card(self.root))
 
     def test_every_row_answered_says_so(self) -> None:
         self.write(adopted(convergence=[{"axis": axis.key, "rung": axis.rungs[0], "provenance": "unrecorded",

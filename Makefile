@@ -106,6 +106,8 @@ SLOW += test_decisions_two_features
 SLOW += test_further_feature_extras
 # A git repository per case: the events module judged on a real slice branch (issue 168).
 SLOW += test_slice_scope_events
+# A git repository and a captain or a harbourmaster run per case: a seed and a demo counted at the branch's head (issue 170).
+SLOW += test_seed_demo_same_head
 UNIT_TESTS := $(filter-out $(SLOW),$(ALL_TESTS))
 .PHONY: unit
 unit: ## The fast tests only — the per-increment gate, with the slow modules left out

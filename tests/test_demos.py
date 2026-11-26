@@ -43,7 +43,7 @@ def project(demos_value: str = "") -> Path:
     """A generated project's bones: its toolkit scripts, a chart, and `demos` where it is given."""
     root = Path(tempfile.mkdtemp()).resolve()
     (root / "scripts/agents").mkdir(parents=True)
-    for name in ("deck_line.py", "clearance.py", "logs.py", "capabilities.py", "cruise.py"):
+    for name in ("deck_line.py", "clearance.py", "logs.py", "capabilities.py", "cruise.py", "careen.py"):
         shutil.copy(AGENTS / name, root / "scripts/agents" / name)
     (root / "project.json").write_text("{}", encoding="utf-8")
     (root / "specs/001-shop").mkdir(parents=True)

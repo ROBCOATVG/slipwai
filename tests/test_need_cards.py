@@ -100,6 +100,21 @@ class WhoActsTest(unittest.TestCase):
         self.assertLess(card.index(PLAIN), card.index("maxReceiveCount 5"))
         self.assertIn('<details class="tech"><summary>Details</summary>a dead-letter queue', card)
 
+    def test_a_captain_s_park_leads_with_its_plain_line_and_its_need_s(self) -> None:
+        said = "This slice has used every run it is allowed without finishing the work its step owes."
+        need = {"what": "a person reads the demo log", "by": "person", "plain": "Read what the demo walked."}
+        park = logs.Entry("parked", {"fairway": "intake", "slice": "S105", "cause": "gate", "plain": said,
+                                     "why": "S105: wrote no `demo`. That was the last of 3 run(s)"}, t=AT)
+        alone = logs.Entry("parked", {**park.fields, "needs": []}, t="2026-11-24T18:36:00Z")
+        rows = [{"fairway": "intake", "kind": "parked", "t": one.t, "slice": "S105", "what": one.fields["why"],
+                 "cause": "gate", "plain": said, "needs": need_rows(one, set())}
+                for one in (logs.Entry("parked", {**park.fields, "needs": [need]}, t=AT), alone)]
+        found = board(rows)
+        drawn = inbox(found)
+        self.assertNotIn("In the agent&#x27;s own words", drawn)
+        self.assertIn("Read what the demo walked.", drawn)
+        self.assertIn(said, drawn, "a park with no needs leads with its own plain line")
+
 
 if __name__ == "__main__":
     unittest.main()

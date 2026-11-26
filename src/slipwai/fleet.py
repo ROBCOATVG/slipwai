@@ -79,6 +79,7 @@ from .logs import (
     paused,
     stream_lines,
     streams,
+    unanswered,
     unmerged,
 )
 from .need_check import trunk_commit
@@ -200,13 +201,10 @@ class Fairway:
 
     @property
     def asked(self) -> list[Entry]:
-        """Every `question` no `decision` has answered by `id`. A headless `/launch` posts the chart's context
-        question for a person and proceeds; a board showing only `told` and `parked` drew that as nothing."""
-        answered = {str(e.fields.get("id", "")) for e in self.entries if e.kind == "decision"}
-        # Or nobody owes it an answer any more, which the harbourmaster says with a `question-met` (#172).
-        answered |= {str(e.fields.get("id", "")) for e in self.receipts if e.kind == "question-met"
-                     and str(e.fields.get("fairway", "")) == self.name}
-        return [e for e in self.entries if e.kind == "question" and str(e.fields.get("id", "")) not in answered]
+        """Every `question` still owed an answer, by `logs.unanswered`: the rule the captain and clearance read
+        too. A headless `/launch` posts the chart's context question for a person and proceeds; a board
+        showing only `told` and `parked` drew that as nothing."""
+        return unanswered(self.entries, [*self.entries, *self.receipts], self.name)
 
     @property
     def unreviewed(self) -> list[Entry]:
@@ -530,6 +528,7 @@ def park_row(one: Fairway, park: Entry, resting: bool, bound: float = STALL_MINU
             # The record, where the park carries one: see `logs.OPTIONAL`.
             "cause": cause_of(park), "until": str(park.fields.get("until") or ""),
             "then": str(park.fields.get("then") or ""), "waiting": str(park.fields.get("waiting") or ""),
+            "plain": str(park.fields.get("plain") or ""),
             "needs": need_rows(park, one.needs_met(park) | (landed or set())), "paused": "yes" if resting else "no",
             "held": answer_held(park, over_ceiling(unread, ceiling)), "unread": unread, "ceiling": ceiling,
             "answered": {"text": str(answered[-1].fields.get("message", "")), "t": answered[-1].t} if answered else {}}

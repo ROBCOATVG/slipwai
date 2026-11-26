@@ -121,7 +121,7 @@ def group_row(group: dict, controls: bool, answers: str = "") -> tuple[str, dict
     action = group.get("action") or {}
     kind = str(action.get("kind") or "")
     parks = group.get("parks") or []
-    title = first_sentence(needs_title(needs) or str(group.get("what") or ""), 110) or "A park"
+    title = first_sentence(needs_title(needs) or str(group.get("plain") or group.get("what") or ""), 110) or "A park"
     met = sum(1 for need in needs if need.get("met") == "yes")
     meta = " · ".join(bit for bit in (", ".join(dict.fromkeys(group.get("slices") or [])), f"since {when(group['t'])}",
                                       f"{met} of {len(needs)} done" if needs else "") if bit)

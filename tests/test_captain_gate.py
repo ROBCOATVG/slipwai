@@ -70,7 +70,9 @@ class GateTest(Fixture):
         self.assertEqual(parks[0].fields.get("cause"), "gate")
         self.assertEqual(parks[0].fields.get("needs"), [
             {"what": "the story in specs/ordering/slices/ORD-01/try-it.json seeds green against the app this berth "
-                     "runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"}}])
+                     "runs", "by": "fleet", "check": {"kind": "make", "target": "check-try"},
+             "plain": "The slice's demo story has to run cleanly against the app before the slice can merge. It "
+                      "ticks itself once it does."}])
 
     def test_a_slice_with_a_story_whose_turn_wrote_seeded_is_through_its_gate(self) -> None:
         self.story()

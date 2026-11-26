@@ -1809,13 +1809,14 @@ def through_its_gate(slice_id: str, feature: str, fairway: str, bound: int) -> t
             return False, str(own[-1].fields.get("why", ""))
         if landed_already(slice_id, feature, fairway):
             return True, ""
-        missing, found = owed(fresh, slice_id, promised, entries(feature, fairway))
-        dark = unseeded(found, slice_id, feature)
-        if closed_gate(missing, found, dark):
-            # Whichever way the session ended, and whichever turn wrote the lines: the evidence is whole at
-            # this head, so this run is not a failed attempt and nothing is asked of the next one.
-            return True, ""
         if finished:
+            missing, found = owed(fresh, slice_id, promised, entries(feature, fairway))
+            dark = unseeded(found, slice_id, feature)
+            if closed_gate(missing, found, dark):
+                # Whichever turn wrote the lines: the evidence is whole at this head, so this run is not a
+                # failed attempt and nothing more is asked of it. A run that ended for silence or an exit
+                # still answers for how it ended — a message turn that hung is held to the stage bound.
+                return True, ""
             asked = open_questions(fresh, slice_id) if not asked else asked
             if asked:
                 # Before the mark check: a stage that stopped to ask is not a stage that wrote nothing, and

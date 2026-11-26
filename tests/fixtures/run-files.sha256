@@ -107,6 +107,7 @@
 # why: 2026-11-25 1a35d057ae41be99 harbourmaster.py brings the person's checkout level with trunk after a push, names local-only trunk commits and says when its own scripts moved (#166)
 # why: 2026-11-25 f2a8bd4044074b84 check-slice-scope judges the events module's change by token, not by line: a widened enum, literal union or an added optional field is in scope (issue 168); every narrowing it refused it still refuses, with a message naming what it saw
 # why: 2026-11-26 f1462b5c7e9c2200 issue 170: the captain's gate and the harbourmaster's merge hold read one rule (new scripts/agents/evidence.py) for when a demo or seeded line is evidence of the slice branch's head, whichever run wrote it; the gate's refusal names everything owed; deck_line demo records its commit and accepts a fairway's careen. A deliberate behaviour change on every platform, nothing platform-specific
+# why: 2026-11-26 7863d15ccc80c955 issue 170: a run whose evidence is whole at the head closes its gate only where its session finished, as before; one ended for silence or an exit still answers for that
 
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-memory-none  scripts/agents/ids.py
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-postgres-toy-serve  scripts/agents/ids.py
@@ -306,14 +307,14 @@
 7b7eb3e9d8a10312dfb38011b185e9e163b7d723d983f9c04dfbce22cf3c4690  event-modelling-postgres-toy-serve  scripts/extensions/guidance.py
 7b7eb3e9d8a10312dfb38011b185e9e163b7d723d983f9c04dfbce22cf3c4690  standard-memory-none  scripts/extensions/guidance.py
 7b7eb3e9d8a10312dfb38011b185e9e163b7d723d983f9c04dfbce22cf3c4690  standard-postgres-toy-serve  scripts/extensions/guidance.py
-7c6ccbedbf45b3daf1a9b6cb52d5bf9f0d96eb070f2fb86e095bde58c25c7377  event-modelling-memory-none  scripts/agents/captain.py
-7c6ccbedbf45b3daf1a9b6cb52d5bf9f0d96eb070f2fb86e095bde58c25c7377  event-modelling-postgres-toy-serve  scripts/agents/captain.py
-7c6ccbedbf45b3daf1a9b6cb52d5bf9f0d96eb070f2fb86e095bde58c25c7377  standard-memory-none  scripts/agents/captain.py
-7c6ccbedbf45b3daf1a9b6cb52d5bf9f0d96eb070f2fb86e095bde58c25c7377  standard-postgres-toy-serve  scripts/agents/captain.py
 7e177c4d281291f8897bae5e33d4cbea7949e83cda4d48c3837673a9b8ccd518  event-modelling-memory-none  scripts/extensions/project.py
 7e177c4d281291f8897bae5e33d4cbea7949e83cda4d48c3837673a9b8ccd518  event-modelling-postgres-toy-serve  scripts/extensions/project.py
 7e177c4d281291f8897bae5e33d4cbea7949e83cda4d48c3837673a9b8ccd518  standard-memory-none  scripts/extensions/project.py
 7e177c4d281291f8897bae5e33d4cbea7949e83cda4d48c3837673a9b8ccd518  standard-postgres-toy-serve  scripts/extensions/project.py
+808989a822d5ba8c4c1e931a36d7fe8c66612e3fd1f1d98827b189d45d441a03  event-modelling-memory-none  scripts/agents/captain.py
+808989a822d5ba8c4c1e931a36d7fe8c66612e3fd1f1d98827b189d45d441a03  event-modelling-postgres-toy-serve  scripts/agents/captain.py
+808989a822d5ba8c4c1e931a36d7fe8c66612e3fd1f1d98827b189d45d441a03  standard-memory-none  scripts/agents/captain.py
+808989a822d5ba8c4c1e931a36d7fe8c66612e3fd1f1d98827b189d45d441a03  standard-postgres-toy-serve  scripts/agents/captain.py
 81599b69c6dc8a0579bf57b926cb68c3ccee10da234ee559338fb839a0c15470  event-modelling-memory-none  scripts/agents/drawing_budget.py
 81599b69c6dc8a0579bf57b926cb68c3ccee10da234ee559338fb839a0c15470  event-modelling-postgres-toy-serve  scripts/agents/drawing_budget.py
 81599b69c6dc8a0579bf57b926cb68c3ccee10da234ee559338fb839a0c15470  standard-memory-none  scripts/agents/drawing_budget.py

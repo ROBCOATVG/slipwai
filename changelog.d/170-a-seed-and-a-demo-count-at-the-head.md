@@ -18,8 +18,8 @@ disagree about the same slice.
 - The refusal, and the park it becomes, lists the marks, the demo and the seed still owed in one message,
   says when a line is stale rather than missing, and tells the run to write what is owed after its last
   commit.
-- A run whose evidence is whole at the head is through its gate however the session ended, and spends no
-  further attempt.
+- A run that finishes with its evidence whole at the head, whichever runs wrote it, is through its gate and
+  spends no further attempt.
 - A fairway's careen can write its `demo` line: `deck_line.py demo --slice <fairway>-careen` was refused as
   a slice on no chart, so manda's `modelling-careen` parked seven times with every row done. It is accepted
   where `fairways/<fairway>/careen.md` exists, and a careen still sets no mark.

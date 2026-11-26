@@ -25,7 +25,7 @@ upgrade rather than guessing which fields moved. Silently skipping a line it cou
 log that is missing events look exactly like a log of a run that did not have them, and that is the failure
 this file exists to prevent.
 """
-# budget: 677 — a person's mend-again and its receipt;
+# budget: 715 — a need's and a question's plain line (#172); a person's mend-again and its receipt;
 # where a run's state lives (`run_dir`, which both runtimes ask), the trunk mender's kinds,
 # the park record (cause, until, needs, then) and the shape each field is held to, beside the whole
 # vocabulary of both logs, each kind beside the reason it exists, and the few folds
@@ -204,13 +204,35 @@ DECIDED_IN = re.compile(r"^(?:specs/[^/]+/(?:chart\.yaml|story-split\.md)|(?:.*/
 def asks_a_decision(need: object) -> bool:
     """Whether a need is a product or model decision — a new slice, an event's name, a change to the split —
     which goes to whoever decides (the skipper under `/cruise`, the person under `/sail`) and never to the
-    mender: written so (`decide`, by `fleet.py tell --check decide`), or checked in the chart or the model."""
+    mender: written so (`decide`, by `fleet.py tell --check decide`), or checked in the chart or the model.
+    One that names the hand-back patch carrying it lands with its slice's merge instead (`need_owner.whose`),
+    where the harbourmaster withholds a patch that adds or renames an event (`mender.model_patch_refusal`)."""
     if not isinstance(need, dict):
         return False
     if need.get("decide"):
         return True
     check = need.get("check")
     return isinstance(check, dict) and bool(DECIDED_IN.match(str(check.get("path", ""))))
+
+
+#: What a sentence for a person may not lean on, because a person reading only the board cannot follow it:
+#: a requirement or criterion id as the records write it (FR-012, SC-3), a fairway's decision id (D-ORD-07),
+#: an example id (GN2-1), a backticked span, and a path. Not a bare `D20`, `SC2`, `R2` or `US-1`: this
+#: project's own test bed is a game club, where a D20 is a die, and a file-looking word (`Node.js`,
+#: `shelf.json`) is how products are named. `check-decisions` holds a decision's **In short** to it, and
+#: `fleet.py tell` a need's and a question's `plain` line: one rule for every sentence a person reads first.
+NOT_PLAIN = re.compile(r"\b(?:FR|SC|NFR)-\d+\b|\bD-(?:[A-Z0-9]+-)?\d+\b|\b[A-Z]{2,}\d+-\d+\b|`"
+                       r"|(?<![\w/])[\w.-]+(?:/[\w.-]+)+\.\w+\b|(?<![\w/])[\w.-]+/[\w.-]+/[\w./-]+")
+
+
+def unplain(said: str) -> str:
+    """Why a sentence is not one a person reads without the specification open, or `""`: empty, or leaning on
+    what `NOT_PLAIN` names, which the reason quotes."""
+    if not said.strip():
+        return "it is empty: say in a sentence or two, in plain English, what is wrong and why it matters"
+    leaned = NOT_PLAIN.search(said)
+    return (f"it names {leaned.group(0)!r}; say it without requirement, decision or example ids, backticks or "
+            f"paths, so a person reads it without the specification") if leaned else ""
 
 
 #: The fields a kind may carry beyond what it must. Named so a reader knows the shape to hold them to:
@@ -228,6 +250,9 @@ OPTIONAL: dict[str, tuple[str, ...]] = {
     "parked": ("slice", "waiting", "cause", "until", "needs", "then"),
     "told": ("slice", "needs", "by", "story"),
     "seeded": ("given", "api", "story"),
+    # One or two sentences a person reads first on the board, held to `unplain` where it is written. A need
+    # carries its own `plain` the same way, beside `what`; a line written before either had one still reads.
+    "question": ("plain",),
 }
 #: The instant an `until` is written in: the log's own format, so two logs sort it with everything else.
 INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -263,6 +288,10 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     "need-met": ("fairway", "parked", "need", "how"),
     # Every need of a `told` met: the receipt that takes it off *Waiting on you*, as `cleared` takes a park.
     "told-met": ("fairway", "told", "what"),
+    # A `question` nobody owes an answer any more: the need it was asked for is met, or its slice has merged
+    # and a recorded decision answers it. `id` is the question's, `how` says which. manda's S110-decide-2 was
+    # answered by D523 and stood open after S110 merged, because only a `decision` with its own id closed it.
+    "question-met": ("fairway", "id", "how"),
     "refused": ("fairway", "request", "why"),
     # Trunk's own CI, which is harbour-wide rather than one fairway's: the gate before a merge is `make
     # verify` and CI runs `make ci`, so trunk can go red from a check `verify` never ran. Written once per

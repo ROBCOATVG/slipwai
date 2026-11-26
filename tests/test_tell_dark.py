@@ -19,6 +19,9 @@ from captain_fixture import CHART
 from slipwai import logs
 from slipwai.assets import TOOLKIT_ROOT
 
+#: What every need is told with now: the line the board leads with, in plain words (#172).
+PLAIN = ("--plain", "The page cannot be finished until this lands.")
+
 
 class DarkTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -40,16 +43,17 @@ class DarkTest(unittest.TestCase):
 
     def test_a_dark_hand_back_names_the_story_it_keeps_dark(self) -> None:
         # The message after the options, as `sail.md` spells it, which the plain parse refused.
-        done = self.tell("--slice", "ORD-01", "--dark", "--need", "add the JWT library", "dark until it lands")
+        done = self.tell("--slice", "ORD-01", "--dark", "--need", "add the JWT library", *PLAIN, "dark until it lands")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(self.told().fields["story"], "specs/ordering/slices/ORD-01/try-it.json")
 
     def test_a_hand_back_that_is_not_dark_names_no_story(self) -> None:
-        self.tell("--slice", "ORD-01", "--need", "land the patterns in docs/design.md", "the page is the host's")
+        self.tell("--slice", "ORD-01", "--need", "land the patterns in docs/design.md", *PLAIN,
+                  "the page is the host's")
         self.assertNotIn("story", self.told().fields)
 
     def test_dark_needs_a_slice_and_a_need_to_mean_anything(self) -> None:
-        for argv in (("--dark", "--need", "x", "no slice"), ("--slice", "ORD-01", "--dark", "no need")):
+        for argv in (("--dark", "--need", "x", *PLAIN, "no slice"), ("--slice", "ORD-01", "--dark", "no need")):
             with self.subTest(argv=argv):
                 done = self.tell(*argv)
                 self.assertNotEqual(done.returncode, 0)

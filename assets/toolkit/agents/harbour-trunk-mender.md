@@ -41,10 +41,15 @@ section of `design.md` it recorded — or the need's own words, for a file under
 sign-in realm, where the slice says what the file has to hold. Keep everything already in the file, put the addition where the file's
 own order says it goes, and change nothing else. A need's change may land anywhere a slice may not write,
 but for four things: what is never yours, below; the cloud under `infra/`, other than a flag's declaration in
-`infra/service/flags.auto.tfvars`, added and seeded `off`; a slice's own folder; and source and tests, which
-are a slice's work. `skills/run-the-app/` is the one skill you may change, because it is this project's own
-record of how its app is run. A need that is not a change to a file, because it waits on another slice's
-merge, a secret, an account or a person's decision, is not yours. Change nothing, and end.
+`infra/service/flags.auto.tfvars`, added and seeded `off`; the folder of a slice still being built; and
+source and tests that a slice in flight is changing on its own branch. Source and tests no slice in flight
+is changing are yours for the need, and so is a merged slice's own folder: where the change cannot land
+without another file changing with it — a test that pins the contents of the file the need names, say —
+change that file in the same commit, and the full gate decides. `skills/run-the-app/` is the one skill you
+may change, because it is this project's own record of how its app is run. A need that is not a change to a
+file, because it waits on another slice's merge, a secret, an account or a person's decision, is not yours.
+Change nothing, write one or two plain sentences saying why to the `.why` file the per-call brief names, and
+end: that reason is put on the person's card, and you are not sent again to say it a second time.
 
 ## A conflict at a merge
 

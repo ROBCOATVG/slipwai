@@ -15,6 +15,8 @@ def holds_up(row: dict) -> bool:
     """
     if row.get("paused") == "yes" or row.get("probably") == "yes" or row.get("obsolete"):
         return False  # paused, a merged slice's hand-back to confirm, or a park an earlier slipwai wrote
+    if row.get("acts") == "fleet":
+        return False  # the mender lands it, or it lands with its slice's merge: nobody waits on a person (#172)
     if row.get("kind") == "told":
         return bool(row.get("needs"))
     if row.get("kind") == "decisions":

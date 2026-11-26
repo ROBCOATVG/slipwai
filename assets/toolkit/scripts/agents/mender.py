@@ -54,6 +54,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import logs  # noqa: E402
+import need_check  # noqa: E402 — a text check is read without the quotes round it, as trunk is asked
+import need_owner  # noqa: E402 — where a need's change may land, which the board asks too
 
 
 def project_root() -> Path:
@@ -79,24 +81,29 @@ BRANCH = "mend/{job}-{key}"
 #: Used where `harbour.json` names neither.
 DEFAULT_ATTEMPTS, DEFAULT_MINUTES = 3, 60
 #: Never the mender's, whatever the job. A gate passes on its own merits, so nothing that is a gate, runs
-#: one, or decides what an agent may do is a file it may edit.
-NEVER = ("scripts/", "tools/", ".githooks/", ".slipwai/", ".specify/", "agents/", "commands/", "skills/",
-         "Makefile", "harbour.json", "project.json", ".github/")
+#: one, or decides what an agent may do is a file it may edit. Held in `need_owner`, which the board asks too.
+NEVER = need_owner.NEVER
 #: Where a need's change may land is everywhere but four things, and not a list of places. It was a list —
 #: `.env.example`, `docs/`, `docker/`, three more — and whatever a slice handed back outside it was nobody's:
 #: the slice may not write it, the mender might not, and it stood on the board for a person who, under
 #: `/cruise`, is not there. lean-coffee-club had sixteen such needs open after two days: a compose file's
 #: environment line, each fairway's `careen.md`, a flag's declaration, a service's build file. The four:
 #: `NEVER` above; the cloud, which is a person's because a change there spends money and reaches production;
-#: a slice's own folder; and source and tests, which are a slice's work and not a hand-back.
+#: a slice's own folder while it is being built; and source and tests an open slice's branch is changing,
+#: which are that slice's work. manda's flaky test and a merged slice's demo story were neither, and stood on
+#: the board for good because the rule said every test and every slice folder was a slice's (#172).
 #: The skill that says how this project's app is run is the project's own record, kept up as the app
 #: changes, so it is the one thing under `skills/` a need may change.
-KEPT_UP = ("skills/run-the-app/",)
+KEPT_UP = need_owner.KEPT_UP
 #: A flag's declaration is the one file under `infra/` a need may change: additive, and seeded `off`.
-FLAGS = "infra/service/flags.auto.tfvars"
-PERSONS = ("infra/",)
-#: A slice's own record, and code: `src/` and the test folders, wherever a deployable keeps them.
-SLICES_OWN = re.compile(r"^specs/[^/]+/slices/|(?:^|/)(?:src|test|tests|__tests__)/")
+FLAGS = need_owner.FLAGS
+PERSONS = need_owner.PERSONS
+#: A slice's own record, and code: `src/` and the test folders, wherever a deployable keeps them. Each is the
+#: mender's where no open slice holds it (`need_owner.path_refusal`).
+SLICES_OWN = re.compile(f"{need_owner.SLICE_FOLDER.pattern}|{need_owner.CODE.pattern}")
+#: What a need's attempt is told of the slices in flight: each path an open slice's branch changes, against
+#: that slice, or None where nothing could say; and the slices that have merged.
+Owners = tuple[dict[str, str] | None, frozenset[str]]
 WORKFLOWS = ".github/workflows/"
 #: A `uses:` line, as a workflow's step names an action: its indent and dash, the action, and its ref.
 USES = re.compile(r"^(\s*-?\s*)uses:\s*['\"]?([^@\s'\"]+)@([^\s'\"#]+)")
@@ -125,12 +132,8 @@ def bound() -> float:
 
 
 def cruising() -> bool:
-    try:
-        held = json.loads((ROOT / ".specify/cruise.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
-        return False
-    return isinstance(held, dict) and held.get("enabled") is True \
-        and str(held.get("decide") or "recommended-first") in ("recommended-first", "skipper-always")
+    """Whether the fleet runs with nobody at the wheel, so a person's need checked on a file is the mender's."""
+    return need_owner.cruising(ROOT)
 
 
 def git(*argv: str, where: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -218,11 +221,13 @@ def changed(onto: str, branch: str) -> list[str]:
     return [line for line in git("diff", "--name-only", f"{onto}...{branch}").stdout.splitlines() if line]
 
 
-def refusal(job: str, onto: str, branch: str, reverting: list[str], reads: str = "") -> str:
+def refusal(job: str, onto: str, branch: str, reverting: list[str], reads: str = "",
+            owners: Owners = (None, frozenset())) -> str:
     """Why this attempt's branch may not land, or "".
 
     `reverting` is what the merge that went red touched, which a revert of it may touch too; `reads` is the
-    file a need's check reads, which a need's change has to touch.
+    file a need's check reads, which a need's change has to touch; `owners` is what holds code and slice
+    folders (`Owners`).
     """
     paths = changed(onto, branch)
     if not paths:
@@ -235,13 +240,13 @@ def refusal(job: str, onto: str, branch: str, reverting: list[str], reads: str =
             continue
         if job == TRUNK and path in reverting:
             continue
-        if job == NEED and shared(path):
+        if job == NEED and shared(path, *owners):
             continue
         if never(path):
             return f"{path} is never the mender's to change: a gate passes on its own merits"
         if job == NEED:
-            return (f"{path} is not a need's to change: the cloud is a person's, and a slice's own folder, "
-                    f"source and tests are a slice's")
+            return (f"{path} is not a need's to change: the cloud is a person's, and a slice in flight owns its "
+                    f"own folder and the code its branch changes ({need_owner.path_refusal(path, *owners)})")
     if job == NEED and reads and reads not in paths:
         return f"the need is checked in {reads}, and the change does not touch it"
     return ""
@@ -276,11 +281,25 @@ def prompt(job: str, worktree: Path, branch: str, told: dict) -> str:
         if told.get("before"):
             said += f" The last attempt did not clear it: {told['before']}."
         return head + said
+    plain = f" In plain words: {told['plain']}" if told.get("plain") else ""
     return head + (f"\n\nSlice work on fairway {told['fairway']} handed this back to the host: "
-                   f"\"{told.get('said', '')}\". The need: \"{told['what']}\". It is met when "
+                   f"\"{told.get('said', '')}\". The need: \"{told['what']}\".{plain} It is met when "
                    f"{told['check']}. Land exactly that from what the slice left, which the need or the note "
-                   f"names. If it is not a change to a file — it waits on another slice's merge, a "
-                   f"secret or a person — change nothing and end.")
+                   f"names. {CODE_IS_YOURS} If it is not a change to a file — it waits on another slice's "
+                   f"merge, a secret or a person — change nothing, write one or two plain sentences saying why "
+                   f"to {told.get('why_file', 'the file beside your worktree named after it with .why')}, and "
+                   f"end: that reason goes on the person's card, and you are not sent again to say it twice.")
+
+
+#: What a need's attempt may change beyond the shared surfaces, said in its brief. manda's staff-directory
+#: need was tried twelve times and every attempt ended with nothing committed, each saying the same thing:
+#: the seed file it had to change was pinned by a test, and a test was a slice's, so the seed could not land
+#: without turning trunk red (#172). A test no slice in flight is changing is nobody else's, and the change
+#: the need cannot land without goes in the same commit; the full gate is still what lets it land.
+CODE_IS_YOURS = ("Source and tests no slice in flight is changing are yours for this need, and so is a merged "
+                 "slice's own folder: where the change cannot land without another file changing with it — a "
+                 "test that pins the file's contents, say — change that file in the same commit. The full gate "
+                 "runs on your branch before anything lands.")
 
 
 def command(job: str, worktree: Path, branch: str, told: dict) -> tuple[list[str], dict[str, str]]:
@@ -321,6 +340,8 @@ def start(job: str, key: str, onto: str, told: dict) -> tuple[logs.Entry, str]:
     """Make the worktree and start the session. (the `mend` line, why it could not start or "")."""
     branch = BRANCH.format(job=job, key=key)
     worktree = PLACE / f"{job}-{key}"
+    if job == NEED:
+        told = {**told, "why_file": str(worktree.parent / f"{worktree.name}.why")}
     git("worktree", "remove", "--force", str(worktree))
     PLACE.mkdir(parents=True, exist_ok=True)
     # `-B`, not `-b`: the name carries the need's own park and the attempt, so a branch already there is
@@ -350,14 +371,35 @@ def start(job: str, key: str, onto: str, told: dict) -> tuple[logs.Entry, str]:
     return line, ""
 
 
-def finish(held: dict, land: Callable[[str], tuple[str, str]], onto: str, reverting: list[str]) -> logs.Entry:
-    """The attempt is over: hold its branch to `refusal`, land it, say which, and clear up."""
+def declined(held: dict, onto: str, branch: str) -> str:
+    """What an attempt that changed nothing said about why, from the file its brief named, or ""."""
+    if not held.get("why_file") or changed(onto, branch):
+        return ""
+    try:
+        said = Path(str(held["why_file"])).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ""
+    return " ".join(said.split())[:600]
+
+
+def finish(held: dict, land: Callable[[str], tuple[str, str]], onto: str, reverting: list[str],
+           owners: Owners = (None, frozenset())) -> logs.Entry:
+    """The attempt is over: hold its branch to `refusal`, land it, say which, and clear up.
+
+    An attempt that changed nothing and said why has **declined**: its `mend-failed` carries the reason and
+    `declined`, and the need is not sent again — manda's staff-directory need was sent twelve times to say the
+    same thing twelve times. The person's card says why instead, and *Have the mender try again* asks afresh."""
     job, branch = str(held.get("job", TRUNK)), str(held.get("branch", ""))
     named = {name: held[name] for name in ("fairway", "parked", "need") if name in held}
     child = FLYING.pop(job, None)
     code = child.returncode if child is not None else None
     try:
-        why = refusal(job, onto, branch, reverting, str(held.get("reads", "")))
+        reason = declined(held, onto, branch) if job == NEED else ""
+        if reason:
+            return logs.entry("mend-failed", harbour=True, job=job, declined=True,
+                              why=f"the mender changed nothing, and said why: {reason}",
+                              commit=str(held.get("commit", "")), attempt=int(held.get("attempt", 1)), **named)
+        why = refusal(job, onto, branch, reverting, str(held.get("reads", "")), owners)
         if not why and code not in (None, 0):
             why = f"the mender's session exited {code}"
         if why:
@@ -381,7 +423,8 @@ def finish(held: dict, land: Callable[[str], tuple[str, str]], onto: str, revert
         worktree = Path(str(held.get("worktree", "")))
         if str(held.get("worktree", "")):
             git("worktree", "remove", "--force", str(worktree))
-            for left in (worktree.parent / f"{worktree.name}.json", worktree.parent / f"{worktree.name}.log"):
+            for left in (worktree.parent / f"{worktree.name}.json", worktree.parent / f"{worktree.name}.log",
+                         worktree.parent / f"{worktree.name}.why"):
                 left.unlink(missing_ok=True)
         RECORD.unlink(missing_ok=True)
 
@@ -445,26 +488,23 @@ def stamp(instant: str) -> str:
 
 def never(path: str) -> bool:
     """Whether a path is one no mend may change: a gate, what runs one, or what decides what an agent may do."""
-    return any(path == one.rstrip("/") or path.startswith(one) for one in NEVER)
+    return need_owner.never(path)
 
 
-def shared(path: str) -> bool:
-    """Whether a need's change may land on this path: anywhere but the four things `KEPT_UP` is written under."""
-    if any(path.startswith(one) for one in KEPT_UP) or path == FLAGS:
-        return True
-    return not (never(path) or any(path.startswith(one) for one in PERSONS) or SLICES_OWN.search(path))
+def shared(path: str, busy: dict[str, str] | None = None, merged: frozenset[str] = frozenset()) -> bool:
+    """Whether a need's change may land on this path: anywhere but the four things `KEPT_UP` is written under,
+    with code and a slice's folder free where no slice in flight holds them (`need_owner.path_refusal`)."""
+    return not need_owner.path_refusal(path, busy, merged)
 
 
-def eligible(need: object, by_person: bool) -> str:
-    """The path a need's check reads where the mender may land it, or ""."""
-    if not isinstance(need, dict) or not isinstance(need.get("check"), dict) or logs.asks_a_decision(need):
+def eligible(need: object, by_person: bool, busy: dict[str, str] | None = None,
+             merged: frozenset[str] = frozenset()) -> str:
+    """The path a need's check reads where the mender may land it, or "": `need_owner.whose`, the rule the
+    board says who acts by, so a card never says *the mender will do this* of a need it will not take."""
+    if not isinstance(need, dict) or not isinstance(need.get("check"), dict):
         return ""
-    check = need["check"]
-    path = str(check.get("path", ""))
-    if check.get("kind") != "text" or not path or not shared(path):
-        return ""
-    by = str(need.get("by", ""))
-    return path if by == "fleet" or (by_person and by == "person") else ""
+    who, _why = need_owner.whose(need, logs.asks_a_decision(need), by_person, busy, merged)
+    return str(need["check"].get("path", "")) if who == need_owner.MENDER else ""
 
 
 # Hand-backs that land with the slice's merge.
@@ -522,49 +562,73 @@ def withheld(paths: list[str]) -> str:
     return ""
 
 
-def need_turn(state: str, open_needs: list[tuple[str, logs.Entry, int]], harbour: list[logs.Entry]) -> dict | None:
+#: A line of the model or the chart that names something: an event's, a command's or a view's `name:`, a slice's
+#: `id:`. What a hand-back may add to those files is a name trunk's code already has, and nothing it may take away.
+NAMED = re.compile(r"^[+-]\s*-?\s*(?:\{\s*)?(?:type:\s*\w+,\s*)?(?:name|id):\s*['\"]?([A-Za-z][\w.-]*)")
+
+
+def model_patch_refusal(text: str, in_code: Callable[[str], bool]) -> str:
+    """Why a hand-back patch to the model or the chart is a decision rather than a patch, or "".
+
+    A patch that only brings the model in line with code already on trunk lands with its slice's merge, as
+    every hand-back patch does: manda's careen carried the frame of `RequiredItemUnsatisfied`, an event
+    `events.ts` already had, and it was asked as a decision because the model is where decisions are
+    recorded. One that removes or renames a name, or adds one no code outside the model and the specs has
+    (`in_code`), is a new event, slice or rename, which is somebody's decision and not a patch's."""
+    section, added, removed = "", set(), set()
+    for line in text.splitlines():
+        if line.startswith("diff --git "):
+            named = re.findall(r" b/(\S+)", line)
+            section = named[-1] if named else ""
+            continue
+        if not logs.DECIDED_IN.match(section) or line.startswith(("+++", "---")):
+            continue
+        found = NAMED.match(line)
+        if found:
+            (added if line.startswith("+") else removed).add(found.group(1))
+    gone = sorted(removed - added)
+    if gone:
+        return f"it removes or renames {', '.join(gone)} in the model or the chart, which is a decision"
+    new = sorted(name for name in added - removed if not in_code(name))
+    if new:
+        return f"it adds {', '.join(new)}, which no code on trunk has yet: a new event or slice is a decision"
+    return ""
+
+
+def need_turn(state: str, open_needs: list[tuple[str, logs.Entry, int]], harbour: list[logs.Entry],
+              owners: Owners = (None, frozenset())) -> dict | None:
     """The next need to land — its `told` — or None. One at a time, oldest first, only while trunk is green,
-    and each one at most `attempts` times."""
+    and each one at most `attempts` times, or once where its attempt declined (`finish`).
+
+    A need that landed is not owed again (`need_owner.tally`): its tick is the need's own check passing on
+    trunk, written a pass later, and until then every need that landed was sent a second mender in the same
+    second, which found nothing to do — ten of game-club-manager's twenty-six, each a session paid for. A
+    person's `mend-again` from the board counts the attempts afresh from where it was written."""
     if state == "red":
         return None
-    tried: dict[tuple[str, str, int], int] = {}
-    landed: set[tuple[str, str, int]] = set()
-    for line in harbour:
-        if line.kind == "mend-again":
-            # A person asked from the board for this park's needs to be tried afresh: attempts count from here.
-            again = (str(line.fields.get("fairway", "")), str(line.fields.get("parked", "")))
-            tried = {key: n for key, n in tried.items() if key[:2] != again}
-            continue
-        if line.fields.get("job") != NEED or line.kind not in ("mend", "mended"):
-            continue
-        key = (str(line.fields.get("fairway", "")), str(line.fields.get("parked", "")),
-               int(line.fields.get("need", -1)))
-        if line.kind == "mended":
-            # Landed, and so not owed again. Its tick is the need's own check passing on trunk, which is
-            # written a pass later: until then the need still read as open, and every need that landed was
-            # sent a second mender in the same second, which found nothing to do and was recorded as a
-            # failure — ten of game-club-manager's twenty-six, each a session paid for.
-            landed.add(key)
-        else:
-            tried[key] = tried.get(key, 0) + 1
+    done = need_owner.tally(harbour)
     by_person = cruising()
     for fairway, park, index in open_needs:
         need = (park.fields.get("needs") or [])[index]
-        reads = eligible(need, by_person)
-        if not reads or (fairway, park.t, index) in landed or tried.get((fairway, park.t, index), 0) >= attempts():
+        reads = eligible(need, by_person, *owners)
+        held = done.get((fairway, park.t, index)) or {}
+        if not reads or held.get("landed") or need_owner.spent(held, attempts()):
             continue
         check = need["check"]
-        return {"commit": "", "attempt": tried.get((fairway, park.t, index), 0) + 1, "fairway": fairway,
+        return {"commit": "", "attempt": int(held.get("tried", 0)) + 1, "fairway": fairway,
                 "parked": park.t, "need": index, "what": str(need.get("what", "")), "reads": reads,
-                "check": f"{check.get('path')} holds `{check.get('has')}` on trunk",
+                "plain": str(need.get("plain", "")),
+                "check": f"{check.get('path')} holds `{need_check.unquoted(str(check.get('has', '')))}` on trunk",
                 "said": str(park.fields.get("message") or park.fields.get("why") or "")[:600]}
     return None
 
 
 def turn(state: str, said: dict, harbour: list[logs.Entry], open_needs: list[tuple[str, logs.Entry, int]],
          onto: Callable[[], str], land: Callable[[str], tuple[str, str]], broke: Callable[[str], dict],
-         reverting: Callable[[str], list[str]]) -> list[logs.Entry]:
-    """One pass: finish an attempt that is over, start the next thing owed. The lines to write."""
+         reverting: Callable[[str], list[str]], owned: Callable[[], Owners] | None = None) -> list[logs.Entry]:
+    """One pass: finish an attempt that is over, start the next thing owed. The lines to write. `owned` says
+    what the slices in flight hold (`Owners`); without it code and every slice folder are a slice's."""
+    owners: Owners = owned() if owned is not None else (None, frozenset())
     written: list[logs.Entry] = []
     held = record()
     if held:
@@ -575,12 +639,12 @@ def turn(state: str, said: dict, harbour: list[logs.Entry], open_needs: list[tup
             if child is not None:
                 end(child)
         red = str(held.get("commit", ""))
-        written.append(finish(held, land, onto(), reverting(red) if held.get("job") == TRUNK else []))
+        written.append(finish(held, land, onto(), reverting(red) if held.get("job") == TRUNK else [], owners))
     seen = [*harbour, *written]
     wanted = trunk_turn(state, said, seen, broke)
     job = TRUNK
     if wanted is None:
-        wanted, job = need_turn(state, open_needs, seen), NEED
+        wanted, job = need_turn(state, open_needs, seen, owners), NEED
     if wanted is None:
         return written
     if "park" in wanted:

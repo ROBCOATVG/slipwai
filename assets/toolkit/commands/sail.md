@@ -470,9 +470,13 @@ slice may not write, but for a gate, the cloud under `infra/`, and another slice
 under `/cruise` it is a `told` with `needs`, one item per thing that has to change, each with a `check`
 wherever trunk can prove it landed — a dependency is `text:<manifest>:"<package>"`, a realm user is
 `text:<realm file>:"<username>"`, a flag line is `text:.env.example:<KEY>=` — written with
-`python3 scripts/agents/fleet.py tell <fairway> --need '<what>' --check <check> <message>`. The
-harbourmaster ticks each need against trunk as it ticks a park's, the board groups it under *Waiting on
-you* by need, and a slice that ships a stub around the need still ships with the need open against it,
+`python3 scripts/agents/fleet.py tell <fairway> --need '<what>' --plain '<plain>' --check <check> <message>`.
+**Every need carries a `--plain`**, in the order of the `--need`s: one or two sentences in plain English
+saying what is wrong and why it matters, for a person who reads only the board — no paths, identifiers or
+line numbers, held to the rule a decision's **In short** is held to, and refused without one. The board leads
+with it and keeps `<what>` under *Details*, and says who acts: the mender, the slice's own merge, whoever
+decides, or a person and why. The
+harbourmaster ticks each need against trunk as it ticks a park's, the board groups it by need, and a slice that ships a stub around the need still ships with the need open against it,
 which is what keeps a merged slice's dark story from reading as finished. Where the need is why the slice's story cannot
 seed yet, add `--slice <id> --dark`: the line then names the story it keeps dark, and the harbourmaster
 merges a slice with a story only on a `seeded` line or on that hand-back — never on one about something else.

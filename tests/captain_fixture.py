@@ -35,6 +35,8 @@ CARRIED = ("captain.py", "clearance.py", "inbox.py", "logs.py", "evidence.py", "
            # The captain starts a harbourmaster again where its pid file names one that has gone, through
            # the module that started it and holds the one-harbourmaster rule.
            "fleet.py", "published.py",
+           # Who acts on a need, which `fleet.py tell` asks of a hand-back that names its patch (#172).
+           "need_owner.py",
            # How many of a fairway's slices run at once, and the berth each one is worked in.
            "abreast.py", "moorings.py",
            # The fixed rules each of the captain's choices falls back to, and the captain's agent over them:

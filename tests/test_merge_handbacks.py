@@ -39,6 +39,10 @@ def load_mender() -> Any:
     return module
 
 
+#: What every need is told with now: the line the board leads with, in plain words (#172).
+PLAIN = ("--plain", "The page cannot be finished until this lands.")
+
+
 class HandbackMergeTest(MergeFixture):
     def write(self, path: str, body: str) -> None:
         (self.root / path).parent.mkdir(parents=True, exist_ok=True)
@@ -190,7 +194,8 @@ class DecisionNeedTest(unittest.TestCase):
         return [e for e in logs.fold(self.log.read_text(encoding="utf-8").splitlines()) if e.kind == kind]
 
     def test_a_decide_need_is_asked_as_a_question_against_the_slice(self) -> None:
-        done = self.tell("--slice", "ORD-01", "--need", "a follow-up slice that mails the reminder",
+        done = self.tell("--slice", "ORD-01", "--need", "a follow-up slice that mails the reminder", *PLAIN,
+                         
                          "--check", "decide", "the reminder needs an event nobody has named")
         self.assertEqual(done.returncode, 0, done.stderr)
         need = self.lines("told")[-1].fields["needs"][0]
@@ -203,7 +208,7 @@ class DecisionNeedTest(unittest.TestCase):
     def test_a_need_checked_in_the_chart_or_the_model_is_a_decision_too(self) -> None:
         for path in ("specs/ordering/chart.yaml", "docs/event-model/model.yaml"):
             with self.subTest(path=path):
-                done = self.tell("--slice", "ORD-01", "--need", "ORD-09 on the chart", "--check",
+                done = self.tell("--slice", "ORD-01", "--need", "ORD-09 on the chart", *PLAIN, "--check",
                                  f"text:{path}:ORD-09", "a new slice is needed")
                 self.assertEqual(done.returncode, 0, done.stderr)
                 need = self.lines("told")[-1].fields["needs"][0]
@@ -213,12 +218,12 @@ class DecisionNeedTest(unittest.TestCase):
                 self.assertEqual(self.lines("question")[-1].fields["id"], need["question"])
 
     def test_a_decision_needs_a_slice_to_be_asked_against(self) -> None:
-        done = self.tell("--need", "a new slice", "--check", "decide", "nobody said which")
+        done = self.tell("--need", "a new slice", *PLAIN, "--check", "decide", "nobody said which")
         self.assertNotEqual(done.returncode, 0)
         self.assertIn("--slice", done.stderr)
 
     def test_a_change_to_a_shared_surface_is_still_the_mender_s(self) -> None:
-        done = self.tell("--slice", "ORD-01", "--need", "the pattern in docs/design.md", "--check",
+        done = self.tell("--slice", "ORD-01", "--need", "the pattern in docs/design.md", *PLAIN, "--check",
                          "text:docs/design.md:two", "the page is the host's")
         self.assertEqual(done.returncode, 0, done.stderr)
         need = self.lines("told")[-1].fields["needs"][0]

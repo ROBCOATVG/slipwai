@@ -28,7 +28,8 @@ from .talk_marks import SCRIPT as MARKS_SCRIPT
 from .talk_marks import STYLE as MARKS_STYLE
 from .talk_marks import every_placed
 
-# budget: 470 — Waiting on you in the order attention goes (judgement, what the harness can do, tidying),
+# budget: 495 — who acts on each need and its plain line first (#172); Waiting on you in the order
+# attention goes (judgement, what the harness can do, tidying),
 # with Have the mender try again and one press for a whole section;
 # the headline over every state a fleet can be in, a build merged whole and one merged but
 # ungated or built on a stand-in among them, and a group already answered showing what was said and where
@@ -71,6 +72,9 @@ STYLE = """
 .needs .how{font-size:.78rem;color:var(--ink-3);text-align:right;white-space:nowrap}
 .needs .how button{font:inherit;font-size:.78rem;padding:3px 10px;border-radius:6px;border:1px solid var(--rule);
   background:var(--paper);color:var(--ink-2);cursor:pointer}
+.needs small.whose{display:block;color:var(--ink-3);font-size:.8rem;margin-top:2px}
+.needs small.own{color:var(--ink-3);font-size:.78rem}
+.needs details.tech>summary{cursor:pointer;color:var(--ink-3);font-size:.78rem}
 .then{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--ground);font-size:.85rem;color:var(--ink-2)}
 .then b{color:var(--ink)}
 .quiet-button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--rule);background:var(--paper);
@@ -171,7 +175,9 @@ def needs_title(needs: list[dict[str, str]]) -> str:
     the first of them — `context: catch-up on LB6, LB7, LB8, LB9, LB10 in docs/event-model/model.yaml and 4
     more` names the move where the paragraph's first sentence named the slice's rungs.
     """
-    said = [str(need.get("what") or "").strip() for need in needs]
+    # The plain line first, where the session wrote one, and what is still owed before what is done (#172).
+    owed = [need for need in needs if need.get("met") != "yes"] or needs
+    said = [str(need.get("plain") or need.get("what") or "").strip() for need in owed]
     said = [one for one in said if one]
     if not said:
         return ""
@@ -196,7 +202,8 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
     berths = found.get("berths") or []
     running, paused = int(counts.get("running") or 0), int(counts.get("paused") or 0)
     # A merged slice's hand-back to confirm and an obsolete park are listed, not counted: one count, one meaning.
-    on_you = [g for g in groups if g.get("paused") != "yes" and not g.get("probably") and not g.get("obsolete")]
+    on_you = [g for g in groups if g.get("paused") != "yes" and not g.get("probably") and not g.get("obsolete")
+              and g.get("acts") != "fleet"]
     # A note a slice left holds nothing up and is not a wait: it is listed to be read, and not counted here.
     # The rows the terminal's *waiting on you* holds (`inbox_rows.holds_up`) that no group stands for.
     on_you += [row for row in inbox if row.get("kind") in ("question", "unreadable", "decisions") and holds_up(row)]
@@ -265,7 +272,7 @@ def headline(found: dict, now: datetime | None = None) -> tuple[str, str, str]:
 
 def waiting_on_you(found: dict) -> int:
     """How many things wait on a person: the parks not paused, and the questions and hand-backs no park groups."""
-    on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes"])
+    on_you = len([g for g in found.get("groups") or [] if g.get("paused") != "yes" and g.get("acts") != "fleet"])
     return on_you + len([row for row in found.get("inbox") or []
                          if row.get("kind") in LISTED and row.get("grouped") != "yes"])
 
@@ -362,9 +369,10 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
         buttons = (f'<p class="placed"><span><b>You said:</b> {esc(sent[-1].get("text", ""))}</span>'
                    f'<small class="{esc(sent[-1].get("tone", ""))}">{esc(sent[-1].get("line", ""))}</small></p>')
     elif controls and group.get("source") == "told" and not group.get("probably") \
-            and any(need.get("met") != "yes" and need.get("by") != "person" for need in needs):
+            and any(need.get("met") != "yes" and need.get("who") == "spent" for need in needs):
         # The mender lands these between reds, and stops after its attempts; this is the one way to start it
-        # again, instead of a person editing the file on trunk by hand (`deck.mend_again`).
+        # again (`deck.mend_again`). Only where it would take the need and has spent its attempts: offered on
+        # every hand-back, it wrote `mend-again` for needs the mender never takes, and nothing happened (#172).
         buttons = (f'<button type="button" class="go" data-mend-again=\'{esc(parks)}\'>Have the mender try again'
                    f'</button>')
     elif controls and group.get("source") != "told":
@@ -386,7 +394,11 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
             how = "done"
         else:
             how = f"ticks itself when {how}" if how else "ticks itself"
-        items.append(f'<li><span class="box{" on" if on else ""}"></span><span>{esc(need.get("what", ""))}</span>'
+        if not on and need.get("who") == "mender":
+            how = "the mender will do this"
+        elif not on and need.get("who") == "merge":
+            how = "lands with its merge"
+        items.append(f'<li><span class="box{" on" if on else ""}"></span><span>{need_words(need, on)}</span>'
                      f'<span class="how">{how}</span></li>')
     listed = f'<ul class="needs">{"".join(items)}</ul>' if items else ""
     bar = (f'<div class="prog"><i style="width:{int(100 * met / len(needs))}%"></i></div>' if needs else "")
@@ -398,6 +410,7 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
              f'in full</summary><ol class="lines" data-tail>{log or "<li>nothing said yet</li>"}'
              f'</ol><p class="empty" style="white-space:pre-wrap">{esc(group.get("what") or "")}</p></details>')
     chip = ("obsolete since " + obsolete if obsolete else "probably done" if group.get("probably")
+            else "the mender will do this" if group.get("acts") == "fleet"
             else "a slice needs this on trunk" if group.get("source") == "told" else CAUSES.get(cause, cause))
     newest = max(group.get("parks") or [{}], key=lambda park: str(park.get("t", "")))
     # Every park's held answer, the newest's steps: several parks on one cause are one thing to do.
@@ -411,6 +424,16 @@ def group_card(group: dict, controls: bool, now: datetime | None = None) -> str:
             f'{whole}</div>')
 
 
+def need_words(need: dict, on: bool) -> str:
+    """One need as a person reads it: its plain line, with the agent's own words behind *Details* — or, on a
+    line written before there was a plain one, those words, saying whose they are — and who acts and why."""
+    plain, what = str(need.get("plain") or ""), str(need.get("what") or "")
+    words = (f'{esc(plain)}<details class="tech"><summary>Details</summary>{esc(what)}</details>' if plain
+             else f'{esc(what)} <small class="own">(in the agent&#8217;s own words)</small>')
+    whose = "" if on else str(need.get("whose") or "")
+    return words + (f'<small class="whose">{esc(whose)}</small>' if whose else "")
+
+
 def groups_html(groups: list[dict], controls: bool, now: datetime | None = None) -> str:
     """The groups a person acts on, then — apart, each under its own heading — the hand-backs of merged slices
     that are probably done, to confirm with a tick, and the parks an earlier slipwai wrote, to dismiss."""
@@ -419,10 +442,11 @@ def groups_html(groups: list[dict], controls: bool, now: datetime | None = None)
     # can do once asked, then tidying. One list in arrival order put eleven CSS hand-backs above the one
     # verdict that held the project, and a person read the whole of it as chores to do by hand.
     sections = (("judgement", "Needs your judgement", "Only you can answer these.",
-                 [g for g in acting if g.get("source") != "told"], ""),
-                ("harness", "The harness can do these",
-                 "Edits a slice may not make itself. The trunk mender lands them between reds; where it gave up, "
-                 "Have the mender try again starts it afresh.", [g for g in acting if g.get("source") == "told"], ""),
+                 [g for g in acting if g.get("acts") != "fleet"], ""),
+                ("harness", "The mender will do these",
+                 "Edits a slice may not make itself. The trunk mender lands them between reds, or they land with "
+                 "their slice's merge; nothing here waits on you.", [g for g in acting if g.get("acts") == "fleet"],
+                 ""),
                 ("probably", "Probably done — confirm?",
                  "Their slices have merged and trunk cannot be asked: tick each that landed.",
                  [g for g in groups if g.get("probably")], "Confirm all"),

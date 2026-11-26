@@ -7,11 +7,17 @@ so the person read the whole list as work to do by hand and could not find the t
 
 So each row is a title, one line of why, where it came from, and the button that finishes it; the card it was
 is kept under *Details*, for the steps and the box to answer in. The sections are what a person does with them:
-**Needs your judgement** (what only they can decide), **The harness can do these** (the trunk mender lands
-them: *Land it*), **Needs your hands** (a thing on this machine, or a need only a person can tick), and
-**Tidy up** (probably done, obsolete, notes and decisions to read), each section finished in one press. Every
-button is a list of the board's own POSTs, so this adds no new way to change anything but `/keep`, which
-confirms a chart question's recommendation.
+**Needs your judgement** (what only they can decide), **The mender tried these** (the trunk mender would
+land them and has spent its attempts: *Have the mender try again*), **Needs your hands** (a thing on this
+machine, or a need only a person can tick, with why it is theirs), and **Tidy up** (probably done, obsolete,
+notes and decisions to read), each section finished in one press. Every button is a list of the board's own
+POSTs, so this adds no new way to change anything but `/keep`, which confirms a chart question's
+recommendation.
+
+What the mender will do, or what lands with its slice's merge, is not here at all: it waits on nobody, so it
+is its own card, **The mender will do these** (`mender_card`). manda's *Waiting on you* held seven things and
+one needed the person (#172). Each row leads with the session's plain line, and the agent's own words are under
+*Details*; a line written before there was a plain one says the wording is the agent's.
 """
 from __future__ import annotations
 
@@ -25,9 +31,9 @@ from .page_shell import esc
 #: Section key, its heading, what it is for, the bulk button's face, and whether its rows count as needing you.
 SECTIONS = (
     ("judgement", "Needs your judgement", "Only you can answer these. Each says what is assumed meanwhile.", "", True),
-    ("harness", "The harness can do these",
-     "Edits a slice may not make itself. The trunk mender makes them on a branch of its own, runs the gates and "
-     "lands them.", "Land all with the mender", False),
+    ("harness", "The mender tried these",
+     "Edits a slice may not make itself. The trunk mender would make them, and has spent its attempts: each says "
+     "what stopped it.", "Have the mender try all again", False),
     ("hands", "Needs your hands", "Something on this machine, or a need only a person can tick.", "", True),
     ("tidy", "Tidy up", "Nothing waits on these. Clear them so the real ones stand out.", "Clear all", False),
 )
@@ -105,6 +111,10 @@ def ticks(group: dict) -> list[tuple[str, dict]]:
             if need.get("met") != "yes"]
 
 
+#: Said under a row whose needs carry no plain line: written before there was one, in the agent's words.
+OWN_WORDS = "In the agent's own words: the session that raised it wrote no plain line."
+
+
 def group_row(group: dict, controls: bool, answers: str = "") -> tuple[str, dict[str, Any]]:
     """Which section a park or hand-back goes in, and its row; `answers` is the box a hand-back is answered in."""
     needs = group.get("needs") or []
@@ -115,9 +125,12 @@ def group_row(group: dict, controls: bool, answers: str = "") -> tuple[str, dict
     met = sum(1 for need in needs if need.get("met") == "yes")
     meta = " · ".join(bit for bit in (", ".join(dict.fromkeys(group.get("slices") or [])), f"since {when(group['t'])}",
                                       f"{met} of {len(needs)} done" if needs else "") if bit)
-    row = {"title": title, "detail": first_sentence(str(action.get("why") or ""), 160), "meta": meta,
-           "more": group_card(group, controls) + answers, "buttons": ""}
     unmet = [need for need in needs if need.get("met") != "yes"]
+    # Why it is the person's, where a need says (`need_who`), before the steps' first sentence.
+    whose = next((str(need["whose"]) for need in unmet if need.get("whose")), "")
+    own = OWN_WORDS if unmet and not any(need.get("plain") for need in unmet) else ""
+    row = {"title": title, "detail": first_sentence(whose or str(action.get("why") or ""), 160), "meta": meta,
+           "more": group_card(group, controls) + answers, "buttons": "", "own": own}
     if group.get("obsolete"):
         row["buttons"] = button("Dismiss", [("/dismiss", {"fairway": park["fairway"], "told": park["t"]})
                                             for park in parks])
@@ -125,10 +138,15 @@ def group_row(group: dict, controls: bool, answers: str = "") -> tuple[str, dict
     if group.get("probably"):
         row["buttons"] = button("Confirm it landed", ticks(group))
         return "tidy", row
+    if group.get("acts") == "fleet":
+        return "mender", row
     if group.get("source") == "told":
-        if any(need.get("by") != "person" for need in unmet):
-            row["buttons"] = (button("Land it", [("/mend-again", {"fairway": park["fairway"], "parked": park["t"]})
-                                                 for park in parks])
+        if any(need.get("who") == "spent" for need in unmet):
+            # Only where the mender would take it and has spent its attempts: anywhere else `mend-again` is a
+            # line nothing reads, and the button did nothing on five of manda's seven cards (#172).
+            row["buttons"] = (button("Have the mender try again",
+                                     [("/mend-again", {"fairway": park["fairway"], "parked": park["t"]})
+                                      for park in parks])
                               + button("Mark done", ticks(group), primary=False))
             return "harness", row
         row["buttons"] = opener("Show what to do") + button("Mark done", ticks(group), primary=False)
@@ -154,7 +172,11 @@ def inbox_row(row: dict, controls: bool, streams: dict | None) -> tuple[str, dic
     said = first_sentence(text[:text.index("?") + 1] if kind == "question" and "?" in text else text, 110)
     meta = " · ".join(bit for bit in (str(row.get("slice") or row.get("fairway") or ""),
                                       f"since {when(str(row.get('t') or ''))}" if row.get("t") else "") if bit)
-    found = {"title": said, "detail": "", "meta": meta, "more": more, "buttons": ""}
+    found = {"title": said, "detail": "", "meta": meta, "more": more, "buttons": "", "own": ""}
+    if kind == "question" and row.get("slice") != "chart":
+        # Its plain line first, where the session wrote one; the question as asked stays under Details.
+        found["title"] = first_sentence(str(row["plain"]), 160) if row.get("plain") else said
+        found["own"] = "" if row.get("plain") else OWN_WORDS
     if kind == "question":
         if row.get("slice") == "chart":
             found["detail"] = "Nothing waits on this: the chart went ahead on the recommendation it names."
@@ -185,9 +207,19 @@ def inbox_row(row: dict, controls: bool, streams: dict | None) -> tuple[str, dic
     return None
 
 
-def inbox(fleet: dict[str, Any], controls: bool = True) -> str:
-    """The whole list as sections of rows, with the three counts over it; `""` where nothing waits."""
+def row_html(row: dict[str, Any], controls: bool) -> str:
+    return (f'<div class="w-row"><div class="w-text"><b>{esc(row["title"])}</b>'
+            + (f'<span>{esc(row["detail"])}</span>' if row["detail"] else "")
+            + (f'<small>{esc(row["own"])}</small>' if row.get("own") else "")
+            + (f'<small>{esc(row["meta"])}</small>' if row["meta"] else "")
+            + f'</div><div class="w-act">{row["buttons"] if controls else ""}</div>'
+            + f'<details><summary>Details</summary>{row["more"]}</details></div>')
+
+
+def placed_rows(fleet: dict[str, Any], controls: bool = True) -> dict[str, list[dict[str, Any]]]:
+    """Every row, by the section it goes in, and `mender` for what the fleet does itself."""
     placed: dict[str, list[dict[str, Any]]] = {key: [] for key, *_ in SECTIONS}
+    placed["mender"] = []
     # A hand-back is answered as a park is, from the box its own row carried: kept under its group's Details.
     handed = {(one["fairway"], one["t"]): one for one in fleet.get("inbox") or []
               if one.get("kind") == "told" and one.get("needs")}
@@ -203,11 +235,30 @@ def inbox(fleet: dict[str, Any], controls: bool = True) -> str:
         found = inbox_row(one, controls, fleet.get("streams"))
         if found:
             placed[found[0]].append(found[1])
+    return placed
+
+
+def mender_card(fleet: dict[str, Any], controls: bool = True) -> str:
+    """What the fleet does itself — the mender lands it, or it lands with its slice's merge — as a card of its
+    own beside *Waiting on you* rather than in it, since nothing in it waits on a person; `""` where empty."""
+    rows = placed_rows(fleet, controls)["mender"]
+    if not rows:
+        return ""
+    return (f'<div class="card" id="mender-will"><h2>The mender will do these · {len(rows)}</h2><p class="empty">'
+            f"Edits a slice may not make itself. The trunk mender makes each on a branch of its own and lands it "
+            f"through the full gate, or it lands with its slice's merge. Nothing here waits on you.</p>"
+            + "".join(row_html(row, controls) for row in rows) + "</div>")
+
+
+def inbox(fleet: dict[str, Any], controls: bool = True) -> str:
+    """The whole list as sections of rows, with the three counts over it; `""` where nothing waits."""
+    placed = placed_rows(fleet, controls)
+    placed.pop("mender")
     if not any(placed.values()):
         return '<p class="empty">Nothing is waiting on you.</p>'
     you = sum(len(placed[key]) for key, *_, mine in SECTIONS if mine)
     counts = (f'<div class="w-head"><span class="w-count you"><b>{you}</b> need you</span>'
-              f'<span class="w-count"><b>{len(placed["harness"])}</b> the harness can do</span>'
+              f'<span class="w-count"><b>{len(placed["harness"])}</b> the mender tried</span>'
               f'<span class="w-count"><b>{len(placed["tidy"])}</b> to tidy</span></div>')
     said = counts
     for key, title, hint, bulk, _ in SECTIONS:
@@ -216,11 +267,7 @@ def inbox(fleet: dict[str, Any], controls: bool = True) -> str:
             continue
         press = (f'<button type="button" class="install" data-w-bulk="w-{key}" data-w-post="[]">{esc(bulk)} '
                  f"{len(rows)}</button>" if bulk and controls and len(rows) > 1 else "")
-        body = "".join(f'<div class="w-row"><div class="w-text"><b>{esc(row["title"])}</b>'
-                       + (f'<span>{esc(row["detail"])}</span>' if row["detail"] else "")
-                       + (f'<small>{esc(row["meta"])}</small>' if row["meta"] else "")
-                       + f'</div><div class="w-act">{row["buttons"] if controls else ""}</div>'
-                       + f'<details><summary>Details</summary>{row["more"]}</details></div>' for row in rows)
+        body = "".join(row_html(row, controls) for row in rows)
         said += (f'<section class="w-section" id="w-{key}"><header><h3>{esc(title)} · {len(rows)}</h3>'
                  f"<p>{esc(hint)}</p>{press}</header>{body}</section>")
     return said

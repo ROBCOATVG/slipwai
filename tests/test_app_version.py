@@ -91,7 +91,7 @@ class FleetRefusesTest(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.root, True)
         (self.root / "scripts/agents").mkdir(parents=True)
-        for name in ("fleet.py", "published.py", "moorings.py",
+        for name in ("fleet.py", "published.py", "moorings.py", "need_owner.py",
                      "clearance.py", "logs.py", "berths.py", "spend.py", "abreast.py", "telegraph.py",
                      "inbox.py", "ids.py", "talk.py"):
             shutil.copy(TOOLKIT_ROOT / "scripts/agents" / name, self.root / "scripts/agents" / name)

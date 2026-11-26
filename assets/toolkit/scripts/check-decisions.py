@@ -60,6 +60,9 @@ import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "agents"))
+import logs as run_logs  # noqa: E402 — carried in scripts/agents; it holds the plain-sentence rule
+
 
 def project_root(script: Path, depth: int) -> Path:
     for candidate in script.parents:
@@ -110,13 +113,9 @@ SENTENCE = "In short"
 SENTENCE_FROM = ".specify/decisions-in-short.json"
 WHEN = re.compile(r"\*\*When:\*\*\s*([^·]*?)\s*(?:·|$)")
 SLICE = re.compile(r"\*\*Slice:\*\*\s*([^·\s]+)")
-# What a sentence for a product owner may not lean on: only what is unmistakably this method's own — a
-# requirement or criterion id as the records write it (FR-012, SC-3), a fairway's decision id (D-ORD-07,
-# D-07), an example id (GN2-1), a backticked span, and a path. Not a bare `D20`, `SC2`, `R2` or `US-1`:
-# this project's own test bed is a game club, where a D20 is a die, and a file-looking word (`Node.js`,
-# `shelf.json`) is how products are named.
-NOT_PLAIN = re.compile(r"\b(?:FR|SC|NFR)-\d+\b|\bD-(?:[A-Z0-9]+-)?\d+\b|\b[A-Z]{2,}\d+-\d+\b|`"
-                       r"|(?<![\w/])[\w.-]+(?:/[\w.-]+)+\.\w+\b|(?<![\w/])[\w.-]+/[\w.-]+/[\w./-]+")
+# What a sentence for a product owner may not lean on is `logs.NOT_PLAIN`, the one rule every sentence a person
+# reads first is held to: a need's and a question's `plain` line as well as this **In short** (#172).
+NOT_PLAIN = run_logs.NOT_PLAIN
 PLACEHOLDER = re.compile(r"<[^>]*>")
 
 

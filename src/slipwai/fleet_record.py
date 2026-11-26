@@ -115,10 +115,12 @@ def crossing(root: Path | None) -> str:
     return f"{old} → {new}" if old and new and old != new else ""
 
 
-def need_rows(park: Entry, met: set[int]) -> list[dict[str, str]]:
-    """A park's needs as the board draws them: what, who ticks it, how the fleet would, and whether it is."""
+def need_rows(park: Entry, met: set[int]) -> list[dict[str, Any]]:
+    """A park's needs as the board draws them: what, who ticks it, how the fleet would, and whether it is —
+    with the plain line it leads with, where the session wrote one, and the check and whether it is a
+    decision, which `need_who` asks who acts by."""
     needs = park.fields.get("needs")
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, Any]] = []
     for index, need in enumerate(needs if isinstance(needs, list) else []):
         if not isinstance(need, dict):
             continue
@@ -130,7 +132,9 @@ def need_rows(park: Entry, met: set[int]) -> list[dict[str, str]]:
         elif check.get("kind") == "make":
             how = f"make {check.get('target', '')} passes on trunk"
         rows.append({"what": str(need.get("what", "")), "by": str(need.get("by", "person")), "how": how,
-                     "met": "yes" if index in met else "no", "index": str(index)})
+                     "met": "yes" if index in met else "no", "index": str(index),
+                     "plain": str(need.get("plain") or ""), "check": dict(check),
+                     **({"decide": "yes"} if need.get("decide") else {})})
     return rows
 
 
@@ -194,6 +198,9 @@ def groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for one in found:
         one["clock"] = clock_of(one["until"])
         one["met"] = sum(1 for need in one["needs"] if need.get("met") == "yes")
+        # The fleet's own work — the mender's, or a patch that lands with its slice's merge — waits on nobody.
+        unmet = [need for need in one["needs"] if need.get("met") != "yes"]
+        one["acts"] = "fleet" if unmet and all(need.get("who") in ("mender", "merge") for need in unmet) else "you"
     return found
 
 

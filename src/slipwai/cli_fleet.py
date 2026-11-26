@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 from .assets import this_command
-from .block_actions import said_lines
+from .block_actions import plain_of, said_lines
 from .cli_start import start_main
 from .deck import RECENT, recent, streams
 from .errors import GenerationError, refuse
@@ -55,7 +55,9 @@ def lines(root: Path) -> list[str]:
     on_you, resting, notes = inbox_split(waiting)
     said.append(f"waiting on you: {len(on_you)}" if on_you else "waiting on you: nothing")
     for row in on_you:
-        detail = inbox_detail(row)
+        # The plain line first, where the session wrote one; the agent's own words are what it had before (#172).
+        plain = plain_of(row)
+        detail = plain or inbox_detail(row) + (" (in the agent's own words)" if row.get("needs") else "")
         said.append(f"  {row['fairway']:<10} {row['kind']:<7} {detail[:width - 24]}")
         # The row is cut to the terminal; what to do about it is not, because it is the reason for the board.
         said += said_lines(row)
@@ -63,6 +65,12 @@ def lines(root: Path) -> list[str]:
         said.append(f"paused, nothing for you to do: {len(resting)}")
         for row in resting:
             said.append(f"  {row['fairway']:<10} {row.get('slice') or '':<7} {inbox_detail(row)[:width - 24]}")
+    mending = [row for row in notes if row.get("acts") == "fleet"]
+    notes = [row for row in notes if row.get("acts") != "fleet"]
+    if mending:
+        said.append(f"the mender will do these, nothing for you to do: {len(mending)}")
+        for row in mending:
+            said.append(f"  {row['fairway']:<10} {row['kind']:<7} {(plain_of(row) or str(row['what']))[:width - 24]}")
     if notes:
         said.append(f"left for you to read, holding nothing up: {len(notes)}")
         for row in notes:

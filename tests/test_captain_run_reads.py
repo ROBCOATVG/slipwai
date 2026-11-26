@@ -25,6 +25,7 @@ LOGS = ("the deck or harbour log, through `logs`, whose refusal of a line it can
 WRITES = "opened to append or write, not to read"
 READER = "the one reader for the run folder itself, or the flags it opens with"
 ALLOWED = {
+    "need_owner.py:read_json": PROJECT + ": `harbour.json` and `.specify/cruise.json`, which say who acts on a need",
     "abreast.py:deck_of": LOGS,
     "abreast.py:harbour_plan": PROJECT,
     "acp.py:Session.shaken": WRITES,

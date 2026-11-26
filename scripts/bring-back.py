@@ -87,6 +87,8 @@ OWN = {"slice_card", "film", "example_map", "example_map_source", "example_map_p
        "captains_strip", "talk_routes", "talk_placed", "talk_marks", "post_guard",
        # What a person does about each block on the board, drawn on its card, and a verdict given from it (#154).
        "block_actions", "block_card", "park_verdict", "need_check", "refusal_said",
+       # Who acts on a need and why, the mender's rule and the board's, and the board's reading of it (#172).
+       "need_owner", "need_who",
        "migration_legacy", "migration_flight", "migration_settings", "migration_claims", "migration_sentence",
        "migration_slices", "migration_crossing", "migration_result", "migration_merge", "migration_renames",
        "migration_manifest", "extension_copies", "extension_upkeep", "guards_offered",

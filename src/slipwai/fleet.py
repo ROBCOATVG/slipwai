@@ -17,7 +17,8 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 699 — each park's held answer, its action line, needs trunk already has and an obsolete park,
+# budget: 706 — who acts on each need (#172), each park's held answer, its action line,
+# needs trunk already has and an obsolete park,
 # the clearance answers one read of the board
 # shares, a `read` tied to its `told` by inbox id,
 # and today's tokens; every column of the
@@ -81,6 +82,7 @@ from .logs import (
     unmerged,
 )
 from .need_check import trunk_commit
+from .need_who import who_acts
 from .shell_environment import login_environment, project_python
 from .talk_placed import placed
 from .telegraph import bar_of
@@ -201,6 +203,9 @@ class Fairway:
         """Every `question` no `decision` has answered by `id`. A headless `/launch` posts the chart's context
         question for a person and proceeds; a board showing only `told` and `parked` drew that as nothing."""
         answered = {str(e.fields.get("id", "")) for e in self.entries if e.kind == "decision"}
+        # Or nobody owes it an answer any more, which the harbourmaster says with a `question-met` (#172).
+        answered |= {str(e.fields.get("id", "")) for e in self.receipts if e.kind == "question-met"
+                     and str(e.fields.get("fairway", "")) == self.name}
         return [e for e in self.entries if e.kind == "question" and str(e.fields.get("id", "")) not in answered]
 
     @property
@@ -478,6 +483,7 @@ def inbox(found: list[Fairway], bound: float = STALL_MINUTES, now: datetime | No
         waiting += [{"fairway": one.name, "kind": "question",
                      "what": f"{e.fields.get('id')} ({e.fields.get('slice')}): {e.fields.get('what')}", "t": e.t,
                      "asked": str(e.fields.get("what") or ""), "id": str(e.fields.get("id") or ""),
+                     "plain": str(e.fields.get("plain") or ""),
                      "slice": str(e.fields.get("slice") or "")}
                     for e in one.asked]
         if one.unreviewed:
@@ -667,7 +673,8 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
     demos, accepted, due_in = on_board(root, [(one.name, one.entries) for one in found])
     # Each park and question with the slice it is about and any answer a person has placed: `talk_placed`.
     listed = inbox(found, bound, now, ceiling_of(held), root, trunk_commit(root, held.get("trunk")))
-    waiting = acted(placed(root, listed + unreadable_rows(faults)))
+    # Who acts on each need — the mender, a slice's merge, whoever decides, a person — and why (`need_who`).
+    waiting = acted(placed(root, who_acts(root, found, listed + unreadable_rows(faults), harbour, held.get("trunk"))))
     return {
         "berths": berths(found, bound, now, ready, clearance_faults),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same

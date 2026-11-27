@@ -111,6 +111,7 @@
 # why: 2026-11-26 3e7677424052c423 the mender, harbourmaster and fleet.py ask need_owner.py (new) who acts on a need; fleet.py tell takes --plain; check-decisions reads NOT_PLAIN from logs; logs gains question-met (#172). Nothing else a project runs on macOS or Linux behaves differently
 # why: 2026-11-26 6d0ad1c3b0ab6343 the captain writes a plain line on every park and need it writes; clearance, the captain and the harbourmaster read whether a question is open from one rule in logs (unanswered), which honours question-met (#172 follow-up). Nothing a project runs on macOS or Linux behaves differently by platform
 # why: 2026-11-27 ad1cd53e93021e8a one meaning of — in the slice graph (beside.py, clearance, check-chart) and a stage never commits onto local trunk (landing.py, triage/assess/draft/launch, harbourmaster lands the queue and keeps untracked bytes), #177
+# why: 2026-11-27 2bb105d1a5835ff0 check-crossing's covered() skips a careen's folder (<fairway>-careen, never on the chart), read through careen.fairway_of
 
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-memory-none  scripts/agents/ids.py
 02b525de4079ea8e26c476bee0a2ca9052b650080e1cccbdeef3e3c4cebf04e4  event-modelling-postgres-toy-serve  scripts/agents/ids.py
@@ -164,10 +165,6 @@
 27b866aa62d8ae641b08bce31890e2cbce04f286b1ac0ec5589c92038e7d2b06  event-modelling-postgres-toy-serve  scripts/extensions/guard_harness.py
 27b866aa62d8ae641b08bce31890e2cbce04f286b1ac0ec5589c92038e7d2b06  standard-memory-none  scripts/extensions/guard_harness.py
 27b866aa62d8ae641b08bce31890e2cbce04f286b1ac0ec5589c92038e7d2b06  standard-postgres-toy-serve  scripts/extensions/guard_harness.py
-2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-memory-none  scripts/check-crossing.py
-2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  event-modelling-postgres-toy-serve  scripts/check-crossing.py
-2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-memory-none  scripts/check-crossing.py
-2b056a68639d67a51ee2c2f1395dea0c80cc43c4f7c6fd71a559b4c39df10243  standard-postgres-toy-serve  scripts/check-crossing.py
 31fecb52ddcdb82e2c2e1e6e0eba6f8352b9f8677b157d1f426ff65cbe53098e  event-modelling-memory-none  scripts/agents/draft.py
 31fecb52ddcdb82e2c2e1e6e0eba6f8352b9f8677b157d1f426ff65cbe53098e  event-modelling-postgres-toy-serve  scripts/agents/draft.py
 31fecb52ddcdb82e2c2e1e6e0eba6f8352b9f8677b157d1f426ff65cbe53098e  standard-memory-none  scripts/agents/draft.py
@@ -361,6 +358,10 @@
 9884e9f936ff2bcb3ca2449a78142ef4422291e4c8428c7984b41a62531d5e9d  event-modelling-postgres-toy-serve  scripts/agents/logs.py
 9884e9f936ff2bcb3ca2449a78142ef4422291e4c8428c7984b41a62531d5e9d  standard-memory-none  scripts/agents/logs.py
 9884e9f936ff2bcb3ca2449a78142ef4422291e4c8428c7984b41a62531d5e9d  standard-postgres-toy-serve  scripts/agents/logs.py
+991b5ca33eb8a1ccd4e8570c238034b11b87442c9cd0c49ec03c0f0e00c72168  event-modelling-memory-none  scripts/check-crossing.py
+991b5ca33eb8a1ccd4e8570c238034b11b87442c9cd0c49ec03c0f0e00c72168  event-modelling-postgres-toy-serve  scripts/check-crossing.py
+991b5ca33eb8a1ccd4e8570c238034b11b87442c9cd0c49ec03c0f0e00c72168  standard-memory-none  scripts/check-crossing.py
+991b5ca33eb8a1ccd4e8570c238034b11b87442c9cd0c49ec03c0f0e00c72168  standard-postgres-toy-serve  scripts/check-crossing.py
 9b1b06d938a25e8ff6218840129ea97778ba581e6b568105e5b5234577728c94  event-modelling-postgres-toy-serve  init
 9b1b06d938a25e8ff6218840129ea97778ba581e6b568105e5b5234577728c94  standard-postgres-toy-serve  init
 9d5c95d5409f61f22732e3086cf190c3056d150d2fb4e087bc6bd955674e3578  event-modelling-memory-none  scripts/event-model/chart.py

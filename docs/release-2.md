@@ -89,8 +89,10 @@ A fork's tag builds nothing: both jobs are limited to `ROBCOATVG/slipwai`.
 ## A dev build from main
 
 Every push to `main` runs `distributions` too, after the same gate: `publish` runs on a tag alone. Its files
-are named for main's snapshot version and the commit — `Slipwai-2.1.0.dev0-1a2b3c4-windows-x64.exe`,
-`Slipwai-…-macos-arm64.dmg` and the `slipwai-…` executables, each with its `.sha256`, and the wheel.
+are named for main's snapshot version and the commit — `Slipwai-2.1.0.dev52-1a2b3c4-windows-x64.exe`,
+`Slipwai-…-macos-arm64.dmg` and the `slipwai-…` executables, each with its `.sha256`, and the wheel. The
+number is not `VERSION`'s: main carries `2.1.0.dev0` from one release to the next, and
+`scripts/dev-version.py --write` stamps each build with its count of commits since the last release tag.
 
 `dev-snapshot` then publishes them as the `dev` prerelease, deleting the one before it and moving its tag to
 the commit, so <https://github.com/ROBCOATVG/slipwai/releases/tag/dev> always holds main's newest build that
@@ -98,6 +100,13 @@ passed, with no login and no expiry. A prerelease is never `releases/latest`. Ev
 not main has moved on since; the one that stands aside is a run older than the snapshot already there, which
 is two runs finishing out of order. The `dev` tag moves with every push, so a clone
 that ran `git fetch --tags` once is told it would clobber it; `git fetch --tags --force` takes the new one.
+
+`snapshot-pypi` sends the same wheel and source distribution to PyPI, by the trusted publisher `publish` uses,
+so the `pypi` environment admits `main` as well as the `v*` tags. That is where `slipwai upgrade --pre` asks:
+an install on a snapshot follows them with a plain `slipwai upgrade`, and `uv tool install --prerelease allow
+slipwai` takes the newest. A `.dev<N>` is a pre-release to `pip` and `uv`, so an install that never asked for
+one is never moved onto it. The job refuses any file that is not a `.dev` build before it sends anything, and a
+re-run of a build PyPI already has passes.
 
 The same files are also kept on the run for 14 days as the `executable-<platform>` artifacts (a tag's for
 90):

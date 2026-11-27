@@ -170,8 +170,9 @@ jobs:
   # A release, built on each platform it ships for and smoked there, from the tagged commit. Only on a tag,
   # and only in this repository: a fork's tag builds nothing, because a fork has no PyPI project to send it to.
   # On a release tag, what `publish` puts out. On every push to main, the same builds as a dev build: kept on
-  # the run for a fortnight, published nowhere, and named for main's snapshot version and the commit, so a
-  # person can try the app from main without a release and nobody mistakes one for the other.
+  # the run for a fortnight, published as the `dev` prerelease and the wheel as a PyPI snapshot, and named
+  # for main's snapshot version and the commit, so a person can try the app from main without a release and
+  # nobody mistakes one for the other.
   distributions:
     if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && github.repository == 'ROBCOATVG/slipwai'
     needs: [gate, docs, project]
@@ -317,6 +318,43 @@ jobs:
           gh release create dev release/* dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --prerelease --title "slipwai dev snapshot ($short)" \
             --notes "The newest build of main, at $short, replaced by every push to main: not a release, and not tested beyond main's CI. Releases are the others on this page. On a Mac, download Slipwai (.dmg) and open it: the board opens in your browser. This build is unsigned: the first time, open System Settings > Privacy & Security and press Open Anyway. On Windows, download Slipwai (.exe) and open it; it is unsigned too, so press More info, then Run anyway. Each file has a .sha256 beside it. The changelog.d fragments at $short say what has changed since the last release."
+
+  snapshot-pypi:
+    # Main's snapshot on PyPI as well, where `slipwai upgrade --pre` and `uv tool upgrade --prerelease allow`
+    # ask for it. Version 1 published its snapshots there; version 2 sent them only to the `dev` prerelease,
+    # which neither reads, so every 2.x snapshot was told 2.0.1 was the newest there was. A `.dev<N>` is a
+    # pre-release to every installer, so `pip install slipwai` and a plain `upgrade` still take releases alone.
+    # The trusted publisher the release uses: the `pypi` environment admits `main` beside the `v*` tags.
+    if: github.ref == 'refs/heads/main' && github.repository == 'ROBCOATVG/slipwai'
+    needs: [distributions]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/slipwai/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-distributions
+          path: dist
+      # A version is spent the moment PyPI has it, and main never carries a release: a file that is not a
+      # `.dev<N>` build stops the job before anything is sent.
+      - name: A snapshot and nothing else
+        shell: bash
+        run: |
+          set -eu
+          for file in dist/*; do
+            case "$(basename "$file")" in
+              slipwai-*.dev[0-9]*) echo "a snapshot: $file" ;;
+              *) echo "::error::$file is not a .dev build; main sends PyPI snapshots alone"; exit 1 ;;
+            esac
+          done
+      # A re-run of a build PyPI already has is that build again, not a failure. Two runs finishing out of
+      # order are harmless here: each is its own number, and an installer takes the highest.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
 
   publish:
     # Its own guard and not only `distributions'`: that job runs on main too now, and a version is spent the

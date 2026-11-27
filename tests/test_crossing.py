@@ -34,7 +34,8 @@ class CrossingTest(unittest.TestCase):
         (self.root / "project.json").write_text(json.dumps({"name": "t"}), encoding="utf-8")
         shutil.copy(GATE, self.root / "scripts/check-crossing.py")
         (self.root / "scripts/agents").mkdir()
-        shutil.copy(GATE.parent / "agents/logs.py", self.root / "scripts/agents/logs.py")
+        for name in ("logs.py", "careen.py"):
+            shutil.copy(GATE.parent / "agents" / name, self.root / "scripts/agents" / name)
         self.git("init", "--quiet", "--initial-branch=main")
 
     def git(self, *argv: str) -> subprocess.CompletedProcess:
@@ -93,6 +94,18 @@ class CrossingTest(unittest.TestCase):
         row = self.rows()["covered"]
         self.assertIs(row["ok"], False)
         self.assertIn("036-second/UI9", row["what"])
+
+    def test_a_careen_s_folder_is_not_a_slice_in_no_chart(self) -> None:
+        """The careen is `<fairway>-careen`, started by the captain after every planned slice and never put on
+        the chart (`careen.py`). Its folder is finished work, and telling a person to add it to the model is
+        the one fix that would be wrong. A folder that only looks like one is still asked about."""
+        self.feature("001-paint-log", chart=["PL1"], slices=["PL1", "paint-list-careen"])
+        self.assertIs(self.rows()["covered"]["ok"], True, self.rows()["covered"]["what"])
+        self.feature("001-paint-log", chart=["PL1"], slices=["PL1", "paint-list-careen", "UI9"])
+        row = self.rows()["covered"]
+        self.assertIs(row["ok"], False)
+        self.assertIn("001-paint-log/UI9", row["what"])
+        self.assertNotIn("careen", row["what"])
 
     def test_no_mark_has_ever_been_set_is_owed_with_the_one_command(self) -> None:
         self.feature("036-second", chart=["SB1"], slices=["SB1"])

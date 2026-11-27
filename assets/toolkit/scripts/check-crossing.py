@@ -49,6 +49,7 @@ def project_root(script: Path) -> Path:
 ROOT = project_root(Path(__file__))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "agents"))
 import logs  # noqa: E402 — carried in scripts/agents; it owns where the run's state lives
+import careen  # noqa: E402 — carried beside it; it owns what a careen slice is called
 SPECS = ROOT / "specs"
 MODEL = ROOT / "docs/event-model/model.yaml"
 LOG_REFS = "refs/slipwai/logs"
@@ -122,12 +123,19 @@ def charted_slices(feature: Path) -> set[str]:
 
 
 def covered() -> list[dict]:
-    """A slice with a folder and no row in its feature's chart is one no scheduler will ever name."""
+    """A slice with a folder and no row in its feature's chart is one no scheduler will ever name.
+
+    Except a careen's. `<fairway>-careen` is started by the captain after every planned slice of its fairway
+    and is never on the chart (`careen.py`), so its folder is finished work, not work the schedule cannot
+    see — and "add it to the model" is the one fix that would be wrong. `careen.fairway_of` says which ids
+    are a careen's, so this and the captain cannot disagree about the name.
+    """
     missing: list[str] = []
     for feature in features():
         if not (feature / "chart.yaml").is_file():
             continue
-        missing += [f"{feature.name}/{one}" for one in sorted(slices_of(feature) - charted_slices(feature))]
+        missing += [f"{feature.name}/{one}" for one in sorted(slices_of(feature) - charted_slices(feature))
+                    if not careen.fairway_of(one)]
     if not missing:
         return [asked("covered", True, "every slice folder is named in its feature's chart")]
     return [asked("covered", False,

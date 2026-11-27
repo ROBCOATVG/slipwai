@@ -13,7 +13,7 @@ install: ## Install the pinned development tooling into .python-tools
 	./scripts/verify --install-only
 
 .PHONY: lint
-lint: ## Run ruff over the keel's own source, scripts and tests
+lint: ## Run ruff over the keel's own source, scripts and tests, and the shipped scripts' syntax at the 3.11 floor
 	./scripts/verify --lint-only
 
 .PHONY: typecheck

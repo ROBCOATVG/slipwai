@@ -161,6 +161,44 @@ class PackageWorkflowTest(unittest.TestCase):
         self.assertNotRegex(self.workflow, r"ROBCOATVG/slipwai(?![-/@'\s])")
 
 
+def job(workflow: str, name: str) -> str:
+    """One job of a workflow, as written: from its name at two spaces in to the next job's, or the end."""
+    found = re.search(rf"\n  {re.escape(name)}:\n(.*?)(?=\n  [a-z][a-z0-9-]*:\n|\Z)", workflow, re.S)
+    if found is None:
+        raise AssertionError(f"the workflow has no `{name}` job")
+    return found.group(1)
+
+
+class SnapshotOnPyPITest(unittest.TestCase):
+    """Main's snapshot reaches PyPI, where `slipwai upgrade --pre` asks for it.
+
+    Version 1 published its snapshots there and `upgrade --pre` found them; version 2 published them only as
+    the `dev` prerelease on GitHub, which `upgrade` never reads, so every 2.x snapshot answered that 2.0.1
+    was the newest there was."""
+
+    def setUp(self) -> None:
+        self.snapshot = job(read("verify.yml"), "snapshot-pypi")
+
+    def test_it_runs_on_main_in_this_repository_after_every_platform_built_and_smoked(self) -> None:
+        self.assertIn("if: github.ref == 'refs/heads/main' && github.repository == 'ROBCOATVG/slipwai'",
+                      self.snapshot)
+        self.assertIn("needs: [distributions]", self.snapshot)
+
+    def test_it_publishes_by_the_trusted_publisher_the_release_uses_and_holds_no_token(self) -> None:
+        self.assertRegex(self.snapshot, r"environment:\n\s+name: pypi\n")
+        self.assertIn("id-token: write", self.snapshot)
+        self.assertIn("uses: pypa/gh-action-pypi-publish@release/v1", self.snapshot)
+        self.assertNotIn("password:", self.snapshot)
+        self.assertNotIn("contents: write", self.snapshot, "it writes nothing to the repository")
+
+    def test_it_sends_a_snapshot_and_never_spends_a_release_number(self) -> None:
+        """A version is spent the moment PyPI has it: a build of main that is not `.dev<N>` stops here."""
+        self.assertIn("*.dev[0-9]*", self.snapshot)
+        self.assertLess(self.snapshot.index("*.dev[0-9]*"), self.snapshot.index("gh-action-pypi-publish"))
+
+    def test_a_re_run_of_a_build_already_on_pypi_passes(self) -> None:
+        self.assertIn("skip-existing: true", self.snapshot)
+
 
 class ReleaseTest(unittest.TestCase):
     """The release cut from the Actions tab: `make release`'s script, pushed as a person, and the next snapshot."""

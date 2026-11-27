@@ -275,8 +275,8 @@ def fill(feature: str = "", why_now: str = "The split's `parallel_ok_with` colum
     number = next_decision(feature)
     log = clearance.SPECS / feature / "decisions.md"
     existing = log.read_text(encoding="utf-8") if log.is_file() else "# Decisions\n"
-    log.write_text(existing.rstrip("\n") + "\n\n" + decision(feature, number, beside, apart, set_aside, charted,
-                                                               why_now), encoding="utf-8")
+    entry = decision(feature, number, beside, apart, set_aside, charted, why_now)
+    log.write_text(existing.rstrip("\n") + "\n\n" + entry, encoding="utf-8")
     clearance.GRAPHS.clear()
     alone = sorted(one for one, allowed in beside.items() if allowed is not None and not allowed)
     return (f"beside: filled parallel_ok_with for {sum(1 for a in beside.values() if a is not None)} slice(s) of "

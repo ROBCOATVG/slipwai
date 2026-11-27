@@ -70,12 +70,14 @@ class DeclarationTest(unittest.TestCase):
 
     def test_the_harbour_log_holds_only_what_other_fairways_need(self) -> None:
         """Plus the two answers the harbourmaster owes a captain that asked it for something (7.1), and the
-        three about trunk, which is harbour-wide rather than any one fairway's (7.10)."""
+        three about trunk, which is harbour-wide rather than any one fairway's (7.10). And the two answers to a
+        stage's branch queued for landing (`landed`, `land-refused`), which belong to no fairway either."""
         self.assertEqual(set(logs.HARBOUR_KINDS),
                          {"mark-set", "flag-hoisted", "flag-struck", "berth-allocated",
                           "fires-banked", "park", "telegraph", "granted", "refused",
                           "trunk-red", "trunk-green", "fix-trunk", "mend", "mended", "mend-failed", "cleared",
-                          "merge-taken-over", "slots", "need-met", "told-met", "mend-again", "question-met"})
+                          "merge-taken-over", "slots", "need-met", "told-met", "mend-again", "question-met",
+                          "landed", "land-refused"})
 
     def test_a_request_is_a_deck_line_and_both_its_answers_are_harbour_lines(self) -> None:
         """A captain holds no credential, so it asks; and a request that was refused and left no line is

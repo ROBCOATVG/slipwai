@@ -121,9 +121,8 @@ def hand_on(branch: str, message: str) -> str:
                          f"`git push origin {branch}` when the forge can be reached")
     place = queue()
     place.mkdir(parents=True, exist_ok=True)
-    (place / f"{branch.replace('/', '__')}.json").write_text(json.dumps({
-        "branch": branch, "message": message, "t": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}),
-        encoding="utf-8")
+    held = {"branch": branch, "message": message, "t": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    (place / f"{branch.replace('/', '__')}.json").write_text(json.dumps(held), encoding="utf-8")
     said.append("queued for the harbourmaster, which lands it on trunk through the full gate at its next pass")
     return "; ".join(said)
 

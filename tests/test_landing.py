@@ -45,10 +45,24 @@ def run(root: Path, *argv: str) -> str:
     return done.stdout.strip()
 
 
+
+def restored_modules(case: unittest.TestCase) -> None:
+    """Put `sys.modules` back after the case: the toolkit's scripts load by bare name from a temporary project,
+    and one left behind — `harness`, `logs` — is what the next suite imports, from a directory now deleted."""
+    saved = dict(sys.modules)
+
+    def restore() -> None:
+        for name in [one for one in sys.modules if one not in saved]:
+            del sys.modules[name]
+        sys.modules.update(saved)
+
+    case.addCleanup(restore)
+
 class Harbour(unittest.TestCase):
     """A project with an `origin`, on `main`, with the toolkit's scripts where a project has them."""
 
     def setUp(self) -> None:
+        restored_modules(self)
         self.base = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
         self.origin, self.root = self.base / "origin.git", self.base / "project"

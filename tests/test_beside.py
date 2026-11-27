@@ -57,10 +57,24 @@ def none_of(legend: str) -> str:
     return said.group(0)
 
 
+
+def restored_modules(case: unittest.TestCase) -> None:
+    """Put `sys.modules` back after the case: the toolkit's scripts load by bare name from a temporary project,
+    and one left behind — `harness`, `logs` — is what the next suite imports, from a directory now deleted."""
+    saved = dict(sys.modules)
+
+    def restore() -> None:
+        for name in [one for one in sys.modules if one not in saved]:
+            del sys.modules[name]
+        sys.modules.update(saved)
+
+    case.addCleanup(restore)
+
 class Project(unittest.TestCase):
     """A generated project in miniature: the toolkit's own scripts, copied where a project has them."""
 
     def setUp(self) -> None:
+        restored_modules(self)
         self.root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         place = self.root / "scripts/agents"

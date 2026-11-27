@@ -74,8 +74,9 @@ The captain program does these things, in this order:
 several ready slices run at once, and a captain now honours it inside its fairway as a person's `/sail`
 does. A slice is ready when every `depends_on` in the slice graph has merged, every mark it steers by is
 set, and no question or park holds it — [clearance](clearance.md) answers that, and nothing else does. Two
-ready slices may run together unless the split's `parallel_ok_with` leaves one of them out. Each slice
-then gets:
+ready slices may run together unless the split's `parallel_ok_with` leaves one of them out — `—` there
+restricts nothing, and `alone` runs beside nothing. A fairway held to one slice that way while sessions are
+free says so on the board in words. Each slice then gets:
 
 - **its own berth**: a worktree at `../<project>-<id>` on `slice/<id>`, the same name `/sail` gives one, with
   `.slipwai/run/logs` linked to the project's so that every line lands in the one deck log;

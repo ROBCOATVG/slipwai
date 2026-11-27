@@ -198,8 +198,11 @@ def state_html(row: dict | None) -> str:
         return '<span class="chip">not started</span>'
     state = STATES.get(str(row["state"]), str(row["state"]))
     tokens = f"{row['tokens']}k" if isinstance(row["tokens"], int) else row["tokens"]
-    return (f'<span class="chip {esc(STATES.get(str(row["state"]), ""))}" data-state="{esc(state)}">{esc(state)}'
-            f'</span> <span class="who-facts"><span>Slice <b class="mono">{esc(row["slice"])}</b></span>'
+    alone = str(row.get("alone") or "")
+    held = f' <span class="alone">{esc(alone)}</span>' if alone else ""
+    return (f'<span class="chip {esc(STATES.get(str(row["state"]), ""))}" data-state="{esc(state)}">'
+            f'{esc("one at a time" if alone else state)}</span>{held}'
+            f' <span class="who-facts"><span>Slice <b class="mono">{esc(row["slice"])}</b></span>'
             f'<span>Last line <b>{esc(row["last"])}</b></span><span>Tokens <b>{esc(tokens)}</b></span>'
             f'<span>Merged <b>{esc(row["merged"])}</b></span></span>')
 

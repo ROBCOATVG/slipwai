@@ -15,7 +15,8 @@ look. What is here is the board's own markup, written from `fleet.board`.
 **Nothing here reaches the network and nothing is cached.** The page is a render of `fleet.board`, which is
 a fold of the logs, so a reload is a re-fold. That is the same rule the board has and for the same reason.
 """
-# budget: 487 — a locked launch left shown by the session poll;
+# budget: 491 — a fairway the split holds to one slice says so in its state cell;
+# a locked launch left shown by the session poll;
 # a drawing waiting on its verdict says so on its card; a reply said while the stage runs is
 # queued, which the box says and does not wait on; the waiting card now groups parks, questions, hand-backs
 # and notes by what a person has to do, and each group carries its own heading, count and the rows under it,
@@ -225,11 +226,14 @@ def berth_rows(rows: list[dict], streams: dict, controls: bool = True) -> str:
     for row in rows:
         name = str(row["fairway"])
         state = STATES.get(str(row["state"]), str(row["state"]))
+        alone = str(row.get("alone") or "")
+        held = f'<span class="alone">{esc(alone)}</span>' if alone else ""
         body += (
             f"<tr><td><b>{esc(name)}</b></td><td>{esc(row['feature'])}</td>"
             f"<td class=\"mono\">{esc(row['slice'])}{queued_note(row)}</td>"
             f"<td><span class=\"chip {esc(STATES.get(str(row['state']), ''))}\" "
-            f"data-state=\"{esc(state)}\">{esc(state)}</span></td>"
+            f"data-state=\"{esc(state)}\">{esc('one at a time' if alone else state)}</span>"
+            f"{held}</td>"
             f"<td>{esc(row.get('waiting', 0))}</td><td>{esc(row['last'])}</td>"
             f"<td>{esc(row['tokens'])}</td><td>{esc(row['merged'])}</td>"
             f"<td>{log_link(name) if controls else ''}</td></tr>"

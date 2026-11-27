@@ -39,6 +39,6 @@ question posted to the first fairway's deck log for the board. On the event prof
 answer: if this session models, it runs `skills/event-modeling/references/nine-steps.md` Step 9 the same
 way. `make check-chart` refuses a split without it. Write
 each artefact as the stage produces it. Commit on the current branch when the split is written, say what was
-charted and split, and end. Do not push: casting off does, because every slice's worktree is cut from the
+charted and split, and end. **Never onto trunk while a fleet is running.** The script that started this session has already put it on a branch of its own wherever a harbourmaster is running, and pushes and lands that branch when it ends; never `git switch` to trunk to commit. Typed by a person on trunk while `.slipwai/run/running/harbourmaster.pid` names a live process, `git switch -c launch/<slug>` first: a commit on local trunk that the forge has not got stops the harbourmaster bringing this checkout level, and the board then draws an older project. Do not push: casting off does, because every slice's worktree is cut from the
 remote trunk and a plan that is only in this checkout is a plan no slice can see (`scripts/agents/published.py`). A park is a line and an end, not an exit code: the script reads the tree and says
 so.

@@ -74,6 +74,17 @@ def trunk_of(harbour: list[Entry]) -> dict[str, str]:
             "why": str(last.fields.get("why") or ""), "job": str(last.fields.get("job") or "")}
 
 
+def unlanded(harbour: list[Entry]) -> list[dict[str, str]]:
+    """Each stage branch the harbourmaster refused to land (`land-refused`) and has not landed since: a
+    triage's or a launch's work that is on the forge only as a branch, said once in the log and drawn here."""
+    last: dict[str, Entry] = {}
+    for entry in harbour:
+        if entry.kind in ("landed", "land-refused"):
+            last[str(entry.fields.get("branch", ""))] = entry
+    return [{"branch": branch, "why": str(entry.fields.get("why", "")), "t": entry.t}
+            for branch, entry in last.items() if entry.kind == "land-refused"]
+
+
 def fold(root: Path) -> Read:
     """The read itself, made fresh: the columns, the berths, the activity, and trunk with what the trunk mender
     did about it (`trunk_story`)."""
@@ -90,7 +101,7 @@ def fold(root: Path) -> Read:
         # And whether this folder is level with the forge's trunk, which is how old a project it is drawing.
         return Read(rows, fault, fleet, held, live(root, rows), feedback_points(root),
                     {**trunk_of(harbour), **story(root, harbour, held),
-                     "checkout": level(root, held.get("trunk"))})
+                     "checkout": level(root, held.get("trunk")), "unlanded": unlanded(harbour)})
     finally:
         ASKED.reset(asked)
         KEEP_LOGIN.reset(login)

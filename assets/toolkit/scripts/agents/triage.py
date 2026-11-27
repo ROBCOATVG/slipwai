@@ -6,6 +6,13 @@ A person says what using the built app showed them, on the board, and the board 
 examples and the chart, and writes a proposal into each: a defect, a change, new scope, something already
 planned, or a note. It refuses to start with nothing to read, and it checks afterwards that every record it
 was given came back proposed, because a person is about to be asked to confirm what is in them.
+
+**It never commits onto trunk.** The session writes the proposals and commits nothing; this script lands
+them, on `triage/<numbers>`, built from the forge's trunk and queued for the harbourmaster (`landing.py`).
+The board's triage once committed onto local `main` in the person's checkout and pushed nothing, and the
+harbourmaster could then not bring that `main` forward without discarding them: the checkout fell 1168
+commits behind in a night, and the board drew the old project. A session that commits onto trunk anyway is
+reported, and its commits are left exactly where they are.
 """
 from __future__ import annotations
 
@@ -18,6 +25,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import harness  # noqa: E402
+import landing  # noqa: E402
 
 ROOT = harness.ROOT
 COMMAND = ROOT / "commands/triage.md"
@@ -67,7 +75,13 @@ def main(argv: list[str]) -> int:
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "triage"}
+    name = landing.trunk()
+    before = landing.git("rev-parse", "--verify", "--quiet", f"refs/heads/{name}").stdout.strip()
     exited = harness.run_session(shlex.split(line), ROOT, environment)
+    after = landing.git("rev-parse", "--verify", "--quiet", f"refs/heads/{name}").stdout.strip()
+    if after != before:
+        print(f"triage: the session committed onto local {name}, which commands/triage.md says never to do. "
+              f"Those commits are left where they are; the board names them under Waiting on you", file=sys.stderr)
     if exited:
         print(f"triage: the session exited {exited}; whatever it wrote is under docs/feedback", file=sys.stderr)
         return exited
@@ -77,8 +91,13 @@ def main(argv: list[str]) -> int:
         print(f"triage: the session ended with {', '.join(left)} not proposed; `make triage` tries again",
               file=sys.stderr)
         return 1
+    ok, said = landing.land(f"triage/{numbers.replace(',', '-')}", f"Triage feedback {numbers}",
+                            [path.relative_to(ROOT).as_posix() for path in given])
+    print(f"triage: {said}", file=sys.stdout if ok else sys.stderr)
+    if not ok and "nothing to land" not in said:
+        return 1
     print(f"triaged: {numbers}; confirm each on the board")
-    return 0
+    return 1 if after != before else 0
 
 
 if __name__ == "__main__":

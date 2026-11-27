@@ -9,12 +9,17 @@ set -eu
 if [ ! -d .python-tools/ruff ] || [ ! -d .python-tools/mypy ] || [ ! -d .python-tools/yaml ]; then
   python3 -m pip install --disable-pip-version-check -q --target .python-tools -r requirements-dev.txt
 fi
+# The scripts a generated project is given run on that person's own `python3`, not on ours, so they are held
+# to the floor `requires-python` promises (3.11), syntax only: a backslash in an f-string passed every gate
+# here on 3.12+ and crashed `make check-chart` in a generated project, because nothing linted `assets/`.
+shipped() { PYTHONPATH=.python-tools python3 -m ruff check --isolated --target-version py311 --select E9 assets; }
 case "${1:-all}" in
   --install-only) exit 0 ;;
-  --lint-only) PYTHONPATH=.python-tools python3 -m ruff check src scripts tests ;;
+  --lint-only) PYTHONPATH=.python-tools python3 -m ruff check src scripts tests && shipped ;;
   --typecheck-only) PYTHONPATH=.python-tools python3 -m mypy ;;
   all)
     PYTHONPATH=.python-tools python3 -m ruff check src scripts tests
+    shipped
     python3 -m compileall -q src scripts tests
     PYTHONPATH=.python-tools python3 -m mypy
     ;;

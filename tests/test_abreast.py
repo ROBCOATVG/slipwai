@@ -129,11 +129,11 @@ class SliceGraphTest(Fixture):
                         + rows + "\n## Parking Lot\n", encoding="utf-8")
 
     def test_a_run_of_slices_and_each_other(self) -> None:
-        self.split("| L01 | — | — | skeleton |\n| L02–L04 (all others) | L01 | each other | |\n")
+        self.split("| L01 | — | alone | skeleton |\n| L02–L04 (all others) | L01 | each other | |\n")
         depends, parallel = self.abreast.clearance.slice_graph(self.chart())
         self.assertEqual(depends, {"L01": [], "L02": ["L01"], "L03": ["L01"], "L04": ["L01"]})
         self.assertEqual(parallel["L03"], {"L02", "L04"})
-        self.assertEqual(parallel["L01"], set())
+        self.assertEqual(parallel["L01"], set())  # `alone`, the word; `—` would declare nothing
         self.assertTrue(self.abreast.clearance.independent(parallel, "L02", "L04"))
         self.assertFalse(self.abreast.clearance.independent(parallel, "L01", "L02"))
 

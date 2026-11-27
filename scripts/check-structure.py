@@ -109,6 +109,9 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                  "block_actions",
                  # Whether trunk holds what a need asks for, read the harbourmaster's way (#154).
                  "need_check", "refusal_said",
+                 # Whether the folder is level with the forge's trunk, and which trunk commits only it has:
+                 # read by the board and by `migrate`'s catch-up page.
+                 "checkout_level",
                  # Who acts on a need and why, the mender's rule and the board's alike, and the board's
                  # reading of it over the harbour's attempts (#172).
                  "need_owner", "need_who",
@@ -144,6 +147,10 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
                   "migration_withheld",
                   # An elected extension's copy in a project against the installed package, for the catch-up page.
                   "extension_copies",
+                  # A split whose `parallel_ok_with` was never filled in, for the catch-up page.
+                  "migration_beside",
+                  # Local trunk commits the forge has not got, named on the catch-up page and never moved.
+                  "migration_stranded",
                   # A guard an elected extension has and nobody agreed to, said by `migrate` and never agreed for.
                   "guards_offered",
                   "replay", "catch_up", "migrate", "resurvey", "confirm", "converge", "shape_converge")),
@@ -246,8 +253,8 @@ TIERS: tuple[tuple[str, tuple[str, ...]], ...] = (
               "board_read", "voyage_live", "on_you", "fleet_tab",
               # And trunk on it: what the trunk mender did about a red trunk, folded, and drawn as a band,
               # a card on the Fleet tab and an item under Waiting on you; and whether the folder the board
-              # reads is level with the forge's trunk, and which of its trunk's commits only it has.
-              "trunk_story", "trunk_card", "checkout_level",
+              # reads is level with the forge's trunk (`checkout_level`, in answers: migrate reads it too).
+              "trunk_story", "trunk_card",
               # And every press on the board said: pressed, working, and what came of it.
               "press_feedback",
               # And Continue the build, locked: shown disabled with why, never hidden.

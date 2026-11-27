@@ -42,6 +42,13 @@ Seven rules, and each one exists because its absence fails quietly rather than l
    invariant that spans its groups, because past a dozen serial slices the reason costs a run enough to be
    written. The count asks for a reason, never for a split.
 
+**And no fairway runs one slice at a time without a written reason.** A fairway of two or more slices whose
+split left `parallel_ok_with` as a placeholder on every row, or filled it so that no two of its slices may
+run together, owes an entry in `specs/<feature>/decisions.md` answering which slices may run beside which.
+A split stage with nobody present once wrote `—` in that column on all thirty-eight rows of a fairway, the
+fleet read it as *runs beside nothing*, and the fairway ran serially all night with sessions idle beside it.
+`scripts/agents/beside.py` holds the rule, so the gate and the stage that fills the column read one thing.
+
 On the event-modelling profile there is an eighth, and it is about where the chart came from rather than
 what it says: the committed chart must be what `make chart` would render from `model.yaml`. The model is
 the source of truth on that profile, so a chart edited by hand is a second answer to a question that
@@ -285,6 +292,20 @@ def context_faults(chart: dict, path: Path) -> list[str]:
     return []
 
 
+def beside_faults(path: Path) -> list[str]:
+    """A fairway kept to one slice at a time with no decision saying why — `beside.faults` is the rule."""
+    agents = Path(__file__).resolve().parent / "agents"
+    if not (agents / "beside.py").is_file():
+        return []
+    sys.path.insert(0, str(agents))
+    try:
+        import beside  # type: ignore[import-not-found]  # noqa: PLC0415 — the toolkit's own, beside this
+    finally:
+        sys.path.remove(str(agents))
+    charted = load_yaml(path.read_text(encoding="utf-8"))
+    return beside.faults(charted) if isinstance(charted, dict) else []
+
+
 def model_drift(path: Path) -> list[str]:
     """On the event profile, what the model means against what is committed. Empty where there is no model."""
     delivery = Path(__file__).resolve().parents[1]
@@ -345,7 +366,7 @@ def main() -> int:
         shape = shape_faults(chart, path)
         # A malformed chart would make every rule report the same damage in its own words.
         faults.extend(shape if shape else rule_faults(chart, path) + context_faults(chart, path)  # type: ignore[arg-type]
-                      + model_drift(path))
+                      + model_drift(path) + beside_faults(path))
     if faults:
         print("check-chart: the chart does not hold\n", file=sys.stderr)
         for fault in sorted(set(faults)):

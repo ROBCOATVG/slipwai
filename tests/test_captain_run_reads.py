@@ -54,6 +54,9 @@ ALLOWED = {
     "captain_events.py:Helm.decided": "`Helm.open`, which puts an event: not a file read",
     "claims.py:take": PROJECT,
     "clearance.py:chart": PROJECT,
+    # The split's `## Slice graph` and the feature's decision log: which slices may run beside which (#177).
+    "clearance.py:graph_rows": PROJECT,
+    "clearance.py:beside_decisions": PROJECT,
     "clearance.py:lines": LOGS,
     "clearance.py:demos_setting": PROJECT,
     "clearance.py:dispatch_starts": "the dispatch ledger, a tracked file of the project",

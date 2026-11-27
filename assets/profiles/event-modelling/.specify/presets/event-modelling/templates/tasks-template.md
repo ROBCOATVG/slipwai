@@ -242,7 +242,7 @@ Fill the same structured graph the split and plan carry — genuine build deps o
 
 | Slice | depends_on | parallel_ok_with | Notes |
 |---|---|---|---|
-| [ID] | [ids, or —] | [sibling ids] | synthetic-event seeding is **not** a dependency (Principle V) |
+| [ID] | [ids, or —] | [sibling ids, `each other`, `alone`, or — for no restriction] | synthetic-event seeding is **not** a dependency (Principle V) |
 
 On the event profile, the same `depends_on` list lives on this slice in `docs/event-model/model.yaml`.
 `/sail` selects from the **ready** set (deps archived), not blindly the next row of the split.

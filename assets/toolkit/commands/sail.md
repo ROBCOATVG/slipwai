@@ -268,7 +268,11 @@ usually its example map or its plan rather than the top. Do not wait to be invok
    flight, not done.
 2. An open `CRITICAL` in `specs/<feature>/adversary-log.md` is the next slice, ahead of every ready
    product or method slice.
-3. Otherwise **ready** = not done, every `depends_on` done.
+3. Otherwise **ready** = not done, every `depends_on` done. Which ready slices may run *together* is
+   `parallel_ok_with`: `—` there restricts nothing, exactly as `—` in `depends_on` depends on nothing; a
+   list names the siblings it may run beside; `each other` is its row's own slices; `alone` runs beside
+   nothing. A fairway held to one slice by that column, with sessions free, is said on the board in those
+   words — never shown as an ordinary *working* — and `make check-chart` refuses it without a decision.
 4. If ready is empty, stop — the split is exhausted or every remaining slice is blocked.
 5. If ready has one slice, claim it and take it.
 6. If ready has several, **name the full ready set with each slice's state** —

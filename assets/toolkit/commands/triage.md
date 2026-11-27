@@ -37,5 +37,11 @@ record numbers, comma-separated:
    note in `docs/design.md`; `in-flight: <slice>` only for a defect or change whose slice is in flight;
    `proposed:` the UTC time, as `2026-10-21T11:06:40Z`. Then end the file with a `## Proposed` section of
    two to four short lines: why this route, quoting the rule or example it was checked against.
-5. Do not change any line a person or the board wrote. Commit `docs/feedback/` on the current branch as
-   `Triage feedback <numbers>`, say each number and its route, and end the session.
+5. Do not change any line a person or the board wrote. **Commit nothing**, on any branch — least of all
+   trunk: this checkout is the person's and the board draws from it, and a commit on its `main` that is not
+   on the forge stops the harbourmaster bringing it level. Say each number and its route, and end the
+   session. `scripts/agents/triage.py` lands what you wrote: it commits `docs/feedback/` as
+   `Triage feedback <numbers>` on `triage/<numbers>`, built from the forge's trunk, pushes it, and queues
+   it for the harbourmaster, which lands it through the full gate. Typed by a person outside that script,
+   land it the same way: `python3 scripts/agents/landing.py triage/<numbers> "Triage feedback <numbers>"
+   docs/feedback/<each record>`.

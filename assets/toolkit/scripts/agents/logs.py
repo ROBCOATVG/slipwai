@@ -310,6 +310,11 @@ HARBOUR_KINDS: dict[str, tuple[str, ...]] = {
     # count from here, so each gets its attempts afresh. `at` is the deck line's instant, written once.
     "mend-again": ("fairway", "parked", "at"),
     "mend-failed": ("job", "why"),
+    # A branch a board action or an upstream stage committed on, instead of on trunk, and queued for the
+    # harbourmaster under `.slipwai/run/landing/`: landed through the same rebase, gate and advance as a
+    # slice (`landed`, `commit` being trunk now), or refused with why (`land-refused`), once each.
+    "landed": ("branch", "commit"),
+    "land-refused": ("branch", "why"),
     # The merge ref taken off a machine past its lease: `from` held it, `since` is the last time it said it
     # was still merging. Harbour-wide, because the merge is — and the one line that explains a trunk two
     # machines' gates both touched, should the one that went quiet turn out not to have been dead.

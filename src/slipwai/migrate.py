@@ -18,7 +18,8 @@ copies exists on the keel's side of the merge. Re-derive them here, extension fi
 receive its current block. The committed `.slipwai/extensions.json` records the election; a legacy project
 with no record is inferred once from markers. Setup and the interactive menu never run during migration.
 """
-# budget: 412 — the ignore rewrite staged where it is made, and run state kept out of the projections;
+# budget: 421 — a split never filled in, and local trunk's unpushed commits, get catch-up sections;
+# the ignore rewrite staged where it is made, and run state kept out of the projections;
 # and the plain-sentence rule's instant written once, on every path a migration ends by
 # commit (2.1); a clean merge also leaves the intake proposal beside the catch-up notes, moves the run's state into
 # `.slipwai/run/` (refusing while a fleet is out), and moves the records
@@ -38,8 +39,11 @@ from .errors import GenerationError
 from .guards_offered import owed
 from .layout import AT_ROOT, Layout, layout_of
 from .manifest import read_manifest, refuse_older
+from .migration_beside import section as split_section
 from .migration_result import Migration
 from .migration_sentence import date_sentence_rule
+from .migration_stranded import section as stranded_section
+from .migration_stranded import unpushed
 from .migration_withheld import settled
 from .relocate import relocate, split_logs
 from .replay import Replay, git, replay
@@ -91,6 +95,7 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
         return done
     name, generator = document["name"], document.get("generator")
     was = generator.get("updatedWith") if isinstance(generator, dict) else None
+    kept = unpushed(root)  # before the merge, so its own commit is never counted among them
     with tempfile.TemporaryDirectory(prefix=f".{name}-migrate-", dir=root.parent) as staging:
         offered = replay(root, Path(staging) / "offered")
         git(root, *NO_MAINTENANCE, "fetch", "--quiet", str(offered.destination), "main")
@@ -108,7 +113,7 @@ def migrate(root: Path, *, with_claims: bool = False) -> Migration:
     # Written either way, and before the projections: the notes are what the *versions* asked for, which a
     # conflict does not change, and a merge left in progress is exactly when somebody wants to know what
     # they are resolving towards.
-    unwritten = write_notes(root, name, was, document, conflicts)
+    unwritten = write_notes(root, name, was, document, conflicts, kept)
     if conflicts:
         # Nothing is re-derived over a merge still in progress: the command files are half the project's
         # and half the keel's until somebody decides, and projecting a conflicted file would write the
@@ -141,6 +146,7 @@ def merge_offered(root: Path, offered: Replay, message: str) -> tuple[str | None
 
 def write_notes(
     root: Path, name: str, was: str | None, document: dict | None = None, conflicts: tuple[str, ...] = (),
+    kept: tuple[str, list[str]] = ("", []),
 ) -> str | None:
     """Leave the catch-up notes in the project; None when they were left, else why they could not be.
 
@@ -163,7 +169,10 @@ def write_notes(
         destination = root / NOTES
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(notes(name, was, languages=moved_languages(document) if document else (),
-                                     conflicts=conflicts, extensions=owed(root, document)), encoding="utf-8")
+                                     conflicts=conflicts,
+                                     extensions=[*owed(root, document), *split_section(root, document),
+                                                 *stranded_section(*kept)]),
+                               encoding="utf-8")
     except Exception as error:  # the merge is committed: whatever a recorded value did, say so and never raise
         return str(error) or type(error).__name__
     return None

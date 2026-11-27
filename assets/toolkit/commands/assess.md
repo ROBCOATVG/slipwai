@@ -46,4 +46,4 @@ the slug:
    path, each path, a NUL, the bytes, and a NUL. The feature is the directory Spec Kit created and recorded
    in `.specify/feature.json`.
 5. Commit on the current branch as `Assess <slug>`. Say the verdict, and the feature directory when one
-   was written. End the session.
+   was written. End the session. **Never onto trunk while a fleet is running.** The script that started this session has already put it on a branch of its own wherever a harbourmaster is running, and pushes and lands that branch when it ends; never `git switch` to trunk to commit. Typed by a person on trunk while `.slipwai/run/running/harbourmaster.pid` names a live process, `git switch -c assess/<slug>` first: a commit on local trunk that the forge has not got stops the harbourmaster bringing this checkout level, and the board then draws an older project.

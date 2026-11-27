@@ -374,7 +374,21 @@ every row and says so, because a claim no other machine can see is not routing.
 ## Slice graph
 | Slice | depends_on | parallel_ok_with | Notes |
 |---|---|---|---|
-| ... | — or id list | sibling ids that share only a schema / synthetic seed | genuine build deps only; synthetic-event seeding is not a dependency |
+| ... | — or id list | sibling ids it may run beside, `each other`, or `alone` | genuine build deps only; synthetic-event seeding is not a dependency |
+
+**`—` means *nothing declared*, in both columns.** In `depends_on` it depends on nothing; in
+`parallel_ok_with` it restricts nothing. *Runs beside nothing* is the word `alone` and never a placeholder,
+because a fairway of `alone` rows runs one slice at a time and that has to be chosen on purpose.
+
+**Fill `parallel_ok_with` from what the slices would collide on, never leave it a placeholder.** Two slices of
+one fairway are kept apart when they would change the same thing: the same stream (one aggregate's history),
+the same screen (a mockup or a surface in *Surfaces and states*), or the same file their manifests name. Every
+other sibling goes in the cell. `python3 scripts/agents/beside.py --fill` works this out from the model and the
+split, rewrites the table one slice a row, and records the choice as a `D<n>` entry awaiting confirmation —
+the same way the order is recorded — and with nobody present that is what this stage runs. With a person
+present, run it and put the result to them. `make check-chart` refuses a fairway of more than one slice whose
+column is a placeholder on every row, or that no two of its slices may run together in, unless a decision
+says why.
 
 `/sail` and the bridge read this table (or, on the event profile, each slice's `depends_on` in
 `docs/event-model/model.yaml`) to compute the **ready** set: not yet done, every `depends_on` already done.

@@ -92,6 +92,7 @@ def lines(root: Path) -> list[str]:
                            ("queued", "queued"), ("state", "state"), ("waiting", "waiting"), ("last", "last line"),
                            ("tokens", "tokens"),
                            ("merged", "merged"), ("marks", "marks")]) or ["  no fairway has written a line"]
+    said += [f"  {row['fairway']} {row['alone']}" for row in berths if row.get("alone")]
 
     pressure = found["pressure"]
     assert isinstance(pressure, dict)

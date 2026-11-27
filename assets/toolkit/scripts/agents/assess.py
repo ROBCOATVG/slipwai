@@ -17,6 +17,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import harness  # noqa: E402
+import landing  # noqa: E402
 
 ROOT = harness.ROOT
 COMMAND = ROOT / "commands/assess.md"
@@ -68,7 +69,13 @@ def main(argv: list[str]) -> int:
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "assess"}
-    exited = harness.run_session(shlex.split(line), ROOT, environment)
+    # While a fleet is running the session works on a branch of its own, landed through the full gate.
+    aside, left = landing.step_aside("assess", slug)
+    try:
+        exited = harness.run_session(shlex.split(line), ROOT, environment)
+    finally:
+        if aside:
+            print(f"assess: {landing.step_back(aside, left, f'Assess {slug}')}", flush=True)
     if exited:
         print(f"assess: the session exited {exited}; whatever it wrote is on the current branch",
               file=sys.stderr)

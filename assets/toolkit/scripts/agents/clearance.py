@@ -62,6 +62,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -553,7 +554,15 @@ GRAPHS: dict[tuple[str, float, float], tuple[dict[str, list[str]], dict[str, set
 #: How a row of the split's slice graph names a run of slices — `L02–L23` — and how it names the rest.
 #: An en dash or the word `to` and never a hyphen, because a hyphen is inside ids like `ORD-01`.
 RUN = re.compile(r"([A-Za-z][\w.-]*?)(\d+)\s*(?:–|—|\bto\b)\s*\1?(\d+)")
+#: What a cell of either column says when it declares nothing: no dependency in `depends_on`, and no
+#: restriction in `parallel_ok_with` — the same meaning in both, because the template offers one placeholder
+#: for both and an agent filling it in will use it in both. A 38-slice fairway ran one slice at a time all
+#: night because this file once read `—` in `parallel_ok_with` as *runs beside nothing* while the template
+#: offered it as *none*.
 NONE_CELLS = ("", "—", "-", "–", "none", "n/a")
+#: The one word for *runs beside nothing*. A word and never a placeholder, so that the cautious answer is
+#: written on purpose — and `check-chart` asks for the decision that says why.
+ALONE = "alone"
 
 
 def feature_of(charted: dict) -> str:
@@ -601,6 +610,145 @@ def ids_in(cell: str, known: list[str], rest: list[str]) -> list[str]:
     return [slice_id for slice_id in known if slice_id in found]
 
 
+class GraphRow(NamedTuple):
+    """One row of a split's `## Slice graph`, read: the slices its first cell names, what they depend on,
+    whom they may run beside (None where the cell restricts nothing), and the cells as written."""
+
+    feature: str
+    slices: list[str]
+    depends: list[str]
+    beside: set[str] | None
+    cells: list[str]
+
+
+def parallel_cell(said: str, mine: list[str], known: list[str], rest: list[str]) -> set[str] | None:
+    """What one `parallel_ok_with` cell allows: None for a placeholder, which restricts nothing; the empty
+    set for `alone`; the row's own slices for `each other`; else the ids it names."""
+    lowered = said.strip().strip("`").lower()
+    if lowered in NONE_CELLS:
+        return None
+    if lowered == ALONE:
+        return set()
+    if "each other" in lowered:
+        return set(mine)
+    return set(ids_in(said, known, rest))
+
+
+def graph_rows(charted: dict) -> list[GraphRow]:
+    """Every row of every split's `## Slice graph` this chart has slices in, read the one way the fleet,
+    the gate and the filler all read it. Uncached: `slice_graph` caches what it folds from these."""
+    home = feature_of(charted)
+    known = [str(slice_id) for slice_id in (charted.get("slices") or {})]
+    found: list[GraphRow] = []
+    for feature in slice_features(charted):
+        split = SPECS / feature / "story-split.md"
+        if not split.is_file():
+            continue
+        own = [slice_id for slice_id in known if feature_of_slice(slice_id, charted, home) == feature]
+        rows = table_rows(split.read_text(encoding="utf-8", errors="replace"))
+        named = {slice_id for cells in rows if "all other" not in cells[0].lower()
+                 for slice_id in ids_in(cells[0], own, [])}
+        rest = [slice_id for slice_id in own if slice_id not in named]
+        for cells in rows:
+            mine = ids_in(cells[0], own, rest)
+            deps = [] if cells[1].lower() in NONE_CELLS else ids_in(cells[1], known, [])
+            beside = parallel_cell(cells[2], mine, known, rest) if len(cells) > 2 else None
+            found.append(GraphRow(feature, mine, deps, beside, cells))
+    return found
+
+
+def table_rows(text: str) -> list[list[str]]:
+    """The body rows of the `## Slice graph` table in a split's text, each as its stripped cells."""
+    rows: list[list[str]] = []
+    inside = False
+    for line in text.splitlines():
+        if line.startswith("#"):
+            inside = line.strip().lstrip("#").strip().lower() == "slice graph"
+            continue
+        if inside and line.strip().startswith("|"):
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) >= 2 and cells[0].lower() != "slice" and not set(cells[0]) <= set("-: "):
+                rows.append(cells)
+    return rows
+
+
+#: What marks the decision that a fairway's slices run one at a time, or that the column was filled for a
+#: reviewer: its heading or `Question` names the column or the question it answers.
+BESIDE_QUESTION = re.compile(r"parallel[_ ]ok[_ ]with|run (?:beside|alongside|together|at once)|one at a time",
+                             re.IGNORECASE)
+
+
+def beside_decisions(feature: str) -> list[str]:
+    """The entries in a feature's `decisions.md` that answer which of its slices may run beside which."""
+    log = SPECS / feature / "decisions.md"
+    if not log.is_file():
+        return []
+    found = []
+    for entry in re.split(r"^(?=## )", log.read_text(encoding="utf-8", errors="replace"), flags=re.M):
+        heading = entry.split("\n", 1)[0]
+        question = next((line for line in entry.splitlines() if line.startswith("- **Question:**")), "")
+        if entry.startswith("## ") and BESIDE_QUESTION.search(heading + question):
+            found.append(entry)
+    return found
+
+
+class Serialised(NamedTuple):
+    """A fairway the slice graph keeps to one slice at a time, and why: `unfilled` where every row's
+    `parallel_ok_with` is a placeholder (the column was never filled in), `barred` where it is filled and
+    no two of the fairway's slices may run together."""
+
+    feature: str
+    fairway: str
+    slices: list[str]
+    rows: list[str]
+    why: str
+
+
+def serialised(charted: dict) -> list[Serialised]:
+    """Every fairway of two or more slices whose split either never filled `parallel_ok_with` or bars every
+    pair of its slices from running together — the two ways a fairway runs one slice at a time without
+    anyone having decided it. `check-chart` refuses each unless `beside_decisions` holds an entry for it."""
+    fairway_of_slice = {str(one): str((body or {}).get("fairway", ""))
+                        for one, body in (charted.get("slices") or {}).items()}
+    rows = graph_rows(charted)
+    _, parallel = slice_graph(charted)
+    found: list[Serialised] = []
+    for fairway in dict.fromkeys(fairway_of_slice.values()):
+        mine = [one for one, named in fairway_of_slice.items() if named == fairway]
+        if len(mine) < 2:
+            continue
+        written = [row for row in rows if set(row.slices) & set(mine)]
+        if not written:
+            continue
+        features = sorted({row.feature for row in written})
+        cells = [" | ".join(row.cells[:3]) for row in written]
+        if all(len(row.cells) > 2 and row.beside is None and row.cells[2].strip().strip("`").lower() in NONE_CELLS
+               for row in written):
+            found.append(Serialised(", ".join(features), fairway, mine, cells, "unfilled"))
+        elif not any(independent(parallel, one, other) for index, one in enumerate(mine) for other in mine[index + 1:]):
+            found.append(Serialised(", ".join(features), fairway, mine, cells, "barred"))
+    return found
+
+
+def held_to_one(charted: dict, states: dict[str, tuple[str, str]], claimed: set[str]) -> dict[str, list[str]]:
+    """Each fairway with a slice in flight and ready slices waiting only because the slice graph will not let
+    them run beside it: the fairway, and the slices it is holding back. The board says this in words, since
+    a fairway doing this looks exactly like one working normally."""
+    _, parallel = slice_graph(charted)
+    fairway_of_slice = {str(one): str((body or {}).get("fairway", ""))
+                        for one, body in (charted.get("slices") or {}).items()}
+    held: dict[str, list[str]] = {}
+    for fairway in dict.fromkeys(fairway_of_slice.values()):
+        mine = [one for one, named in fairway_of_slice.items() if named == fairway]
+        flying = [one for one in mine if (states.get(one) or ("",))[0] in ("running", "awaiting-demo")
+                  or (one in claimed and (states.get(one) or ("",))[0] in BANDS)]
+        waiting = [one for one in mine if one not in flying and (states.get(one) or ("",))[0] in BANDS]
+        if flying and waiting and all(any(not independent(parallel, one, other) for other in flying)
+                                      for one in waiting):
+            held[fairway] = waiting
+    return held
+
+
 def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str] | None]]:
     """(each slice's `depends_on`, each slice's `parallel_ok_with` or None where nothing declares one).
 
@@ -610,7 +758,8 @@ def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str]
     lists, being structured and checked by `check-model`; the split's table answers for the rest, and is the
     only place `parallel_ok_with` is written at all. A table row may name one slice, several, a run of them
     (`L02–L23`) or `all others`; its `parallel_ok_with` may name ids, `each other` (the row's own slices),
-    or `—`, which declares none.
+    `alone` (runs beside nothing), or `—`, which restricts nothing — exactly as `—` in `depends_on` depends on
+    nothing. One symbol, one meaning, in both columns and in the template that offers it.
 
     **Absent is not a refusal.** A slice no row names has no dependencies here and declares no
     `parallel_ok_with`, so the page's own rule answers for it — slices that share only a contract are
@@ -620,7 +769,6 @@ def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str]
     feature's slices: `all others` in a later feature's split is the rest of that feature, never of the chart.
     What a row depends on may be any slice on the chart, since a later feature builds on an earlier one's.
     """
-    home = feature_of(charted)
     known = [str(slice_id) for slice_id in (charted.get("slices") or {})]
     model = ROOT / "docs/event-model/model.yaml"
     splits = {feature: SPECS / feature / "story-split.md" for feature in slice_features(charted)}
@@ -637,34 +785,10 @@ def slice_graph(charted: dict) -> tuple[dict[str, list[str]], dict[str, set[str]
         return GRAPHS[key]
     depends: dict[str, list[str]] = {}
     parallel: dict[str, set[str] | None] = {}
-    for feature, split in splits.items():
-        if not split.is_file():
-            continue
-        own = [slice_id for slice_id in known if feature_of_slice(slice_id, charted, home) == feature]
-        rows: list[list[str]] = []
-        inside = False
-        for text in split.read_text(encoding="utf-8", errors="replace").splitlines():
-            if text.startswith("#"):
-                inside = text.strip().lstrip("#").strip().lower() == "slice graph"
-                continue
-            if inside and text.strip().startswith("|"):
-                cells = [cell.strip() for cell in text.strip().strip("|").split("|")]
-                if len(cells) >= 2 and cells[0].lower() != "slice" and not set(cells[0]) <= set("-: "):
-                    rows.append(cells)
-        named = {slice_id for cells in rows if "all other" not in cells[0].lower()
-                 for slice_id in ids_in(cells[0], own, [])}
-        rest = [slice_id for slice_id in own if slice_id not in named]
-        for cells in rows:
-            mine = ids_in(cells[0], own, rest)
-            deps = [] if cells[1].lower() in NONE_CELLS else ids_in(cells[1], known, [])
-            ok: set[str] | None = None
-            if len(cells) > 2:
-                said = cells[2].lower()
-                ok = (set() if said in NONE_CELLS else set(mine) if "each other" in said
-                      else set(ids_in(cells[2], known, rest)))
-            for slice_id in mine:
-                depends[slice_id] = [dep for dep in deps if dep != slice_id]
-                parallel[slice_id] = None if ok is None else ok - {slice_id}
+    for row in graph_rows(charted):
+        for slice_id in row.slices:
+            depends[slice_id] = [dep for dep in row.depends if dep != slice_id]
+            parallel[slice_id] = None if row.beside is None else row.beside - {slice_id}
     if model.is_file():
         try:
             loaded = load_yaml(model.read_text(encoding="utf-8"))
@@ -689,8 +813,9 @@ def independent(parallel: dict[str, set[str] | None], one: str, other: str) -> b
     """Whether two ready slices may run at once: neither's `parallel_ok_with` leaves the other out.
 
     Undeclared is independent, which is the page's rule — slices that share only a contract need not wait
-    for each other. A declaration narrows that and never widens it: a slice whose row says `—` runs beside
-    nothing, and one that names its siblings runs beside those alone.
+    for each other. A declaration narrows that and never widens it: a slice whose row says `alone` runs
+    beside nothing, and one that names its siblings runs beside those alone. A row saying `—` declares
+    nothing, as `—` in `depends_on` does.
     """
     mine, theirs = parallel.get(one), parallel.get(other)
     return (mine is None or other in mine) and (theirs is None or one in theirs)
@@ -1281,6 +1406,10 @@ def main(argv: list[str]) -> int:
                           "slots": slots, "numbers": numbers, "held": held,
                           "claims": "unreadable" if claims is None else sorted(claims),
                           "schedule": planned,
+                          # Each fairway with ready slices held back only because the slice graph will not
+                          # let them run beside what is in flight: the board says so rather than `working`.
+                          "held_to_one": held_to_one(charted, states, set(folded_logs.claimed)
+                                                     - set(folded_logs.merged)),
                           # The next three feedback points: the observables a person is asked to look at
                           # first, by what delaying their judgement would cost (feedback-points plan, D6).
                           "feedback": points}))

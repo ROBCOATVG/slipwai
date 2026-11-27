@@ -17,7 +17,8 @@ heartbeat is older than the bound has stalled. That is the whole reason `heartbe
 number nobody wrote is `—`, not `0`. Both of those are the same rule as the rest: the board reports the log,
 and where the log is silent the board is silent too.
 """
-# budget: 706 — who acts on each need (#172), each park's held answer, its action line,
+# budget: 741 — a fairway the split holds to one slice while sessions are free, said in words;
+# who acts on each need (#172), each park's held answer, its action line,
 # needs trunk already has and an obsolete park,
 # the clearance answers one read of the board
 # shares, a `read` tied to its `told` by inbox id,
@@ -419,8 +420,12 @@ def ago(minutes: float) -> str:
 
 def berths(found: list[Fairway], bound: float = STALL_MINUTES,
            now: datetime | None = None, ready: dict[tuple[str, str], list[str]] | None = None,
-           clearance_faults: set[str] | None = None) -> list[dict[str, object]]:
-    """The berth table: one row per fairway, each saying what it is on and when it last said anything."""
+           clearance_faults: set[str] | None = None,
+           alone: dict[tuple[str, str], list[str]] | None = None) -> list[dict[str, object]]:
+    """The berth table: one row per fairway, each saying what it is on and when it last said anything.
+
+    `alone` is each fairway the slice graph keeps to one slice while a session is free, with the slices it
+    holds back; its row says so in words, under `alone`, wherever it would otherwise read `working`."""
     rows: list[dict[str, object]] = []
     for one in found:
         since = minutes_since(one.last, now)
@@ -444,6 +449,9 @@ def berths(found: list[Fairway], bound: float = STALL_MINUTES,
             "paused": len(lifting),
             "parked": len(parks) - len(lifting),
             "until": clock_of(one.paused) if one.paused and one.paused != "soon" else "",
+            "alone": (f"{HELD_TO_ONE}: {', '.join((alone or {})[(one.feature, one.name)])} wait"
+                      if (one.feature, one.name) in (alone or {}) and state_of(one, bound, now, count) == "working"
+                      else ""),
         })
     return rows
 
@@ -558,6 +566,30 @@ def inbox_detail(row: dict) -> str:
     return f"waiting on {row['waiting_on']} for {row['waited']}{overdue}: {row['what']}"
 
 
+#: What the board says for a fairway the slice graph keeps to one slice while sessions are free beside it.
+#: An ordinary `working` there is the board hiding the one thing that is costing the run hours.
+HELD_TO_ONE = "can only run one slice at a time because the split says so"
+
+
+def held_to_one(root: Path, feature: str = "") -> dict[str, list[str]]:
+    """Each fairway the slice graph holds to one slice, with the ready slices it holds back; from the same
+    clearance query the ready set comes from, and empty where that query has nothing to say."""
+    _, result, fault = clearance_query(root, feature)
+    held = result.get("held_to_one") if not fault and isinstance(result, dict) else None
+    if not isinstance(held, dict):
+        return {}
+    return {str(f): [str(s) for s in ids] for f, ids in held.items() if isinstance(ids, list) and ids}
+
+
+def free_sessions(held: dict, found: list[Fairway], bound: float, now: datetime | None) -> bool:
+    """Whether a session is free in this harbour: `boilers` above every slice at work, or no `boilers` set.
+    A fairway a person set to `abreast: 1` is one at a time by their choice, not the split's."""
+    boilers = held.get("boilers")
+    if not isinstance(boilers, int) or isinstance(boilers, bool) or boilers <= 0:
+        return True
+    return sum(len(one.at_work(bound, now)) for one in found) < boilers
+
+
 def clearance_ready(root: Path, feature: str = "") -> tuple[str, dict[str, list[str]], str]:
     """The ready set, by fairway: the one answer the berth table needs out of the clearance query."""
     feature, result, fault = clearance_query(root, feature)
@@ -663,9 +695,12 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
     bound = float(held.get("wait_bound", STALL_MINUTES) or STALL_MINUTES)
     ready: dict[tuple[str, str], list[str]] = {}
     clearance_faults: set[str] = set()
+    alone: dict[tuple[str, str], list[str]] = {}
     for chart in sorted((root / "specs").glob("*/chart.yaml")):
         feature, cleared, fault = clearance_ready(root, chart.parent.name)
         ready.update({(feature, fairway): slices for fairway, slices in cleared.items()})
+        if not fault and held.get("abreast") != 1 and free_sessions(held, found, bound, now):
+            alone.update({(feature, fairway): slices for fairway, slices in held_to_one(root, feature).items()})
         if fault:
             clearance_faults.add(feature)
             faults["clearance"] = str(faults.get("clearance", "")) + f"{feature}: {fault}\n"
@@ -675,7 +710,7 @@ def board(root: Path, config: dict | None = None, now: datetime | None = None) -
     # Who acts on each need — the mender, a slice's merge, whoever decides, a person — and why (`need_who`).
     waiting = acted(placed(root, who_acts(root, found, listed + unreadable_rows(faults), harbour, held.get("trunk"))))
     return {
-        "berths": berths(found, bound, now, ready, clearance_faults),
+        "berths": berths(found, bound, now, ready, clearance_faults, alone),
         # The parks folded by what they wait on, and the numbers under the headline: both from the same
         # rows the inbox lists one by one, so the two never disagree.
         "groups": groups(waiting),

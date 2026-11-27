@@ -256,7 +256,11 @@ def harbour_said(entry: Entry) -> str:
     kind = entry.kind
     if kind == "granted":
         commit = f" at {str(at['commit'])[:8]}" if at.get("commit") else ""
-        return f"{at.get('request')} granted{commit}" + (f" · CI {at['ci']}" if at.get("ci") else "")
+        # `note` is what was done to — or could not be done to — the person's checkout, and `withheld` the
+        # hand-backs a person still owes: both warnings, which a sentence without them hid behind the raw line.
+        return (f"{at.get('request')} granted{commit}" + (f" · CI {at['ci']}" if at.get("ci") else "")
+                + (f" · {at['note']}" if at.get("note") else "")
+                + (f" · not landed with it, still owed by a person: {at['withheld']}" if at.get("withheld") else ""))
     if kind == "refused":
         return f"{at.get('request')} refused: {at.get('why')}"
     if kind == "berth-allocated":

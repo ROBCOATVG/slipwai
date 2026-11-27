@@ -20,6 +20,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import harness  # noqa: E402
+import landing  # noqa: E402
 
 ROOT = harness.ROOT
 #: The method's own folder: the root of a generated project, and `layout.delivery` of an adopted one, where
@@ -55,7 +56,13 @@ def main(argv: list[str]) -> int:
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "draft"}
-    exited = harness.run_session(shlex.split(line), ROOT, environment)
+    # While a fleet is running the session works on a branch of its own, landed through the full gate.
+    aside, left = landing.step_aside("draft", "first-specification")
+    try:
+        exited = harness.run_session(shlex.split(line), ROOT, environment)
+    finally:
+        if aside:
+            print(f"draft: {landing.step_back(aside, left, 'Draft the first specification')}", flush=True)
     if exited:
         print(f"draft: the session exited {exited}; whatever it wrote is on the current branch, "
               f"uncommitted or committed as it said", file=sys.stderr)

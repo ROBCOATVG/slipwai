@@ -18,7 +18,7 @@ slice name contains "and", a comma between verbs, or "plus", split it before pla
 
 | Slice | depends_on | parallel_ok_with | Notes |
 |---|---|---|---|
-| [ID] | [genuine build deps, or —] | [siblings that share only a schema / synthetic seed] | [why a listed dep is genuine; synthetic-event seeding is not a dependency] |
+| [ID] | [genuine build deps, or —] | [siblings it may run beside, `each other`, `alone`, or — for no restriction] | [why a listed dep is genuine; synthetic-event seeding is not a dependency] |
 
 **Explicitly deferred** (later slices, not oversights): [list]
 

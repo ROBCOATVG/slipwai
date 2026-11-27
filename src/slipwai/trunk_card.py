@@ -169,6 +169,15 @@ def checkout_band(trunk: dict[str, Any]) -> str:
             f"</p>{own}<p>{then}</p></div>")
 
 
+def unlanded_item(trunk: dict[str, Any]) -> list[dict[str, Any]]:
+    """A stage branch the harbourmaster would not land, as one item under *Waiting on you* each: the work is on
+    the forge only as that branch, and nothing tries it again by itself."""
+    return [{"n": 1, "href": "#checkout",
+             "text": f"{one['branch']} was not landed on trunk: {first_sentence(one['why'], 170)} Fix it on that "
+                     f"branch and run `python3 scripts/agents/landing.py` again, or open a pull request from it"}
+            for one in trunk.get("unlanded") or []]
+
+
 def stranded_item(trunk: dict[str, Any]) -> list[dict[str, Any]]:
     """The local trunk's own commits, which nothing pushes, as one item under *Waiting on you*."""
     level = trunk.get("checkout") or {}

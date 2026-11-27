@@ -418,7 +418,8 @@ def advance(name: str, commit: str) -> tuple[str, str, bool]:
             return last_line(pushed), "", bool(MOVED_UNDER.search(pushed.stderr or ""))
     head = git("symbolic-ref", "--quiet", "--short", "HEAD")
     if head.returncode == 0 and head.stdout.strip() == name:
-        moved = git("merge", "--ff-only", commit)
+        with kept_untracked(commit):
+            moved = git("merge", "--ff-only", commit)
         if moved.returncode == 0:
             return "", "", False
         if not git("status", "--porcelain", "--untracked-files=no").stdout.strip():
@@ -456,6 +457,37 @@ def stranded_said(name: str, commits: list[str]) -> str:
             f"pull request; never reset or rebase {name} over them")
 
 
+class kept_untracked:  # noqa: N801 — read as a phrase: `with kept_untracked(commit):`
+    """Untracked files the fast-forward to `commit` would bring in as tracked ones, kept byte for byte.
+
+    The board writes feedback into this checkout and never commits it; a stage lands those same files on
+    trunk on a branch of its own (`landing.py`). Git then refuses to fast-forward local trunk, even where
+    the bytes are identical, because an untracked file would be overwritten — and the checkout sits behind
+    for ever. So each such file is read, removed for the fast-forward, and written back exactly as it was:
+    afterwards it is either unchanged, or a change to a tracked file that is still entirely the person's.
+    Nothing is lost whichever way the merge goes; where it is refused, the files are put back as they were.
+    """
+
+    def __init__(self, commit: str) -> None:
+        self.commit, self.held = commit, {}
+
+    def __enter__(self) -> "kept_untracked":
+        coming = set(git("diff", "--name-only", "HEAD", self.commit).stdout.split("\n"))
+        loose = git("ls-files", "--others", "--exclude-standard", "-z").stdout.split("\0")
+        for path in sorted(set(loose) & coming - {""}):
+            where = ROOT / path
+            if where.is_file() and not where.is_symlink():
+                self.held[path] = where.read_bytes()
+                where.unlink()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        for path, data in self.held.items():
+            where = ROOT / path
+            where.parent.mkdir(parents=True, exist_ok=True)
+            where.write_bytes(data)
+
+
 def level(name: str, commit: str) -> str:
     """Bring the person's local trunk to the commit just pushed, where that is a fast-forward. What was not
     done and why, or `""` where it is level or was made so.
@@ -473,7 +505,8 @@ def level(name: str, commit: str) -> str:
         return stranded_said(name, stranded(name, commit))
     head = git("symbolic-ref", "--quiet", "--short", "HEAD")
     if head.returncode == 0 and head.stdout.strip() == name:
-        moved = git("merge", "--ff-only", "--quiet", commit)
+        with kept_untracked(commit):
+            moved = git("merge", "--ff-only", "--quiet", commit)
         if moved.returncode == 0:
             return ""
         return (f"this checkout is on {name} and was left exactly where it stood, behind the forge's {name}: "
@@ -1222,7 +1255,9 @@ def reverting(commit: str) -> list[str]:
 
 def mend_land(branch: str) -> tuple[str, str]:
     """Land the mender's branch: the same rebase, gate and advance as a slice's. (trunk now, why not)."""
-    commit, fault, _resolvable, _note = merge_branch(branch)
+    commit, fault, _resolvable, note = merge_branch(branch)
+    if note:  # the same warning a slice's merge carries on its `granted` line; this landing has no line of its own
+        print(f"harbourmaster: {note}", flush=True)
     return commit, fault
 
 
@@ -1631,6 +1666,7 @@ def once() -> int:
     written += needs_met(written)
     written += questions_met(written)
     written += mends_again(written)
+    written += landings(trunk_state)
     if mending():
         # Last, so a need this pass ticked is not offered, and after the trunk lines so a red this pass found
         # is mended in it. Each pass finishes an attempt that is over or starts the next one; none waits.
@@ -1641,6 +1677,46 @@ def once() -> int:
     write_cursors(cursors)
     fill_free_berths()
     return len(written)
+
+
+#: A queued branch's name: a stage's own, as `landing.py` writes them. Anything else queued is refused.
+LANDABLE = re.compile(r"^(?:triage|assess|draft|launch|stage)/[A-Za-z0-9][\w.,-]*$")
+
+
+def landings(trunk_state: str) -> list[logs.Entry]:
+    """Land every branch `landing.py` queued: a stage's work committed beside trunk rather than on it.
+
+    The same rebase, gate and advance as a slice's (`merge_branch`), so a board action's commit reaches the
+    forge's trunk through the one gate everything takes, with nobody present. One line each, `landed` or
+    `land-refused`, and the queue file goes either way, so a refusal is said once rather than every pass.
+    Nothing lands on a red trunk, exactly as no slice does; the queue waits for green.
+    """
+    place = logs.run_dir(ROOT) / "landing"
+    if trunk_state == "red" or not place.is_dir():
+        return []
+    found: list[logs.Entry] = []
+    for path in sorted(place.glob("*.json")):
+        try:
+            branch = str(json.loads(path.read_text(encoding="utf-8")).get("branch") or "")
+        except (OSError, ValueError, AttributeError):
+            branch = ""
+        if not LANDABLE.match(branch):
+            found.append(logs.entry("land-refused", harbour=True, branch=branch or path.name,
+                                    why="not a stage's own branch, so it is not one to land unasked"))
+            path.unlink(missing_ok=True)
+            continue
+        commit, fault, _resolvable, note = merge_branch(branch)
+        path.unlink(missing_ok=True)
+        if fault:
+            found.append(logs.entry("land-refused", harbour=True, branch=branch, why=fault))
+            print(f"harbourmaster: {branch} was not landed: {fault}", flush=True)
+            continue
+        found.append(logs.entry("landed", harbour=True, branch=branch, commit=commit,
+                                **({"note": note} if note else {})))
+        if has_origin():
+            git("push", "--quiet", "origin", "--delete", branch)  # landed: the forge's copy has done its job
+        git("branch", "-D", branch)
+    return found
 
 
 def over_ceiling(fairway: str) -> bool | None:

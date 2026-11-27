@@ -90,6 +90,15 @@ migrated and not set up, and nothing below can be trusted in it. The step to tak
 session is the one that ran the migration, step six is a stop: tell the user to start a new session and run
 `/catch-up` there, since this one is still reading the commands the migration replaced.
 
+## Land what only this checkout holds
+
+`git fetch origin`, then `git log --oneline origin/<trunk>..<trunk>`. Any commit it lists is on local trunk
+and not on the forge, so the harbourmaster cannot bring this checkout level after a merge and the board,
+drawn from it, shows an older project. Never reset, rebase or drop them: `git branch keep-local <trunk>`,
+`git push origin keep-local`, open a pull request into trunk, and only once it has merged,
+`git switch -C <trunk> origin/<trunk>`. The page names them under its own heading when the migration found
+any.
+
 ## Confirm the migrated fairways first
 
 Run `python3 scripts/check-migration.py` before declaring catch-up complete. A proposed fairway or an

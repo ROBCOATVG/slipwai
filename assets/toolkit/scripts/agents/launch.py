@@ -23,6 +23,7 @@ sys.path.insert(0, str(HERE))
 import clearance  # noqa: E402
 import feature_stages  # noqa: E402 — carried beside this script; the board asks the same of it
 import harness  # noqa: E402
+import landing  # noqa: E402
 
 ROOT = harness.ROOT
 COMMAND = ROOT / "commands/launch.md"
@@ -64,16 +65,23 @@ def chart_and_split() -> int:
     print(f"{said}; {why}", flush=True)
     print(f"+ {line}", flush=True)
     environment = {**harness.child_environment(chosen), "SLIPWAI_STAGE": "launch"}
-    exited = harness.run_session(shlex.split(line), ROOT, environment)
-    if exited:
-        print(f"launch: the session exited {exited}; nothing was cast off", file=sys.stderr)
-        return exited
-    if not split():
-        print(f"launch: the session ended without a split{' of ' + feature() if feature() else ''}, so there is "
-              "nothing to light a captain for; read its "
-              "last lines above — a park there names what a person has to decide", file=sys.stderr)
-        return 1
-    return 0
+    # While a fleet is running, a commit on local trunk is one the harbourmaster cannot bring forward: the
+    # session works on a branch of its own, which is pushed and landed through the full gate (`landing.py`).
+    aside, left = landing.step_aside("launch", feature() or "feature")
+    try:
+        exited = harness.run_session(shlex.split(line), ROOT, environment)
+        if exited:
+            print(f"launch: the session exited {exited}; nothing was cast off", file=sys.stderr)
+            return exited
+        if not split():
+            print(f"launch: the session ended without a split{' of ' + feature() if feature() else ''}, so there "
+                  "is nothing to light a captain for; read its "
+                  "last lines above — a park there names what a person has to decide", file=sys.stderr)
+            return 1
+        return 0
+    finally:
+        if aside:
+            print(f"launch: {landing.step_back(aside, left, f'Launch {feature() or aside}')}", flush=True)
 
 
 def main(argv: list[str]) -> int:

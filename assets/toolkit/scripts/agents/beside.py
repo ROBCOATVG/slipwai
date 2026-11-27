@@ -209,7 +209,8 @@ def next_decision(feature: str) -> str:
     except Exception:  # noqa: BLE001 — a number is still owed where the reservation cannot be made
         log = clearance.SPECS / feature / "decisions.md"
         text = log.read_text(encoding="utf-8") if log.is_file() else ""
-        return f"D{max((int(n) for n in re.findall(r'^## D(\d+)\b', text, flags=re.M)), default=0) + 1}"
+        numbers = [int(n) for n in re.findall(r"^## D(\d+)\b", text, flags=re.M)]
+        return f"D{max(numbers, default=0) + 1}"
 
 
 def decision(feature: str, number: str, beside: dict[str, set[str] | None], apart: dict[str, dict[str, list[str]]],
